@@ -4,6 +4,9 @@
 
 This repository contains the Windows-side control workspace for the Omniroute maze. It provides the projection and tracking components and connects to the Ubuntu ROS Noetic system to deliver visual stimuli and exchange experiment-state messages during behavioral sessions.
 
+<p align="center">
+  <img src="data/assets/hero_image/system_diagram.svg" alt="System Diagram" width="700">
+</p>
 
 ## Affinity Designer Setup for Projection Images
 
