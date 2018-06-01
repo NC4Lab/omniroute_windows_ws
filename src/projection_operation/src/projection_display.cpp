@@ -902,17 +902,14 @@ void appInitOpenGL()
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
 }
 
-void printElapsedTime(double &lastTime, std::string msg)
-{
-    double currentTime = glfwGetTime();
-    double deltaTime = currentTime - lastTime;
-    lastTime = currentTime;
-    ROS_INFO("%s: %f ms", msg.c_str(), deltaTime * 1000.0);
-}
 
 void appMainLoop()
 {
+    // Initialize the timing data
+    mainLoopTD.reset();
+
     int status = 0;
+    ROS_INFO("i[appMainLoop] Starting");
 
     while (status == 0)
     {
@@ -1017,7 +1014,7 @@ void appMainLoop()
         ros::spinOnce();
 
         // Process ROS projection command messages
-        if (projcProjCmdROS(RC) < 0)
+        if (procProjCmdROS(RC) < 0)
             throw std::runtime_error("[appMainLoop] Error returned from: procProjCmdROS");
 
         // Process ROS projection image messages
@@ -1027,6 +1024,9 @@ void appMainLoop()
         // Process ROS tracking position messages
         if (procTrackMsgROS(RC, RT) < 0)
             throw std::runtime_error("[appMainLoop] Error returned from: procTrackMsgROS");
+
+        // Measure the time taken for the loop iteration
+        // mainLoopTD.addDeltaTime(true); // Add delta time and print timing data
 
         // Sleep to maintain the loop rate
         RC.loop_rate->sleep();

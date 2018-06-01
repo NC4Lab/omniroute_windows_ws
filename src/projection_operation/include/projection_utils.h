@@ -848,7 +848,8 @@ std::string RUNTIME_IMAGE_PATH = GLB_IMAGE_TOP_DIR_PATH + "/runtime";
  * @note This list needs to match that used in:
  * omniroute_ubuntu_ws\src\omniroute_operation\src\shared_utils\projection_operation.py
  */
-const char WALL_IMAGE_FILE_NAMES[6][30] = {
+//leave the first bracket empty. Let the compiler infer the size. This way it's safer — no risk of mismatch between declared size and number of initializers.
+const char WALL_IMAGE_FILE_NAMES[][30] = {
     "w_black",
     "w_square",
     "w_circle",
