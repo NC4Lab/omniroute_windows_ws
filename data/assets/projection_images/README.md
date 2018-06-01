@@ -1,8 +1,15 @@
-# Affinity Designer Setup for Projection Images
+# (Windows) Omniroute ROS Controller Setup and Usage
 
-This guide will walk you through the steps to ensure proper setup of Affinity Designer for creating images for the projection opperations.
+## Overview
 
-## 1. Creating a new document
+This repository contains the Windows-side control workspace for the Omniroute maze. It provides the projection and tracking components and connects to the Ubuntu ROS Noetic system to deliver visual stimuli and exchange experiment-state messages during behavioral sessions.
+
+
+## Affinity Designer Setup for Projection Images
+
+This guide will walk you through the steps to ensure proper setup of Affinity Designer for creating images for the projection operations.
+
+### 1. Creating a new document
 
 1. Open **Affinity Designer**.
 2. Go to **File > New** or press `Ctrl + N`.
@@ -13,7 +20,7 @@ This guide will walk you through the steps to ensure proper setup of Affinity De
 4. Set the desired dimensions, resolution, and other document settings.
 5. Click **Create** to open a new document with transparency enabled.
 
-## 2. Working with transparency in existing documents
+### 2. Working with transparency in existing documents
 
 If you are working with an existing document and need to enable transparency:
 1. Go to **Document Setup**.
@@ -22,12 +29,12 @@ If you are working with an existing document and need to enable transparency:
 3. Under the **Dimentions** section:
    - Set the **DPI** to 72.
 
-## 3. Ensuring Transparent Elements in the Design
+### 3. Ensuring Transparent Elements in the Design
 
 - Make sure to leave areas where transparency is desired without any fills or layers.
 - If you need transparent shapes or objects, use the **Fill Tool** (G) and set the fill to **None** or adjust the **Opacity** slider for partial transparency.
 
-## 4. Exporting as a Single Transparent PNG (RGBA)
+### 4. Exporting as a Single Transparent PNG (RGBA)
 
 To export your design as a PNG with a transparent background:
 
@@ -40,7 +47,7 @@ To export your design as a PNG with a transparent background:
    - Optionally, embed an **ICC profile** if needed for color accuracy across devices.
 4. Click **Export** and save your file to the desired location.
 
-## 4. Exporting Multiple Artboards at Once 
+### 4. Exporting Multiple Artboards at Once 
 
 1. **Switch to Export Persona**:
    - In Affinity Designer, click on the **Export Persona** icon at the top left (square with a diagonal arrow).
@@ -59,3 +66,9 @@ To export your design as a PNG with a transparent background:
    - Once all slices are selected, click **Export Slices** at the bottom of the panel. 
    - Choose the location to save the files, and each artboard will be saved as an individual PNG file.
    - Confirm the outputted image is *300 x 540* pixels.
+
+## Licensing
+
+* **Hardware design files** (for the Omniroute apparatus) are released under the **CERN-OHL-W** license.
+    
+* **Analysis code in this repository** is released under the Apache-2.0 license (see `LICENSE`).
