@@ -1,4 +1,4 @@
-# (Windows) Omniroute ROS Controller Setup and Usage
+# (Windows) Omniroute ROS Host Workspace Setup and Usage
 
 ## Overview
 
