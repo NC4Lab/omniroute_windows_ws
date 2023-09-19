@@ -6,8 +6,11 @@
 :: Pause to give roscore time to start up
 ::timeout /t 5
 
+:: Source the ROS setup file
+::call C:\opt\ros\noetic\x64\setup.bat
+
 :: Navigate to your ROS workspace
-cd C:\nc4_code_base\omniroute_operation_windows_ws
+cd C:\nc4_code_base\omniroute_windows_ws
 
 :: Source the workspace to make sure the new build is recognized
 devel\setup.bat
