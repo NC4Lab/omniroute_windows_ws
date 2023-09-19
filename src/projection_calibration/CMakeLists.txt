@@ -50,6 +50,7 @@ include_directories(
 # add_library(${PROJECT_NAME}
 #   src/${PROJECT_NAME}/projection_calibration.cpp
 # )
+add_library(GLAD src/glad/glad.c)
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
@@ -62,7 +63,8 @@ include_directories(
 add_executable(
   ${PROJECT_NAME}_node 
   src/projection_calibration.cpp
-  src/glad/glad.h
+  src/glad/glad.c
+	src/glad/glad.h
 )
 
 ## Rename C++ executable without prefix
