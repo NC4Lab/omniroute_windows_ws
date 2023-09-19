@@ -21,6 +21,8 @@ __pycache__/
 .vscode/
 
 # Other
-src/CMakeLists.txt
 /.vscode/
 .ini/
+
+# Leaving CMakeLists.txt files for now
+#src/CMakeLists.txt
