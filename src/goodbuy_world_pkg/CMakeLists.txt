@@ -132,8 +132,6 @@ include_directories(
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-# add_executable(${PROJECT_NAME}_node src/goodbuy_world_pkg_node.cpp)
-# AWL
 add_executable(goodbuy_world_node src/goodbuy_world_node.cpp)
 
 ## Rename C++ executable without prefix
@@ -147,11 +145,12 @@ add_executable(goodbuy_world_node src/goodbuy_world_node.cpp)
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(${PROJECT_NAME}_node
-#   ${catkin_LIBRARIES}
-# )
+target_link_libraries(
+  goodbuy_world_node
+  ${catkin_LIBRARIES}
+)
 # AWL
-target_link_libraries(goodbuy_world_node ${catkin_LIBRARIES})
+#target_link_libraries(goodbuy_world_node ${catkin_LIBRARIES})
 
 #############
 ## Install ##
