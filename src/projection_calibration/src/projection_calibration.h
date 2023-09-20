@@ -8,7 +8,17 @@
 
 //============= INCLUDE ================
 
+// OpenGL (GLAD and GLFW) for graphics and windowing
+#define GLAPIENTRY APIENTRY
+#include "glad/glad.h"
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
 
+// DevIL for image loading and manipulation
+#include <IL/il.h>
+#include <IL/ilu.h>
+#include <IL/ilut.h>
+#include <IL/devil_cpp_wrapper.hpp>
 
 // ROS for robot operating system functionalities
 #include <ros/ros.h>

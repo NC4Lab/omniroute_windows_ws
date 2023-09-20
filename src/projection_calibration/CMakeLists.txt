@@ -7,14 +7,15 @@ project(projection_calibration)
 # Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  roslib
   std_msgs
+  message_generation
   cv_bridge  # Added for OpenCV support
 )
 
 # Find other dependencies
 find_package(OpenCV REQUIRED)  # Added for OpenCV
 find_package(glfw3 REQUIRED)  # Added for GLFW
-find_package(Boost REQUIRED)  # Added for Boost
 
 ###################################
 ## catkin specific configuration ##
@@ -49,9 +50,10 @@ add_library(GLAD lib/glad/glad.c)
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  lib/glad                # Added for GLAD
-  lib/glm                 # Added for GLM
-  lib/pugixml             # Added for PugiXML
+  ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/lib
+  ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/lib/glad                # Added for GLAD
+  ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/lib/glm                 # Added for GLM
+  ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/lib/pugixml             # Added for PugiXML
   ${catkin_INCLUDE_DIRS}  # Added for ROS
   ${OpenCV_INCLUDE_DIRS}  # Added for OpenCV
   ${GLFW_INCLUDE_DIRS}    # Added for GLFW
@@ -75,6 +77,21 @@ if(ILU_LIBRARY)
 else()
   message(FATAL_ERROR "[LIBRARY]: ILU library not found")
 endif()
+
+## Print out the values of the environment variables
+message("[ENV]: PROJECT_NAME set to: ${PROJECT_NAME}")
+message("[ENV]: CMAKE_SOURCE_DIR set to: ${CMAKE_SOURCE_DIR}")
+message("[ENV]: glfw3_DIR set to: ${glfw3_DIR}")
+message("[ENV]: IL_INCLUDE_DIR set to: $ENV{IL_INCLUDE_DIR}") 
+message("[ENV]: IL_LIB_DIR set to: $ENV{IL_LIB_DIR}")
+message("[ENV]: glm_DIR set to: ${glm_DIR}")
+message("[ENV]: IL_LIBRARY set to: ${IL_LIBRARY}")
+message("[ENV]: ILU_LIBRARY set to: ${ILU_LIBRARY}")
+message("[ENV]: ILUT_LIBRARY set to: ${ILUT_LIBRARY}")
+message("[ENV]: OpenCV_INCLUDE_DIRS set to: ${OpenCV_INCLUDE_DIRS}")
+message("[ENV]: OpenCV_LIBRARIES set to: ${OpenCV_LIBRARIES}")
+message("[ENV]: OpenCV_LIBS set to: ${OpenCV_LIBS}")
+message("[ENV]: OpenCV_DIR set to: ${OpenCV_DIR}")
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
@@ -105,27 +122,22 @@ add_custom_command(TARGET ${PROJECT_NAME}_node POST_BUILD
                    ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/dll/ILUT.dll
                    $<TARGET_FILE_DIR:${PROJECT_NAME}_node>)
 
-## Rename C++ executable without prefix
-## The above recommended prefix causes long target names, the following renames the
-## target back to the shorter version for ease of user use
-## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
+## Add cmake target dependencies of the executable
+## same as for the library above
 add_dependencies(${PROJECT_NAME}_node 
   ${${PROJECT_NAME}_EXPORTED_TARGETS} 
   ${catkin_EXPORTED_TARGETS}
 )
 
-## Add cmake target dependencies of the executable
-## same as for the library above
-# add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
-
 # Specify libraries to link against
 target_link_libraries(${PROJECT_NAME}_node 
-  glfw 
   GLAD
+  glfw 
   ${catkin_LIBRARIES}
   ${IL_LIBRARY} ${ILU_LIBRARY} ${ILUT_LIBRARY}	
   ${OpenCV_LIBRARIES}
 )
+
 
 #############
 ## Install ##

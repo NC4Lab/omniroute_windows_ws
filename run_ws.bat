@@ -12,11 +12,11 @@
 :: Navigate to your ROS workspace
 cd C:\nc4_code_base\omniroute_windows_ws
 
-:: Build the ROS workspace
-catkin_make
-
 :: Source the workspace to make sure the new build is recognized
 call devel\setup.bat
+
+:: Build the ROS workspace
+catkin_make
 
 :: Run the specific ROS node
 ::rosrun goodbuy_world_pkg goodbuy_world_node
