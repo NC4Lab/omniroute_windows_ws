@@ -1,43 +1,65 @@
-// ROS headers
+// H ==============================================
+
+// OpenGL (GLAD and GLFW) for graphics and windowing
+#define GLAPIENTRY APIENTRY
+#include "glad/glad.h"
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
+
+// DevIL for image loading and manipulation
+#include <IL/il.h>
+#include <IL/ilu.h>
+#include <IL/ilut.h>
+#include <IL/devil_cpp_wrapper.hpp>
+
+// ROS for robot operating system functionalities
 #include <ros/ros.h>
 #include <ros/console.h>
 
-// OpenGL headers
-#include "glad/glad.h"
-#include <GLFW/glfw3.h>
-
-// DevIL headers
-#include <IL/il.h>
-#include <IL/devil_cpp_wrapper.hpp>
-#include <IL/ilu.h>
-#include <IL/ilut.h>
-
-// C++ Standard Library headers
+// Standard Library for various utilities
 #include <fstream>
-#include <string>
-#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #include <algorithm>
 #include <vector>
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
-#include <float.h>
-#include <sstream>
-#include <regex>
-#include <cmath>
+#include <string>
 
-// GLM headers
-#include "glm/glm.hpp"
-#include "glm/ext.hpp"
-#include "glm/gtx/string_cast.hpp"
-#include "glm/gtc/matrix_transform.hpp"
+// Namespace declarations
+using namespace std;
 
-// LearnOpenGL headers
-#include "learnopengl/shader_m.h"
-#include "learnopengl/camera.h"
 
-// NanoSVG headers
-#include "../nanosvg-master/src/nanosvg.h"
-#include "../nanosvg-master/src/nanosvgrast.h"
+
+// CPP ==============================================
+
+
+#include "projection.h"
+
+// ROS for robot operating system functionalities
+#include <ros/ros.h>
+#include <ros/package.h>
+#include <XmlRpcValue.h>
+
+// OpenCV for computer vision tasks
+#include <opencv2/calib3d.hpp>
+#include <opencv2/core/types.hpp>
+#include <opencv2/core/hal/interface.h>
+#include "opencv2/imgproc.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui.hpp"
+
+// PugiXML for XML parsing
+#include "pugixml.hpp"
+
+
+
+find_package(GLFW REQUIRED)
+find_package(DevIL REQUIRED)
+include_directories(
+# include
+  ${GLFW_INCLUDE_DIRS}
+  ${DevIL_INCLUDE_DIRS}
+)
+target_link_libraries(${PROJECT_NAME}_node 
+  ${GLFW_LIBRARIES} 
+  ${DevIL_LIBRARIES}
+)

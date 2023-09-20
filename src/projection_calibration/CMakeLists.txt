@@ -36,43 +36,80 @@ catkin_package(
 ## Build ##
 ###########
 
+# TODO - README.md should ask user to install these libraries and create environment variables pointing to them.
+set(glfw3_DIR "C:/Program Files (x86)/GLFW/lib/cmake/glfw3/")
+set(IL_INCLUDE_DIR "C:/Program Files (x86)/IL/include")
+set(IL_LIB_DIR "C:/Program Files (x86)/IL/lib/x64/Release/")
+set(glm_DIR "C:/Program Files (x86)/glm/cmake/glm/")
+
+## Declare a C++ library
+# Need to explicetly add GLAD library for linking
+add_library(GLAD lib/glad/glad.c)
+
 ## Specify additional locations of header files
 ## Your package locations should be listed before other locations
 include_directories(
-  ${catkin_INCLUDE_DIRS}
+  lib/glad                # Added for GLAD
+  lib/glm                 # Added for GLM
+  lib/pugixml             # Added for PugiXML
+  ${catkin_INCLUDE_DIRS}  # Added for ROS
   ${OpenCV_INCLUDE_DIRS}  # Added for OpenCV
   ${GLFW_INCLUDE_DIRS}    # Added for GLFW
-  ${Boost_INCLUDE_DIRS}   # Added for Boost
-  src/glad 
+  ${glfw3_INCLUDE_DIRS}   # Added for GLFW
+  ${IL_INCLUDE_DIR}       # Added for DevIL
 )
 
-## Declare a C++ library
-# add_library(${PROJECT_NAME}
-#   src/${PROJECT_NAME}/projection_calibration.cpp
-# )
-add_library(GLAD src/glad/glad.c)
+## Using local DLL for DevIL library
+find_library(ILUT_LIBRARY NAMES ILUT.lib PATHS "${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/dll")
+find_library(IL_LIBRARY NAMES DevIL ILU ILUT.lib PATHS "${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/dll")
+find_library(ILU_LIBRARY NAMES ILU PATHS "${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/dll")
 
-## Add cmake target dependencies of the library
-## as an example, code may need to be generated before libraries
-## either from message generation or dynamic reconfigure
-# add_dependencies(${PROJECT_NAME} ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+## Check if DevIL libraries
+if(IL_LIBRARY)
+  message(STATUS "[LIBRARY]: Found IL library: ${IL_LIBRARY}")
+else()
+  message(FATAL_ERROR "[LIBRARY]: IL library not found")
+endif()
+if(ILU_LIBRARY)
+  message(STATUS "[LIBRARY]: Found ILU library: ${ILU_LIBRARY}")
+else()
+  message(FATAL_ERROR "[LIBRARY]: ILU library not found")
+endif()
 
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(
-  ${PROJECT_NAME}_node 
+add_executable(${PROJECT_NAME}_node 
   src/projection_calibration.cpp
-  src/glad/glad.c
-	src/glad/glad.h
+  lib/glad/glad.c
+	lib/glad/glad.h
+  lib/glm/glm.hpp
+  lib/pugixml/pugixml.cpp
+  lib/pugixml/pugixml.hpp
 )
+
+## Manually copy DLLs to the executable's directory post-build
+# Copy DevIL.dll 
+add_custom_command(TARGET ${PROJECT_NAME}_node POST_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                   ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/dll/DevIL.dll
+                   $<TARGET_FILE_DIR:${PROJECT_NAME}_node>)
+# Copy ILU.dll
+add_custom_command(TARGET ${PROJECT_NAME}_node POST_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                   ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/dll/ILU.dll
+                   $<TARGET_FILE_DIR:${PROJECT_NAME}_node>)
+# Copy ILUT.dll
+add_custom_command(TARGET ${PROJECT_NAME}_node POST_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                   ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/dll/ILUT.dll
+                   $<TARGET_FILE_DIR:${PROJECT_NAME}_node>)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
 ## e.g. "rosrun someones_pkg node" instead of "rosrun someones_pkg someones_pkg_node"
-add_dependencies(
-  ${PROJECT_NAME}_node 
+add_dependencies(${PROJECT_NAME}_node 
   ${${PROJECT_NAME}_EXPORTED_TARGETS} 
   ${catkin_EXPORTED_TARGETS}
 )
@@ -82,12 +119,11 @@ add_dependencies(
 # add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 # Specify libraries to link against
-target_link_libraries(
-  ${PROJECT_NAME}_node 
-  ${catkin_LIBRARIES}
-  ${Boost_LIBRARIES}
+target_link_libraries(${PROJECT_NAME}_node 
   glfw 
   GLAD
+  ${catkin_LIBRARIES}
+  ${IL_LIBRARY} ${ILU_LIBRARY} ${ILUT_LIBRARY}	
   ${OpenCV_LIBRARIES}
 )
 

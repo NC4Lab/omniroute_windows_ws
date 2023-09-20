@@ -17,9 +17,3 @@ Visit https://www.glfw.org/download.html and download the latest version.
 '''
 Visit https://glad.dav1d.de/ to generate and download the GLAD package.
 '''
-
-## Install Boost
-# Boost libraries can be downloaded from the official website.
-'''
-Visit https://www.boost.org/users/download/ and download the latest version.
-'''
