@@ -193,3 +193,4 @@ install(TARGETS ${PROJECT_NAME}_node
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+#TEMP
