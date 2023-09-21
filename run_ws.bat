@@ -1,4 +1,4 @@
-@echo off  :: Turn off command echoing to clean up the output
+@echo off  :: Command Echoing Off
 
 @REM :: Open a new terminal and run roscore
 @REM start cmd /k "call C:\opt\ros\noetic\x64\setup.bat && roscore"
