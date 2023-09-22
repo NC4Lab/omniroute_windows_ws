@@ -76,6 +76,7 @@ vector<cv::Point2f> createRectPoints(float x0, float y0, float width, float heig
     return rectPoints;
 }
 
+
 void loadCoordinates()
 {
     pugi::xml_document doc;
@@ -128,6 +129,7 @@ void loadCoordinates()
         }
     }
 }
+
 
 void saveCoordinates()
 {
@@ -196,6 +198,7 @@ void saveCoordinates()
     }
 }
 
+
 void computeHomography()
 {
     vector<cv::Point2f> targetCorners;
@@ -212,6 +215,7 @@ void computeHomography()
 
     // cerr << H;
 }
+
 
 /// @ref: GLFW/glfw3.h for keybindings enum
 void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -264,14 +268,12 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // Set image to image 1
 
         // Set image to image 1
-        else if (key == GLFW_KEY_C)
-        {
+        else if (key == GLFW_KEY_C){
             imageNumber = 1;
         }
         // Set image to image 2
         // Set image to image 2
-        else if (key == GLFW_KEY_T)
-        {
+        else if (key == GLFW_KEY_T){
             imageNumber = 0;
         }
 
@@ -308,8 +310,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         }
         // Load coordinates from CSV
         // Load coordinates from CSV
-        else if (key == GLFW_KEY_L)
-        {
+        else if (key == GLFW_KEY_L){
             loadCoordinates();
         }
 
@@ -422,15 +423,18 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     computeHomography();
 }
 
+
 void callbackFrameBufferSize(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
 }
 
+
 static void callbackError(int error, const char *description)
 {
     ROS_ERROR("Error: %s\n", description);
 }
+
 
 void drawTarget(float x, float y, float targetWidth, float targetHeight)
 {
@@ -445,6 +449,7 @@ void drawTarget(float x, float y, float targetWidth, float targetHeight)
 
     glEnd();
 }
+
 
 void drawRect(vector<cv::Point2f> corners, int imageNumber)
 {
@@ -471,6 +476,7 @@ void drawRect(vector<cv::Point2f> corners, int imageNumber)
     // glVertex2f(x, y+height);
     glEnd();
 }
+
 
 void drawWalls()
 {
@@ -531,6 +537,7 @@ void drawWalls()
         }
     }
 }
+
 
 int main(int argc, char **argv)
 {

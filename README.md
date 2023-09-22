@@ -1,47 +1,19 @@
-# omniroute_windows_ws folder structure
+# omniroute_windows_ws
 
-omniroute_windows_ws/               
-├── build/
-├── devel/
-├── src/                             
-│   └── projection_calibration/      
-│       ├── src/                     
-│       │   ├── projection_calibration.cpp
-│       │   └── projection_calibration.h
-│       └── CMakeLists.txt
-└── lib/                            
-    ├── glad/
-    │   ├── include/
-    │   │   └── glad/
-    │   │       └── glad.h
-    │   └── src/
-    │       └── glad.c
-    ├── glfw/
-    │   ├── include/
-    │   │   └── GLFW/
-    │   │       └── glfw3.h
-    │   ├── lib/
-    │   │   └── glfw3.lib
-    │   └── bin/
-    │       └── glfw3.dll
-    ├── glm/  
-    │       └── <header_files>.hpp
-    ├── pugixml/  
-    │       └── pugixml.cpp
-    │       └── pugixml.hpp
-    │       └── pugiconfig.hpp
-    └── DevIL/
-        ├── include/
-        │   └── IL/
-        │       ├── il.h
-        │       ├── ilu.h
-        │       ├── ilut.h
-        │       └── devil_cpp_wrapper.h
-        ├── lib/
-        │   ├── DevIL.lib
-        │   ├── ILU.lib
-        │   └── ILUT.lib
-        └── bin/                    
-            ├── DevIL.dll
-            ├── ILU.dll
-            └── ILUT.dll
+# Install OpenCV
+# OpenCV can be installed using binaries or built from source.
+'''
+Visit https://opencv.org/releases/ to download the latest OpenCV binaries.
+'''
+
+# Install GLFW
+# Download GLFW binaries from their official website.
+'''
+Visit https://www.glfw.org/download.html and download the latest version.
+'''
+
+## Actions: Install GLAD
+# GLAD can be downloaded from its web service.
+'''
+Visit https://glad.dav1d.de/ to generate and download the GLAD package.
+'''
