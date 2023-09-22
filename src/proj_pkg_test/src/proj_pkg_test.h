@@ -1,3 +1,4 @@
+
 #ifndef PROJ_PKG_TEST_H
 #define PROJ_PKG_TEST_H
 
@@ -8,14 +9,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
-class ProjPkgTest {
-public:
-    ProjPkgTest();
-    ~ProjPkgTest();
-    void run();
-private:
-    bool initializeGL();
-    GLFWwindow* window;
-};
+// Function to initialize GLAD and GLFW
+bool initialize_libraries();
 
 #endif // PROJ_PKG_TEST_H

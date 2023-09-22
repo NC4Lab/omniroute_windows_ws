@@ -12,12 +12,20 @@
     - Extract the downloaded zip file and copy the `include` and `src` folders from the extracted folder to your project directory or a common libraries directory.
 
 3. **Set Environment Variable**
-    - Open a Command Prompt as an administrator and execute the following command to set the `GLAD_DIR` environment variable. Replace (Example) `C:\Program Files (x86)\OmnirouteSharedLibs\glad` with the actual path where you have saved the GLAD library.
+    - Open a Command Prompt as an administrator and execute the following command to set the `GLAD_DIR` environment variable. Replace (Example) `C:/Program Files (x86)/OmnirouteSharedLibs/glad` with the actual path where you have saved the GLAD library.
+    - Note the use of foward slashes, which are necesary for CMake.
+    - The `/M` option sets the variable as a System variable (for all users).
 
     ```cmd
-    setx GLAD_DIR "C:\Program Files (x86)\OmnirouteSharedLibs\glad" /M
+    setx GLAD_DIR "C:/Program Files (x86)/OmnirouteSharedLibs/glad" /M
     ```
-    - The `/M` option sets the variable as a System variable (for all users).
+
+4. **Verification Environment Variable Created**
+    - Close and reopen the Command Prompt as an administrator.
+    
+    ```cmd
+    echo %GLAD_DIR%
+    ```
 
 
 ### ==================== INSTALL GLFW LIBRARY ====================
@@ -28,13 +36,23 @@
 
 2. **Copy Headers and Library Files**
     - Extract the downloaded zip file and Copy the `include` folder and the contents of the `lib-vc2019` (or relevant `lib` folder depending on your Visual Studio version) to your project directory or a common libraries directory.
+    - Note make sure to copy the `lib-vc2019` version and keep this folder name.
 
 3. **Set Environment Variable**
-    - Open a Command Prompt as an administrator and execute the following command to set the `GLFW_DIR` environment variable. Replace (Example) `C:\Program Files (x86)\OmnirouteSharedLibs\glfw` with the actual path where you have saved the GLFW library.
-    ```cmd
-    setx GLFW_DIR "C:\Program Files (x86)\OmnirouteSharedLibs\glfw" /M
-    ```
+    - Open a Command Prompt as an administrator and execute the following command to set the `GLFW_DIR` environment variable. Replace (Example) `C:/Program Files (x86)/OmnirouteSharedLibs/glfw` with the actual path where you have saved the GLFW library.
+    - Note the use of foward slashes, which are necesary for CMake.
     - The `/M` option sets the variable as a System variable (for all users).
+    
+    ```cmd
+    setx GLFW_DIR "C:/Program Files (x86)/OmnirouteSharedLibs/glfw" /M
+    ```
+
+4. **Verification Environment Variable Created**
+    - Close and reopen the Command Prompt as an administrator.
+    
+    ```cmd
+    echo %GLFW_DIR%
+    ```
 
 
 ## ==================== DELETING AN ENVIRONMENT VARIABLE ON WINDOWS 10 ====================
