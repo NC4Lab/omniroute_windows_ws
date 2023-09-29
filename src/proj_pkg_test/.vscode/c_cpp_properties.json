@@ -8,7 +8,7 @@
         "${env:GLAD_DIR}/include",
         "${env:GLFW_DIR}/include",
         "${env:DevIL_DIR}/include",
-        "${env:GLM_DIR}/"
+        "${env:GLM_DIR}"
       ],
       "browse": {
         "databaseFilename": "${default}",
