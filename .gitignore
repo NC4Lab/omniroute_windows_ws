@@ -19,7 +19,8 @@ __pycache__/
 # IDE and Editor Files
 .idea/
 .vscode/*
-# Synching c_cpp_properties.json files for now
+# Synching VS Code json files for now
+!.vscode/settings.json
 !.vscode/c_cpp_properties.json
 
 # Other
