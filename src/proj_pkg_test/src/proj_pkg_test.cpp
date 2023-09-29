@@ -52,17 +52,22 @@ bool initialize_devil() {
   iluInit();
   ilutInit();
 
-  // Test DevIL
-  ILuint image;
-  ilGenImages(1, &image);
-  ilBindImage(image);
+  // Get the package path
+  std::string packagePath = ros::package::getPath("proj_pkg_test");
 
-  if (ilLoadImage("test_image.jpg")) {
-    ROS_INFO("DevIL successfully loaded an image.");
-  } else {
+  // Define the image path
+  std::string imagePath = packagePath + "/img/mmPirate.png";  
+
+  // Load the image
+  ILuint imageID;
+  ilGenImages(1, &imageID);
+  ilBindImage(imageID);
+
+  if (!ilLoadImage(imagePath.c_str())) {
     ROS_ERROR("DevIL failed to load an image.");
     return false;
   }
 
+  // If we reach this point, DevIL is initialized and the image is loaded
   return true;
 }

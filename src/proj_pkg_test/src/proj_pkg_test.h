@@ -13,6 +13,12 @@
 #include <IL/ilu.h>
 #include <IL/ilut.h>
 
+// ROS for robot operating system functionalities
+#include <ros/ros.h>
+#include <ros/console.h>
+#include <ros/package.h>
+#include <XmlRpcValue.h>
+
 // Function to initialize GLAD and GLFW
 bool initialize_libraries();
 
