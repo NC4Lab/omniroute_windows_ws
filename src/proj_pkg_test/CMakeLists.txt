@@ -13,16 +13,31 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   cv_bridge  # Added for OpenCV support
 )
+if(catkin_FOUND)
+  message(STATUS "[ENV]: catkin found")
+else()
+  message(FATAL_ERROR "[ENV]: catkin not found")
+endif()
 
 # Find OpenCV
 find_package(OpenCV REQUIRED) 
+if(OpenCV_FOUND)
+  message(STATUS "[ENV]: OpenCV found")
+else()
+  message(FATAL_ERROR "[ENV]: OpenCV not found")
+endif()
 
 # Find pugixml
 find_package(pugixml REQUIRED)
+if(pugixml_FOUND)
+  message(STATUS "[ENV]: pugixml found")
+else()
+  message(FATAL_ERROR "[ENV]: pugixml not found")
+endif()
 
 # Catkin specific configuration
 catkin_package(
-  CATKIN_DEPENDS roslib roscpp std_msgs cv_bridge 
+  CATKIN_DEPENDS roslib roscpp std_msgs cv_bridge
   DEPENDS OpenCV  # Added for OpenCV
 )
 
