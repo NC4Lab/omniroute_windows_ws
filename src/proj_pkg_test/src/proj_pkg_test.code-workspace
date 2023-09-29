@@ -1,23 +1,20 @@
 {
 	"folders": [
 		{
-			"path": "."
+			"path": ".."
 		}
 	],
 	"settings": {
 		"ros.distro": "noetic",
 		"python.autoComplete.extraPaths": [
 			"C:\\opt\\ros\\noetic\\x64\\lib/site-packages",
+			"c:\\opt\\ros\\noetic\\x64\\lib/site-packages",
 			"C:\\opt\\ros\\noetic\\x64\\Lib\\site-packages"
 		],
 		"python.analysis.extraPaths": [
 			"C:\\opt\\ros\\noetic\\x64\\lib/site-packages",
+			"c:\\opt\\ros\\noetic\\x64\\lib/site-packages",
 			"C:\\opt\\ros\\noetic\\x64\\Lib\\site-packages"
-		],
-		"C_Cpp.default.includePath": [
-			"${config:env.GLFW_DIR}/include",
-			"${config:env.GLAD_DIR}/include",
-			"${config:env.DevIL_DIR}/include"
 		]
 	}
 }

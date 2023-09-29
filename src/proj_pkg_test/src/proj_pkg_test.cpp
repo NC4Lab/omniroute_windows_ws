@@ -10,7 +10,13 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  ROS_INFO("GLAD and GLFW initialized successfully.");
+  // Initialize DevIL
+  if (!initialize_devil()) {
+    ROS_ERROR("Failed to initialize DevIL.");
+    return 1;
+  }
+
+  ROS_INFO("GLAD, GLFW, and DevIL initialized successfully.");
   return 0;
 }
 
@@ -40,3 +46,23 @@ bool initialize_libraries() {
   return true;
 }
 
+bool initialize_devil() {
+  // Initialize DevIL
+  ilInit();
+  iluInit();
+  ilutInit();
+
+  // Test DevIL
+  ILuint image;
+  ilGenImages(1, &image);
+  ilBindImage(image);
+
+  if (ilLoadImage("test_image.jpg")) {
+    ROS_INFO("DevIL successfully loaded an image.");
+  } else {
+    ROS_ERROR("DevIL failed to load an image.");
+    return false;
+  }
+
+  return true;
+}
