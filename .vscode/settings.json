@@ -3,7 +3,6 @@
     "env": {
         "GLAD_DIR": "${env:GLAD_DIR}",
         "GLFW_DIR": "${env:GLFW_DIR}",
-        "DevIL_DIR": "${env:DevIL_DIR}",
-        "GLM_DIR": "${env:GLM_DIR}"
+        "DevIL_DIR": "${env:DevIL_DIR}"
     }
 }

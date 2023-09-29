@@ -110,33 +110,6 @@
     ```
 
 
-### ==================== INSTALL GLM LIBRARY ====================
-
-1. **Download GLM**
-    - Visit the [GLM GitHub Repository](https://github.com/g-truc/glm) or download it from the package manager of your choice.
-    - Download the source code as a zip file.
-
-2. **Copy Headers**
-    - Extract the downloaded zip file and copy the `glm` folder (which should be inside another `glm` folder in the extracted directory) to your project directory or a common libraries directory.
-    - Note the expected directory structure for the library below.
-
-3. **Set Environment Variable**
-    - Open a Command Prompt as an administrator and execute the following command to set the `GLM_DIR` environment variable. Replace `(Example) C:/Program Files (x86)/OmnirouteSharedLibs/glm` with the actual path where you have saved the GLM library.
-    - Note the use of forward slashes, which are necessary for CMake.
-    - The `/M` option sets the variable as a System variable (for all users).
-
-    ```cmd
-    setx GLM_DIR "C:/Program Files (x86)/OmnirouteSharedLibs/glm" /M
-    ```
-
-4. **Verification Environment Variable Created**
-    - Close and reopen the Command Prompt as an administrator.
-
-    ```cmd
-    echo %GLM_DIR%
-    ```
-
-
 ## ==================== DELETING AN ENVIRONMENT VARIABLE ON WINDOWS 10 ====================
 
 If you need to delete an environment variable that you've set earlier, you can do so using the Command Prompt to delete the system-wide variable. You'll need administrative privileges to delete it. Open a Command Prompt as an administrator and run:
@@ -150,9 +123,7 @@ After deleting the variable, you may need to restart any open Command Prompt win
 
 ## ==================== REQUIRED LIBRARY FOLDER STRUCTURE ====================
 
-<external_lib_folder>/                            
-├── glm/
-│   └── <name>.hpp
+<external_lib_folder>/
 ├── glad/
 │   ├── include/
 │   │   └── glad/

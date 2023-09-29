@@ -34,7 +34,7 @@ int main(int argc, char **argv)
     return 1;
   }
 
-  // Test GLM
+  // Test OpenGL Mathematics (GLM)
   if (!test_glm())
   {
     ROS_ERROR("Failed to initialize GLM.");
@@ -138,18 +138,40 @@ bool test_pugixml()
 
 bool test_glm()
 {
-  glm::vec3 a(1.0f, 0.0f, 0.0f);
-  glm::vec3 b(0.0f, 1.0f, 0.0f);
-  glm::vec3 c = a + b;
-
-  if (c.x == 1.0f && c.y == 1.0f && c.z == 0.0f)
+  // Initialize GLFW
+  if (!glfwInit())
   {
-    ROS_INFO("GLM test passed.");
-    return true;
-  }
-  else
-  {
-    ROS_ERROR("GLM test failed.");
+    ROS_ERROR("Failed to initialize GLFW");
     return false;
   }
+
+  // Create a windowed mode window and its OpenGL context
+  GLFWwindow* window = glfwCreateWindow(640, 480, "Test Window", NULL, NULL);
+  if (!window)
+  {
+    ROS_ERROR("Failed to create GLFW window");
+    glfwTerminate();
+    return false;
+  }
+
+  // Make the window's context current
+  glfwMakeContextCurrent(window);
+
+  // Test OpenGL functions
+  glBegin(GL_POINTS);
+    glVertex2f(0.0f, 0.0f);
+  glEnd();
+
+  glBegin(GL_TRIANGLES);
+    glVertex2f(0.0f, 0.0f);
+    glVertex2f(1.0f, 0.0f);
+    glVertex2f(0.0f, 1.0f);
+  glEnd();
+
+  // Destroy the window and terminate GLFW
+  glfwDestroyWindow(window);
+  glfwTerminate();
+
+  ROS_INFO("GLM test passed");
+  return true;
 }

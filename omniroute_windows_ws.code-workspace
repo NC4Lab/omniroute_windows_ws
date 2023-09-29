@@ -17,8 +17,7 @@
 		"C_Cpp.default.includePath": [
 			"${config:env.GLFW_DIR}/include",
 			"${config:env.GLAD_DIR}/include",
-			"${config:env.DevIL_DIR}/include",
-			"${config:env.GLM_DIR}/include"
+			"${config:env.DevIL_DIR}/include"
 		],
 		"files.associations": {
 			"xstring": "cpp",

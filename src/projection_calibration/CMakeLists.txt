@@ -28,6 +28,14 @@ else()
   message(FATAL_ERROR "[ENV]: OpenCV not found")
 endif()
 
+# Find OpenGL
+find_package(OpenGL REQUIRED)
+if(OpenGL_FOUND)
+  message(STATUS "[ENV]: OpenGL found")
+else()
+  message(FATAL_ERROR "[ENV]: OpenGL not found")
+endif()
+
 # Catkin specific configuration
 catkin_package(
   CATKIN_DEPENDS roslib roscpp std_msgs cv_bridge
@@ -62,13 +70,6 @@ else()
   message(FATAL_ERROR "[ENV]: PUGIXML_DIR not set")
 endif()
 
-# Check for GLM directory environment variable
-if(EXISTS $ENV{GLM_DIR})
-  message(STATUS "[ENV]: GLM_DIR set to: $ENV{GLM_DIR}")
-else()
-  message(FATAL_ERROR "[ENV]: GLM_DIR not set")
-endif()
-
 # Add the include directories
 include_directories(
   include                     # Project include directory
@@ -77,7 +78,6 @@ include_directories(
   $ENV{GLFW_DIR}/include      # GLFW include directory
   $ENV{DevIL_DIR}/include     # DevIL include directory
   $ENV{PUGIXML_DIR}/include   # PugiXML include directory
-  $ENV{GLM_DIR}               # GLM directory
 )
 
 # Add the GLAD source files
@@ -98,6 +98,7 @@ add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
+  ${OPENGL_LIBRARIES}
   $ENV{GLFW_DIR}/lib-vc2019/glfw3.lib
   $ENV{DevIL_DIR}/lib/x64/Release/DevIL.lib
   $ENV{DevIL_DIR}/lib/x64/Release/ILU.lib
