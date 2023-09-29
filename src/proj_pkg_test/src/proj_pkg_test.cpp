@@ -1,8 +1,15 @@
 #include "proj_pkg_test.h"
 
 int main(int argc, char **argv) {
+
   // Initialize ROS
   ros::init(argc, argv, "proj_pkg_test_node");
+
+  // Test OpenCV
+  if (!initialize_opencv()) {
+    ROS_ERROR("Failed to initialize OpenCV.");
+    return 1;
+  }
 
   // Initialize GLAD and GLFW
   if (!initialize_libraries()) {
@@ -16,8 +23,24 @@ int main(int argc, char **argv) {
     return 1;
   }
 
-  ROS_INFO("GLAD, GLFW, and DevIL initialized successfully.");
+  ROS_INFO("OpenCV, GLAD, GLFW, and DevIL initialized successfully.");
   return 0;
+}
+
+bool initialize_opencv() {
+  // Get image path
+  std::string packagePath = ros::package::getPath("proj_pkg_test");
+  std::string imagePath = packagePath + "/img/mmPirate.png";  
+
+  // Load the image
+  cv::Mat image = cv::imread(imagePath, cv::IMREAD_COLOR);
+  if (image.empty()) {
+    ROS_ERROR("OpenCV failed to load an image.");
+    return false;
+  }
+
+  // If we reach this point, OpenCV is initialized and the image is loaded
+  return true;
 }
 
 bool initialize_libraries() {
@@ -52,10 +75,8 @@ bool initialize_devil() {
   iluInit();
   ilutInit();
 
-  // Get the package path
+  // Get image path
   std::string packagePath = ros::package::getPath("proj_pkg_test");
-
-  // Define the image path
   std::string imagePath = packagePath + "/img/mmPirate.png";  
 
   // Load the image

@@ -10,12 +10,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  roslib
   std_msgs
+  cv_bridge  # Added for OpenCV support
 )
+
+# Find OpenCV
+find_package(OpenCV REQUIRED)  # Added for OpenCV
 
 # Catkin specific configuration
 catkin_package(
-  CATKIN_DEPENDS roscpp std_msgs
+  CATKIN_DEPENDS roscpp std_msgs cv_bridge 
+  DEPENDS OpenCV  # Added for OpenCV
 )
 
 # Set the GLAD directory from environment variables
@@ -68,6 +74,7 @@ add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 # Specify libraries to link a library or executable target against
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
   ${GLFW_DIR}/lib-vc2019/glfw3.lib
   ${DevIL_DIR}/lib/x64/Release/DevIL.lib
   ${DevIL_DIR}/lib/x64/Release/ILU.lib

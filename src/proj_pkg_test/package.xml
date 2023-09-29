@@ -4,62 +4,39 @@
   <version>0.0.0</version>
   <description>The proj_pkg_test package</description>
 
-  <!-- One maintainer tag required, multiple allowed, one person per tag -->
-  <!-- Example:  -->
-  <!-- <maintainer email="jane.doe@example.com">Jane Doe</maintainer> -->
-  <maintainer email="lester@todo.todo">lester</maintainer>
+  <!-- Maintainer Information -->
+  <maintainer email="adanwardlester@gmail.com">AdamWardLester</maintainer>
 
-
-  <!-- One license tag required, multiple allowed, one license per tag -->
-  <!-- Commonly used license strings: -->
-  <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
+  <!-- License Information (Update this based on your license) -->
   <license>TODO</license>
 
-
-  <!-- Url tags are optional, but multiple are allowed, one per tag -->
-  <!-- Optional attribute type can be: website, bugtracker, or repository -->
-  <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/proj_pkg_test</url> -->
-
-
-  <!-- Author tags are optional, multiple are allowed, one per tag -->
-  <!-- Authors do not have to be maintainers, but could be -->
-  <!-- Example: -->
-  <!-- <author email="jane.doe@example.com">Jane Doe</author> -->
-
-
-  <!-- The *depend tags are used to specify dependencies -->
-  <!-- Dependencies can be catkin packages or system dependencies -->
-  <!-- Examples: -->
-  <!-- Use depend as a shortcut for packages that are both build and exec dependencies -->
-  <!--   <depend>roscpp</depend> -->
-  <!--   Note that this is equivalent to the following: -->
-  <!--   <build_depend>roscpp</build_depend> -->
-  <!--   <exec_depend>roscpp</exec_depend> -->
-  <!-- Use build_depend for packages you need at compile time: -->
-  <!--   <build_depend>message_generation</build_depend> -->
-  <!-- Use build_export_depend for packages you need in order to build against this package: -->
-  <!--   <build_export_depend>message_generation</build_export_depend> -->
-  <!-- Use buildtool_depend for build tool packages: -->
-  <!--   <buildtool_depend>catkin</buildtool_depend> -->
-  <!-- Use exec_depend for packages you need at runtime: -->
-  <!--   <exec_depend>message_runtime</exec_depend> -->
-  <!-- Use test_depend for packages you need only for testing: -->
-  <!--   <test_depend>gtest</test_depend> -->
-  <!-- Use doc_depend for packages you need only for building documentation: -->
-  <!--   <doc_depend>doxygen</doc_depend> -->
+  <!-- Build tool dependency -->
   <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Build dependencies: Packages needed at compile time -->
+  <!-- Added OpenCV (cv_bridge is ROS's bridge to use OpenCV) -->
+  <build_depend>cv_bridge</build_depend>
+  <!-- ROS C++ Standard Library -->
   <build_depend>roscpp</build_depend>
+  <!-- Standard ROS Messages -->
   <build_depend>std_msgs</build_depend>
+
+  <!-- Build export dependencies: Packages needed to build against this package -->
+  <!-- These dependencies will be included when another package builds on top of this one -->
+  <build_export_depend>cv_bridge</build_export_depend>
   <build_export_depend>roscpp</build_export_depend>
   <build_export_depend>std_msgs</build_export_depend>
+
+  <!-- Execution dependencies: Packages needed at runtime -->
+  <!-- Added OpenCV (cv_bridge for ROS's OpenCV support) -->
+  <exec_depend>cv_bridge</exec_depend>
+  <!-- ROS C++ Standard Library -->
   <exec_depend>roscpp</exec_depend>
+  <!-- Standard ROS Messages -->
   <exec_depend>std_msgs</exec_depend>
 
-
-  <!-- The export tag contains other, unspecified, tags -->
+  <!-- Export tag for other unspecified tags -->
   <export>
-    <!-- Other tools can request additional information be placed here -->
-
+    <!-- Placeholder for other tools to request additional information -->
   </export>
 </package>

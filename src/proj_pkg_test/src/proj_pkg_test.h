@@ -19,6 +19,12 @@
 #include <ros/package.h>
 #include <XmlRpcValue.h>
 
+// OpenCV for computer vision tasks
+#include <opencv2/opencv.hpp>
+
+// Function to test OpenCV
+bool initialize_opencv();
+
 // Function to initialize GLAD and GLFW
 bool initialize_libraries();
 
