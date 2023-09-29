@@ -1,16 +1,17 @@
 {
   "configurations": [
     {
+      "name": "ROS",
+      "includePath": [
+        "C:\\opt\\ros\\noetic\\x64\\include\\**",
+        "C:\\Users\\lester\\MeDocuments\\Research\\MadhavLab\\CodeBase\\omniroute_windows_ws\\src\\proj_pkg_test\\include\\**",
+        "${env:GLAD_DIR}/include",
+        "${env:GLFW_DIR}/include"
+      ],
       "browse": {
         "databaseFilename": "${default}",
         "limitSymbolsToIncludedHeaders": false
-      },
-      "includePath": [
-        "C:\\opt\\ros\\noetic\\x64\\include\\**",
-        "c:\\opt\\ros\\noetic\\x64\\include\\**",
-        "C:\\Users\\lester\\MeDocuments\\Research\\MadhavLab\\CodeBase\\omniroute_windows_ws\\src\\proj_pkg_test\\include\\**"
-      ],
-      "name": "ROS"
+      }
     }
   ],
   "version": 4

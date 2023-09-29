@@ -21,6 +21,16 @@ bool initialize_libraries() {
     return false;
   }
 
+  // Create a GLFW windowed mode window and its OpenGL context
+  GLFWwindow* window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+  if (!window) {
+    ROS_ERROR("Failed to create GLFW window.");
+    return false;
+  }
+
+  // Make the window's context current
+  glfwMakeContextCurrent(window);
+
   // Initialize GLAD
   if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
     ROS_ERROR("Failed to initialize GLAD.");
@@ -29,3 +39,4 @@ bool initialize_libraries() {
 
   return true;
 }
+

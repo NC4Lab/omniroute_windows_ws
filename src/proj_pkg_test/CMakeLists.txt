@@ -2,8 +2,10 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(proj_pkg_test)
 
-# Compile as C++11
-add_compile_options(-std=c++11)
+# Compile as C++11 for Windows
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 
 # Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
