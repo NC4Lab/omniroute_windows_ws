@@ -45,6 +45,9 @@
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/highgui.hpp"
 
+// GLM for mathematics
+#include <glm.hpp>
+
 // Namespace declarations
 using namespace std;
 

@@ -118,4 +118,3 @@ add_custom_command(TARGET ${PROJECT_NAME}_node POST_BUILD
                    "$ENV{DevIL_DIR}/lib/x64/Release/ILU.dll"
                    "$ENV{DevIL_DIR}/lib/x64/Release/ILUT.dll"
                    $<TARGET_FILE_DIR:${PROJECT_NAME}_node>)
-
