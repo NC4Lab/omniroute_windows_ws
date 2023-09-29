@@ -18,11 +18,12 @@ __pycache__/
 
 # IDE and Editor Files
 .idea/
-.vscode/
+.vscode/*
+# Synching c_cpp_properties.json files for now
+!.vscode/c_cpp_properties.json
 
 # Other
-/.vscode/
 .ini/
 
-# Leaving CMakeLists.txt files for now
+# Synching CMakeLists.txt files for now
 #src/CMakeLists.txt
