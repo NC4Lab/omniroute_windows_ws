@@ -29,7 +29,7 @@ find_package(glfw3 REQUIRED)  # Added for GLFW
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES projection_calibration
-  CATKIN_DEPENDS roscpp std_msgs cv_bridge  # Added cv_bridge for OpenCV
+  CATKIN_DEPENDS roscpp roslib std_msgs cv_bridge  # Added cv_bridge for OpenCV
   DEPENDS OpenCV glfw3 Boost  # Added OpenCV, GLFW, and Boost
 )
 

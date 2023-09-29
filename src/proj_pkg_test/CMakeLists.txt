@@ -2,15 +2,14 @@
 cmake_minimum_required(VERSION 3.0.2)
 project(proj_pkg_test)
 
-# Compile as C++11 for Windows
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
+# # Compile as C++11 for Windows
+# set(CMAKE_CXX_STANDARD 11)
+# set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
   roslib
+  roscpp
   std_msgs
   cv_bridge  # Added for OpenCV support
 )
@@ -23,7 +22,7 @@ find_package(pugixml REQUIRED)
 
 # Catkin specific configuration
 catkin_package(
-  CATKIN_DEPENDS roscpp std_msgs cv_bridge 
+  CATKIN_DEPENDS roslib roscpp std_msgs cv_bridge 
   DEPENDS OpenCV  # Added for OpenCV
 )
 
@@ -107,3 +106,5 @@ message("[ENV]: GLAD_SRC set to: $ENV{GLAD_SRC}")
 message("[ENV]: GLFW_DIR set to: ${GLFW_DIR}")
 message("[ENV]: DevIL_DIR set to: ${DevIL_DIR}")
 message("[ENV]: catkin_LIBRARIES set to: $ENV{catkin_LIBRARIES}")
+message("[ENV]: PUGIXML_INCLUDE_DIRS set to: ${PUGIXML_INCLUDE_DIRS}")
+message("[ENV]: PUGIXML_LIBRARIES set to: ${PUGIXML_LIBRARIES}")
