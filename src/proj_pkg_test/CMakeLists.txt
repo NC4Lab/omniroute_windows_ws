@@ -79,8 +79,17 @@ install(TARGETS ${PROJECT_NAME}_node
   RUNTIME DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 )
 
-## Print out the values of the environment variables
+# Copy DevIL DLLs to the executable directory so they are accessible at runtime
+add_custom_command(TARGET ${PROJECT_NAME}_node POST_BUILD
+                   COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                   "${DevIL_DIR}/lib/x64/Release/DevIL.dll"
+                   "${DevIL_DIR}/lib/x64/Release/ILU.dll"
+                   "${DevIL_DIR}/lib/x64/Release/ILUT.dll"
+                   $<TARGET_FILE_DIR:${PROJECT_NAME}_node>)
+
+# Print out the values of the environment variables
 message("[ENV]: PROJECT_NAME set to: ${PROJECT_NAME}")
+message("[ENV]: CMAKE_SOURCE_DIR set to: ${CMAKE_SOURCE_DIR}")
 message("[ENV]: CATKIN_PACKAGE_LIB_DESTINATION set to: ${CATKIN_PACKAGE_LIB_DESTINATION}")
 message("[ENV]: GLAD_DIR set to: ${GLAD_DIR}")
 message("[ENV]: GLAD_SRC set to: $ENV{GLAD_SRC}") 
