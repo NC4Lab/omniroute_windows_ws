@@ -85,6 +85,30 @@
     echo %DevIL_DIR%
     ```
 
+### ==================== INSTALL PUGIXML LIBRARY ====================
+
+> **Note**: The Pugixml library is already included in the ROS Noetic distribution. The following steps are to ensure that the library is correctly linked in the project's CMakeLists.txt file without hardcoding any paths, making the workspace portable.
+
+1. **Locate Pugixml in ROS Noetic**
+    - Navigate to your ROS Noetic installation directory and locate the pugixml library. Typically, it should be in `C:\opt\ros\noetic\x64`.
+
+2. **Set Environment Variable**
+    - Open a Command Prompt as an administrator and execute the following command to set the `PUGIXML_DIR` environment variable. Replace `C:/opt/ros/noetic/x64` with the actual path where ROS Noetic (and pugixml) is installed.
+    - Note the use of forward slashes, which are necessary for CMake.
+    - The `/M` option sets the variable as a System variable (for all users).
+
+    ```cmd
+    setx PUGIXML_DIR "C:/opt/ros/noetic/x64" /M
+    ```
+
+3. **Verification Environment Variable Created**
+    - Close and reopen the Command Prompt as an administrator.
+
+    ```cmd
+    echo %PUGIXML_DIR%
+    ```
+
+
 
 ## ==================== DELETING AN ENVIRONMENT VARIABLE ON WINDOWS 10 ====================
 

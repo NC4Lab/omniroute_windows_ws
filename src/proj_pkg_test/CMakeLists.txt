@@ -4,9 +4,9 @@ project(proj_pkg_test)
 message("[ENV]: PROJECT_NAME set to: ${PROJECT_NAME}")
 message("[ENV]: CMAKE_SOURCE_DIR set to: ${CMAKE_SOURCE_DIR}")
 
-# # Compile as C++11 for Windows
-# set(CMAKE_CXX_STANDARD 11)
-# set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# Compile as C++11 for Windows
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
@@ -58,12 +58,12 @@ endif()
 
 # Add the include directories
 include_directories(
-  include                   # Project include directory
-  ${catkin_INCLUDE_DIRS}    # Catkin include directory
-  $ENV{GLAD_DIR}/include       # GLAD include directory
-  $ENV{GLFW_DIR}/include       # GLFW include directory
-  $ENV{DevIL_DIR}/include      # DevIL include directory
-  $ENV{PUGIXML_DIR}/include # PugiXML include directory
+  include                     # Project include directory
+  ${catkin_INCLUDE_DIRS}      # Catkin include directory
+  $ENV{GLAD_DIR}/include      # GLAD include directory
+  $ENV{GLFW_DIR}/include      # GLFW include directory
+  $ENV{DevIL_DIR}/include     # DevIL include directory
+  $ENV{PUGIXML_DIR}/include   # PugiXML include directory
 )
 
 # Add the GLAD source files
@@ -75,7 +75,7 @@ else()
 endif()
 
 # Declare a C++ executable
-add_executable(${PROJECT_NAME}_node src/proj_pkg_test.cpp ${GLAD_SRC})
+add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}.cpp ${GLAD_SRC})
 
 # Add cmake target dependencies of the executable
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
