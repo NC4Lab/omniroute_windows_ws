@@ -16,7 +16,10 @@ find_package(catkin REQUIRED COMPONENTS
 )
 
 # Find OpenCV
-find_package(OpenCV REQUIRED)  # Added for OpenCV
+find_package(OpenCV REQUIRED) 
+
+# Find pugixml
+find_package(pugixml REQUIRED)
 
 # Catkin specific configuration
 catkin_package(
@@ -75,6 +78,7 @@ add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
+  ${PUGIXML_LIBRARIES}
   ${GLFW_DIR}/lib-vc2019/glfw3.lib
   ${DevIL_DIR}/lib/x64/Release/DevIL.lib
   ${DevIL_DIR}/lib/x64/Release/ILU.lib

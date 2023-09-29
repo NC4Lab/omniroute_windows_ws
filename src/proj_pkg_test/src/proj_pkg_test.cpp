@@ -1,40 +1,54 @@
 #include "proj_pkg_test.h"
 
-int main(int argc, char **argv) {
+int main(int argc, char **argv)
+{
 
   // Initialize ROS
   ros::init(argc, argv, "proj_pkg_test_node");
 
   // Test OpenCV
-  if (!initialize_opencv()) {
+  if (!initialize_opencv())
+  {
     ROS_ERROR("Failed to initialize OpenCV.");
     return 1;
   }
 
   // Initialize GLAD and GLFW
-  if (!initialize_libraries()) {
+  if (!initialize_libraries())
+  {
     ROS_ERROR("Failed to initialize GLAD and GLFW.");
     return 1;
   }
 
   // Initialize DevIL
-  if (!initialize_devil()) {
+  if (!initialize_devil())
+  {
     ROS_ERROR("Failed to initialize DevIL.");
     return 1;
   }
 
-  ROS_INFO("OpenCV, GLAD, GLFW, and DevIL initialized successfully.");
+  // Test PugiXML
+  if (!test_pugixml())
+  {
+    ROS_ERROR("Failed to initialize PugiXML.");
+    return 1;
+  }
+  
+
+  ROS_INFO("OpenCV, GLAD, GLFW, DevIL and PugiXML setup successfully.");
   return 0;
 }
 
-bool initialize_opencv() {
+bool initialize_opencv()
+{
   // Get image path
   std::string packagePath = ros::package::getPath("proj_pkg_test");
-  std::string imagePath = packagePath + "/img/mmPirate.png";  
+  std::string imagePath = packagePath + "/img/mmPirate.png";
 
   // Load the image
   cv::Mat image = cv::imread(imagePath, cv::IMREAD_COLOR);
-  if (image.empty()) {
+  if (image.empty())
+  {
     ROS_ERROR("OpenCV failed to load an image.");
     return false;
   }
@@ -43,16 +57,19 @@ bool initialize_opencv() {
   return true;
 }
 
-bool initialize_libraries() {
+bool initialize_libraries()
+{
   // Initialize GLFW
-  if (!glfwInit()) {
+  if (!glfwInit())
+  {
     ROS_ERROR("Failed to initialize GLFW.");
     return false;
   }
 
   // Create a GLFW windowed mode window and its OpenGL context
-  GLFWwindow* window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
-  if (!window) {
+  GLFWwindow *window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
+  if (!window)
+  {
     ROS_ERROR("Failed to create GLFW window.");
     return false;
   }
@@ -61,7 +78,8 @@ bool initialize_libraries() {
   glfwMakeContextCurrent(window);
 
   // Initialize GLAD
-  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
+  if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+  {
     ROS_ERROR("Failed to initialize GLAD.");
     return false;
   }
@@ -69,7 +87,8 @@ bool initialize_libraries() {
   return true;
 }
 
-bool initialize_devil() {
+bool initialize_devil()
+{
   // Initialize DevIL
   ilInit();
   iluInit();
@@ -77,18 +96,36 @@ bool initialize_devil() {
 
   // Get image path
   std::string packagePath = ros::package::getPath("proj_pkg_test");
-  std::string imagePath = packagePath + "/img/mmPirate.png";  
+  std::string imagePath = packagePath + "/img/mmPirate.png";
 
   // Load the image
   ILuint imageID;
   ilGenImages(1, &imageID);
   ilBindImage(imageID);
 
-  if (!ilLoadImage(imagePath.c_str())) {
+  if (!ilLoadImage(imagePath.c_str()))
+  {
     ROS_ERROR("DevIL failed to load an image.");
     return false;
   }
 
   // If we reach this point, DevIL is initialized and the image is loaded
   return true;
+}
+
+bool test_pugixml()
+{
+  pugi::xml_document doc;
+  if (doc.load_string("<root><child>text</child></root>"))
+  {
+    pugi::xml_node root = doc.child("root");
+    std::string text = root.child("child").text().as_string();
+    ROS_INFO("Pugixml test passed: %s", text.c_str());
+    return true;
+  }
+  else
+  {
+    ROS_ERROR("Pugixml test failed.");
+    return false;
+  }
 }

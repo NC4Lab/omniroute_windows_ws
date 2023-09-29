@@ -19,6 +19,17 @@
 #include <ros/package.h>
 #include <XmlRpcValue.h>
 
+// Standard Library for various utilities
+#include <fstream>
+#include <cstdlib>
+#include <iostream>
+#include <algorithm>
+#include <vector>
+#include <string>
+
+// PugiXML for XML parsing
+#include <pugixml.hpp>
+
 // OpenCV for computer vision tasks
 #include <opencv2/opencv.hpp>
 
@@ -30,5 +41,8 @@ bool initialize_libraries();
 
 // Function to initialize DevIL
 bool initialize_devil();
+
+// Function to test PugiXML
+bool test_pugixml();
 
 #endif // PROJ_PKG_TEST_H
