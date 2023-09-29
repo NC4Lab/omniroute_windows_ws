@@ -34,12 +34,21 @@ else()
   message(FATAL_ERROR "[ENV]: GLFW_DIR not set")
 endif()
 
-# Add the GLAD and GLFW include directories
+# Set the DevIL directory from environment variables
+set(DevIL_DIR $ENV{DevIL_DIR})
+if(EXISTS ${DevIL_DIR})
+  message(STATUS "[ENV]: DevIL_DIR set to: ${DevIL_DIR}")
+else()
+  message(FATAL_ERROR "[ENV]: GLFWDevIL_DIR_DIR not set")
+endif()
+
+# Add the include directories
 include_directories(
-  include
-  ${catkin_INCLUDE_DIRS}
-  ${GLAD_DIR}/include
-  ${GLFW_DIR}/include
+  include                 # Project include directory
+  ${catkin_INCLUDE_DIRS}  # Catkin include directory
+  ${GLAD_DIR}/include     # GLAD include directory
+  ${GLFW_DIR}/include     # GLFW include directory
+  ${DevIL_DIR}/include    # DevIL include directory
 )
 
 # Add the GLAD source files
@@ -60,6 +69,9 @@ add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catk
 target_link_libraries(${PROJECT_NAME}_node
   ${catkin_LIBRARIES}
   ${GLFW_DIR}/lib-vc2019/glfw3.lib
+  ${DevIL_DIR}/lib/x64/Release/DevIL.lib
+  ${DevIL_DIR}/lib/x64/Release/ILU.lib
+  ${DevIL_DIR}/lib/x64/Release/ILUT.lib
 )
 
 # Install targets (this is just an example, adjust paths as needed)
@@ -73,4 +85,5 @@ message("[ENV]: CATKIN_PACKAGE_LIB_DESTINATION set to: ${CATKIN_PACKAGE_LIB_DEST
 message("[ENV]: GLAD_DIR set to: ${GLAD_DIR}")
 message("[ENV]: GLAD_SRC set to: $ENV{GLAD_SRC}") 
 message("[ENV]: GLFW_DIR set to: ${GLFW_DIR}")
+message("[ENV]: DevIL_DIR set to: ${DevIL_DIR}")
 message("[ENV]: catkin_LIBRARIES set to: $ENV{catkin_LIBRARIES}")
