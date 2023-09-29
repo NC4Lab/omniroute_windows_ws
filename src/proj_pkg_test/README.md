@@ -178,3 +178,12 @@ After deleting the variable, you may need to restart any open Command Prompt win
                         └── ILU.lib
                         └── ILUT.dll
                         └── ILUT.lib
+
+<ros_noetic_distrebution>/                            
+├── x64/
+│   ├── include/
+│   │   └── pugixml.hpp
+│   └── Lib/
+│       └── pugixml.lib
+│   └── bin/
+│       └── pugixml.dll
