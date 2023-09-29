@@ -1,0 +1,54 @@
+cmake_minimum_required(VERSION 3.0.2)
+project(proj_pkg_test)
+
+# Compile as C++11
+add_compile_options(-std=c++11)
+
+# Find catkin macros and libraries
+find_package(catkin REQUIRED COMPONENTS
+  roscpp
+  std_msgs
+)
+
+# Find GLFW
+find_package(glfw3 REQUIRED)
+
+# Catkin specific configuration
+catkin_package(
+  CATKIN_DEPENDS roscpp std_msgs
+)
+
+# Include directories
+include_directories(
+  include
+  ${catkin_INCLUDE_DIRS}
+  $ENV{GLAD_DIR}/include
+)
+
+# GLAD source
+set(GLAD_SRC $ENV{GLAD_DIR}/src/glad.c)
+
+# Declare a C++ executable
+add_executable(${PROJECT_NAME}_node src/proj_pkg_test.cpp ${GLAD_SRC})
+
+# Add cmake target dependencies of the executable
+add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+# Link libraries
+target_link_libraries(${PROJECT_NAME}_node
+  ${catkin_LIBRARIES}
+  glfw
+)
+
+# Install targets
+install(TARGETS ${PROJECT_NAME}_node
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+)
+
+# Print out the values of the environment variables
+message("[ENV]: PROJECT_NAME set to: ${PROJECT_NAME}")
+message("[ENV]: CATKIN_PACKAGE_LIB_DESTINATION set to: ${CATKIN_PACKAGE_LIB_DESTINATION}")
+message("[ENV]: GLAD_DIR set to: $ENV{GLAD_DIR}")
+message("[ENV]: GLAD_SRC set to: $ENV{GLAD_SRC}") 
+message("[ENV]: GLFW_DIR set to: $ENV{GLFW_DIR}")
+message("[ENV]: catkin_LIBRARIES set to: $ENV{catkin_LIBRARIES}")

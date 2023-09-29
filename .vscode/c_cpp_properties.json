@@ -1,0 +1,15 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "c:\\opt\\ros\\noetic\\x64\\include\\**"
+      ],
+      "name": "ROS"
+    }
+  ],
+  "version": 4
+}
