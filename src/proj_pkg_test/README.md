@@ -86,27 +86,27 @@
     ```
 
 
-### ==================== INSTALL PUGIXML LIBRARY ====================
+### ==================== SETUP ROS NOETIC ENVIRONMENT VARIABLE ====================
 
-> **Note**: The Pugixml library is already included in the ROS Noetic distribution. The following steps are to ensure that the library is correctly linked in the project's CMakeLists.txt file without hardcoding any paths, making the workspace portable.
+> **Note**: The Pugixml and OpenGL library are already included in the ROS Noetic distribution. The following steps are to ensure that the library is correctly linked in the project's CMakeLists.txt file without hardcoding any paths, making the workspace portable.
 
 1. **Locate Pugixml in ROS Noetic**
-    - Navigate to your ROS Noetic installation directory and locate the pugixml library. Typically, it should be in `C:\opt\ros\noetic\x64`.
+    - Navigate to your ROS Noetic installation directory. Typically, it should be in `C:\opt\ros\noetic\x64`.
 
 2. **Set Environment Variable**
-    - Open a Command Prompt as an administrator and execute the following command to set the `PUGIXML_DIR` environment variable. Replace `C:/opt/ros/noetic/x64` with the actual path where ROS Noetic (and pugixml) is installed.
+    - Open a Command Prompt as an administrator and execute the following command to set the `ROS_NOETIC_DIR` environment variable. Replace `C:/opt/ros/noetic/x64` with the actual path where ROS Noetic is installed.
     - Note the use of forward slashes, which are necessary for CMake.
     - The `/M` option sets the variable as a System variable (for all users).
 
     ```cmd
-    setx PUGIXML_DIR "C:/opt/ros/noetic/x64" /M
+    setx ROS_NOETIC_DIR "C:/opt/ros/noetic/x64" /M
     ```
 
 3. **Verification Environment Variable Created**
     - Close and reopen the Command Prompt as an administrator.
 
     ```cmd
-    echo %PUGIXML_DIR%
+    echo %ROS_NOETIC_DIR%
     ```
 
 
@@ -115,7 +115,7 @@
 If you need to delete an environment variable that you've set earlier, you can do so using the Command Prompt to delete the system-wide variable. You'll need administrative privileges to delete it. Open a Command Prompt as an administrator and run:
     
     ```cmd
-    reg delete "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment" /F /V VARIABLE_NAME
+    reg delete "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /F /V VARIABLE_NAME
     ```
 
 After deleting the variable, you may need to restart any open Command Prompt windows or applications to update their environment.

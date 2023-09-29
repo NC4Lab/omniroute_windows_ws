@@ -29,13 +29,22 @@ else()
   message(FATAL_ERROR "[ENV]: OpenCV not found")
 endif()
 
-# Find OpenGL
-find_package(OpenGL REQUIRED)
-if(OpenGL_FOUND)
-  message(STATUS "[ENV]: OpenGL found")
-else()
-  message(FATAL_ERROR "[ENV]: OpenGL not found")
-endif()
+# # Find OpenGL
+# find_package(OpenGL REQUIRED)
+# if(OpenGL_FOUND)
+#   message(STATUS "[ENV]: OpenGL found")
+#   message(STATUS "[ENV]: OpenGL libraries are in: ${OPENGL_LIBRARIES}") 
+# else()
+#   message(FATAL_ERROR "[ENV]: OpenGL not found")
+# endif()
+
+# # Get the OpenGL include directory
+# get_target_property(OpenGL_INCLUDE_DIR OpenGL::GL INTERFACE_INCLUDE_DIRECTORIES)
+# message(STATUS "[ENV]: OpenGL include directory is: ${OpenGL_INCLUDE_DIR}")
+# find_library(OPENGL32_LIBRARY NAMES opengl32)
+# find_library(GLU32_LIBRARY NAMES glu32)
+# message(STATUS "[ENV]: opengl32 library path: ${OPENGL32_LIBRARY}")
+# message(STATUS "[ENV]: glu32 library path: ${GLU32_LIBRARY}")
 
 # Catkin specific configuration
 catkin_package(
@@ -64,11 +73,11 @@ else()
   message(FATAL_ERROR "[ENV]: GLFWDevIL_DIR_DIR not set")
 endif()
 
-# Check for PUGIXML directory environment variable
-if(EXISTS $ENV{PUGIXML_DIR})
-  message(STATUS "[ENV]: PUGIXML_DIR set to: $ENV{PUGIXML_DIR}")
+# Check for ROS NOETIC directory environment variable
+if(EXISTS $ENV{ROS_NOETIC_DIR})
+  message(STATUS "[ENV]: ROS_NOETIC_DIR set to: $ENV{ROS_NOETIC_DIR}")
 else()
-  message(FATAL_ERROR "[ENV]: PUGIXML_DIR not set")
+  message(FATAL_ERROR "[ENV]: ROS_NOETIC_DIR not set")
 endif()
 
 # Add the include directories
@@ -78,7 +87,7 @@ include_directories(
   $ENV{GLAD_DIR}/include      # GLAD include directory
   $ENV{GLFW_DIR}/include      # GLFW include directory
   $ENV{DevIL_DIR}/include     # DevIL include directory
-  $ENV{PUGIXML_DIR}/include   # PugiXML include directory
+  $ENV{ROS_NOETIC_DIR}/include   # PugiXML include directory
 )
 
 # Add the GLAD source files
@@ -104,7 +113,8 @@ target_link_libraries(${PROJECT_NAME}_node
   $ENV{DevIL_DIR}/lib/x64/Release/DevIL.lib
   $ENV{DevIL_DIR}/lib/x64/Release/ILU.lib
   $ENV{DevIL_DIR}/lib/x64/Release/ILUT.lib
-  $ENV{PUGIXML_DIR}/Lib/pugixml.lib
+  $ENV{ROS_NOETIC_DIR}/Lib/pugixml.lib
+  $ENV{ROS_NOETIC_DIR}/Lib/OpenGL32.Lib
 )
 
 # Install targets 
