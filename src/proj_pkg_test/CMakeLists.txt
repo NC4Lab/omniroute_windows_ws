@@ -140,7 +140,7 @@ endif()
 
 # Add the include directories
 include_directories(
-  ${catkin_INCLUDE_DIRSS}  
+  ${catkin_INCLUDE_DIRS}  
   ${ROS_NOETIC_INCLUDE_DIR}
   ${GLAD_INCLUDE_DIR}
   ${GLFW_INCLUDE_DIR}
