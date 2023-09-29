@@ -35,25 +35,39 @@ catkin_package(
   DEPENDS OpenCV  # Added for OpenCV
 )
 
-# Set the GLAD directory from environment variables
+# Check for GLAD directory environment variable
 if(EXISTS $ENV{GLAD_DIR})
   message(STATUS "[ENV]: GLAD_DIR set to: $ENV{GLAD_DIR}")
 else()
   message(FATAL_ERROR "[ENV]: GLAD_DIR not set")
 endif()
 
-# Set the GLFW directory from environment variables
+# Check for GLFW directory environment variable
 if(EXISTS $ENV{GLFW_DIR})
   message(STATUS "[ENV]: GLFW_DIR set to: $ENV{GLFW_DIR}")
 else()
   message(FATAL_ERROR "[ENV]: GLFW_DIR not set")
 endif()
 
-# Set the DevIL directory from environment variables
+# Check for DevIL directory environment variable
 if(EXISTS $ENV{DevIL_DIR})
   message(STATUS "[ENV]: DevIL_DIR set to: $ENV{DevIL_DIR}")
 else()
   message(FATAL_ERROR "[ENV]: GLFWDevIL_DIR_DIR not set")
+endif()
+
+# Check for PUGIXML directory environment variable
+if(EXISTS $ENV{PUGIXML_DIR})
+  message(STATUS "[ENV]: PUGIXML_DIR set to: $ENV{PUGIXML_DIR}")
+else()
+  message(FATAL_ERROR "[ENV]: PUGIXML_DIR not set")
+endif()
+
+# Check for GLM directory environment variable
+if(EXISTS $ENV{GLM_DIR})
+  message(STATUS "[ENV]: GLM_DIR set to: $ENV{GLM_DIR}")
+else()
+  message(FATAL_ERROR "[ENV]: GLM_DIR not set")
 endif()
 
 # Add the include directories
@@ -64,6 +78,7 @@ include_directories(
   $ENV{GLFW_DIR}/include      # GLFW include directory
   $ENV{DevIL_DIR}/include     # DevIL include directory
   $ENV{PUGIXML_DIR}/include   # PugiXML include directory
+  $ENV{GLM_DIR}               # GLM directory
 )
 
 # Add the GLAD source files

@@ -7,7 +7,8 @@
         "C:\\Users\\lester\\MeDocuments\\Research\\MadhavLab\\CodeBase\\omniroute_windows_ws\\src\\proj_pkg_test\\include\\**",
         "${env:GLAD_DIR}/include",
         "${env:GLFW_DIR}/include",
-        "${env:DevIL_DIR}/include"
+        "${env:DevIL_DIR}/include",
+        "${env:GLM_DIR}/"
       ],
       "browse": {
         "databaseFilename": "${default}",

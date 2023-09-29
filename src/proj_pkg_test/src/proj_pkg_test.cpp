@@ -33,9 +33,15 @@ int main(int argc, char **argv)
     ROS_ERROR("Failed to initialize PugiXML.");
     return 1;
   }
-  
 
-  ROS_INFO("OpenCV, GLAD, GLFW, DevIL and PugiXML setup successfully.");
+  // Test GLM
+  if (!test_glm())
+  {
+    ROS_ERROR("Failed to initialize GLM.");
+    return 1;
+  }
+
+  ROS_INFO("OpenCV, GLAD, GLFW, DevIL, PugiXML and GLM setup successfully.");
   return 0;
 }
 
@@ -126,6 +132,24 @@ bool test_pugixml()
   else
   {
     ROS_ERROR("Pugixml test failed.");
+    return false;
+  }
+}
+
+bool test_glm()
+{
+  glm::vec3 a(1.0f, 0.0f, 0.0f);
+  glm::vec3 b(0.0f, 1.0f, 0.0f);
+  glm::vec3 c = a + b;
+
+  if (c.x == 1.0f && c.y == 1.0f && c.z == 0.0f)
+  {
+    ROS_INFO("GLM test passed.");
+    return true;
+  }
+  else
+  {
+    ROS_ERROR("GLM test failed.");
     return false;
   }
 }

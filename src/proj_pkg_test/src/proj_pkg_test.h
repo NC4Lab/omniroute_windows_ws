@@ -33,16 +33,22 @@
 // OpenCV for computer vision tasks
 #include <opencv2/opencv.hpp>
 
+// GLM for mathematics
+#include <glm.hpp>
+
 // Function to test OpenCV
 bool initialize_opencv();
 
 // Function to initialize GLAD and GLFW
-bool initialize_libraries();
 
 // Function to initialize DevIL
 bool initialize_devil();
 
 // Function to test PugiXML
 bool test_pugixml();
+
+// Function to test GLM
+bool test_glm();
+
 
 #endif // PROJ_PKG_TEST_H
