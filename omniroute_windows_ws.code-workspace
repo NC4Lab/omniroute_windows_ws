@@ -15,8 +15,8 @@
 			"C:\\opt\\ros\\noetic\\x64\\Lib\\site-packages"
 		],
 		"C_Cpp.default.includePath": [
-            "C:\\Program Files (x86)\\GLFW\\include\\GLFW",
-			"C:\\Program Files (x86)\\IL\\include"
-        ]
+			"${config:env.GLFW_DIR}/include",
+			"${config:env.GLAD_DIR}/include"
+		]
 	}
 }
