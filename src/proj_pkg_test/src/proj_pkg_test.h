@@ -40,6 +40,7 @@
 bool initialize_opencv();
 
 // Function to initialize GLAD and GLFW
+bool initialize_libraries();
 
 // Function to initialize DevIL
 bool initialize_devil();
