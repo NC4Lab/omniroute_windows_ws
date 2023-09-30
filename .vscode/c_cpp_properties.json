@@ -6,10 +6,7 @@
         "limitSymbolsToIncludedHeaders": false
       },
       "includePath": [
-        "c:\\opt\\ros\\noetic\\x64\\include\\**",
-        "${config:env.GLAD_DIR}/include",
-        "${config:env.GLFW_DIR}/include",
-        "${config:env.DevIL_DIR}/include"
+        "c:\\opt\\ros\\noetic\\x64\\include\\**"
       ],
       "name": "ROS"
     }

@@ -1,8 +1,3 @@
 {
-    "ros.distro": "noetic",
-    "env": {
-        "GLAD_DIR": "${env:GLAD_DIR}",
-        "GLFW_DIR": "${env:GLFW_DIR}",
-        "DevIL_DIR": "${env:DevIL_DIR}"
-    }
+    "ros.distro": "noetic"
 }
