@@ -7,64 +7,6 @@
 //============= INCLUDE ================
 #include "projection_calibration.h"
 
-// ============= VARIABLES =============
-
-// Constants
-const int MAZE_SIZE = 3;
-
-// Variables related to square positions and transformation
-int imageNumber = 0;
-float squarePositions[4][5] = {
-    {-0.8f, 0.8f, 0.02f, 0.02f, 0.0f}, // top-left square
-    {0.8f, 0.8f, 0.02f, 0.02f, 0.0f},  // top-right square
-    {0.8f, -0.8f, 0.02f, 0.02f, 0.0f}, // bottom-right square
-    {-0.8f, -0.8f, 0.02f, 0.02f, 0.0f} // bottom-left square
-};
-float shearValues[MAZE_SIZE][MAZE_SIZE];
-float sizeValues[MAZE_SIZE][MAZE_SIZE];
-float configurationValues[3][3][3];
-cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
-int selectedSquare = 0;
-
-// Variables related to wall properties
-float wallWidth = 0.02f;
-float wallHeight = 0.02f;
-float wallSep = 0.05f;
-std::string changeMode = "pos";
-float shearAmount = 0.0f;
-std::vector<cv::Point2f> wallCorners = createRectPoints(0.0f, 0.0f, wallWidth, wallHeight, 0);
-
-// Variables related to image and file paths
-std::string packagePath = ros::package::getPath("projection_calibration");
-std::string configPath;
-std::string windowName;
-
-// List of image file paths
-std::vector<std::string> imagePaths = {
-    packagePath + "/img/tj.bmp",
-    packagePath + "/img/mmCarribean.png",
-    // Add more image file paths as needed
-};
-
-// Container to hold the loaded images
-std::vector<ILuint> imageIDs;
-
-// Variables related to window and OpenGL
-int winWidth = 3840;
-int winHeight = 2160;
-GLFWwindow *window;
-GLuint fbo;
-GLuint fboTexture;
-GLFWmonitor *monitor = NULL;
-int monitorNumber = 0;
-GLFWmonitor **monitors;
-int monitor_count;
-
-ILint texWidth;
-ILint texHeight;
-
-// ============= METHODS =============
-
 std::vector<cv::Point2f> createRectPoints(float x0, float y0, float width, float height, float shearAmount)
 {
     std::vector<cv::Point2f> rectPoints;
@@ -120,9 +62,9 @@ void loadCoordinates()
         }
         H2.push_back(row);
     }
-    for (int i; i < 3; i++)
+    for (int i = 0; i < 3; i++)
     {
-        for (int j; j < 3; j++)
+        for (int j = 0; j < 3; j++)
         {
             H.at<float>(i, j) = H2[i][j];
         }

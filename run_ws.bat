@@ -9,8 +9,6 @@
 @REM :: Source the ROS setup file
 @REM call C:\opt\ros\noetic\x64\setup.bat
 
-@echo off  :: Command Echoing Off
-
 :: Source the ROS setup file
 call C:\opt\ros\noetic\x64\setup.bat
 
