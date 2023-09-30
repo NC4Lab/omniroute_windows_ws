@@ -3,11 +3,10 @@
     {
       "name": "ROS",
       "includePath": [
-        "C:\\opt\\ros\\noetic\\x64\\include\\**",
+        "${env:ROS_NOETIC_DIR}/include/**",
         "${env:GLAD_DIR}/include",
         "${env:GLFW_DIR}/include",
-        "${env:DevIL_DIR}/include",
-        "${env:ROS_NOETIC_DIR}/include"
+        "${env:DevIL_DIR}/include"
       ],
       "browse": {
         "databaseFilename": "${default}",
