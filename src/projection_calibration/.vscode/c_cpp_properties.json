@@ -3,8 +3,7 @@
     {
       "name": "ROS",
       "includePath": [
-        "C:\\opt\\ros\\noetic\\x64\\include\\**",
-        "C:\\Users\\lester\\MeDocuments\\Research\\MadhavLab\\CodeBase\\omniroute_windows_ws\\src\\proj_pkg_test\\include\\**",
+        "${env:ROS_NOETIC_DIR}/include/**",
         "${env:GLAD_DIR}/include",
         "${env:GLFW_DIR}/include",
         "${env:DevIL_DIR}/include"

@@ -51,5 +51,4 @@ bool test_pugixml();
 // Function to test GLM
 bool test_glm();
 
-
 #endif // PROJ_PKG_TEST_H

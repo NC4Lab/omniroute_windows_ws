@@ -9,5 +9,11 @@
         "C:\\opt\\ros\\noetic\\x64\\lib/site-packages",
         "c:\\opt\\ros\\noetic\\x64\\lib/site-packages",
         "C:\\opt\\ros\\noetic\\x64\\Lib\\site-packages"
-    ]
+    ],
+    "env": {
+        "ROS_NOETIC_DIR": "${env:ROS_NOETIC_DIR}",
+        "GLAD_DIR": "${env:GLAD_DIR}",
+        "GLFW_DIR": "${env:GLFW_DIR}",
+        "DevIL_DIR": "${env:DevIL_DIR}"
+    }
 }

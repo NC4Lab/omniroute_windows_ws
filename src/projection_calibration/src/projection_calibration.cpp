@@ -541,5 +541,144 @@ void drawWalls()
 
 int main(int argc, char **argv)
 {
+
+    ros::init(argc, argv, "projection_calibration_node", ros::init_options::AnonymousName);
+    ros::NodeHandle n;
+    ros::NodeHandle nh("~");
+    ROS_ERROR("main ran");
+
+    string tempPath, tempName;
+
+    nh.param<string>("configPath", tempPath, "");
+    nh.param<string>("windowName", tempName, "");
+
+    configPath = tempPath.c_str();
+    windowName = tempName.c_str();
+
+    ROS_ERROR("config path is:");
+    ROS_ERROR(configPath.c_str());
+
+    ilInit();
+
+    for (const std::string &imagePath : imagePaths)
+    {
+        // Generate a new DevIL image ID
+        ILuint imageID;
+        ilGenImages(1, &imageID);
+        ilBindImage(imageID);
+
+        // Load the image file
+        ILboolean success = ilLoadImage(imagePath.c_str());
+        if (success == IL_TRUE)
+        {
+            // Image loaded successfully
+            imageIDs.push_back(imageID);
+            ROS_ERROR(imagePath.c_str());
+
+            ROS_ERROR("Loading image: %s", iluErrorString(ilGetError()));
+
+            ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
+
+            ROS_ERROR("Converting image: %s", iluErrorString(ilGetError()));
+        }
+        else
+        {
+            // Failed to load the image
+            ILenum error = ilGetError();
+            // Handle the error as needed
+            ilDeleteImages(1, &imageID); // Clean up the image ID
+        }
+    }
+
+    texWidth = ilGetInteger(IL_IMAGE_WIDTH);
+    texHeight = ilGetInteger(IL_IMAGE_HEIGHT);
+
+    // ROS_ERROR("window name is: %s", windowName);
+
+    ROS_ERROR("%d", texWidth);
+    ROS_ERROR("%d", texHeight);
+
+    glfwSetErrorCallback(callbackError);
+
+    if (!glfwInit())
+    {
+        ROS_ERROR("glfw init issue");
+        return -1;
+    }
+    // Create a window with a 4K resolution (3840x2160)
+    window = glfwCreateWindow(winWidth, winHeight, windowName.c_str(), NULL, NULL);
+    if (!window)
+    {
+        glfwTerminate();
+        return -1;
+    }
+
+    // Set the window as the current OpenGL context
+    glfwMakeContextCurrent(window);
+    ROS_ERROR("window ran");
+
+    gladLoadGL();
+    glfwSwapInterval(1);
+    glfwSetKeyCallback(window, callbackKeyBinding);
+    GLuint textureID;
+    // Set the window resize callback
+    glfwSetFramebufferSizeCallback(window, callbackFrameBufferSize);
+
+    // Create an FBO and attach the texture to it
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    glGenTextures(1, &fboTexture);
+    glBindTexture(GL_TEXTURE_2D, fboTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, winWidth, winHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    while (!glfwWindowShouldClose(window))
+    {
+
+        // glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+        ////glViewport(0, 0, winWidth, winHeight);
+
+        //// Clear the FBO
+
+        glEnable(GL_TEXTURE_2D);
+
+        // Draw squares with updated positions
+        glClear(GL_COLOR_BUFFER_BIT);
+        //// Load image data into texture
+
+        drawWalls();
+
+        for (int i = 0; i < 4; i++)
+        {
+            drawTarget(squarePositions[i][0], squarePositions[i][1], squarePositions[i][2], squarePositions[i][3]);
+        }
+
+        // Swap the buffers
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        // Exit the loop when the window is closed or escape key is pressed
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(window))
+            break;
+    }
+
+    glfwDestroyWindow(window);
+    for (ILuint imageID : imageIDs)
+    {
+        ilDeleteImages(1, &imageID);
+    }
+
+    // Shutdown DevIL
+    ilShutDown();
+
+    // Terminate GLFW
+    glfwTerminate();
+
     return 0;
 }

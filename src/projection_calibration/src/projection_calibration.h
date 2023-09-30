@@ -45,9 +45,6 @@
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/highgui.hpp"
 
-// OpenGL for mathematics
-#include <GL/gl.h>
-
 // Namespace declarations
 using namespace std;
 
