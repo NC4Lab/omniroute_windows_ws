@@ -4,8 +4,8 @@ message("[ENV]: PROJECT_NAME set to: ${PROJECT_NAME}")
 message("[ENV]: CMAKE_SOURCE_DIR set to: ${CMAKE_SOURCE_DIR}")
 
 # Compile as C++11 for Windows
-# set(CMAKE_CXX_STANDARD 11)
-# set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_STANDARD 11)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS

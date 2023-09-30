@@ -45,9 +45,6 @@
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/highgui.hpp"
 
-// Namespace declarations
-using namespace std;
-
 // ============= METHODS =============
 
 std::vector<cv::Point2f> createRectPoints(float, float, float, float, float);
@@ -74,7 +71,7 @@ static void callbackError(int, const char *);
 void drawTarget(float, float, float, float);
 
 // Function to draw a rectangle with given corners
-void drawRect(vector<cv::Point2f>, int);
+void drawRect(std::vector<cv::Point2f>, int);
 
 // Function to draw multiple wall images
 void drawWalls();

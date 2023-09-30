@@ -30,14 +30,14 @@ int selectedSquare = 0;
 float wallWidth = 0.02f;
 float wallHeight = 0.02f;
 float wallSep = 0.05f;
-string changeMode = "pos";
+std::string changeMode = "pos";
 float shearAmount = 0.0f;
-vector<cv::Point2f> wallCorners = createRectPoints(0.0f, 0.0f, wallWidth, wallHeight, 0);
+std::vector<cv::Point2f> wallCorners = createRectPoints(0.0f, 0.0f, wallWidth, wallHeight, 0);
 
 // Variables related to image and file paths
-string packagePath = ros::package::getPath("projection_calibration");
-string configPath;
-string windowName;
+std::string packagePath = ros::package::getPath("projection_calibration");
+std::string configPath;
+std::string windowName;
 
 // List of image file paths
 std::vector<std::string> imagePaths = {
@@ -65,9 +65,9 @@ ILint texHeight;
 
 // ============= METHODS =============
 
-vector<cv::Point2f> createRectPoints(float x0, float y0, float width, float height, float shearAmount)
+std::vector<cv::Point2f> createRectPoints(float x0, float y0, float width, float height, float shearAmount)
 {
-    vector<cv::Point2f> rectPoints;
+    std::vector<cv::Point2f> rectPoints;
     rectPoints.push_back(cv::Point2f(x0 + height * shearAmount, y0 + height));
     rectPoints.push_back(cv::Point2f(x0 + height * shearAmount + width, y0 + height));
     rectPoints.push_back(cv::Point2f(x0 + width, y0));
@@ -75,7 +75,6 @@ vector<cv::Point2f> createRectPoints(float x0, float y0, float width, float heig
 
     return rectPoints;
 }
-
 
 void loadCoordinates()
 {
@@ -130,12 +129,11 @@ void loadCoordinates()
     }
 }
 
-
 void saveCoordinates()
 {
 
     pugi::xml_document doc;
-    cerr << "doc created";
+    std::cerr << "doc created";
     // Create the root element
     pugi::xml_node root = doc.append_child("config");
 
@@ -156,7 +154,7 @@ void saveCoordinates()
         }
     }
 
-    cerr << "created squaresP";
+    std::cerr << "created squaresP";
 
     float array2[3][3];
 
@@ -186,7 +184,7 @@ void saveCoordinates()
         }
     }
 
-    cerr << "created H";
+    std::cerr << "created H";
     // Save the XML document to a file
     if (doc.save_file(configPath.c_str()))
     {
@@ -198,11 +196,10 @@ void saveCoordinates()
     }
 }
 
-
 void computeHomography()
 {
-    vector<cv::Point2f> targetCorners;
-    vector<cv::Point2f> imageCorners;
+    std::vector<cv::Point2f> targetCorners;
+    std::vector<cv::Point2f> imageCorners;
     // hard coding the specific corners for each of the squares.
     targetCorners.push_back(cv::Point2f(squarePositions[0][0], squarePositions[0][1]));
     targetCorners.push_back(cv::Point2f(squarePositions[1][0], squarePositions[1][1]));
@@ -213,9 +210,8 @@ void computeHomography()
     H = findHomography(imageCorners, targetCorners);
     // H = findHomography(targetCorners, imageCorners);
 
-    // cerr << H;
+    // std::cerr << H;
 }
-
 
 /// @ref: GLFW/glfw3.h for keybindings enum
 void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -224,111 +220,91 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     glfwMakeContextCurrent(window);
 
     // Any key release action
-    // Any key release action
     if (action == GLFW_RELEASE)
     {
-        // Image selector keys [1-4]
-
-        // Top-left square
-        // Image selector keys [1-4]
+        // ---------- Target selector keys [1-4] ----------
 
         // Top-left square
         if (key == GLFW_KEY_1)
         {
             selectedSquare = 0;
         }
-        // Top-right square
+
         // Top-right square
         else if (key == GLFW_KEY_2)
         {
             selectedSquare = 1;
         }
-        // Bottom-right square
+
         // Bottom-right square
         else if (key == GLFW_KEY_3)
         {
             selectedSquare = 2;
         }
-        // Bottom-left square
+
         // Bottom-left square
         else if (key == GLFW_KEY_4)
         {
             selectedSquare = 3;
         }
 
-        // Save coordinates to CSV
+        // ---------- Image selector keys [C, T] ----------
 
-        // Save coordinates to CSV
-        else if (key == GLFW_KEY_ENTER)
+        // Set image to image 1
+        else if (key == GLFW_KEY_C)
         {
-            ROS_ERROR("save hit");
-            saveCoordinates();
-        }
-
-        // Set image to image 1
-
-        // Set image to image 1
-        else if (key == GLFW_KEY_C){
             imageNumber = 1;
         }
+
         // Set image to image 2
-        // Set image to image 2
-        else if (key == GLFW_KEY_T){
+        else if (key == GLFW_KEY_T)
+        {
             imageNumber = 0;
         }
 
-        // Change mode keys [P, D, S]
+        // ---------- Change mode keys [P, D, S] ----------
 
         // Square position [up, down, left, right]
         else if (key == GLFW_KEY_P)
         {
             changeMode = "pos";
         }
-        // Square height [up, down]
-        /// @note: can only select squares 1-3
 
-        // Change mode keys [P, D, S]
-
-        // Square position [up, down, left, right]
-        else if (key == GLFW_KEY_P)
-        {
-            changeMode = "pos";
-        }
         // Square height [up, down]
-        /// @note: can only select squares 1-3
         else if (key == GLFW_KEY_D)
         {
             changeMode = "dimensions";
         }
+
         // Square shear [up, down]
-        /// @note: can only select squares 1-3
-        // Square shear [up, down]
-        /// @note: can only select squares 1-3
         else if (key == GLFW_KEY_S)
         {
             changeMode = "shear";
         }
+
+        // ---------- CSV Handling [ENTER, L] ----------
+
+        // Save coordinates to CSV
+        else if (key == GLFW_KEY_ENTER)
+        {
+            ROS_INFO("save hit");
+            saveCoordinates();
+        }
+
         // Load coordinates from CSV
-        // Load coordinates from CSV
-        else if (key == GLFW_KEY_L){
+        else if (key == GLFW_KEY_L)
+        {
             loadCoordinates();
         }
 
+        // ---------- Monitor handling [F, M] ----------
+
+        // Fullscreen on second monitor
         else if (key == GLFW_KEY_F)
         {
             monitors = glfwGetMonitors(&monitor_count);
-            // GLFWmonitor* monitor = glfwGetWindowMonitor(window);
-            // const GLFWvidmode* mode = glfwGetVideoMode(monitor);
 
-            //// Create a window
-            ////GLFWwindow* window = glfwCreateWindow(mode->width, mode->height, "My Window", monitor, NULL);
-
-            //// Make the window fullscreen
-            ////int count;
-            ////GLFWmonitor** monitors = glfwGetMonitors(&count);
-            // glfwSetWindowMonitor(window, NULL, 0, 0, mode->width, mode->height, mode->refreshRate);
-
-            // find the second monitor (index 1) by checking its position
+            // Find the second monitor (index 1) by checking its position
             for (int i = 0; i < monitor_count; i++)
             {
                 const GLFWvidmode *mode = glfwGetVideoMode(monitors[i]);
@@ -342,16 +318,18 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 }
             }
 
-            // make the window full screen on the second monitor
+            // Make the window full screen on the second monitor
             if (monitor)
             {
                 const GLFWvidmode *mode = glfwGetVideoMode(monitor);
                 glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
             }
         }
+
+        // Move window to next monitor
         else if (key == GLFW_KEY_M)
         {
-            ROS_ERROR(windowName.c_str()); // this should be showing something in the terminal, but isn't atm
+            ROS_INFO(windowName.c_str()); // this should be showing something in the terminal, but isn't atm
             monitors = glfwGetMonitors(&monitor_count);
             monitorNumber++;
             monitor = monitors[monitorNumber % monitor_count];
@@ -359,18 +337,18 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             {
                 const GLFWvidmode *mode = glfwGetVideoMode(monitor);
                 glfwSetWindowAttrib(window, GLFW_FOCUS_ON_SHOW, GL_TRUE);
-                // glfwSetWindowAttrib(window, GLFW_RESIZABLE,	GLFW_TRUE);
-                // glfwSetWindowAttrib(window, GLFW_CONTEXT_RELEASE_BEHAVIOR,	GLFW_CONTEXT_RELEASE_BEHAVIOR_NONE);
                 glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
             }
         }
     }
+
+    // Any key press or repeat action
     else if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {
         if (key == GLFW_KEY_ENTER)
         {
-            cerr << "stuffies";
-            ROS_ERROR("BRO DOES THIS WORK?");
+            std::cerr << "stuffies";
+            ROS_INFO("BRO DOES THIS WORK?");
         }
 
         if (changeMode == "pos")
@@ -423,18 +401,15 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     computeHomography();
 }
 
-
 void callbackFrameBufferSize(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
 }
 
-
 static void callbackError(int error, const char *description)
 {
     ROS_ERROR("Error: %s\n", description);
 }
-
 
 void drawTarget(float x, float y, float targetWidth, float targetHeight)
 {
@@ -450,8 +425,7 @@ void drawTarget(float x, float y, float targetWidth, float targetHeight)
     glEnd();
 }
 
-
-void drawRect(vector<cv::Point2f> corners, int imageNumber)
+void drawRect(std::vector<cv::Point2f> corners, int imageNumber)
 {
     glBegin(GL_QUADS);
 
@@ -475,7 +449,6 @@ void drawRect(vector<cv::Point2f> corners, int imageNumber)
     // glVertex2f(x, y+height);
     glEnd();
 }
-
 
 void drawWalls()
 {
@@ -503,7 +476,7 @@ void drawWalls()
 
             shearAmount = shear4 + (i / (float(MAZE_SIZE) - 1)) * (shear3 - shear4) + (j / (float(MAZE_SIZE) - 1)) * (shear1 - shear4);
             float heightAmount = height4 + (i / float(MAZE_SIZE) - 1) * (height3 - height4) + (j / (float(MAZE_SIZE) - 1)) * (height1 - height4);
-            vector<cv::Point2f> c = createRectPoints(0.0f, 0.0f, wallWidth, heightAmount, shearAmount);
+            std::vector<cv::Point2f> c = createRectPoints(0.0f, 0.0f, wallWidth, heightAmount, shearAmount);
 
             for (auto it = c.begin(); it != c.end(); it++)
             {
@@ -526,7 +499,7 @@ void drawWalls()
 
                 ptMat /= ptMat.at<float>(2);
 
-                // cerr << "\n" << ptMat;
+                // std::cerr << "\n" << ptMat;
 
                 it->x = ptMat.at<float>(0, 0);
                 it->y = ptMat.at<float>(0, 1);
@@ -537,25 +510,24 @@ void drawWalls()
     }
 }
 
-
 int main(int argc, char **argv)
 {
 
     ros::init(argc, argv, "projection_calibration_node", ros::init_options::AnonymousName);
     ros::NodeHandle n;
     ros::NodeHandle nh("~");
-    ROS_ERROR("main ran");
+    ROS_INFO("main ran");
 
-    string tempPath, tempName;
+    std::string tempPath, tempName;
 
-    nh.param<string>("configPath", tempPath, "");
-    nh.param<string>("windowName", tempName, "");
+    nh.param<std::string>("configPath", tempPath, "");
+    nh.param<std::string>("windowName", tempName, "");
 
     configPath = tempPath.c_str();
     windowName = tempName.c_str();
 
-    ROS_ERROR("config path is:");
-    ROS_ERROR(configPath.c_str());
+    ROS_INFO("config path is:");
+    ROS_INFO(configPath.c_str());
 
     ilInit();
 
@@ -572,30 +544,33 @@ int main(int argc, char **argv)
         {
             // Image loaded successfully
             imageIDs.push_back(imageID);
-            ROS_ERROR(imagePath.c_str());
+            ROS_INFO(imagePath.c_str());
 
-            ROS_ERROR("Loading image: %s", iluErrorString(ilGetError()));
+            ROS_INFO("Loading image: %s", iluErrorString(ilGetError()));
 
             ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
 
-            ROS_ERROR("Converting image: %s", iluErrorString(ilGetError()));
+            ROS_INFO("Converting image: %s", iluErrorString(ilGetError()));
         }
         else
         {
             // Failed to load the image
             ILenum error = ilGetError();
+
             // Handle the error as needed
             ilDeleteImages(1, &imageID); // Clean up the image ID
+
+            ROS_ERROR("DevIL: Failed to load image: %s", iluErrorString(error));
         }
     }
 
     texWidth = ilGetInteger(IL_IMAGE_WIDTH);
     texHeight = ilGetInteger(IL_IMAGE_HEIGHT);
 
-    // ROS_ERROR("window name is: %s", windowName);
+    // ROS_INFO("window name is: %s", windowName);
 
-    ROS_ERROR("%d", texWidth);
-    ROS_ERROR("%d", texHeight);
+    ROS_INFO("%d", texWidth);
+    ROS_INFO("%d", texHeight);
 
     glfwSetErrorCallback(callbackError);
 
@@ -609,17 +584,18 @@ int main(int argc, char **argv)
     if (!window)
     {
         glfwTerminate();
+        ROS_ERROR("GLFW Create Window Failed");
         return -1;
     }
 
     // Set the window as the current OpenGL context
     glfwMakeContextCurrent(window);
-    ROS_ERROR("window ran");
+    ROS_INFO("window ran");
 
     gladLoadGL();
     glfwSwapInterval(1);
     glfwSetKeyCallback(window, callbackKeyBinding);
-    GLuint textureID;
+
     // Set the window resize callback
     glfwSetFramebufferSizeCallback(window, callbackFrameBufferSize);
 
