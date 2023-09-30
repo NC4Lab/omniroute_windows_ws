@@ -33,8 +33,8 @@
 // OpenCV for computer vision tasks
 #include <opencv2/opencv.hpp>
 
-// OpenGL for mathematics
-#include <GL/gl.h>
+// // OpenGL for mathematics
+// #include <GL/gl.h>
 
 // Function to test OpenCV
 bool initialize_opencv();

@@ -146,7 +146,7 @@ bool test_glm()
   }
 
   // Create a windowed mode window and its OpenGL context
-  GLFWwindow* window = glfwCreateWindow(640, 480, "Test Window", NULL, NULL);
+  GLFWwindow *window = glfwCreateWindow(640, 480, "Test Window", NULL, NULL);
   if (!window)
   {
     ROS_ERROR("Failed to create GLFW window");
@@ -159,13 +159,13 @@ bool test_glm()
 
   // Test OpenGL functions
   glBegin(GL_POINTS);
-    glVertex2f(0.0f, 0.0f);
+  glVertex2f(0.0f, 0.0f);
   glEnd();
 
   glBegin(GL_TRIANGLES);
-    glVertex2f(0.0f, 0.0f);
-    glVertex2f(1.0f, 0.0f);
-    glVertex2f(0.0f, 1.0f);
+  glVertex2f(0.0f, 0.0f);
+  glVertex2f(1.0f, 0.0f);
+  glVertex2f(0.0f, 1.0f);
   glEnd();
 
   // Destroy the window and terminate GLFW

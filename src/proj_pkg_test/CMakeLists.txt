@@ -4,8 +4,8 @@ message("[ENV]: PROJECT_NAME set to: ${PROJECT_NAME}")
 message("[ENV]: CMAKE_SOURCE_DIR set to: ${CMAKE_SOURCE_DIR}")
 
 # Compile as C++11 for Windows
-set(CMAKE_CXX_STANDARD 11)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
+# set(CMAKE_CXX_STANDARD 11)
+# set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find catkin macros and libraries
 find_package(catkin REQUIRED COMPONENTS
@@ -48,7 +48,7 @@ endif()
 # Catkin specific configuration
 catkin_package(
   CATKIN_DEPENDS roslib roscpp std_msgs cv_bridge
-  DEPENDS OpenCV  # Added for OpenCV
+  DEPENDS OpenCV  
 )
 
 # Explicitly set set variables for GLAD
@@ -158,7 +158,10 @@ else()
 endif()
 
 # Declare a C++ executable
-add_executable(${PROJECT_NAME}_node src/${PROJECT_NAME}.cpp ${GLAD_SRC})
+add_executable(${PROJECT_NAME}_node 
+  src/${PROJECT_NAME}.cpp 
+  ${GLAD_SRC}
+)
 
 # Add cmake target dependencies of the executable
 add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})

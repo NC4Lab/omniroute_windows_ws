@@ -4,10 +4,12 @@
 
 1. **Download GLAD**
     - Visit the [GLAD Generator](https://glad.dav1d.de/) website.
-    - Choose the language as `C/C++`.
-    - For the API, select `OpenGL` and the version you need (e.g., 4.6).
+    - Language: `C/C++`.
+    - Specification: `gl`
+    - APIs: `gl` 
+    -   Version: `4.6` 
+    - Profile: `Compatibility`
     - Click `Generate` and download the zip file.
-
 2. **Copy Headers and Source Files**
     - Extract the downloaded zip file and copy the `include` and `src` folders from the extracted folder to your project directory or a common libraries directory.
     - Note the expected directory structure for the library below. 
