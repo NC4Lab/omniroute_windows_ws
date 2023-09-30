@@ -5,7 +5,7 @@
 1. **Download GLAD**
     - Visit the [GLAD Generator](https://glad.dav1d.de/) website.
     - Language: `C/C++`.
-    - Specification: `gl`
+    - Specification: `OpenGL`
     - APIs: `gl` 
     -   Version: `4.6` 
     - Profile: `Compatibility`
