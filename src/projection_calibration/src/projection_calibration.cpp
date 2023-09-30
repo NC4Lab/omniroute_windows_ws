@@ -453,7 +453,6 @@ void drawTarget(float x, float y, float targetWidth, float targetHeight)
 
 void drawRect(vector<cv::Point2f> corners, int imageNumber)
 {
-
     glBegin(GL_QUADS);
 
     // glTexCoord2f(x, y);

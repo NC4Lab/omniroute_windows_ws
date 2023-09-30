@@ -90,7 +90,7 @@
 
 ### ==================== SETUP ROS NOETIC ENVIRONMENT VARIABLE ====================
 
-> **Note**: The Pugixml and OpenGL library are already included in the ROS Noetic distribution. The following steps are to ensure that the library is correctly linked in the project's CMakeLists.txt file without hardcoding any paths, making the workspace portable.
+> **Note**: The Pugixml and library is already included in the ROS Noetic distribution. The following steps are to ensure that the library is correctly linked in the project's CMakeLists.txt file without hardcoding any paths, making the workspace portable.
 
 1. **Locate Pugixml in ROS Noetic**
     - Navigate to your ROS Noetic installation directory. Typically, it should be in `C:\opt\ros\noetic\x64`.
