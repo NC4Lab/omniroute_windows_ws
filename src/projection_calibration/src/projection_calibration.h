@@ -85,7 +85,6 @@ int main(int, char **);
 const int MAZE_SIZE = 3;
 
 // Variables related to control point positions and transformation
-int imageNumber = 0;
 float cpPositions[4][5] = {
     {-0.8f, 0.8f, 0.02f, 0.02f, 0.0f}, // top-left control point
     {0.8f, 0.8f, 0.02f, 0.02f, 0.0f},  // top-right control point
@@ -114,6 +113,7 @@ std::string imgPath = workspacePath + "/data/img";
 std::string configPath = workspacePath + "/data/proj_cfg/proj_cfg.xml";
 
 // List of image file paths
+int imageInd = 0; // Index of the image to be loaded
 std::vector<std::string> imagePaths = {
     imgPath + "/tj.bmp",
     imgPath + "/mmCarribean.png",

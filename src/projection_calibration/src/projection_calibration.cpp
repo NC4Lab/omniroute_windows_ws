@@ -72,14 +72,14 @@ void loadCoordinatesXML()
 
 /**
  * @brief Saves the control point positions and homography matrix to an XML file.
- * 
+ *
  * This function uses the pugixml library to create an XML document and populate it with
  * the control point positions and homography matrix. The control point positions are stored in a 2D array
  * and the homography matrix is stored in a cv::Mat object. Both are saved under their respective
  * XML nodes.
- * 
+ *
  * @note The XML file is saved to the path specified by the global variable 'configPath'.
- * 
+ *
  * Example XML structure:
  * @code
  * <config>
@@ -99,7 +99,7 @@ void loadCoordinatesXML()
  *   </H>
  * </config>
  * @endcode
- * 
+ *
  * @return void
  */
 void saveCoordinatesXML()
@@ -169,7 +169,6 @@ void saveCoordinatesXML()
     }
 }
 
-
 void computeHomography()
 {
     std::vector<cv::Point2f> targetCorners;
@@ -189,15 +188,15 @@ void computeHomography()
 
 /**
  * @brief Callback function for handling key bindings.
- * 
+ *
  * @param window Pointer to the GLFW window.
  * @param key The key that was pressed or released.
  * @param scancode The system-specific scancode of the key.
  * @param action GLFW_PRESS, GLFW_RELEASE, or GLFW_REPEAT.
  * @param mods Bit field describing which modifier keys were held down.
- * 
+ *
  *  @ref: GLFW/glfw3.h for keybindings enum
- * 
+ *
  * Key Bindings:
  * - [1-4]: Select target control point (Top-left, Top-right, Bottom-right, Bottom-left)
  * - [C, T]: Set image to image 1 or image 2
@@ -213,7 +212,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
     glfwMakeContextCurrent(window);
 
-    // Any key release action
+    // ---------- ANY KEY RELEASE ACTION ---------- 
     if (action == GLFW_RELEASE)
     {
         // ---------- Target selector keys [1-4] ----------
@@ -242,18 +241,15 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             cpSelected = 3;
         }
 
-        // ---------- Image selector keys [C, T] ----------
+        // ---------- Image selector keys [F1-n] ----------
 
-        // Set image to image 1
-        else if (key == GLFW_KEY_C)
+        else if (key == GLFW_KEY_F1)
         {
-            imageNumber = 1;
+            imageInd = 0;
         }
-
-        // Set image to image 2
-        else if (key == GLFW_KEY_T)
+        else if (key == GLFW_KEY_F2)
         {
-            imageNumber = 0;
+            imageInd = 1;
         }
 
         // ---------- Change mode keys [P, D, S] ----------
@@ -336,15 +332,11 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         }
     }
 
-    // Any key press or repeat action
+    // ---------- ANY KEY PRESS OR REPEAT ACTION ---------- 
     else if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {
-        if (key == GLFW_KEY_ENTER)
-        {
-            std::cerr << "stuffies";
-            ROS_INFO("BRO DOES THIS WORK?");
-        }
 
+        // ---------- Control point position change [LEFT, RIGHT, UP, DOWN] ----------
         if (cpModMode == "pos")
         {
 
@@ -367,6 +359,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             }
         }
 
+        // ---------- Control point dimension/hight change [UP, DOWN] ----------
         if (cpModMode == "dimensions")
         {
             if (key == GLFW_KEY_UP)
@@ -379,6 +372,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             }
         }
 
+        // ---------- Control point shear change [UP, DOWN] ----------
         if (cpModMode == "shear")
         {
             if (key == GLFW_KEY_UP)
@@ -407,10 +401,10 @@ static void callbackError(int error, const char *description)
 
 /**
  * @brief Draws a control point as a quadrilateral using OpenGL.
- * 
+ *
  * This function uses OpenGL to draw a quadrilateral that represents a control point.
  * The control point is drawn in a clockwise direction, starting from the bottom-left corner.
- * 
+ *
  * @param x The x-coordinate of the bottom-left corner of the control point.
  * @param y The y-coordinate of the bottom-left corner of the control point.
  * @param cp_width The width of the control point.
@@ -423,23 +417,22 @@ void drawControlPoint(float x, float y, float cp_width, float cp_height)
 
     // Define the vertices of the quadrilateral in a clockwise direction
     // starting from the bottom-left corner
-    glVertex2f(x, y);                  // Bottom-left corner
-    glVertex2f(x, y + cp_height);      // Top-left corner
+    glVertex2f(x, y);                        // Bottom-left corner
+    glVertex2f(x, y + cp_height);            // Top-left corner
     glVertex2f(x + cp_width, y + cp_height); // Top-right corner
-    glVertex2f(x + cp_width, y);       // Bottom-right corner
+    glVertex2f(x + cp_width, y);             // Bottom-right corner
 
     // End drawing
     glEnd();
 }
 
-
 /**
  * @brief Draws a textured wall using OpenGL.
- * 
+ *
  * @param corners Vector of corner points for the wall.
- * @param imageNumber Index of the texture image to use.
+ * @param imageInd Index of the texture image to use.
  */
-void drawWall(std::vector<cv::Point2f> corners, int imageNumber)
+void drawWall(std::vector<cv::Point2f> img_vertices, int imageInd)
 {
     // Start drawing a quadrilateral
     glBegin(GL_QUADS);
@@ -447,19 +440,19 @@ void drawWall(std::vector<cv::Point2f> corners, int imageNumber)
     // Set texture and vertex coordinates for each corner
     // Bottom-left corner
     glTexCoord2f(0.0f, 1.0f);
-    glVertex2f(corners[0].x, corners[0].y);
+    glVertex2f(img_vertices[0].x, img_vertices[0].y);
 
     // Bottom-right corner
     glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(corners[1].x, corners[1].y);
+    glVertex2f(img_vertices[1].x, img_vertices[1].y);
 
     // Top-right corner
     glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(corners[2].x, corners[2].y);
+    glVertex2f(img_vertices[2].x, img_vertices[2].y);
 
     // Top-left corner
     glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(corners[3].x, corners[3].y);
+    glVertex2f(img_vertices[3].x, img_vertices[3].y);
 
     // End drawing
     glEnd();
@@ -467,7 +460,7 @@ void drawWall(std::vector<cv::Point2f> corners, int imageNumber)
 
 /**
  * @brief Draws all the walls in the maze using OpenGL and OpenCV.
- * 
+ *
  * This function iterates through the maze grid and draws each wall with
  * texture mapping and perspective warping. It uses control points to
  * determine the shear and height for each wall.
@@ -489,7 +482,7 @@ void drawWallsAll()
     for (float i = 0; i < MAZE_SIZE; i++)
     {
         // Bind and set texture image
-        ilBindImage(imageIDs[imageNumber]);
+        ilBindImage(imageIDs[imageInd]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
                      ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
                      GL_UNSIGNED_BYTE, ilGetData());
@@ -507,10 +500,10 @@ void drawWallsAll()
                                  (j / (MAZE_SIZE - 1)) * (height1 - height4);
 
             // Create wall vertices
-            std::vector<cv::Point2f> vertices = createRectPoints(0.0f, 0.0f, wallWidth, heightAmount, shearAmount);
+            std::vector<cv::Point2f> img_vertices = createRectPoints(0.0f, 0.0f, wallWidth, heightAmount, shearAmount);
 
             // Apply perspective warping to vertices
-            for (auto& p : vertices)
+            for (auto &p : img_vertices)
             {
                 // Update vertex positions based on shear and height
                 p.x += i * wallSep;
@@ -529,11 +522,10 @@ void drawWallsAll()
             }
 
             // Draw the wall
-            drawWall(vertices, i);
+            drawWall(img_vertices, i);
         }
     }
 }
-
 
 int main(int argc, char **argv)
 {
@@ -562,20 +554,20 @@ int main(int argc, char **argv)
     // Initialize DevIL
     ilInit();
 
-    for (const std::string &imagePath : imagePaths)
+    for (const std::string &img_path : imagePaths)
     {
         // Generate a new DevIL image ID
-        ILuint imageID;
-        ilGenImages(1, &imageID);
-        ilBindImage(imageID);
+        ILuint img_id;
+        ilGenImages(1, &img_id);
+        ilBindImage(img_id);
 
         // Load the image file
-        ILboolean success = ilLoadImage(imagePath.c_str());
+        ILboolean success = ilLoadImage(img_path.c_str());
         if (success == IL_TRUE)
         {
             // Image loaded successfully
-            imageIDs.push_back(imageID);
-            ROS_INFO(imagePath.c_str());
+            imageIDs.push_back(img_id);
+            ROS_INFO(img_path.c_str());
 
             ROS_INFO("Loading image: %s", iluErrorString(ilGetError()));
 
@@ -589,7 +581,7 @@ int main(int argc, char **argv)
             ILenum error = ilGetError();
 
             // Handle the error as needed
-            ilDeleteImages(1, &imageID); // Clean up the image ID
+            ilDeleteImages(1, &img_id); // Clean up the image ID
 
             ROS_ERROR("DevIL: Failed to load image: %s", iluErrorString(error));
         }
