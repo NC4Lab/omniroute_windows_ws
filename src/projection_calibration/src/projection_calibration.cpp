@@ -405,104 +405,135 @@ static void callbackError(int error, const char *description)
     ROS_ERROR("Error: %s\n", description);
 }
 
+/**
+ * @brief Draws a control point as a quadrilateral using OpenGL.
+ * 
+ * This function uses OpenGL to draw a quadrilateral that represents a control point.
+ * The control point is drawn in a clockwise direction, starting from the bottom-left corner.
+ * 
+ * @param x The x-coordinate of the bottom-left corner of the control point.
+ * @param y The y-coordinate of the bottom-left corner of the control point.
+ * @param cp_width The width of the control point.
+ * @param cp_height The height of the control point.
+ */
 void drawControlPoint(float x, float y, float cp_width, float cp_height)
 {
+    // Begin drawing a quadrilateral
     glBegin(GL_QUADS);
 
-    // in clockwise direction, starting from left bottom
-    glVertex2f(x, y);
-    glVertex2f(x, y + cp_height);
+    // Define the vertices of the quadrilateral in a clockwise direction
+    // starting from the bottom-left corner
+    glVertex2f(x, y);                  // Bottom-left corner
+    glVertex2f(x, y + cp_height);      // Top-left corner
+    glVertex2f(x + cp_width, y + cp_height); // Top-right corner
+    glVertex2f(x + cp_width, y);       // Bottom-right corner
 
-    glVertex2f(x + cp_width, y + cp_height);
-    glVertex2f(x + cp_width, y);
-
+    // End drawing
     glEnd();
 }
 
+
+/**
+ * @brief Draws a textured wall using OpenGL.
+ * 
+ * @param corners Vector of corner points for the wall.
+ * @param imageNumber Index of the texture image to use.
+ */
 void drawWall(std::vector<cv::Point2f> corners, int imageNumber)
 {
+    // Start drawing a quadrilateral
     glBegin(GL_QUADS);
 
-    // glTexCoord2f(x, y);
+    // Set texture and vertex coordinates for each corner
+    // Bottom-left corner
     glTexCoord2f(0.0f, 1.0f);
     glVertex2f(corners[0].x, corners[0].y);
 
-    // glTexCoord2f(x+texWidth, y);
+    // Bottom-right corner
     glTexCoord2f(1.0f, 1.0f);
     glVertex2f(corners[1].x, corners[1].y);
-    // glVertex2f(x+width, y);
 
-    // glTexCoord2f(x+texWidth, y+texHeight);
+    // Top-right corner
     glTexCoord2f(1.0f, 0.0f);
     glVertex2f(corners[2].x, corners[2].y);
-    // glVertex2f(x+width, y+height);
 
-    // glTexCoord2f(x, y+texHeight);
+    // Top-left corner
     glTexCoord2f(0.0f, 0.0f);
     glVertex2f(corners[3].x, corners[3].y);
-    // glVertex2f(x, y+height);
+
+    // End drawing
     glEnd();
 }
 
+/**
+ * @brief Draws all the walls in the maze using OpenGL and OpenCV.
+ * 
+ * This function iterates through the maze grid and draws each wall with
+ * texture mapping and perspective warping. It uses control points to
+ * determine the shear and height for each wall.
+ */
 void drawWallsAll()
 {
-
+    // Extract shear and height values from control points
     float shear4 = cpPositions[3][4];
     float shear3 = cpPositions[2][4];
     float shear1 = cpPositions[0][4];
-
     float height4 = cpPositions[3][3];
     float height3 = cpPositions[2][3];
     float height1 = cpPositions[0][3];
 
-    // Enable texture mapping
+    // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
+
+    // Iterate through the maze grid
     for (float i = 0; i < MAZE_SIZE; i++)
     {
+        // Bind and set texture image
         ilBindImage(imageIDs[imageNumber]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
                      ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
                      GL_UNSIGNED_BYTE, ilGetData());
-        glEnable(GL_TEXTURE_2D);
+
+        // Iterate through each cell in the maze row
         for (float j = 0; j < MAZE_SIZE; j++)
         {
+            // Bind texture to framebuffer object
             glBindTexture(GL_TEXTURE_2D, fboTexture);
 
-            shearAmount = shear4 + (i / (float(MAZE_SIZE) - 1)) * (shear3 - shear4) + (j / (float(MAZE_SIZE) - 1)) * (shear1 - shear4);
-            float heightAmount = height4 + (i / float(MAZE_SIZE) - 1) * (height3 - height4) + (j / (float(MAZE_SIZE) - 1)) * (height1 - height4);
-            std::vector<cv::Point2f> verteces = createRectPoints(0.0f, 0.0f, wallWidth, heightAmount, shearAmount);
+            // Calculate shear and height for the current wall
+            shearAmount = shear4 + (i / (MAZE_SIZE - 1)) * (shear3 - shear4) +
+                          (j / (MAZE_SIZE - 1)) * (shear1 - shear4);
+            float heightAmount = height4 + (i / (MAZE_SIZE - 1)) * (height3 - height4) +
+                                 (j / (MAZE_SIZE - 1)) * (height1 - height4);
 
-            for (auto it = verteces.begin(); it != verteces.end(); it++)
+            // Create wall vertices
+            std::vector<cv::Point2f> vertices = createRectPoints(0.0f, 0.0f, wallWidth, heightAmount, shearAmount);
+
+            // Apply perspective warping to vertices
+            for (auto& p : vertices)
             {
-                cv::Point2f p = *it;
-
+                // Update vertex positions based on shear and height
                 p.x += i * wallSep;
                 p.y += j * wallSep;
 
-                // p.x += shearAmount * p.y;
-                float data[] = {p.x, p.y, 1}; // apparently that's how it is
-
+                // Apply homography matrix to warp perspective
+                float data[] = {p.x, p.y, 1};
                 cv::Mat ptMat(3, 1, CV_32F, data);
-                cv::Mat ptMat2(3, 1, CV_32F, data);
-
                 H.convertTo(H, ptMat.type());
-
-                // warpPerspective(ptMat2, ptMat, H, ptMat.size());
-
                 ptMat = H * ptMat;
-
                 ptMat /= ptMat.at<float>(2);
 
-                // std::cerr << "\n" << ptMat;
-
-                it->x = ptMat.at<float>(0, 0);
-                it->y = ptMat.at<float>(0, 1);
+                // Update vertex coordinates
+                p.x = ptMat.at<float>(0, 0);
+                p.y = ptMat.at<float>(0, 1);
             }
 
-            drawWall(verteces, i);
+            // Draw the wall
+            drawWall(vertices, i);
         }
     }
 }
+
 
 int main(int argc, char **argv)
 {
