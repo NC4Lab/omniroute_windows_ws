@@ -360,41 +360,6 @@ void drawWallsAll()
     }
 }
 
-// Function to display number as text using OpenGL's bitmap font
-void drawNumber(int number) {
-    glMatrixMode(GL_PROJECTION);
-    glPushMatrix();
-    glLoadIdentity();
-    gluOrtho2D(0.0, winWidth, 0.0, winHeight);
-
-    glMatrixMode(GL_MODELVIEW);
-    glPushMatrix();
-    glLoadIdentity();
-
-    // Convert integer to string
-    std::string numStr = std::to_string(number);
-    void *font = GLUT_BITMAP_TIMES_ROMAN_24;
-    
-    // Calculate approximate position to center the text
-    int textWidth = glutBitmapLength(font, (unsigned char*)numStr.c_str());
-    int x = (winWidth - textWidth) / 2;
-    int y = winHeight / 2;
-
-    // Set color and position for text
-    glColor3f(1.0, 1.0, 1.0);  // White color
-    glRasterPos2i(x, y);
-    
-    // Draw each character
-    for (char c : numStr) {
-        glutBitmapCharacter(font, c);
-    }
-
-    glPopMatrix();
-    glMatrixMode(GL_PROJECTION);
-    glPopMatrix();
-    glMatrixMode(GL_MODELVIEW);
-}
-
 void changeWindowMonMode()
 {
     // Use modulo to loop back to the first monitor if we've reached the end
@@ -743,8 +708,6 @@ int main(int argc, char **argv)
 
         // Draw/update wall images
         drawWallsAll();
-
-        drawNumber(6);
 
         // Draw/update control points
         for (int i = 0; i < 4; i++)

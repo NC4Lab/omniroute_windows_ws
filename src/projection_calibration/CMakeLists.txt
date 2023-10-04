@@ -138,14 +138,6 @@ else()
   message(FATAL_ERROR "[ENV]: OpenGL_LIBRARY not found")
 endif()
 
-# Find FreeGLUT
-find_package(FreeGLUT REQUIRED)
-if(FreeGLUT_FOUND)
-    message(STATUS "[ENV]: FreeGLUT_LIBRARY found at: ${FreeGLUT_INCLUDE_DIRS}")
-else()
-    message(ERROR "FreeGLUT not found")
-endif()
-
 # Add the include directories
 include_directories(
   ${catkin_INCLUDE_DIRS}  
@@ -155,7 +147,6 @@ include_directories(
   ${DevIL_INCLUDE_DIR}
   ${PugiXML_INCLUDE_DIR}
   ${OpenGL_INCLUDE_DIR}
-  ${FreeGLUT_INCLUDE_DIRS}
 )
 
 # Add the GLAD source files
@@ -186,7 +177,6 @@ target_link_libraries(${PROJECT_NAME}_node
   ${ILUT_LIBRARY}
   ${PugiXML_LIBRARY}
   ${OpenGL_LIBRARY}
-  ${FreeGLUT_LIBRARIES}
 )
 
 # Install targets 

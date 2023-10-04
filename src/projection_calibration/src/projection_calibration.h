@@ -45,9 +45,6 @@
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/highgui.hpp"
 
-// OpenGL Utility Toolkit (GLUT) for drawing 2D and 3D objects
-#include <GL/glut.h> 
-
 // ============= METHODS =============
 
 // Callback function for handling keyboard input
@@ -60,16 +57,13 @@ void callbackFrameBufferSize(GLFWwindow *, int, int);
 static void callbackError(int, const char *);
 
 // Function to draw a given control point marker
-void drawControlPoint(float, float, float, float, std::vector<float> rgb);
+void drawControlPoint(float, float, float, float, std::vector<float>);
 
 // Function to draw a rectangle with given corners
-void drawWall(std::vector<cv::Point2f>);
+void drawWall(std::vector<cv::Point2f>, int);
 
 // Function to draw multiple wall images
 void drawWallsAll();
-
-// Function to display number as text using OpenGL's bitmap font
-void drawNumber(int);
 
 // Function to change the window monitor and mode (full-screen or windowed)
 void changeWindowMonMode();
@@ -130,15 +124,12 @@ float cpPositions[4][5] = {
     {-xy_lim, -xy_lim, cpSize, cpSize *ht_scale, 0.0f} // bottom-left control point
 };
 cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
-std::string cpModMode = "position";
 int cpSelected = 0;
-std::vector<float> cpInactiveRGB = {0.0f, 0.0f, 1.0f};  // Selected control point color
-std::vector<float> cpActiveRGB = {1.0f, 0.0f, 0.0f};  // Unselected control point color
-
+std::string cpModMode = "position";
 
 // Wall image size and spacing
-const float wallWidth = 0.02f;
-const float wallSpace = 2.5f * wallWidth;
+const float wallWidth = 0.02;
+const float wallSpace = 2.5 * wallWidth;
 // const float wallWidth = cpSize;
 // const float wallSpace = 0.05f;
 
