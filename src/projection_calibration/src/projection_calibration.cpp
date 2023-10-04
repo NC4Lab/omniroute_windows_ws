@@ -228,30 +228,10 @@ static void callbackError(int error, const char *description)
  *
  * @param x The x-coordinate of the bottom-left corner of the control point.
  * @param y The y-coordinate of the bottom-left corner of the control point.
- * @param cp_width The width of the control point.
- * @param cp_height The height of the control point.
+ * @param radius The radius of the control point.
+ * @param rgb Vector of rgb values to color the marker.
  */
-void drawControlPoint(float x, float y, float cp_width, float cp_height)
-{
-
-    // Begin drawing a quadrilateral
-    glBegin(GL_QUADS);
-
-    // Set the color to green
-    glColor3f(0.0f, 1.0f, 0.0f);
-
-    // Define the vertices of the quadrilateral in a clockwise direction
-    // starting from the bottom-left corner
-    glVertex2f(x, y);                        // Bottom-left corner
-    glVertex2f(x, y + cp_height);            // Top-left corner
-    glVertex2f(x + cp_width, y + cp_height); // Top-right corner
-    glVertex2f(x + cp_width, y);             // Bottom-right corner
-
-    // End drawing
-    glEnd();
-}
-
-void drawControlPointCircle(float x, float y, float radius)
+void drawControlPoint(float x, float y, float radius, std::vector<float> rgb) 
 {
     int segments = 100; // Number of segments to approximate a circle
 
@@ -259,7 +239,7 @@ void drawControlPointCircle(float x, float y, float radius)
     glBegin(GL_TRIANGLE_FAN);
 
     // Set the color to green
-    glColor3f(0.0f, 1.0f, 0.0f);
+    glColor3f(rgb[0], rgb[1], rgb[2]);
 
     // Center of the circle
     glVertex2f(x, y);
@@ -280,7 +260,7 @@ void drawControlPointCircle(float x, float y, float radius)
 /**
  * @brief Draws a textured wall using OpenGL.
  *
- * @param corners Vector of corner points for the wall.
+ * @param corners Vector of vertex/corner points for the wall.
  */
 void drawWall(std::vector<cv::Point2f> img_vertices)
 {
@@ -375,9 +355,44 @@ void drawWallsAll()
             }
 
             // Draw the wall
-            drawWall(img_vertices, i_wall);
+            drawWall(img_vertices);
         }
     }
+}
+
+// Function to display number as text using OpenGL's bitmap font
+void drawNumber(int number) {
+    glMatrixMode(GL_PROJECTION);
+    glPushMatrix();
+    glLoadIdentity();
+    gluOrtho2D(0.0, winWidth, 0.0, winHeight);
+
+    glMatrixMode(GL_MODELVIEW);
+    glPushMatrix();
+    glLoadIdentity();
+
+    // Convert integer to string
+    std::string numStr = std::to_string(number);
+    void *font = GLUT_BITMAP_TIMES_ROMAN_24;
+    
+    // Calculate approximate position to center the text
+    int textWidth = glutBitmapLength(font, (unsigned char*)numStr.c_str());
+    int x = (winWidth - textWidth) / 2;
+    int y = winHeight / 2;
+
+    // Set color and position for text
+    glColor3f(1.0, 1.0, 1.0);  // White color
+    glRasterPos2i(x, y);
+    
+    // Draw each character
+    for (char c : numStr) {
+        glutBitmapCharacter(font, c);
+    }
+
+    glPopMatrix();
+    glMatrixMode(GL_PROJECTION);
+    glPopMatrix();
+    glMatrixMode(GL_MODELVIEW);
 }
 
 void changeWindowMonMode()
@@ -729,11 +744,12 @@ int main(int argc, char **argv)
         // Draw/update wall images
         drawWallsAll();
 
+        drawNumber(6);
+
         // Draw/update control points
         for (int i = 0; i < 4; i++)
         {
-            // drawControlPoint(cpPositions[i][0], cpPositions[i][1], cpPositions[i][2], cpPositions[i][3]);
-            drawControlPointCircle(cpPositions[i][0], cpPositions[i][1], cpPositions[i][2]);
+            drawControlPoint(cpPositions[i][0], cpPositions[i][1], cpPositions[i][2], cpSelected == i ? cpActiveRGB : cpInactiveRGB);
         }
 
         // Swap buffers and poll events

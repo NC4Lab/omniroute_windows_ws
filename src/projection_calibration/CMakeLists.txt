@@ -130,6 +130,22 @@ else()
   message(FATAL_ERROR "[ENV]: PugiXML_LIBRARY not found")
 endif()
 
+# Explicitly set set variables for OpenGL
+set(OpenGL_LIBRARY "$ENV{ROS_NOETIC_DIR}/Lib/OpenGL32.Lib")
+if(EXISTS ${OpenGL_LIBRARY})
+  message(STATUS "[ENV]: OpenGL_LIBRARY found at: ${OpenGL_LIBRARY}")
+else()
+  message(FATAL_ERROR "[ENV]: OpenGL_LIBRARY not found")
+endif()
+
+# Find FreeGLUT
+find_package(FreeGLUT REQUIRED)
+if(FreeGLUT_FOUND)
+    message(STATUS "[ENV]: FreeGLUT_LIBRARY found at: ${FreeGLUT_INCLUDE_DIRS}")
+else()
+    message(ERROR "FreeGLUT not found")
+endif()
+
 # Add the include directories
 include_directories(
   ${catkin_INCLUDE_DIRS}  
@@ -138,6 +154,8 @@ include_directories(
   ${GLFW_INCLUDE_DIR}
   ${DevIL_INCLUDE_DIR}
   ${PugiXML_INCLUDE_DIR}
+  ${OpenGL_INCLUDE_DIR}
+  ${FreeGLUT_INCLUDE_DIRS}
 )
 
 # Add the GLAD source files
@@ -167,6 +185,8 @@ target_link_libraries(${PROJECT_NAME}_node
   ${ILU_LIBRARY}
   ${ILUT_LIBRARY}
   ${PugiXML_LIBRARY}
+  ${OpenGL_LIBRARY}
+  ${FreeGLUT_LIBRARIES}
 )
 
 # Install targets 
