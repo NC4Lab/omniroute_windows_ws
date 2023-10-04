@@ -107,14 +107,16 @@ float shearAmount = 0.0f;
 std::vector<cv::Point2f> wallCorners = createRectPoints(0.0f, 0.0f, wallWidth, wallHeight, 0);
 
 // Variables related to image and file paths
-std::string packagePath = ros::package::getPath("projection_calibration");
-std::string configPath;
 std::string windowName;
+std::string packagePath = ros::package::getPath("projection_calibration");
+std::string workspacePath = packagePath.substr(0, packagePath.rfind("/src"));
+std::string imgPath = workspacePath + "/data/img";
+std::string configPath = workspacePath + "/data/proj_cfg";
 
 // List of image file paths
 std::vector<std::string> imagePaths = {
-    packagePath + "/img/tj.bmp",
-    packagePath + "/img/mmCarribean.png",
+    imgPath + "/tj.bmp",
+    imgPath + "/mmCarribean.png",
     // Add more image file paths as needed
 };
 
@@ -134,6 +136,5 @@ int monitor_count;
 
 ILint texWidth;
 ILint texHeight;
-
 
 #endif

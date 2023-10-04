@@ -454,11 +454,17 @@ void drawWalls()
 
 int main(int argc, char **argv)
 {
-
+    // Initialize ROS
     ros::init(argc, argv, "projection_calibration_node", ros::init_options::AnonymousName);
     ros::NodeHandle n;
     ros::NodeHandle nh("~");
-    ROS_INFO("main ran");
+    ROS_INFO("Running: main()");
+
+    // Print paths
+    ROS_INFO("packagePath: %s", packagePath.c_str());
+    ROS_INFO("workspacePath: %s", workspacePath.c_str());
+    ROS_INFO("imgPath: %s", imgPath.c_str());
+    ROS_INFO("configPath: %s", configPath.c_str());
 
     std::string tempPath, tempName;
 
@@ -468,9 +474,9 @@ int main(int argc, char **argv)
     configPath = tempPath.c_str();
     windowName = tempName.c_str();
 
-    ROS_INFO("config path is:");
-    ROS_INFO(configPath.c_str());
+    ROS_INFO("config path is: %s", configPath.c_str());
 
+    // Initialize DevIL
     ilInit();
 
     for (const std::string &imagePath : imagePaths)
