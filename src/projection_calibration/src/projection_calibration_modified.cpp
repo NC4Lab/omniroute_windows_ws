@@ -66,19 +66,19 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         else if (key == GLFW_KEY_F1)
         {
-            imgTestInd = 0;
+            imageInd = 0;
         }
         else if (key == GLFW_KEY_F2)
         {
-            imgTestInd = 1;
+            imageInd = 1;
         }
         else if (key == GLFW_KEY_F3)
         {
-            imgTestInd = 2;
+            imageInd = 2;
         }
         else if (key == GLFW_KEY_F4)
         {
-            imgTestInd = 3;
+            imageInd = 3;
         }
 
         // ---------- Change mode keys [A, D, S] ----------
@@ -106,6 +106,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // Save coordinates to XML
         else if (key == GLFW_KEY_ENTER)
         {
+            ROS_INFO("save hit");
             saveCoordinatesXML();
         }
 
@@ -227,10 +228,30 @@ static void callbackError(int error, const char *description)
  *
  * @param x The x-coordinate of the bottom-left corner of the control point.
  * @param y The y-coordinate of the bottom-left corner of the control point.
- * @param radius The radius of the control point.
- * @param rgb Vector of rgb values to color the marker.
+ * @param cp_width The width of the control point.
+ * @param cp_height The height of the control point.
  */
-void drawControlPoint(float x, float y, float radius, std::vector<float> rgb)
+void drawControlPoint(float x, float y, float cp_width, float cp_height)
+{
+
+    // Begin drawing a quadrilateral
+    glBegin(GL_QUADS);
+
+    // Set the color to green
+    glColor3f(0.0f, 1.0f, 0.0f);
+
+    // Define the vertices of the quadrilateral in a clockwise direction
+    // starting from the bottom-left corner
+    glVertex2f(x, y);                        // Bottom-left corner
+    glVertex2f(x, y + cp_height);            // Top-left corner
+    glVertex2f(x + cp_width, y + cp_height); // Top-right corner
+    glVertex2f(x + cp_width, y);             // Bottom-right corner
+
+    // End drawing
+    glEnd();
+}
+
+void drawControlPointCircle(float x, float y, float radius)
 {
     int segments = 100; // Number of segments to approximate a circle
 
@@ -238,7 +259,7 @@ void drawControlPoint(float x, float y, float radius, std::vector<float> rgb)
     glBegin(GL_TRIANGLE_FAN);
 
     // Set the color to green
-    glColor3f(rgb[0], rgb[1], rgb[2]);
+    glColor3f(0.0f, 1.0f, 0.0f);
 
     // Center of the circle
     glVertex2f(x, y);
@@ -259,18 +280,10 @@ void drawControlPoint(float x, float y, float radius, std::vector<float> rgb)
 /**
  * @brief Draws a textured wall using OpenGL.
  *
- * @param corners Vector of vertex/corner points for the wall.
- * @param do_mon_num Flag to display the monitor number over the center wall.
+ * @param corners Vector of corner points for the wall.
  */
-void drawWall(std::vector<cv::Point2f> img_vertices, bool do_mon_num)
+void drawWall(std::vector<cv::Point2f> img_vertices)
 {
-    // // Draw the number overlay
-    // if (do_mon_num)
-    // {
-    //     glEnable(GL_TEXTURE_2D);
-    //     glBindTexture(GL_TEXTURE_2D, imgMonNumIDs[imgMonNumInd]);
-    // }
-
     // Start drawing a quadrilateral
     glBegin(GL_QUADS);
 
@@ -296,12 +309,6 @@ void drawWall(std::vector<cv::Point2f> img_vertices, bool do_mon_num)
 
     // End drawing
     glEnd();
-
-    // // Disable texture mapping
-    // if (do_mon_num)
-    // {
-    //     glDisable(GL_TEXTURE_2D);
-    // }
 }
 
 /**
@@ -328,7 +335,7 @@ void drawWallsAll()
     for (float i_wall = 0; i_wall < MAZE_SIZE; i_wall++)
     {
         // Bind and set texture image
-        ilBindImage(imgTestIDs[imgTestInd]);
+        ilBindImage(imgTestIDs[imageInd]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
                      ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
                      GL_UNSIGNED_BYTE, ilGetData());
@@ -368,7 +375,7 @@ void drawWallsAll()
             }
 
             // Draw the wall
-            drawWall(img_vertices, (i_wall == 1 && j_wall == 1));
+            drawWall(img_vertices);
         }
     }
 }
@@ -395,11 +402,11 @@ void changeWindowMonMode()
             // Set the window to windowed mode and position it on the current monitor
             glfwSetWindowMonitor(window, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * winAspectRatio), 500, 0);
         }
-        ROS_INFO("RAN: Move window to monitor %d and set to %s", monitorInd + 1, isFullScreen ? "fullscreen" : "windowed");
+        ROS_INFO("Moved window to monitor %d and set to %s", monitorInd + 1, isFullScreen ? "fullscreen" : "windowed");
     }
     else
     {
-        ROS_WARN("FAILED: Move window to monitor %d and set to %s", monitorInd + 1, isFullScreen ? "fullscreen" : "windowed");
+        ROS_WARN("Monitor not found. Could not change window mode or move monitor.");
     }
 }
 
@@ -456,14 +463,10 @@ void computeHomography()
 
 void loadCoordinatesXML()
 {
-    // Get file name from path
-    std::string file_name = configPath.substr(configPath.find_last_of('/') + 1);
-
-    // Create an XML document object
     pugi::xml_document doc;
     if (!doc.load_file(configPath.c_str()))
     {
-        ROS_ERROR("LOAD XML: Could Not Load XML: File[%s]", file_name.c_str());
+        ROS_ERROR("Failed to load XML file.");
         return;
     }
 
@@ -507,35 +510,6 @@ void loadCoordinatesXML()
         for (int j = 0; j < 3; j++)
         {
             H.at<float>(i, j) = H2[i][j];
-        }
-    }
-}
-
-void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string> &ref_img_paths)
-{
-    // Iterate through img file paths
-    for (const std::string &img_path : ref_img_paths)
-    {
-        ILuint img_id;
-        ilGenImages(1, &img_id);
-        ilBindImage(img_id);
-
-        // Get file name from path
-        std::string file_name = img_path.substr(img_path.find_last_of('/') + 1);
-
-        // Attempt to load image
-        ILboolean success = ilLoadImage(img_path.c_str());
-        if (success == IL_TRUE)
-        {
-            ref_image_ids.push_back(img_id);
-            ROS_INFO("DevIL: Loaded image: %s", file_name.c_str());
-            ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
-        }
-        else
-        {
-            ILenum error = ilGetError();
-            ilDeleteImages(1, &img_id);
-            ROS_ERROR("DevIL: Failed to load image: Error[%s] File[%s]", iluErrorString(error), file_name.c_str());
         }
     }
 }
@@ -629,13 +603,14 @@ void saveCoordinatesXML()
     }
 
     // Save the XML document to a file specified by 'configPath'
+    ROS_INFO("Saving config data to: %s", configPath.c_str());
     if (doc.save_file(configPath.c_str()))
     {
-        ROS_INFO("SAVE XML: File Saved Successfully: Path[%s]", configPath.c_str());
+        ROS_INFO("XML file saved successfully.");
     }
     else
     {
-        ROS_ERROR("SAVE XML: Failed to Save XML: Path[%s]", configPath.c_str());
+        ROS_ERROR("Failed to save XML file.");
     }
 }
 
@@ -658,25 +633,44 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "projection_calibration_node", ros::init_options::AnonymousName);
     ros::NodeHandle n;
     ros::NodeHandle nh("~");
-    ROS_INFO("RUNNING MAIN");
+    ROS_INFO("Running: main()");
 
     // TODO: Use rosparam for these settings
     // nh.param<std::string>("configPath", tempPath, "");
     // nh.param<std::string>("windowName", tempName, "");
 
     // Log paths for debugging
-    ROS_INFO("SETTINGS: Package Path: %s", packagePath.c_str());
-    ROS_INFO("SETTINGS: Config XML Path: %s", configPath.c_str());
-    ROS_INFO("SETTINGS: Display: XYLim=[%0.2f,%0.2f] Width=%d Height=%d AR=%0.2f", xy_lim, xy_lim, winWidth, winHeight, winAspectRatio);
-    ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", wallWidth, wallSpace);
-    ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(wallWidth * (float)winWidth), (int)(wallSpace * (float)winWidth));
+    ROS_INFO("Package Path: %s", packagePath.c_str());
+    ROS_INFO("Image Path: %s", imgPath.c_str());
+    ROS_INFO("Config XML Path: %s", configPath.c_str());
+    ROS_INFO("Display: XYLim=[%0.2f,%0.2f] Width=%d Height=%d AR=%0.2f", xy_lim, xy_lim, winWidth, winHeight, winAspectRatio);
+    ROS_INFO("Wall (Norm): Width=%0.2f Space=%0.2f", wallWidth, wallSpace);
+    ROS_INFO("Wall (Pxl): Width=%d Space=%d", (int)(wallWidth * (float)winWidth), (int)(wallSpace * (float)winWidth));
 
     // Initialize DevIL library
     ilInit();
 
     // Load images
-    loadImgTextures(imgTestIDs, imgTestPaths);
-    loadImgTextures(imgMonNumIDs, imgMonNumPaths);
+    for (const std::string &img_path : imagePaths)
+    {
+        ILuint img_id;
+        ilGenImages(1, &img_id);
+        ilBindImage(img_id);
+
+        ILboolean success = ilLoadImage(img_path.c_str());
+        if (success == IL_TRUE)
+        {
+            imgTestIDs.push_back(img_id);
+            ROS_INFO("Loaded image: %s", img_path.c_str());
+            ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
+        }
+        else
+        {
+            ILenum error = ilGetError();
+            ilDeleteImages(1, &img_id);
+            ROS_ERROR("DevIL: Failed to load image: Error[%s] File[%s]", iluErrorString(error), img_path.c_str());
+        }
+    }
 
     // TODO: Check necessity of these lines
     textureImgWidth = ilGetInteger(IL_IMAGE_WIDTH);
@@ -686,7 +680,7 @@ int main(int argc, char **argv)
     glfwSetErrorCallback(callbackError);
     if (!glfwInit())
     {
-        ROS_ERROR("GLFW: Initialization Failed");
+        ROS_ERROR("GLFW Initialization Failed");
         return -1;
     }
 
@@ -695,7 +689,7 @@ int main(int argc, char **argv)
     if (!window)
     {
         glfwTerminate();
-        ROS_ERROR("GLFW: Create Window Failed");
+        ROS_ERROR("GLFW Create Window Failed");
         return -1;
     }
 
@@ -738,7 +732,8 @@ int main(int argc, char **argv)
         // Draw/update control points
         for (int i = 0; i < 4; i++)
         {
-            drawControlPoint(cpPositions[i][0], cpPositions[i][1], cpPositions[i][2], cpSelected == i ? cpActiveRGB : cpInactiveRGB);
+            // drawControlPoint(cpPositions[i][0], cpPositions[i][1], cpPositions[i][2], cpPositions[i][3]);
+            drawControlPointCircle(cpPositions[i][0], cpPositions[i][1], cpPositions[i][2]);
         }
 
         // Swap buffers and poll events
@@ -766,4 +761,48 @@ int main(int argc, char **argv)
     glfwTerminate();
 
     return 0;
+}
+
+
+// Function to load number textures
+void loadNumberTextures() {
+    // Initialize DevIL once at the beginning of your program
+    ilInit();
+
+    // Load each number image and convert it into an OpenGL texture
+    // Assume number0.jpg, number1.jpg, ..., number9.jpg
+    for (int i = 0; i <= 9; ++i) {
+        ILuint imageID;
+        ilGenImages(1, &imageID);
+        ilBindImage(imageID);
+
+        std::string filename = "number" + std::to_string(i) + ".jpg";
+        if (ilLoadImage(filename.c_str())) {
+            // Convert to OpenGL texture
+            glGenTextures(1, &numberTextures[i]);
+            glBindTexture(GL_TEXTURE_2D, numberTextures[i]);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
+                         ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB, GL_UNSIGNED_BYTE,
+                         ilGetData());
+            // ... set texture parameters ...
+        }
+
+        ilDeleteImages(1, &imageID);
+    }
+}
+
+
+// Function to draw wall with number overlay
+void drawWallWithNumber(int number) {
+    // ... Your existing drawWall() code ...
+
+    // Draw the number overlay
+    glEnable(GL_TEXTURE_2D);
+    glBindTexture(GL_TEXTURE_2D, imgMonNumIDs[number]);
+
+    glBegin(GL_QUADS);
+    // ... Set texture coordinates and vertex positions ...
+    glEnd();
+
+    glDisable(GL_TEXTURE_2D);
 }
