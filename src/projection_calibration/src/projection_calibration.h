@@ -47,11 +47,14 @@
 
 // ============= METHODS =============
 
-
-std::vector<cv::Point2f> createRectPoints(float, float, float, float, float);
-
 // Callback function for handling keyboard input
 void callbackKeyBinding(GLFWwindow *, int, int, int, int);
+
+// Callback function for handling window resize events
+void callbackFrameBufferSize(GLFWwindow *, int, int);
+
+// Callback function for handling GLFW errors
+static void callbackError(int, const char *);
 
 // Function to draw a given control point marker
 void drawControlPoint(float, float, float, float);
@@ -64,6 +67,9 @@ void drawWallsAll();
 
 // Function to change the window monitor and mode (full-screen or windowed)
 void changeWindowMonMode();
+
+// Function to computer wall vertices
+std::vector<cv::Point2f> computeWallVertices(float, float, float, float, float);
 
 // Function to compute homography matrix
 void computeHomography();
@@ -101,7 +107,7 @@ float wallHeight = 0.02f;
 float wallSep = 0.05f;
 std::string cpModMode = "pos";
 float shearAmount = 0.0f;
-std::vector<cv::Point2f> wallCorners = createRectPoints(0.0f, 0.0f, wallWidth, wallHeight, 0);
+std::vector<cv::Point2f> wallCorners = computeWallVertices(0.0f, 0.0f, wallWidth, wallHeight, 0);
 
 // Variables related to image and file paths
 std::string windowName = "Projection Calibration";

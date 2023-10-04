@@ -7,41 +7,6 @@
 #include "projection_calibration.h"
 
 /**
- * @brief Creates a vector of points representing a rectangle with shear for each wall.
- * 
- * This function generates a rectangle's corner points starting from the top-left corner
- * and going clockwise. The rectangle is defined by its top-left corner (x0, y0),
- * width, height, and a shear amount.
- * 
- * @param x0 The x-coordinate of the top-left corner of the rectangle.
- * @param y0 The y-coordinate of the top-left corner of the rectangle.
- * @param width The width of the rectangle.
- * @param height The height of the rectangle.
- * @param shearAmount The amount of shear to apply to the rectangle.
- * 
- * @return std::vector<cv::Point2f> A vector of 4 points representing the corners of the rectangle.
- */
-std::vector<cv::Point2f> createRectPoints(float x0, float y0, float width, float height, float shearAmount)
-{
-    std::vector<cv::Point2f> rectPoints;
-
-    // Top-left corner after applying shear
-    rectPoints.push_back(cv::Point2f(x0 + height * shearAmount, y0 + height));
-
-    // Top-right corner after applying shear
-    rectPoints.push_back(cv::Point2f(x0 + height * shearAmount + width, y0 + height));
-
-    // Bottom-right corner
-    rectPoints.push_back(cv::Point2f(x0 + width, y0));
-
-    // Bottom-left corner
-    rectPoints.push_back(cv::Point2f(x0, y0));
-
-    return rectPoints;
-}
-
-
-/**
  * @brief Callback function for handling key bindings.
  *
  * @param window Pointer to the GLFW window.
@@ -218,6 +183,17 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     computeHomography();
 }
 
+
+void callbackFrameBufferSize(GLFWwindow *window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
+
+static void callbackError(int error, const char *description)
+{
+    ROS_ERROR("Error: %s\n", description);
+}
+
 /**
  * @brief Draws a control point as a quadrilateral using OpenGL.
  *
@@ -319,7 +295,7 @@ void drawWallsAll()
                                  (j_wall / (MAZE_SIZE - 1)) * (height1 - height4);
 
             // Create wall vertices
-            std::vector<cv::Point2f> img_vertices = createRectPoints(0.0f, 0.0f, wallWidth, heightAmount, shearAmount);
+            std::vector<cv::Point2f> img_vertices = computeWallVertices(0.0f, 0.0f, wallWidth, heightAmount, shearAmount);
 
             // Apply perspective warping to vertices
             for (auto &p : img_vertices)
@@ -379,6 +355,40 @@ void changeWindowMonMode()
     }
 }
 
+/**
+ * @brief Creates a vector of points representing a rectangle with shear for each wall.
+ * 
+ * This function generates a rectangle's corner points starting from the top-left corner
+ * and going clockwise. The rectangle is defined by its top-left corner (x0, y0),
+ * width, height, and a shear amount.
+ * 
+ * @param x0 The x-coordinate of the top-left corner of the rectangle.
+ * @param y0 The y-coordinate of the top-left corner of the rectangle.
+ * @param width The width of the rectangle.
+ * @param height The height of the rectangle.
+ * @param shearAmount The amount of shear to apply to the rectangle.
+ * 
+ * @return std::vector<cv::Point2f> A vector of 4 points representing the corners of the rectangle.
+ */
+std::vector<cv::Point2f> computeWallVertices(float x0, float y0, float width, float height, float shearAmount)
+{
+    std::vector<cv::Point2f> rectPoints;
+
+    // Top-left corner after applying shear
+    rectPoints.push_back(cv::Point2f(x0 + height * shearAmount, y0 + height));
+
+    // Top-right corner after applying shear
+    rectPoints.push_back(cv::Point2f(x0 + height * shearAmount + width, y0 + height));
+
+    // Bottom-right corner
+    rectPoints.push_back(cv::Point2f(x0 + width, y0));
+
+    // Bottom-left corner
+    rectPoints.push_back(cv::Point2f(x0, y0));
+
+    return rectPoints;
+}
+
 void computeHomography()
 {
     std::vector<cv::Point2f> targetCorners;
@@ -388,7 +398,7 @@ void computeHomography()
     targetCorners.push_back(cv::Point2f(cpPositions[1][0], cpPositions[1][1]));
     targetCorners.push_back(cv::Point2f(cpPositions[2][0], cpPositions[2][1]));
     targetCorners.push_back(cv::Point2f(cpPositions[3][0], cpPositions[3][1]));
-    imageCorners = createRectPoints(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * wallSep, (float(MAZE_SIZE) - 1) * wallSep, 0);
+    imageCorners = computeWallVertices(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * wallSep, (float(MAZE_SIZE) - 1) * wallSep, 0);
 
     H = findHomography(imageCorners, targetCorners);
     // H = findHomography(targetCorners, imageCorners);
