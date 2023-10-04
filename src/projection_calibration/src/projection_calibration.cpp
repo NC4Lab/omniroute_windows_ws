@@ -1,8 +1,7 @@
-// ######################################
-
-// ===== projection_calibration.cpp =====
-
-// ######################################
+/**
+ * @file projection_calibration.cpp
+ * @brief This file contains the implementation for the projection calibration.
+ */
 
 //============= INCLUDE ================
 #include "projection_calibration.h"
@@ -18,19 +17,19 @@ std::vector<cv::Point2f> createRectPoints(float x0, float y0, float width, float
     return rectPoints;
 }
 
-void loadCoordinates()
+void loadCoordinatesXML()
 {
     pugi::xml_document doc;
     if (!doc.load_file(configPath.c_str()))
     {
-        std::cout << "Failed to load XML file." << std::endl;
+        ROS_ERROR("Failed to load XML file.");
         return;
     }
 
-    // Retrieve squarePositions
-    std::vector<std::vector<float>> squarePositions2;
-    pugi::xml_node squarePositionsNode = doc.child("config").child("squarePositions");
-    for (pugi::xml_node rowNode = squarePositionsNode.child("Row"); rowNode; rowNode = rowNode.next_sibling("Row"))
+    // Retrieve cpPositions
+    std::vector<std::vector<float>> cpPositions2;
+    pugi::xml_node cpPositionsNode = doc.child("config").child("cpPositions");
+    for (pugi::xml_node rowNode = cpPositionsNode.child("Row"); rowNode; rowNode = rowNode.next_sibling("Row"))
     {
         std::vector<float> row;
         for (pugi::xml_node cellNode = rowNode.child("Cell"); cellNode; cellNode = cellNode.next_sibling("Cell"))
@@ -38,14 +37,14 @@ void loadCoordinates()
             float value = std::stof(cellNode.child_value());
             row.push_back(value);
         }
-        squarePositions2.push_back(row);
+        cpPositions2.push_back(row);
     }
 
     for (int i = 0; i < 4; i++)
     {
         for (int j = 0; j < 5; j++)
         {
-            squarePositions[i][j] = squarePositions2[i][j];
+            cpPositions[i][j] = cpPositions2[i][j];
         }
     }
 
@@ -71,36 +70,68 @@ void loadCoordinates()
     }
 }
 
-void saveCoordinates()
+/**
+ * @brief Saves the control point positions and homography matrix to an XML file.
+ * 
+ * This function uses the pugixml library to create an XML document and populate it with
+ * the control point positions and homography matrix. The control point positions are stored in a 2D array
+ * and the homography matrix is stored in a cv::Mat object. Both are saved under their respective
+ * XML nodes.
+ * 
+ * @note The XML file is saved to the path specified by the global variable 'configPath'.
+ * 
+ * Example XML structure:
+ * @code
+ * <config>
+ *   <cpPositions>
+ *     <Row>
+ *       <Cell>value</Cell>
+ *       ...
+ *     </Row>
+ *     ...
+ *   </cpPositions>
+ *   <H>
+ *     <Row>
+ *       <Cell>value</Cell>
+ *       ...
+ *     </Row>
+ *     ...
+ *   </H>
+ * </config>
+ * @endcode
+ * 
+ * @return void
+ */
+void saveCoordinatesXML()
 {
-
+    // Create an XML document object
     pugi::xml_document doc;
-    std::cerr << "doc created";
-    // Create the root element
+
+    // Create the root element "config"
     pugi::xml_node root = doc.append_child("config");
 
-    pugi::xml_node arrayNode = root.append_child("squarePositions");
+    // Create a child node for storing control point positions
+    pugi::xml_node arrayNode = root.append_child("cpPositions");
 
-    // Iterate over the rows of the 2D array
-    for (const auto &row : squarePositions)
+    // Iterate over the rows of the 2D array 'cpPositions'
+    for (const auto &row : cpPositions)
     {
-        // Create a row element
+        // Create a row element under "cpPositions"
         pugi::xml_node rowNode = arrayNode.append_child("Row");
 
         // Iterate over the elements in the row
         for (const auto &value : row)
         {
-            // Create a cell element
+            // Create a cell element under the row
             pugi::xml_node cellNode = rowNode.append_child("Cell");
             cellNode.append_child(pugi::node_pcdata).set_value(std::to_string(value).c_str());
         }
     }
 
-    std::cerr << "created squaresP";
-
+    // Create a 2D array to store the homography matrix
     float array2[3][3];
 
-    // Copy data from cv::Mat to the 2D array
+    // Copy data from cv::Mat 'H' to the 2D array 'array2'
     for (int i = 0; i < 3; i++)
     {
         for (int j = 0; j < 3; j++)
@@ -109,44 +140,45 @@ void saveCoordinates()
         }
     }
 
+    // Create a child node for storing the homography matrix
     pugi::xml_node arrayNode2 = root.append_child("H");
 
-    // Iterate over the rows of the 2D array
+    // Iterate over the rows of the 2D array 'array2'
     for (const auto &row : array2)
     {
-        // Create a row element
+        // Create a row element under "H"
         pugi::xml_node rowNode = arrayNode2.append_child("Row");
 
         // Iterate over the elements in the row
         for (const auto &value : row)
         {
-            // Create a cell element
+            // Create a cell element under the row
             pugi::xml_node cellNode = rowNode.append_child("Cell");
             cellNode.append_child(pugi::node_pcdata).set_value(std::to_string(value).c_str());
         }
     }
 
-    std::cerr << "created H";
-    // Save the XML document to a file
+    // Save the XML document to a file specified by 'configPath'
     if (doc.save_file(configPath.c_str()))
     {
-        std::cout << "XML file saved successfully." << std::endl;
+        ROS_INFO("XML file saved successfully.");
     }
     else
     {
-        std::cout << "Failed to save XML file." << std::endl;
+        ROS_ERROR("Failed to save XML file.");
     }
 }
+
 
 void computeHomography()
 {
     std::vector<cv::Point2f> targetCorners;
     std::vector<cv::Point2f> imageCorners;
-    // hard coding the specific corners for each of the squares.
-    targetCorners.push_back(cv::Point2f(squarePositions[0][0], squarePositions[0][1]));
-    targetCorners.push_back(cv::Point2f(squarePositions[1][0], squarePositions[1][1]));
-    targetCorners.push_back(cv::Point2f(squarePositions[2][0], squarePositions[2][1]));
-    targetCorners.push_back(cv::Point2f(squarePositions[3][0], squarePositions[3][1]));
+    // hard coding the specific corners for each of the control points.
+    targetCorners.push_back(cv::Point2f(cpPositions[0][0], cpPositions[0][1]));
+    targetCorners.push_back(cv::Point2f(cpPositions[1][0], cpPositions[1][1]));
+    targetCorners.push_back(cv::Point2f(cpPositions[2][0], cpPositions[2][1]));
+    targetCorners.push_back(cv::Point2f(cpPositions[3][0], cpPositions[3][1]));
     imageCorners = createRectPoints(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * wallSep, (float(MAZE_SIZE) - 1) * wallSep, 0);
 
     H = findHomography(imageCorners, targetCorners);
@@ -155,7 +187,27 @@ void computeHomography()
     // std::cerr << H;
 }
 
-/// @ref: GLFW/glfw3.h for keybindings enum
+/**
+ * @brief Callback function for handling key bindings.
+ * 
+ * @param window Pointer to the GLFW window.
+ * @param key The key that was pressed or released.
+ * @param scancode The system-specific scancode of the key.
+ * @param action GLFW_PRESS, GLFW_RELEASE, or GLFW_REPEAT.
+ * @param mods Bit field describing which modifier keys were held down.
+ * 
+ *  @ref: GLFW/glfw3.h for keybindings enum
+ * 
+ * Key Bindings:
+ * - [1-4]: Select target control point (Top-left, Top-right, Bottom-right, Bottom-left)
+ * - [C, T]: Set image to image 1 or image 2
+ * - [P, D, S]: Change mode (control point position, control point dimensions, control point shear)
+ * - [ENTER]: Save coordinates to XML
+ * - [L]: Load coordinates from XML
+ * - [F]: Fullscreen on second monitor
+ * - [M]: Move window to next monitor
+ * - [Arrow Keys]: Move selected control point or adjust dimensions/shear
+ */
 void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
 
@@ -166,28 +218,28 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     {
         // ---------- Target selector keys [1-4] ----------
 
-        // Top-left square
+        // Top-left control point
         if (key == GLFW_KEY_1)
         {
-            selectedSquare = 0;
+            cpSelected = 0;
         }
 
-        // Top-right square
+        // Top-right control point
         else if (key == GLFW_KEY_2)
         {
-            selectedSquare = 1;
+            cpSelected = 1;
         }
 
-        // Bottom-right square
+        // Bottom-right control point
         else if (key == GLFW_KEY_3)
         {
-            selectedSquare = 2;
+            cpSelected = 2;
         }
 
-        // Bottom-left square
+        // Bottom-left control point
         else if (key == GLFW_KEY_4)
         {
-            selectedSquare = 3;
+            cpSelected = 3;
         }
 
         // ---------- Image selector keys [C, T] ----------
@@ -206,37 +258,37 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         // ---------- Change mode keys [P, D, S] ----------
 
-        // Square position [up, down, left, right]
+        // Control point position [up, down, left, right]
         else if (key == GLFW_KEY_P)
         {
-            changeMode = "pos";
+            cpModMode = "pos";
         }
 
-        // Square height [up, down]
+        // Control point height [up, down]
         else if (key == GLFW_KEY_D)
         {
-            changeMode = "dimensions";
+            cpModMode = "dimensions";
         }
 
-        // Square shear [up, down]
+        // Control point shear [up, down]
         else if (key == GLFW_KEY_S)
         {
-            changeMode = "shear";
+            cpModMode = "shear";
         }
 
-        // ---------- CSV Handling [ENTER, L] ----------
+        // ---------- XML Handling [ENTER, L] ----------
 
-        // Save coordinates to CSV
+        // Save coordinates to XML
         else if (key == GLFW_KEY_ENTER)
         {
             ROS_INFO("save hit");
-            saveCoordinates();
+            saveCoordinatesXML();
         }
 
-        // Load coordinates from CSV
+        // Load coordinates from XML
         else if (key == GLFW_KEY_L)
         {
-            loadCoordinates();
+            loadCoordinatesXML();
         }
 
         // ---------- Monitor handling [F, M] ----------
@@ -293,49 +345,49 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             ROS_INFO("BRO DOES THIS WORK?");
         }
 
-        if (changeMode == "pos")
+        if (cpModMode == "pos")
         {
 
-            // Listen for arrow key input to move selected square
+            // Listen for arrow key input to move selected control point
             if (key == GLFW_KEY_LEFT)
             {
-                squarePositions[selectedSquare][0] -= 0.05f;
+                cpPositions[cpSelected][0] -= 0.05f;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                squarePositions[selectedSquare][0] += 0.05f;
+                cpPositions[cpSelected][0] += 0.05f;
             }
             else if (key == GLFW_KEY_UP)
             {
-                squarePositions[selectedSquare][1] += 0.05f;
+                cpPositions[cpSelected][1] += 0.05f;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                squarePositions[selectedSquare][1] -= 0.05f;
+                cpPositions[cpSelected][1] -= 0.05f;
             }
         }
 
-        if (changeMode == "dimensions")
+        if (cpModMode == "dimensions")
         {
             if (key == GLFW_KEY_UP)
             {
-                squarePositions[selectedSquare][3] += 0.001f;
+                cpPositions[cpSelected][3] += 0.001f;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                squarePositions[selectedSquare][3] -= 0.001f;
+                cpPositions[cpSelected][3] -= 0.001f;
             }
         }
 
-        if (changeMode == "shear")
+        if (cpModMode == "shear")
         {
             if (key == GLFW_KEY_UP)
             {
-                squarePositions[selectedSquare][4] += 0.05f;
+                cpPositions[cpSelected][4] += 0.05f;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                squarePositions[selectedSquare][4] -= 0.05f;
+                cpPositions[cpSelected][4] -= 0.05f;
             }
         }
     }
@@ -353,21 +405,21 @@ static void callbackError(int error, const char *description)
     ROS_ERROR("Error: %s\n", description);
 }
 
-void drawTarget(float x, float y, float targetWidth, float targetHeight)
+void drawControlPoint(float x, float y, float cp_width, float cp_height)
 {
     glBegin(GL_QUADS);
 
     // in clockwise direction, starting from left bottom
     glVertex2f(x, y);
-    glVertex2f(x, y + targetHeight);
+    glVertex2f(x, y + cp_height);
 
-    glVertex2f(x + targetWidth, y + targetHeight);
-    glVertex2f(x + targetWidth, y);
+    glVertex2f(x + cp_width, y + cp_height);
+    glVertex2f(x + cp_width, y);
 
     glEnd();
 }
 
-void drawRect(std::vector<cv::Point2f> corners, int imageNumber)
+void drawWall(std::vector<cv::Point2f> corners, int imageNumber)
 {
     glBegin(GL_QUADS);
 
@@ -392,16 +444,16 @@ void drawRect(std::vector<cv::Point2f> corners, int imageNumber)
     glEnd();
 }
 
-void drawWalls()
+void drawWallsAll()
 {
 
-    float shear4 = squarePositions[3][4];
-    float shear3 = squarePositions[2][4];
-    float shear1 = squarePositions[0][4];
+    float shear4 = cpPositions[3][4];
+    float shear3 = cpPositions[2][4];
+    float shear1 = cpPositions[0][4];
 
-    float height4 = squarePositions[3][3];
-    float height3 = squarePositions[2][3];
-    float height1 = squarePositions[0][3];
+    float height4 = cpPositions[3][3];
+    float height3 = cpPositions[2][3];
+    float height1 = cpPositions[0][3];
 
     // Enable texture mapping
     glEnable(GL_TEXTURE_2D);
@@ -418,9 +470,9 @@ void drawWalls()
 
             shearAmount = shear4 + (i / (float(MAZE_SIZE) - 1)) * (shear3 - shear4) + (j / (float(MAZE_SIZE) - 1)) * (shear1 - shear4);
             float heightAmount = height4 + (i / float(MAZE_SIZE) - 1) * (height3 - height4) + (j / (float(MAZE_SIZE) - 1)) * (height1 - height4);
-            std::vector<cv::Point2f> c = createRectPoints(0.0f, 0.0f, wallWidth, heightAmount, shearAmount);
+            std::vector<cv::Point2f> verteces = createRectPoints(0.0f, 0.0f, wallWidth, heightAmount, shearAmount);
 
-            for (auto it = c.begin(); it != c.end(); it++)
+            for (auto it = verteces.begin(); it != verteces.end(); it++)
             {
                 cv::Point2f p = *it;
 
@@ -447,7 +499,7 @@ void drawWalls()
                 it->y = ptMat.at<float>(0, 1);
             }
 
-            drawRect(c, i);
+            drawWall(verteces, i);
         }
     }
 }
@@ -570,15 +622,15 @@ int main(int argc, char **argv)
 
         glEnable(GL_TEXTURE_2D);
 
-        // Draw squares with updated positions
+        // Draw control points with updated positions
         glClear(GL_COLOR_BUFFER_BIT);
         //// Load image data into texture
 
-        drawWalls();
+        drawWallsAll();
 
         for (int i = 0; i < 4; i++)
         {
-            drawTarget(squarePositions[i][0], squarePositions[i][1], squarePositions[i][2], squarePositions[i][3]);
+            drawControlPoint(cpPositions[i][0], cpPositions[i][1], cpPositions[i][2], cpPositions[i][3]);
         }
 
         // Swap the buffers

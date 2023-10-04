@@ -50,10 +50,10 @@
 std::vector<cv::Point2f> createRectPoints(float, float, float, float, float);
 
 // Function to load coordinates from an XML file
-void loadCoordinates();
+void loadCoordinatesXML();
 
 // Function to save coordinates to an XML file
-void saveCoordinates();
+void saveCoordinatesXML();
 
 // Function to compute homography matrix
 void computeHomography();
@@ -67,14 +67,14 @@ void callbackFrameBufferSize(GLFWwindow *, int, int);
 // Callback function for handling GLFW errors
 static void callbackError(int, const char *);
 
-// Function to draw a target
-void drawTarget(float, float, float, float);
+// Function to draw a given control point marker
+void drawControlPoint(float, float, float, float);
 
 // Function to draw a rectangle with given corners
-void drawRect(std::vector<cv::Point2f>, int);
+void drawWall(std::vector<cv::Point2f>, int);
 
 // Function to draw multiple wall images
-void drawWalls();
+void drawWallsAll();
 
 // The main function of the program
 int main(int, char **);
@@ -84,25 +84,25 @@ int main(int, char **);
 // Constants
 const int MAZE_SIZE = 3;
 
-// Variables related to square positions and transformation
+// Variables related to control point positions and transformation
 int imageNumber = 0;
-float squarePositions[4][5] = {
-    {-0.8f, 0.8f, 0.02f, 0.02f, 0.0f}, // top-left square
-    {0.8f, 0.8f, 0.02f, 0.02f, 0.0f},  // top-right square
-    {0.8f, -0.8f, 0.02f, 0.02f, 0.0f}, // bottom-right square
-    {-0.8f, -0.8f, 0.02f, 0.02f, 0.0f} // bottom-left square
+float cpPositions[4][5] = {
+    {-0.8f, 0.8f, 0.02f, 0.02f, 0.0f}, // top-left control point
+    {0.8f, 0.8f, 0.02f, 0.02f, 0.0f},  // top-right control point
+    {0.8f, -0.8f, 0.02f, 0.02f, 0.0f}, // bottom-right control point
+    {-0.8f, -0.8f, 0.02f, 0.02f, 0.0f} // bottom-left control point
 };
 float shearValues[MAZE_SIZE][MAZE_SIZE];
 float sizeValues[MAZE_SIZE][MAZE_SIZE];
 float configurationValues[3][3][3];
 cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
-int selectedSquare = 0;
+int cpSelected = 0;
 
 // Variables related to wall properties
 float wallWidth = 0.02f;
 float wallHeight = 0.02f;
 float wallSep = 0.05f;
-std::string changeMode = "pos";
+std::string cpModMode = "pos";
 float shearAmount = 0.0f;
 std::vector<cv::Point2f> wallCorners = createRectPoints(0.0f, 0.0f, wallWidth, wallHeight, 0);
 
@@ -111,7 +111,7 @@ std::string windowName;
 std::string packagePath = ros::package::getPath("projection_calibration");
 std::string workspacePath = packagePath.substr(0, packagePath.rfind("/src"));
 std::string imgPath = workspacePath + "/data/img";
-std::string configPath = workspacePath + "/data/proj_cfg";
+std::string configPath = workspacePath + "/data/proj_cfg/proj_cfg.xml";
 
 // List of image file paths
 std::vector<std::string> imagePaths = {
