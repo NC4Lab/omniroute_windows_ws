@@ -19,7 +19,7 @@
  *
  * Key Bindings:
  * - [1-4]: Select target control point (Top-left, Top-right, Bottom-right, Bottom-left)
- * - [C, T]: Set image to image 1 or image 2
+ * - [F1-F12]: Set image to image 1 to 12
  * - [A, D, S]: Change control point mode(position/translation, dimension/height, shear)
  * - [ENTER]: Save coordinates to XML
  * - [L]: Load coordinates from XML
@@ -62,7 +62,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             cpSelected = 3;
         }
 
-        // ---------- Image selector keys [F1-n] ----------
+        // ---------- Image selector keys [F1-F12] ----------
 
         else if (key == GLFW_KEY_F1)
         {
@@ -71,6 +71,14 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         else if (key == GLFW_KEY_F2)
         {
             imageInd = 1;
+        }
+        else if (key == GLFW_KEY_F3)
+        {
+            imageInd = 2;
+        }
+        else if (key == GLFW_KEY_F4)
+        {
+            imageInd = 3;
         }
 
         // ---------- Change mode keys [A, D, S] ----------
@@ -183,12 +191,30 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     computeHomography();
 }
 
-
+/**
+ * @brief Callback function for handling framebuffer size changes.
+ *
+ * This function is called whenever the framebuffer size changes,
+ * and it updates the OpenGL viewport to match the new dimensions.
+ *
+ * @param window Pointer to the GLFW window.
+ * @param width The new width of the framebuffer.
+ * @param height The new height of the framebuffer.
+ */
 void callbackFrameBufferSize(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
 }
 
+/**
+ * @brief Callback function for handling errors.
+ *
+ * This function is called whenever an error occurs in the GLFW context.
+ * It logs the error message using ROS_ERROR.
+ *
+ * @param error The error code.
+ * @param description The error description.
+ */
 static void callbackError(int error, const char *description)
 {
     ROS_ERROR("Error: %s\n", description);
@@ -207,8 +233,12 @@ static void callbackError(int error, const char *description)
  */
 void drawControlPoint(float x, float y, float cp_width, float cp_height)
 {
+
     // Begin drawing a quadrilateral
     glBegin(GL_QUADS);
+
+    // Set the color to green
+    glColor3f(0.0f, 1.0f, 0.0f);
 
     // Define the vertices of the quadrilateral in a clockwise direction
     // starting from the bottom-left corner
@@ -221,16 +251,44 @@ void drawControlPoint(float x, float y, float cp_width, float cp_height)
     glEnd();
 }
 
+void drawControlPointCircle(float x, float y, float radius)
+{
+    int segments = 100; // Number of segments to approximate a circle
+
+    // Begin drawing a filled circle
+    glBegin(GL_TRIANGLE_FAN);
+
+    // Set the color to green
+    glColor3f(0.0f, 1.0f, 0.0f);
+
+    // Center of the circle
+    glVertex2f(x, y);
+
+    // Calculate and draw the vertices of the circle
+    for (int i = 0; i <= segments; i++)
+    {
+        float theta = 2.0f * 3.1415926f * float(i) / float(segments);
+        float px = x + radius * cosf(theta);
+        float py = y + (radius * winAspectRatio) * sinf(theta);
+        glVertex2f(px, py);
+    }
+
+    // End drawing
+    glEnd();
+}
+
 /**
  * @brief Draws a textured wall using OpenGL.
  *
  * @param corners Vector of corner points for the wall.
- * @param imageInd Index of the texture image to use.
  */
-void drawWall(std::vector<cv::Point2f> img_vertices, int imageInd)
+void drawWall(std::vector<cv::Point2f> img_vertices)
 {
     // Start drawing a quadrilateral
     glBegin(GL_QUADS);
+
+    // Set the color to white
+    glColor3f(1.0f, 1.0f, 1.0f);
 
     // Set texture and vertex coordinates for each corner
     // Bottom-left corner
@@ -263,12 +321,12 @@ void drawWall(std::vector<cv::Point2f> img_vertices, int imageInd)
 void drawWallsAll()
 {
     // Extract shear and height values from control points
-    float shear4 = cpPositions[3][4];
-    float shear3 = cpPositions[2][4];
-    float shear1 = cpPositions[0][4];
-    float height4 = cpPositions[3][3];
-    float height3 = cpPositions[2][3];
     float height1 = cpPositions[0][3];
+    float height3 = cpPositions[2][3];
+    float height4 = cpPositions[3][3];
+    float shear1 = cpPositions[0][4];
+    float shear3 = cpPositions[2][4];
+    float shear4 = cpPositions[3][4];
 
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
@@ -289,20 +347,20 @@ void drawWallsAll()
             glBindTexture(GL_TEXTURE_2D, fboTexture);
 
             // Calculate shear and height for the current wall
-            shearAmount = shear4 + (i_wall / (MAZE_SIZE - 1)) * (shear3 - shear4) +
-                          (j_wall / (MAZE_SIZE - 1)) * (shear1 - shear4);
-            float heightAmount = height4 + (i_wall / (MAZE_SIZE - 1)) * (height3 - height4) +
-                                 (j_wall / (MAZE_SIZE - 1)) * (height1 - height4);
+            float shear_val = shear4 + (i_wall / (MAZE_SIZE - 1)) * (shear3 - shear4) +
+                              (j_wall / (MAZE_SIZE - 1)) * (shear1 - shear4);
+            float height_val = height4 + (i_wall / (MAZE_SIZE - 1)) * (height3 - height4) +
+                               (j_wall / (MAZE_SIZE - 1)) * (height1 - height4);
 
             // Create wall vertices
-            std::vector<cv::Point2f> img_vertices = computeWallVertices(0.0f, 0.0f, wallWidth, heightAmount, shearAmount);
+            std::vector<cv::Point2f> img_vertices = computeWallVertices(0.0f, 0.0f, wallWidth, height_val, shear_val);
 
             // Apply perspective warping to vertices
             for (auto &p : img_vertices)
             {
                 // Update vertex positions based on shear and height
-                p.x += i_wall * wallSep;
-                p.y += j_wall * wallSep;
+                p.x += i_wall * wallSpace;
+                p.y += j_wall * wallSpace;
 
                 // Apply homography matrix to warp perspective
                 float data[] = {p.x, p.y, 1};
@@ -327,27 +385,24 @@ void changeWindowMonMode()
     // Use modulo to loop back to the first monitor if we've reached the end
     monitor = monitors[monitorInd];
 
-    // Get the video mode of the selected monitor
-    const GLFWvidmode *mode = glfwGetVideoMode(monitor);
-
     if (monitor)
     {
-        if (isFullScreen)
-        {
-            // Set the window to full-screen mode on the current monitor
-            glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-            ROS_INFO("Moved window to monitor %d and set to full-screen", monitorInd + 1);
-        }
-        else
+        // Get the video mode of the selected monitor
+        const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+
+        // Set the window to full-screen mode on the current monitor
+        glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+
+        if (!isFullScreen)
         {
             // Get the position of the current monitor
             int monitor_x, monitor_y;
             glfwGetMonitorPos(monitor, &monitor_x, &monitor_y);
 
             // Set the window to windowed mode and position it on the current monitor
-            glfwSetWindowMonitor(window, NULL, monitor_x + 100, monitor_y + 100, 800, 600, 0);
-            ROS_INFO("Moved window to monitor %d and set to windowed", monitorInd + 1);
+            glfwSetWindowMonitor(window, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * winAspectRatio), 500, 0);
         }
+        ROS_INFO("Moved window to monitor %d and set to %s", monitorInd + 1, isFullScreen ? "fullscreen" : "windowed");
     }
     else
     {
@@ -357,53 +412,53 @@ void changeWindowMonMode()
 
 /**
  * @brief Creates a vector of points representing a rectangle with shear for each wall.
- * 
+ *
  * This function generates a rectangle's corner points starting from the top-left corner
  * and going clockwise. The rectangle is defined by its top-left corner (x0, y0),
  * width, height, and a shear amount.
- * 
+ *
  * @param x0 The x-coordinate of the top-left corner of the rectangle.
  * @param y0 The y-coordinate of the top-left corner of the rectangle.
  * @param width The width of the rectangle.
  * @param height The height of the rectangle.
- * @param shearAmount The amount of shear to apply to the rectangle.
- * 
+ * @param shear_amount The amount of shear to apply to the rectangle.
+ *
  * @return std::vector<cv::Point2f> A vector of 4 points representing the corners of the rectangle.
  */
-std::vector<cv::Point2f> computeWallVertices(float x0, float y0, float width, float height, float shearAmount)
+std::vector<cv::Point2f> computeWallVertices(float x0, float y0, float width, float height, float shear_amount)
 {
-    std::vector<cv::Point2f> rectPoints;
+    std::vector<cv::Point2f> rect_vertices;
 
     // Top-left corner after applying shear
-    rectPoints.push_back(cv::Point2f(x0 + height * shearAmount, y0 + height));
+    rect_vertices.push_back(cv::Point2f(x0 + height * shear_amount, y0 + height));
 
     // Top-right corner after applying shear
-    rectPoints.push_back(cv::Point2f(x0 + height * shearAmount + width, y0 + height));
+    rect_vertices.push_back(cv::Point2f(x0 + height * shear_amount + width, y0 + height));
 
     // Bottom-right corner
-    rectPoints.push_back(cv::Point2f(x0 + width, y0));
+    rect_vertices.push_back(cv::Point2f(x0 + width, y0));
 
     // Bottom-left corner
-    rectPoints.push_back(cv::Point2f(x0, y0));
+    rect_vertices.push_back(cv::Point2f(x0, y0));
 
-    return rectPoints;
+    return rect_vertices;
 }
 
 void computeHomography()
 {
-    std::vector<cv::Point2f> targetCorners;
-    std::vector<cv::Point2f> imageCorners;
-    // hard coding the specific corners for each of the control points.
-    targetCorners.push_back(cv::Point2f(cpPositions[0][0], cpPositions[0][1]));
-    targetCorners.push_back(cv::Point2f(cpPositions[1][0], cpPositions[1][1]));
-    targetCorners.push_back(cv::Point2f(cpPositions[2][0], cpPositions[2][1]));
-    targetCorners.push_back(cv::Point2f(cpPositions[3][0], cpPositions[3][1]));
-    imageCorners = computeWallVertices(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * wallSep, (float(MAZE_SIZE) - 1) * wallSep, 0);
+    // Get the corner/vertex values for each of the control points
+    std::vector<cv::Point2f> cp_vertices;
+    cp_vertices.push_back(cv::Point2f(cpPositions[0][0], cpPositions[0][1]));
+    cp_vertices.push_back(cv::Point2f(cpPositions[1][0], cpPositions[1][1]));
+    cp_vertices.push_back(cv::Point2f(cpPositions[2][0], cpPositions[2][1]));
+    cp_vertices.push_back(cv::Point2f(cpPositions[3][0], cpPositions[3][1]));
 
-    H = findHomography(imageCorners, targetCorners);
-    // H = findHomography(targetCorners, imageCorners);
+    // Get the corner/vertex values for each of the wall images
+    std::vector<cv::Point2f> img_vertices;
+    img_vertices = computeWallVertices(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * wallSpace, (float(MAZE_SIZE) - 1) * wallSpace, 0);
 
-    // std::cerr << H;
+    // Compute the homography matrix
+    H = findHomography(img_vertices, cp_vertices);
 }
 
 void loadCoordinatesXML()
@@ -588,6 +643,9 @@ int main(int argc, char **argv)
     ROS_INFO("Package Path: %s", packagePath.c_str());
     ROS_INFO("Image Path: %s", imgPath.c_str());
     ROS_INFO("Config XML Path: %s", configPath.c_str());
+    ROS_INFO("Display: XYLim=[%0.2f,%0.2f] Width=%d Height=%d AR=%0.2f", xy_lim, xy_lim, winWidth, winHeight, winAspectRatio);
+    ROS_INFO("Wall (Norm): Width=%0.2f Space=%0.2f", wallWidth, wallSpace);
+    ROS_INFO("Wall (Pxl): Width=%d Space=%d", (int)(wallWidth * (float)winWidth), (int)(wallSpace * (float)winWidth));
 
     // Initialize DevIL library
     ilInit();
@@ -610,7 +668,7 @@ int main(int argc, char **argv)
         {
             ILenum error = ilGetError();
             ilDeleteImages(1, &img_id);
-            ROS_ERROR("DevIL: Failed to load image: %s", iluErrorString(error));
+            ROS_ERROR("DevIL: Failed to load image: Error[%s] File[%s]", iluErrorString(error), img_path.c_str());
         }
     }
 
@@ -657,6 +715,10 @@ int main(int argc, char **argv)
     // TEMP: hardcoding for now
     monitorCount = 2;
 
+    // Set the window to the first monitor
+    computeHomography();
+    changeWindowMonMode();
+
     // _______________ MAIN LOOP _______________
 
     while (!glfwWindowShouldClose(window))
@@ -670,7 +732,8 @@ int main(int argc, char **argv)
         // Draw/update control points
         for (int i = 0; i < 4; i++)
         {
-            drawControlPoint(cpPositions[i][0], cpPositions[i][1], cpPositions[i][2], cpPositions[i][3]);
+            // drawControlPoint(cpPositions[i][0], cpPositions[i][1], cpPositions[i][2], cpPositions[i][3]);
+            drawControlPointCircle(cpPositions[i][0], cpPositions[i][1], cpPositions[i][2]);
         }
 
         // Swap buffers and poll events

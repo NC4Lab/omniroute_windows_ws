@@ -60,7 +60,7 @@ static void callbackError(int, const char *);
 void drawControlPoint(float, float, float, float);
 
 // Function to draw a rectangle with given corners
-void drawWall(std::vector<cv::Point2f>, int);
+void drawWall(std::vector<cv::Point2f>);
 
 // Function to draw multiple wall images
 void drawWallsAll();
@@ -85,29 +85,53 @@ int main(int, char **);
 
 // ============= VARIABLES =============
 
-// Constants
+// Number of rows and columns in the maze
 const int MAZE_SIZE = 3;
 
-// Variables related to control point positions and transformation
+// Spricify window resolution: 4K resolution (3840x2160)
+int winWidth = 3840;
+int winHeight = 2160;
+float winAspectRatio = (float)winWidth / (float)winHeight;
+
+/**
+ * @brief Array to hold the position and transformation parameters for control points in normalized coordinates [-1, 1].
+ *
+ * Each row corresponds to a specific control point on the screen, and each column holds a different attribute
+ * of that control point.
+ *
+ * - Rows:
+ *   - [0]: Top-left control point
+ *   - [1]: Top-right control point
+ *   - [2]: Bottom-right control point
+ *   - [3]: Bottom-left control point
+ *
+ * - Columns:
+ *   - [0]: X-distance from center [-1,1]
+ *   - [1]: Y-distance from center [-1,1]
+ *   - [2]: Width parameter
+ *   - [3]: Height parameter
+ *   - [4]: Shearing factor
+ */
+
+// Variables related to control points
+const float cpSize = 0.015f;
+const float xy_lim = 0.5f;
+const float ht_scale = winAspectRatio * 1.8 * 0.75;
 float cpPositions[4][5] = {
-    {-0.8f, 0.8f, 0.02f, 0.02f, 0.0f}, // top-left control point
-    {0.8f, 0.8f, 0.02f, 0.02f, 0.0f},  // top-right control point
-    {0.8f, -0.8f, 0.02f, 0.02f, 0.0f}, // bottom-right control point
-    {-0.8f, -0.8f, 0.02f, 0.02f, 0.0f} // bottom-left control point
+    {-xy_lim, xy_lim, cpSize, cpSize *ht_scale, 0.0f}, // top-left control point
+    {xy_lim, xy_lim, cpSize, cpSize *ht_scale, 0.0f},  // top-right control point
+    {xy_lim, -xy_lim, cpSize, cpSize *ht_scale, 0.0f}, // bottom-right control point
+    {-xy_lim, -xy_lim, cpSize, cpSize *ht_scale, 0.0f} // bottom-left control point
 };
-float shearValues[MAZE_SIZE][MAZE_SIZE];
-float sizeValues[MAZE_SIZE][MAZE_SIZE];
-float configurationValues[3][3][3];
 cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
 int cpSelected = 0;
+std::string cpModMode = "position";
 
-// Variables related to wall properties
-float wallWidth = 0.02f;
-float wallHeight = 0.02f;
-float wallSep = 0.05f;
-std::string cpModMode = "pos";
-float shearAmount = 0.0f;
-std::vector<cv::Point2f> wallCorners = computeWallVertices(0.0f, 0.0f, wallWidth, wallHeight, 0);
+// Wall image size and spacing
+const float wallWidth = 0.02;
+const float wallSpace = 2.5 * wallWidth;
+// const float wallWidth = cpSize;
+// const float wallSpace = 0.05f;
 
 // Variables related to image and file paths
 std::string windowName = "Projection Calibration";
@@ -119,17 +143,14 @@ std::string configPath = workspacePath + "/data/proj_cfg/proj_cfg.xml";
 // List of image file paths
 int imageInd = 0; // Index of the image to be loaded
 std::vector<std::string> imagePaths = {
-    imgPath + "/tj.bmp",
-    imgPath + "/mmCarribean.png",
-    // Add more image file paths as needed
+    imgPath + "/1_test_pattern.bmp",
+    imgPath + "/2_manu_pirate.bmp",
+    imgPath + "/3_earthlings.bmp",
+    imgPath + "/4_tj.bmp",
 };
 
 // Container to hold the loaded images
 std::vector<ILuint> imageIDs;
-
-// Spricify window resolution: 4K resolution (3840x2160)
-int winWidth = 3840;
-int winHeight = 2160;
 
 // Variables related to window and OpenGL
 GLFWwindow *window;
@@ -137,9 +158,9 @@ GLuint fbo;
 GLuint fboTexture;
 GLFWmonitor *monitor = NULL;
 GLFWmonitor **monitors;
-int monitorCount; // Number of monitors connected to the system
-int monitorInd = 0; // Index of the monitor to be used [0, 1]
-bool isFullScreen = true; // Flag to indicate if the window is in full screen mode
+int monitorCount;          // Number of monitors connected to the system
+int monitorInd = 0;        // Index of the monitor to be used [0, 1]
+bool isFullScreen = false; // Flag to indicate if the window is in full screen mode
 
 // Variables related to mouse input (UNUSED)
 ILint textureImgWidth;

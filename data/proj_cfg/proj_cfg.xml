@@ -2,48 +2,48 @@
 <config>
 	<cpPositions>
 		<Row>
-			<Cell>-0.800000</Cell>
-			<Cell>1.050000</Cell>
-			<Cell>0.020000</Cell>
-			<Cell>0.020000</Cell>
+			<Cell>-0.400000</Cell>
+			<Cell>0.500000</Cell>
+			<Cell>0.015000</Cell>
+			<Cell>0.036000</Cell>
 			<Cell>0.000000</Cell>
 		</Row>
 		<Row>
-			<Cell>0.800000</Cell>
-			<Cell>0.800000</Cell>
-			<Cell>0.020000</Cell>
-			<Cell>0.020000</Cell>
+			<Cell>0.500000</Cell>
+			<Cell>0.500000</Cell>
+			<Cell>0.015000</Cell>
+			<Cell>0.036000</Cell>
 			<Cell>0.000000</Cell>
 		</Row>
 		<Row>
-			<Cell>0.800000</Cell>
-			<Cell>-0.800000</Cell>
-			<Cell>0.020000</Cell>
-			<Cell>0.020000</Cell>
+			<Cell>0.500000</Cell>
+			<Cell>-0.500000</Cell>
+			<Cell>0.015000</Cell>
+			<Cell>0.036000</Cell>
 			<Cell>0.000000</Cell>
 		</Row>
 		<Row>
-			<Cell>-0.800000</Cell>
-			<Cell>-0.800000</Cell>
-			<Cell>0.020000</Cell>
-			<Cell>0.020000</Cell>
+			<Cell>-0.500000</Cell>
+			<Cell>-0.500000</Cell>
+			<Cell>0.015000</Cell>
+			<Cell>0.036000</Cell>
 			<Cell>0.000000</Cell>
 		</Row>
 	</cpPositions>
 	<H>
 		<Row>
-			<Cell>17.250000</Cell>
+			<Cell>10.000001</Cell>
+			<Cell>0.555556</Cell>
+			<Cell>-0.500000</Cell>
+		</Row>
+		<Row>
 			<Cell>0.000000</Cell>
-			<Cell>-0.800000</Cell>
+			<Cell>10.555556</Cell>
+			<Cell>-0.500000</Cell>
 		</Row>
 		<Row>
-			<Cell>-1.250000</Cell>
-			<Cell>18.500000</Cell>
-			<Cell>-0.800000</Cell>
-		</Row>
-		<Row>
-			<Cell>1.562500</Cell>
 			<Cell>-0.000000</Cell>
+			<Cell>1.111112</Cell>
 			<Cell>1.000000</Cell>
 		</Row>
 	</H>
