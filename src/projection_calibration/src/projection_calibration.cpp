@@ -6,15 +6,394 @@
 //============= INCLUDE ================
 #include "projection_calibration.h"
 
+/**
+ * @brief Creates a vector of points representing a rectangle with shear for each wall.
+ * 
+ * This function generates a rectangle's corner points starting from the top-left corner
+ * and going clockwise. The rectangle is defined by its top-left corner (x0, y0),
+ * width, height, and a shear amount.
+ * 
+ * @param x0 The x-coordinate of the top-left corner of the rectangle.
+ * @param y0 The y-coordinate of the top-left corner of the rectangle.
+ * @param width The width of the rectangle.
+ * @param height The height of the rectangle.
+ * @param shearAmount The amount of shear to apply to the rectangle.
+ * 
+ * @return std::vector<cv::Point2f> A vector of 4 points representing the corners of the rectangle.
+ */
 std::vector<cv::Point2f> createRectPoints(float x0, float y0, float width, float height, float shearAmount)
 {
     std::vector<cv::Point2f> rectPoints;
+
+    // Top-left corner after applying shear
     rectPoints.push_back(cv::Point2f(x0 + height * shearAmount, y0 + height));
+
+    // Top-right corner after applying shear
     rectPoints.push_back(cv::Point2f(x0 + height * shearAmount + width, y0 + height));
+
+    // Bottom-right corner
     rectPoints.push_back(cv::Point2f(x0 + width, y0));
+
+    // Bottom-left corner
     rectPoints.push_back(cv::Point2f(x0, y0));
 
     return rectPoints;
+}
+
+
+/**
+ * @brief Callback function for handling key bindings.
+ *
+ * @param window Pointer to the GLFW window.
+ * @param key The key that was pressed or released.
+ * @param scancode The system-specific scancode of the key.
+ * @param action GLFW_PRESS, GLFW_RELEASE, or GLFW_REPEAT.
+ * @param mods Bit field describing which modifier keys were held down.
+ *
+ *  @ref: GLFW/glfw3.h for keybindings enum
+ *
+ * Key Bindings:
+ * - [1-4]: Select target control point (Top-left, Top-right, Bottom-right, Bottom-left)
+ * - [C, T]: Set image to image 1 or image 2
+ * - [A, D, S]: Change control point mode(position/translation, dimension/height, shear)
+ * - [ENTER]: Save coordinates to XML
+ * - [L]: Load coordinates from XML
+ * - [F]: Fullscreen on second monitor
+ * - [M]: Move window to next monitor
+ * - [Arrow Keys]: Move selected control point or adjust dimension/shear
+ */
+void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+
+    glfwMakeContextCurrent(window);
+
+    // _______________ ANY KEY RELEASE ACTION _______________
+
+    if (action == GLFW_RELEASE)
+    {
+        // ---------- Target selector keys [1-4] ----------
+
+        // Top-left control point
+        if (key == GLFW_KEY_1)
+        {
+            cpSelected = 0;
+        }
+
+        // Top-right control point
+        else if (key == GLFW_KEY_2)
+        {
+            cpSelected = 1;
+        }
+
+        // Bottom-right control point
+        else if (key == GLFW_KEY_3)
+        {
+            cpSelected = 2;
+        }
+
+        // Bottom-left control point
+        else if (key == GLFW_KEY_4)
+        {
+            cpSelected = 3;
+        }
+
+        // ---------- Image selector keys [F1-n] ----------
+
+        else if (key == GLFW_KEY_F1)
+        {
+            imageInd = 0;
+        }
+        else if (key == GLFW_KEY_F2)
+        {
+            imageInd = 1;
+        }
+
+        // ---------- Change mode keys [A, D, S] ----------
+
+        // Control point position [up, down, left, right]
+        else if (key == GLFW_KEY_A)
+        {
+            cpModMode = "position";
+        }
+
+        // Control point height [up, down]
+        else if (key == GLFW_KEY_D)
+        {
+            cpModMode = "dimension";
+        }
+
+        // Control point shear [up, down]
+        else if (key == GLFW_KEY_S)
+        {
+            cpModMode = "shear";
+        }
+
+        // ---------- XML Handling [ENTER, L] ----------
+
+        // Save coordinates to XML
+        else if (key == GLFW_KEY_ENTER)
+        {
+            ROS_INFO("save hit");
+            saveCoordinatesXML();
+        }
+
+        // Load coordinates from XML
+        else if (key == GLFW_KEY_L)
+        {
+            loadCoordinatesXML();
+        }
+
+        // ---------- Monitor handling [F, M] ----------
+
+        // Set/unset Fullscreen
+        else if (key == GLFW_KEY_F)
+        {
+            isFullScreen = !isFullScreen;
+            changeWindowMonMode();
+        }
+
+        // Move the window to the other monitor
+        else if (key == GLFW_KEY_M)
+        {
+            monitorInd = (monitorInd < monitorCount - 1) ? monitorInd + 1 : 0;
+            changeWindowMonMode();
+        }
+    }
+
+    // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
+    else if (action == GLFW_PRESS || action == GLFW_REPEAT)
+    {
+
+        // ---------- Control point position change [LEFT, RIGHT, UP, DOWN] ----------
+        if (cpModMode == "position")
+        {
+
+            // Listen for arrow key input to move selected control point
+            if (key == GLFW_KEY_LEFT)
+            {
+                cpPositions[cpSelected][0] -= 0.05f;
+            }
+            else if (key == GLFW_KEY_RIGHT)
+            {
+                cpPositions[cpSelected][0] += 0.05f;
+            }
+            else if (key == GLFW_KEY_UP)
+            {
+                cpPositions[cpSelected][1] += 0.05f;
+            }
+            else if (key == GLFW_KEY_DOWN)
+            {
+                cpPositions[cpSelected][1] -= 0.05f;
+            }
+        }
+
+        // ---------- Control point dimension/hight change [UP, DOWN] ----------
+        if (cpModMode == "dimension")
+        {
+            if (key == GLFW_KEY_UP)
+            {
+                cpPositions[cpSelected][3] += 0.001f;
+            }
+            else if (key == GLFW_KEY_DOWN)
+            {
+                cpPositions[cpSelected][3] -= 0.001f;
+            }
+        }
+
+        // ---------- Control point shear change [UP, DOWN] ----------
+        if (cpModMode == "shear")
+        {
+            if (key == GLFW_KEY_UP)
+            {
+                cpPositions[cpSelected][4] += 0.05f;
+            }
+            else if (key == GLFW_KEY_DOWN)
+            {
+                cpPositions[cpSelected][4] -= 0.05f;
+            }
+        }
+    }
+
+    // ---------- Recompute homography matrix ----------
+    computeHomography();
+}
+
+/**
+ * @brief Draws a control point as a quadrilateral using OpenGL.
+ *
+ * This function uses OpenGL to draw a quadrilateral that represents a control point.
+ * The control point is drawn in a clockwise direction, starting from the bottom-left corner.
+ *
+ * @param x The x-coordinate of the bottom-left corner of the control point.
+ * @param y The y-coordinate of the bottom-left corner of the control point.
+ * @param cp_width The width of the control point.
+ * @param cp_height The height of the control point.
+ */
+void drawControlPoint(float x, float y, float cp_width, float cp_height)
+{
+    // Begin drawing a quadrilateral
+    glBegin(GL_QUADS);
+
+    // Define the vertices of the quadrilateral in a clockwise direction
+    // starting from the bottom-left corner
+    glVertex2f(x, y);                        // Bottom-left corner
+    glVertex2f(x, y + cp_height);            // Top-left corner
+    glVertex2f(x + cp_width, y + cp_height); // Top-right corner
+    glVertex2f(x + cp_width, y);             // Bottom-right corner
+
+    // End drawing
+    glEnd();
+}
+
+/**
+ * @brief Draws a textured wall using OpenGL.
+ *
+ * @param corners Vector of corner points for the wall.
+ * @param imageInd Index of the texture image to use.
+ */
+void drawWall(std::vector<cv::Point2f> img_vertices, int imageInd)
+{
+    // Start drawing a quadrilateral
+    glBegin(GL_QUADS);
+
+    // Set texture and vertex coordinates for each corner
+    // Bottom-left corner
+    glTexCoord2f(0.0f, 1.0f);
+    glVertex2f(img_vertices[0].x, img_vertices[0].y);
+
+    // Bottom-right corner
+    glTexCoord2f(1.0f, 1.0f);
+    glVertex2f(img_vertices[1].x, img_vertices[1].y);
+
+    // Top-right corner
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex2f(img_vertices[2].x, img_vertices[2].y);
+
+    // Top-left corner
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex2f(img_vertices[3].x, img_vertices[3].y);
+
+    // End drawing
+    glEnd();
+}
+
+/**
+ * @brief Draws all the walls in the maze using OpenGL and OpenCV.
+ *
+ * This function iterates through the maze grid and draws each wall with
+ * texture mapping and perspective warping. It uses control points to
+ * determine the shear and height for each wall.
+ */
+void drawWallsAll()
+{
+    // Extract shear and height values from control points
+    float shear4 = cpPositions[3][4];
+    float shear3 = cpPositions[2][4];
+    float shear1 = cpPositions[0][4];
+    float height4 = cpPositions[3][3];
+    float height3 = cpPositions[2][3];
+    float height1 = cpPositions[0][3];
+
+    // Enable OpenGL texture mapping
+    glEnable(GL_TEXTURE_2D);
+
+    // Iterate through the maze grid
+    for (float i_wall = 0; i_wall < MAZE_SIZE; i_wall++)
+    {
+        // Bind and set texture image
+        ilBindImage(imageIDs[imageInd]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
+                     ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
+                     GL_UNSIGNED_BYTE, ilGetData());
+
+        // Iterate through each cell in the maze row
+        for (float j_wall = 0; j_wall < MAZE_SIZE; j_wall++)
+        {
+            // Bind texture to framebuffer object
+            glBindTexture(GL_TEXTURE_2D, fboTexture);
+
+            // Calculate shear and height for the current wall
+            shearAmount = shear4 + (i_wall / (MAZE_SIZE - 1)) * (shear3 - shear4) +
+                          (j_wall / (MAZE_SIZE - 1)) * (shear1 - shear4);
+            float heightAmount = height4 + (i_wall / (MAZE_SIZE - 1)) * (height3 - height4) +
+                                 (j_wall / (MAZE_SIZE - 1)) * (height1 - height4);
+
+            // Create wall vertices
+            std::vector<cv::Point2f> img_vertices = createRectPoints(0.0f, 0.0f, wallWidth, heightAmount, shearAmount);
+
+            // Apply perspective warping to vertices
+            for (auto &p : img_vertices)
+            {
+                // Update vertex positions based on shear and height
+                p.x += i_wall * wallSep;
+                p.y += j_wall * wallSep;
+
+                // Apply homography matrix to warp perspective
+                float data[] = {p.x, p.y, 1};
+                cv::Mat ptMat(3, 1, CV_32F, data);
+                H.convertTo(H, ptMat.type());
+                ptMat = H * ptMat;
+                ptMat /= ptMat.at<float>(2);
+
+                // Update vertex coordinates
+                p.x = ptMat.at<float>(0, 0);
+                p.y = ptMat.at<float>(0, 1);
+            }
+
+            // Draw the wall
+            drawWall(img_vertices, i_wall);
+        }
+    }
+}
+
+void changeWindowMonMode()
+{
+    // Use modulo to loop back to the first monitor if we've reached the end
+    monitor = monitors[monitorInd];
+
+    // Get the video mode of the selected monitor
+    const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+
+    if (monitor)
+    {
+        if (isFullScreen)
+        {
+            // Set the window to full-screen mode on the current monitor
+            glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+            ROS_INFO("Moved window to monitor %d and set to full-screen", monitorInd + 1);
+        }
+        else
+        {
+            // Get the position of the current monitor
+            int monitor_x, monitor_y;
+            glfwGetMonitorPos(monitor, &monitor_x, &monitor_y);
+
+            // Set the window to windowed mode and position it on the current monitor
+            glfwSetWindowMonitor(window, NULL, monitor_x + 100, monitor_y + 100, 800, 600, 0);
+            ROS_INFO("Moved window to monitor %d and set to windowed", monitorInd + 1);
+        }
+    }
+    else
+    {
+        ROS_WARN("Monitor not found. Could not change window mode or move monitor.");
+    }
+}
+
+void computeHomography()
+{
+    std::vector<cv::Point2f> targetCorners;
+    std::vector<cv::Point2f> imageCorners;
+    // hard coding the specific corners for each of the control points.
+    targetCorners.push_back(cv::Point2f(cpPositions[0][0], cpPositions[0][1]));
+    targetCorners.push_back(cv::Point2f(cpPositions[1][0], cpPositions[1][1]));
+    targetCorners.push_back(cv::Point2f(cpPositions[2][0], cpPositions[2][1]));
+    targetCorners.push_back(cv::Point2f(cpPositions[3][0], cpPositions[3][1]));
+    imageCorners = createRectPoints(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * wallSep, (float(MAZE_SIZE) - 1) * wallSep, 0);
+
+    H = findHomography(imageCorners, targetCorners);
+    // H = findHomography(targetCorners, imageCorners);
+
+    // std::cerr << H;
 }
 
 void loadCoordinatesXML()
@@ -170,365 +549,6 @@ void saveCoordinatesXML()
     }
 }
 
-void computeHomography()
-{
-    std::vector<cv::Point2f> targetCorners;
-    std::vector<cv::Point2f> imageCorners;
-    // hard coding the specific corners for each of the control points.
-    targetCorners.push_back(cv::Point2f(cpPositions[0][0], cpPositions[0][1]));
-    targetCorners.push_back(cv::Point2f(cpPositions[1][0], cpPositions[1][1]));
-    targetCorners.push_back(cv::Point2f(cpPositions[2][0], cpPositions[2][1]));
-    targetCorners.push_back(cv::Point2f(cpPositions[3][0], cpPositions[3][1]));
-    imageCorners = createRectPoints(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * wallSep, (float(MAZE_SIZE) - 1) * wallSep, 0);
-
-    H = findHomography(imageCorners, targetCorners);
-    // H = findHomography(targetCorners, imageCorners);
-
-    // std::cerr << H;
-}
-
-/**
- * @brief Callback function for handling key bindings.
- *
- * @param window Pointer to the GLFW window.
- * @param key The key that was pressed or released.
- * @param scancode The system-specific scancode of the key.
- * @param action GLFW_PRESS, GLFW_RELEASE, or GLFW_REPEAT.
- * @param mods Bit field describing which modifier keys were held down.
- *
- *  @ref: GLFW/glfw3.h for keybindings enum
- *
- * Key Bindings:
- * - [1-4]: Select target control point (Top-left, Top-right, Bottom-right, Bottom-left)
- * - [C, T]: Set image to image 1 or image 2
- * - [P, D, S]: Change mode (control point position, control point dimensions, control point shear)
- * - [ENTER]: Save coordinates to XML
- * - [L]: Load coordinates from XML
- * - [F]: Fullscreen on second monitor
- * - [M]: Move window to next monitor
- * - [Arrow Keys]: Move selected control point or adjust dimensions/shear
- */
-void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
-{
-
-    glfwMakeContextCurrent(window);
-
-    // _______________ ANY KEY RELEASE ACTION _______________
-
-    if (action == GLFW_RELEASE)
-    {
-        // ---------- Target selector keys [1-4] ----------
-
-        // Top-left control point
-        if (key == GLFW_KEY_1)
-        {
-            cpSelected = 0;
-        }
-
-        // Top-right control point
-        else if (key == GLFW_KEY_2)
-        {
-            cpSelected = 1;
-        }
-
-        // Bottom-right control point
-        else if (key == GLFW_KEY_3)
-        {
-            cpSelected = 2;
-        }
-
-        // Bottom-left control point
-        else if (key == GLFW_KEY_4)
-        {
-            cpSelected = 3;
-        }
-
-        // ---------- Image selector keys [F1-n] ----------
-
-        else if (key == GLFW_KEY_F1)
-        {
-            imageInd = 0;
-        }
-        else if (key == GLFW_KEY_F2)
-        {
-            imageInd = 1;
-        }
-
-        // ---------- Change mode keys [P, D, S] ----------
-
-        // Control point position [up, down, left, right]
-        else if (key == GLFW_KEY_P)
-        {
-            cpModMode = "pos";
-        }
-
-        // Control point height [up, down]
-        else if (key == GLFW_KEY_D)
-        {
-            cpModMode = "dimensions";
-        }
-
-        // Control point shear [up, down]
-        else if (key == GLFW_KEY_S)
-        {
-            cpModMode = "shear";
-        }
-
-        // ---------- XML Handling [ENTER, L] ----------
-
-        // Save coordinates to XML
-        else if (key == GLFW_KEY_ENTER)
-        {
-            ROS_INFO("save hit");
-            saveCoordinatesXML();
-        }
-
-        // Load coordinates from XML
-        else if (key == GLFW_KEY_L)
-        {
-            loadCoordinatesXML();
-        }
-
-        // ---------- Monitor handling [F, M] ----------
-
-        // Fullscreen on second monitor
-        else if (key == GLFW_KEY_F)
-        {
-            monitors = glfwGetMonitors(&monitor_count);
-
-            // Find the second monitor (index 1) by checking its position
-            for (int i = 0; i < monitor_count; i++)
-            {
-                const GLFWvidmode *mode = glfwGetVideoMode(monitors[i]);
-                int monitor_x, monitor_y;
-                glfwGetMonitorPos(monitors[i], &monitor_x, &monitor_y);
-                if (monitor_x != 0 || monitor_y != 0)
-                {
-                    monitorNumber = i;
-                    monitor = monitors[i];
-                    break;
-                }
-            }
-
-            // Make the window full screen on the second monitor
-            if (monitor)
-            {
-                const GLFWvidmode *mode = glfwGetVideoMode(monitor);
-                glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-            }
-        }
-
-        // Move window to next monitor
-        else if (key == GLFW_KEY_M)
-        {
-            ROS_INFO(windowName.c_str()); // this should be showing something in the terminal, but isn't atm
-            monitors = glfwGetMonitors(&monitor_count);
-            monitorNumber++;
-            monitor = monitors[monitorNumber % monitor_count];
-            if (monitor)
-            {
-                const GLFWvidmode *mode = glfwGetVideoMode(monitor);
-                glfwSetWindowAttrib(window, GLFW_FOCUS_ON_SHOW, GL_TRUE);
-                glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-            }
-        }
-    }
-
-    // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
-    else if (action == GLFW_PRESS || action == GLFW_REPEAT)
-    {
-
-        // ---------- Control point position change [LEFT, RIGHT, UP, DOWN] ----------
-        if (cpModMode == "pos")
-        {
-
-            // Listen for arrow key input to move selected control point
-            if (key == GLFW_KEY_LEFT)
-            {
-                cpPositions[cpSelected][0] -= 0.05f;
-            }
-            else if (key == GLFW_KEY_RIGHT)
-            {
-                cpPositions[cpSelected][0] += 0.05f;
-            }
-            else if (key == GLFW_KEY_UP)
-            {
-                cpPositions[cpSelected][1] += 0.05f;
-            }
-            else if (key == GLFW_KEY_DOWN)
-            {
-                cpPositions[cpSelected][1] -= 0.05f;
-            }
-        }
-
-        // ---------- Control point dimension/hight change [UP, DOWN] ----------
-        if (cpModMode == "dimensions")
-        {
-            if (key == GLFW_KEY_UP)
-            {
-                cpPositions[cpSelected][3] += 0.001f;
-            }
-            else if (key == GLFW_KEY_DOWN)
-            {
-                cpPositions[cpSelected][3] -= 0.001f;
-            }
-        }
-
-        // ---------- Control point shear change [UP, DOWN] ----------
-        if (cpModMode == "shear")
-        {
-            if (key == GLFW_KEY_UP)
-            {
-                cpPositions[cpSelected][4] += 0.05f;
-            }
-            else if (key == GLFW_KEY_DOWN)
-            {
-                cpPositions[cpSelected][4] -= 0.05f;
-            }
-        }
-    }
-
-    computeHomography();
-}
-
-void callbackFrameBufferSize(GLFWwindow *window, int width, int height)
-{
-    glViewport(0, 0, width, height);
-}
-
-static void callbackError(int error, const char *description)
-{
-    ROS_ERROR("Error: %s\n", description);
-}
-
-/**
- * @brief Draws a control point as a quadrilateral using OpenGL.
- *
- * This function uses OpenGL to draw a quadrilateral that represents a control point.
- * The control point is drawn in a clockwise direction, starting from the bottom-left corner.
- *
- * @param x The x-coordinate of the bottom-left corner of the control point.
- * @param y The y-coordinate of the bottom-left corner of the control point.
- * @param cp_width The width of the control point.
- * @param cp_height The height of the control point.
- */
-void drawControlPoint(float x, float y, float cp_width, float cp_height)
-{
-    // Begin drawing a quadrilateral
-    glBegin(GL_QUADS);
-
-    // Define the vertices of the quadrilateral in a clockwise direction
-    // starting from the bottom-left corner
-    glVertex2f(x, y);                        // Bottom-left corner
-    glVertex2f(x, y + cp_height);            // Top-left corner
-    glVertex2f(x + cp_width, y + cp_height); // Top-right corner
-    glVertex2f(x + cp_width, y);             // Bottom-right corner
-
-    // End drawing
-    glEnd();
-}
-
-/**
- * @brief Draws a textured wall using OpenGL.
- *
- * @param corners Vector of corner points for the wall.
- * @param imageInd Index of the texture image to use.
- */
-void drawWall(std::vector<cv::Point2f> img_vertices, int imageInd)
-{
-    // Start drawing a quadrilateral
-    glBegin(GL_QUADS);
-
-    // Set texture and vertex coordinates for each corner
-    // Bottom-left corner
-    glTexCoord2f(0.0f, 1.0f);
-    glVertex2f(img_vertices[0].x, img_vertices[0].y);
-
-    // Bottom-right corner
-    glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(img_vertices[1].x, img_vertices[1].y);
-
-    // Top-right corner
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(img_vertices[2].x, img_vertices[2].y);
-
-    // Top-left corner
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(img_vertices[3].x, img_vertices[3].y);
-
-    // End drawing
-    glEnd();
-}
-
-/**
- * @brief Draws all the walls in the maze using OpenGL and OpenCV.
- *
- * This function iterates through the maze grid and draws each wall with
- * texture mapping and perspective warping. It uses control points to
- * determine the shear and height for each wall.
- */
-void drawWallsAll()
-{
-    // Extract shear and height values from control points
-    float shear4 = cpPositions[3][4];
-    float shear3 = cpPositions[2][4];
-    float shear1 = cpPositions[0][4];
-    float height4 = cpPositions[3][3];
-    float height3 = cpPositions[2][3];
-    float height1 = cpPositions[0][3];
-
-    // Enable OpenGL texture mapping
-    glEnable(GL_TEXTURE_2D);
-
-    // Iterate through the maze grid
-    for (float i = 0; i < MAZE_SIZE; i++)
-    {
-        // Bind and set texture image
-        ilBindImage(imageIDs[imageInd]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
-                     ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
-                     GL_UNSIGNED_BYTE, ilGetData());
-
-        // Iterate through each cell in the maze row
-        for (float j = 0; j < MAZE_SIZE; j++)
-        {
-            // Bind texture to framebuffer object
-            glBindTexture(GL_TEXTURE_2D, fboTexture);
-
-            // Calculate shear and height for the current wall
-            shearAmount = shear4 + (i / (MAZE_SIZE - 1)) * (shear3 - shear4) +
-                          (j / (MAZE_SIZE - 1)) * (shear1 - shear4);
-            float heightAmount = height4 + (i / (MAZE_SIZE - 1)) * (height3 - height4) +
-                                 (j / (MAZE_SIZE - 1)) * (height1 - height4);
-
-            // Create wall vertices
-            std::vector<cv::Point2f> img_vertices = createRectPoints(0.0f, 0.0f, wallWidth, heightAmount, shearAmount);
-
-            // Apply perspective warping to vertices
-            for (auto &p : img_vertices)
-            {
-                // Update vertex positions based on shear and height
-                p.x += i * wallSep;
-                p.y += j * wallSep;
-
-                // Apply homography matrix to warp perspective
-                float data[] = {p.x, p.y, 1};
-                cv::Mat ptMat(3, 1, CV_32F, data);
-                H.convertTo(H, ptMat.type());
-                ptMat = H * ptMat;
-                ptMat /= ptMat.at<float>(2);
-
-                // Update vertex coordinates
-                p.x = ptMat.at<float>(0, 0);
-                p.y = ptMat.at<float>(0, 1);
-            }
-
-            // Draw the wall
-            drawWall(img_vertices, i);
-        }
-    }
-}
-
 /**
  * @brief  Entry point for the projection_calibration_node ROS node.
  *
@@ -605,7 +625,6 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    
     // Set OpenGL context and callbacks
     glfwMakeContextCurrent(window);
     gladLoadGL();
@@ -622,6 +641,11 @@ int main(int argc, char **argv)
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // Get the list of available monitors and their count
+    monitors = glfwGetMonitors(&monitorCount);
+    // TEMP: hardcoding for now
+    monitorCount = 2;
 
     // _______________ MAIN LOOP _______________
 
@@ -649,7 +673,7 @@ int main(int argc, char **argv)
     }
 
     // _______________ CLEANUP _______________
-    
+
     // Destroy GLFW window and DevIL images
     glfwDestroyWindow(window);
     for (ILuint imageID : imageIDs)

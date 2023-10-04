@@ -47,25 +47,11 @@
 
 // ============= METHODS =============
 
+
 std::vector<cv::Point2f> createRectPoints(float, float, float, float, float);
-
-// Function to load coordinates from an XML file
-void loadCoordinatesXML();
-
-// Function to save coordinates to an XML file
-void saveCoordinatesXML();
-
-// Function to compute homography matrix
-void computeHomography();
 
 // Callback function for handling keyboard input
 void callbackKeyBinding(GLFWwindow *, int, int, int, int);
-
-// Callback function for handling window resize events
-void callbackFrameBufferSize(GLFWwindow *, int, int);
-
-// Callback function for handling GLFW errors
-static void callbackError(int, const char *);
 
 // Function to draw a given control point marker
 void drawControlPoint(float, float, float, float);
@@ -75,6 +61,18 @@ void drawWall(std::vector<cv::Point2f>, int);
 
 // Function to draw multiple wall images
 void drawWallsAll();
+
+// Function to change the window monitor and mode (full-screen or windowed)
+void changeWindowMonMode();
+
+// Function to compute homography matrix
+void computeHomography();
+
+// Function to load coordinates from an XML file
+void loadCoordinatesXML();
+
+// Function to save coordinates to an XML file
+void saveCoordinatesXML();
 
 // The main function of the program
 int main(int, char **);
@@ -132,10 +130,12 @@ GLFWwindow *window;
 GLuint fbo;
 GLuint fboTexture;
 GLFWmonitor *monitor = NULL;
-int monitorNumber = 1; // Index of the monitor to be used [0, 1]
 GLFWmonitor **monitors;
-int monitor_count;
+int monitorCount; // Number of monitors connected to the system
+int monitorInd = 0; // Index of the monitor to be used [0, 1]
+bool isFullScreen = true; // Flag to indicate if the window is in full screen mode
 
+// Variables related to mouse input (UNUSED)
 ILint textureImgWidth;
 ILint textureImgHeight;
 
