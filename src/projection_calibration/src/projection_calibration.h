@@ -106,7 +106,7 @@ float shearAmount = 0.0f;
 std::vector<cv::Point2f> wallCorners = createRectPoints(0.0f, 0.0f, wallWidth, wallHeight, 0);
 
 // Variables related to image and file paths
-std::string windowName;
+std::string windowName = "Projection Calibration";
 std::string packagePath = ros::package::getPath("projection_calibration");
 std::string workspacePath = packagePath.substr(0, packagePath.rfind("/src"));
 std::string imgPath = workspacePath + "/data/img";
@@ -123,18 +123,20 @@ std::vector<std::string> imagePaths = {
 // Container to hold the loaded images
 std::vector<ILuint> imageIDs;
 
-// Variables related to window and OpenGL
+// Spricify window resolution: 4K resolution (3840x2160)
 int winWidth = 3840;
 int winHeight = 2160;
+
+// Variables related to window and OpenGL
 GLFWwindow *window;
 GLuint fbo;
 GLuint fboTexture;
 GLFWmonitor *monitor = NULL;
-int monitorNumber = 0;
+int monitorNumber = 1; // Index of the monitor to be used [0, 1]
 GLFWmonitor **monitors;
 int monitor_count;
 
-ILint texWidth;
-ILint texHeight;
+ILint textureImgWidth;
+ILint textureImgHeight;
 
 #endif

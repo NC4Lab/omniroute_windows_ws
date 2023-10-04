@@ -159,6 +159,7 @@ void saveCoordinatesXML()
     }
 
     // Save the XML document to a file specified by 'configPath'
+    ROS_INFO("Saving config data to: %s", configPath.c_str());
     if (doc.save_file(configPath.c_str()))
     {
         ROS_INFO("XML file saved successfully.");
@@ -212,7 +213,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
     glfwMakeContextCurrent(window);
 
-    // ---------- ANY KEY RELEASE ACTION ---------- 
+    // _______________ ANY KEY RELEASE ACTION _______________
+
     if (action == GLFW_RELEASE)
     {
         // ---------- Target selector keys [1-4] ----------
@@ -332,7 +334,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         }
     }
 
-    // ---------- ANY KEY PRESS OR REPEAT ACTION ---------- 
+    // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
     else if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {
 
@@ -527,82 +529,74 @@ void drawWallsAll()
     }
 }
 
+/**
+ * @brief  Entry point for the projection_calibration_node ROS node.
+ *
+ * This program initializes ROS, DevIL, and GLFW, and then enters a main loop
+ * to handle image projection and calibration tasks.
+ *
+ * @param  argc  Number of command-line arguments.
+ * @param  argv  Array of command-line arguments.
+ *
+ * @return 0 on successful execution, -1 on failure.
+ */
 int main(int argc, char **argv)
 {
-    // Initialize ROS
+    // _______________ SETUP _______________
+
+    // ROS Initialization
     ros::init(argc, argv, "projection_calibration_node", ros::init_options::AnonymousName);
     ros::NodeHandle n;
     ros::NodeHandle nh("~");
     ROS_INFO("Running: main()");
 
-    // Print paths
-    ROS_INFO("packagePath: %s", packagePath.c_str());
-    ROS_INFO("workspacePath: %s", workspacePath.c_str());
-    ROS_INFO("imgPath: %s", imgPath.c_str());
-    ROS_INFO("configPath: %s", configPath.c_str());
+    // TODO: Use rosparam for these settings
+    // nh.param<std::string>("configPath", tempPath, "");
+    // nh.param<std::string>("windowName", tempName, "");
 
-    std::string tempPath, tempName;
+    // Log paths for debugging
+    ROS_INFO("Package Path: %s", packagePath.c_str());
+    ROS_INFO("Image Path: %s", imgPath.c_str());
+    ROS_INFO("Config XML Path: %s", configPath.c_str());
 
-    nh.param<std::string>("configPath", tempPath, "");
-    nh.param<std::string>("windowName", tempName, "");
-
-    configPath = tempPath.c_str();
-    windowName = tempName.c_str();
-
-    ROS_INFO("config path is: %s", configPath.c_str());
-
-    // Initialize DevIL
+    // Initialize DevIL library
     ilInit();
 
+    // Load images
     for (const std::string &img_path : imagePaths)
     {
-        // Generate a new DevIL image ID
         ILuint img_id;
         ilGenImages(1, &img_id);
         ilBindImage(img_id);
 
-        // Load the image file
         ILboolean success = ilLoadImage(img_path.c_str());
         if (success == IL_TRUE)
         {
-            // Image loaded successfully
             imageIDs.push_back(img_id);
-            ROS_INFO(img_path.c_str());
-
-            ROS_INFO("Loading image: %s", iluErrorString(ilGetError()));
-
+            ROS_INFO("Loaded image: %s", img_path.c_str());
             ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
-
-            ROS_INFO("Converting image: %s", iluErrorString(ilGetError()));
         }
         else
         {
-            // Failed to load the image
             ILenum error = ilGetError();
-
-            // Handle the error as needed
-            ilDeleteImages(1, &img_id); // Clean up the image ID
-
+            ilDeleteImages(1, &img_id);
             ROS_ERROR("DevIL: Failed to load image: %s", iluErrorString(error));
         }
     }
 
-    texWidth = ilGetInteger(IL_IMAGE_WIDTH);
-    texHeight = ilGetInteger(IL_IMAGE_HEIGHT);
+    // TODO: Check necessity of these lines
+    textureImgWidth = ilGetInteger(IL_IMAGE_WIDTH);
+    textureImgHeight = ilGetInteger(IL_IMAGE_HEIGHT);
 
-    // ROS_INFO("window name is: %s", windowName);
-
-    ROS_INFO("%d", texWidth);
-    ROS_INFO("%d", texHeight);
-
+    // Initialize GLFW
     glfwSetErrorCallback(callbackError);
-
     if (!glfwInit())
     {
-        ROS_ERROR("glfw init issue");
+        ROS_ERROR("GLFW Initialization Failed");
         return -1;
     }
-    // Create a window with a 4K resolution (3840x2160)
+
+    // Create GLFW window
     window = glfwCreateWindow(winWidth, winHeight, windowName.c_str(), NULL, NULL);
     if (!window)
     {
@@ -611,61 +605,52 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    // Set the window as the current OpenGL context
+    
+    // Set OpenGL context and callbacks
     glfwMakeContextCurrent(window);
-    ROS_INFO("window ran");
-
     gladLoadGL();
-    glfwSwapInterval(1);
     glfwSetKeyCallback(window, callbackKeyBinding);
-
-    // Set the window resize callback
     glfwSetFramebufferSizeCallback(window, callbackFrameBufferSize);
 
-    // Create an FBO and attach the texture to it
+    // Initialize FBO and attach texture to it
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-
     glGenTextures(1, &fboTexture);
     glBindTexture(GL_TEXTURE_2D, fboTexture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, winWidth, winHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
-
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // _______________ MAIN LOOP _______________
 
     while (!glfwWindowShouldClose(window))
     {
-
-        // glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-        ////glViewport(0, 0, winWidth, winHeight);
-
-        //// Clear the FBO
-
         glEnable(GL_TEXTURE_2D);
-
-        // Draw control points with updated positions
         glClear(GL_COLOR_BUFFER_BIT);
-        //// Load image data into texture
 
+        // Draw/update wall images
         drawWallsAll();
 
+        // Draw/update control points
         for (int i = 0; i < 4; i++)
         {
             drawControlPoint(cpPositions[i][0], cpPositions[i][1], cpPositions[i][2], cpPositions[i][3]);
         }
 
-        // Swap the buffers
+        // Swap buffers and poll events
         glfwSwapBuffers(window);
         glfwPollEvents();
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        // Exit the loop when the window is closed or escape key is pressed
+        // Exit condition
         if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(window))
             break;
     }
 
+    // _______________ CLEANUP _______________
+    
+    // Destroy GLFW window and DevIL images
     glfwDestroyWindow(window);
     for (ILuint imageID : imageIDs)
     {
