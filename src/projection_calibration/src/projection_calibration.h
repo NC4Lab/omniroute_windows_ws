@@ -177,7 +177,6 @@ GLuint fboTexture;
 GLFWmonitor *monitor = NULL;
 GLFWmonitor **monitors;
 int monitorCount;          // Number of monitors connected to the system
-int monitorInd = 0;        // Index of the monitor to be used [0, 1]
 bool isFullScreen = false; // Flag to indicate if the window is in full screen mode
 
 // Variables related to mouse input (UNUSED)

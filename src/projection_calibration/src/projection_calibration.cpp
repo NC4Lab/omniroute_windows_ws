@@ -128,7 +128,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // Move the window to the other monitor
         else if (key == GLFW_KEY_M)
         {
-            monitorInd = (monitorInd < monitorCount - 1) ? monitorInd + 1 : 0;
+            imgMonNumInd = (imgMonNumInd < monitorCount - 1) ? imgMonNumInd + 1 : 0;
             changeWindowMonMode();
         }
     }
@@ -333,7 +333,7 @@ void drawWallsAll()
             // Bind image
             if (i_wall == 1 && j_wall == 1)
             {
-                ilBindImage(imgMonNumIDs[imgMonNumInd]); // show mmonitor number
+                // INSERT NEW CODE HERE
             }
             else
             {
@@ -385,7 +385,7 @@ void drawWallsAll()
 void changeWindowMonMode()
 {
     // Use modulo to loop back to the first monitor if we've reached the end
-    monitor = monitors[monitorInd];
+    monitor = monitors[imgMonNumInd];
 
     if (monitor)
     {
@@ -404,11 +404,11 @@ void changeWindowMonMode()
             // Set the window to windowed mode and position it on the current monitor
             glfwSetWindowMonitor(window, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * winAspectRatio), 500, 0);
         }
-        ROS_INFO("RAN: Move window to monitor %d and set to %s", monitorInd + 1, isFullScreen ? "fullscreen" : "windowed");
+        ROS_INFO("RAN: Move window to monitor %d and set to %s", imgMonNumInd, isFullScreen ? "fullscreen" : "windowed");
     }
     else
     {
-        ROS_WARN("FAILED: Move window to monitor %d and set to %s", monitorInd + 1, isFullScreen ? "fullscreen" : "windowed");
+        ROS_WARN("FAILED: Move window to monitor %d and set to %s", imgMonNumInd, isFullScreen ? "fullscreen" : "windowed");
     }
 }
 
