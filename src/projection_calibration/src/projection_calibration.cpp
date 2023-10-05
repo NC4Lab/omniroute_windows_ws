@@ -260,16 +260,9 @@ void drawControlPoint(float x, float y, float radius, std::vector<float> rgb)
  * @brief Draws a textured wall using OpenGL.
  *
  * @param corners Vector of vertex/corner points for the wall.
- * @param do_mon_num Flag to display the monitor number over the center wall.
  */
-void drawWall(std::vector<cv::Point2f> img_vertices, bool do_mon_num)
+void drawWall(std::vector<cv::Point2f> img_vertices)
 {
-    // // Draw the number overlay
-    // if (do_mon_num)
-    // {
-    //     glEnable(GL_TEXTURE_2D);
-    //     glBindTexture(GL_TEXTURE_2D, imgMonNumIDs[imgMonNumInd]);
-    // }
 
     // Start drawing a quadrilateral
     glBegin(GL_QUADS);
@@ -296,12 +289,6 @@ void drawWall(std::vector<cv::Point2f> img_vertices, bool do_mon_num)
 
     // End drawing
     glEnd();
-
-    // // Disable texture mapping
-    // if (do_mon_num)
-    // {
-    //     glDisable(GL_TEXTURE_2D);
-    // }
 }
 
 /**
@@ -327,15 +314,26 @@ void drawWallsAll()
     // Iterate through the maze grid
     for (float i_wall = 0; i_wall < MAZE_SIZE; i_wall++)
     {
-        // Bind and set texture image
-        ilBindImage(imgTestIDs[imgTestInd]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
-                     ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
-                     GL_UNSIGNED_BYTE, ilGetData());
 
         // Iterate through each cell in the maze row
         for (float j_wall = 0; j_wall < MAZE_SIZE; j_wall++)
         {
+
+            // Bind image
+            if (i_wall == 1 && j_wall == 1)
+            {
+                ilBindImage(imgMonNumIDs[imgMonNumInd]); // show mmonitor number
+            }
+            else
+            {
+                ilBindImage(imgTestIDs[imgTestInd]); // show test pattern
+            }
+
+            // Set texture image
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
+                         ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
+                         GL_UNSIGNED_BYTE, ilGetData());
+
             // Bind texture to framebuffer object
             glBindTexture(GL_TEXTURE_2D, fboTexture);
 
@@ -368,7 +366,7 @@ void drawWallsAll()
             }
 
             // Draw the wall
-            drawWall(img_vertices, (i_wall == 1 && j_wall == 1));
+            drawWall(img_vertices);
         }
     }
 }

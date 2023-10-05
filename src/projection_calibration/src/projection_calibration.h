@@ -60,7 +60,7 @@ static void callbackError(int, const char *);
 void drawControlPoint(float, float, float, float, std::vector<float>);
 
 // Function to draw a rectangle with given corners
-void drawWall(std::vector<cv::Point2f>, bool);
+void drawWall(std::vector<cv::Point2f>);
 
 // Function to draw multiple wall images
 void drawWallsAll();
@@ -75,7 +75,7 @@ std::vector<cv::Point2f> computeWallVertices(float, float, float, float, float);
 void computeHomography();
 
 // Function to load number textures
-void loadImgTextures(std::vector<ILuint>&, std::vector<std::string>&);
+void loadImgTextures(std::vector<ILuint> &, std::vector<std::string> &);
 
 // Function to load coordinates from an XML file
 void loadCoordinatesXML();
@@ -129,9 +129,8 @@ float cpPositions[4][5] = {
 cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
 int cpSelected = 0;
 std::string cpModMode = "position";
-std::vector<float> cpActiveRGB = {1.0f, 0.0f, 0.0f};  // Active control point marker color
-std::vector<float> cpInactiveRGB = {0.0f, 0.0f, 1.0f};  // Inactive control point marker color
-
+std::vector<float> cpActiveRGB = {1.0f, 0.0f, 0.0f};   // Active control point marker color
+std::vector<float> cpInactiveRGB = {0.0f, 0.0f, 1.0f}; // Inactive control point marker color
 
 // Wall image size and spacing
 const float wallWidth = 0.02;
@@ -149,8 +148,9 @@ std::string img_mon_num_path = workspacePath + "/data/img/mon_numbers";
 
 // Test image variables
 std::vector<ILuint> imgTestIDs; // Container to hold the loaded images
-int imgTestInd = 0; // Index of the image to be loaded
-std::vector<std::string> imgTestPaths = { // List of test image file paths
+int imgTestInd = 0;             // Index of the image to be loaded
+std::vector<std::string> imgTestPaths = {
+    // List of test image file paths
     img_test_path + "/1_test_pattern.bmp",
     img_test_path + "/2_manu_pirate.bmp",
     img_test_path + "/3_earthlings.bmp",
@@ -159,10 +159,15 @@ std::vector<std::string> imgTestPaths = { // List of test image file paths
 
 // Monitor number image variables
 std::vector<ILuint> imgMonNumIDs; // Container to hold the loaded images
-int imgMonNumInd = 0; // Index of the image to be loaded
-std::vector<std::string> imgMonNumPaths = { // List of monitor number image file paths
+int imgMonNumInd = 0;             // Index of the image to be loaded
+std::vector<std::string> imgMonNumPaths = {
+    // List of monitor number image file paths
     img_mon_num_path + "/m0.bmp",
     img_mon_num_path + "/m1.bmp",
+    img_mon_num_path + "/m2.bmp",
+    img_mon_num_path + "/m3.bmp",
+    img_mon_num_path + "/m4.bmp",
+    img_mon_num_path + "/m5.bmp",
 };
 
 // Variables related to window and OpenGL
