@@ -30,6 +30,7 @@
 void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
 
+    // Set the current OpenGL context to the window
     glfwMakeContextCurrent(window);
 
     // _______________ ANY KEY RELEASE ACTION _______________
@@ -139,49 +140,59 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // ---------- Control point position change [LEFT, RIGHT, UP, DOWN] ----------
         if (cpModMode == "position")
         {
+            // Set the position increment based on whether the shift key is pressed
+            float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.05f : 0.01f;
 
             // Listen for arrow key input to move selected control point
             if (key == GLFW_KEY_LEFT)
             {
-                cpPositions[cpSelected][0] -= 0.05f;
+                cpPositions[cpSelected][0] -= pos_inc;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                cpPositions[cpSelected][0] += 0.05f;
+                cpPositions[cpSelected][0] += pos_inc;
             }
             else if (key == GLFW_KEY_UP)
             {
-                cpPositions[cpSelected][1] += 0.05f;
+                cpPositions[cpSelected][1] += pos_inc;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                cpPositions[cpSelected][1] -= 0.05f;
+                cpPositions[cpSelected][1] -= pos_inc;
             }
         }
 
         // ---------- Control point dimension/hight change [UP, DOWN] ----------
         if (cpModMode == "dimension")
         {
+            // Set the dimension increment based on whether the shift key is pressed
+            float dim_inc = (mods & GLFW_MOD_SHIFT) ? 0.001f : 0.0005f;
+
+            // Listen for arrow key input to adjust dimension/height
             if (key == GLFW_KEY_UP)
             {
-                cpPositions[cpSelected][3] += 0.001f;
+                cpPositions[cpSelected][3] += dim_inc;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                cpPositions[cpSelected][3] -= 0.001f;
+                cpPositions[cpSelected][3] -= dim_inc;
             }
         }
 
         // ---------- Control point shear change [UP, DOWN] ----------
         if (cpModMode == "shear")
         {
+            // Set the shear increment based on whether the shift key is pressed
+            float shr_inc = (mods & GLFW_MOD_SHIFT) ? 0.05f : 0.001f;
+
+            // Listen for arrow key input to adjust shear
             if (key == GLFW_KEY_UP)
             {
-                cpPositions[cpSelected][4] += 0.05f;
+                cpPositions[cpSelected][4] += shr_inc;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                cpPositions[cpSelected][4] -= 0.05f;
+                cpPositions[cpSelected][4] -= shr_inc;
             }
         }
     }
