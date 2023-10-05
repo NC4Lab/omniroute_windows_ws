@@ -65,6 +65,9 @@ void drawWall(std::vector<cv::Point2f>);
 // Function to draw multiple wall images
 void drawWallsAll();
 
+// Function to merge two ILuint images
+ILuint mergeImages(ILuint, ILuint);
+
 // Function to change the window monitor and mode (full-screen or windowed)
 void changeWindowMonMode();
 
@@ -154,7 +157,6 @@ std::vector<std::string> imgTestPaths = {
     img_test_path + "/1_test_pattern.bmp",
     img_test_path + "/2_manu_pirate.bmp",
     img_test_path + "/3_earthlings.bmp",
-    img_test_path + "/4_tj.bmp",
 };
 
 // Monitor number image variables

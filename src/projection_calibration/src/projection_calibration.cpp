@@ -333,7 +333,10 @@ void drawWallsAll()
             // Bind image
             if (i_wall == 1 && j_wall == 1)
             {
-                // INSERT NEW CODE HERE
+                // ilBindImage(imgMonNumIDs[imgMonNumInd]); // show mmonitor number
+                // Merge images
+                ILuint merge_images = mergeImages(imgMonNumIDs[imgMonNumInd], imgTestIDs[imgTestInd]);
+                ilBindImage(merge_images);
             }
             else
             {
@@ -381,6 +384,114 @@ void drawWallsAll()
         }
     }
 }
+
+/**
+ * @brief Merge two images with or without alpha channels.
+ * 
+ * This function merges two DevIL images (ILuint) into a single image.
+ * It handles cases where one or both images may have an alpha channel.
+ * The dimensions of the two images must match.
+ *
+ * @param img1 ID of the first image to merge.
+ * @param img2 ID of the second image to merge.
+ * @return ILuint ID of the merged image, or 0 on error.
+ *
+ * @warning This function assumes that both images have the same dimensions.
+ */
+ILuint mergeImages(ILuint img1, ILuint img2)
+{
+    // Bind and get dimensions for img1
+    ilBindImage(img1);
+    int width1 = ilGetInteger(IL_IMAGE_WIDTH);
+    int height1 = ilGetInteger(IL_IMAGE_HEIGHT);
+    int channels1 = ilGetInteger(IL_IMAGE_CHANNELS); // Number of channels
+    ILenum error = ilGetError();
+    if (error != IL_NO_ERROR) {
+        ROS_ERROR("Error binding img1: %s", iluErrorString(error));
+        return 0;
+    }
+
+    // Bind and get dimensions for img2
+    ilBindImage(img2);
+    int width2 = ilGetInteger(IL_IMAGE_WIDTH);
+    int height2 = ilGetInteger(IL_IMAGE_HEIGHT);
+    int channels2 = ilGetInteger(IL_IMAGE_CHANNELS); // Number of channels
+    error = ilGetError();
+    if (error != IL_NO_ERROR) {
+        ROS_ERROR("Error binding img2: %s", iluErrorString(error));
+        return 0;
+    }
+
+    // Check if dimensions match
+    if (width1 != width2 || height1 != height2) {
+        ROS_ERROR("Image dimensions do not match: img1(%d, %d), img2(%d, %d)", width1, height1, width2, height2);
+        return 0;
+    }
+
+    // Create a new merged image with RGBA format
+    ILuint mergedImg;
+    ilGenImages(1, &mergedImg);
+    ilBindImage(mergedImg);
+    ilTexImage(width1, height1, 1, 4, IL_RGBA, IL_UNSIGNED_BYTE, NULL);
+    error = ilGetError();
+    if (error != IL_NO_ERROR) {
+        ROS_ERROR("Error creating merged image: %s", iluErrorString(error));
+        return 0;
+    }
+
+    // Get image data
+    ilBindImage(img1);
+    ILubyte *data1 = ilGetData();
+    ilBindImage(img2);
+    ILubyte *data2 = ilGetData();
+
+    if (!data1 || !data2) {
+        ROS_ERROR("Failed to get image data");
+        return 0;
+    }
+
+    // Allocate memory for merged image data
+    ILubyte *mergedData = new ILubyte[width1 * height1 * 4];
+
+    // Merge images
+    for (int y = 0; y < height1; ++y) {
+        for (int x = 0; x < width1; ++x) {
+            int index = (y * width1 + x) * 4;  // 4 channels in the merged image
+
+            // Copy RGB channels
+            for (int c = 0; c < 3; ++c) {
+                mergedData[index + c] = (data1[index + c] + data2[index + c]) / 2;
+            }
+
+            // Handle alpha channel
+            if (channels1 == 4 && channels2 == 4) {
+                mergedData[index + 3] = (data1[index + 3] + data2[index + 3]) / 2;  // Average alpha
+            } else if (channels1 == 4) {
+                mergedData[index + 3] = data1[index + 3];  // Use alpha from img1
+            } else if (channels2 == 4) {
+                mergedData[index + 3] = data2[index + 3];  // Use alpha from img2
+            } else {
+                mergedData[index + 3] = 255;  // Default to fully opaque
+            }
+        }
+    }
+
+    // Set the merged data
+    ilBindImage(mergedImg);
+    ilSetPixels(0, 0, 0, width1, height1, 1, IL_RGBA, IL_UNSIGNED_BYTE, mergedData);
+    error = ilGetError();
+    if (error != IL_NO_ERROR) {
+        ROS_ERROR("Error setting pixels for merged image: %s", iluErrorString(error));
+        delete[] mergedData;
+        return 0;
+    }
+
+    // Clean up
+    delete[] mergedData;
+
+    return mergedImg;
+}
+
 
 void changeWindowMonMode()
 {
@@ -520,34 +631,90 @@ void loadCoordinatesXML()
     }
 }
 
+// void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string> &ref_img_paths)
+// {
+//     // Iterate through img file paths
+//     for (const std::string &img_path : ref_img_paths)
+//     {
+//         ILuint img_id;
+//         ilGenImages(1, &img_id);
+//         ilBindImage(img_id);
+
+//         // Get width and height of image
+//         int width = ilGetInteger(IL_IMAGE_WIDTH);
+//         int height = ilGetInteger(IL_IMAGE_HEIGHT);
+
+//         // Get file name from path
+//         std::string file_name = img_path.substr(img_path.find_last_of('/') + 1);
+
+//         // Attempt to load image
+//         ILboolean success = ilLoadImage(img_path.c_str());
+//         if (success == IL_TRUE)
+//         {
+//             // Check if the image has an alpha channel
+//             int num_channels = ilGetInteger(IL_IMAGE_CHANNELS);
+//             ILenum image_format = (num_channels == 4) ? IL_RGBA : IL_RGB;
+
+//             // Convert the image to the appropriate format
+//             ilConvertImage(image_format, IL_UNSIGNED_BYTE);
+
+//             // Add the image ID to the reference vector
+//             ref_image_ids.push_back(img_id);
+            
+//             ROS_INFO("DevIL: Loaded image: File[%s]", file_name.c_str());
+//         }
+//         else
+//         {
+//             ILenum error = ilGetError();
+//             ilDeleteImages(1, &img_id);
+//             ROS_ERROR("DevIL: Failed to load image: Error[%s] File[%s]", iluErrorString(error), file_name.c_str());
+//         }
+//     }
+// }
+
 void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string> &ref_img_paths)
 {
+    // Clear existing image IDs to avoid conflicts
+    ref_image_ids.clear();
+
     // Iterate through img file paths
     for (const std::string &img_path : ref_img_paths)
     {
         ILuint img_id;
-        ilGenImages(1, &img_id);
-        ilBindImage(img_id);
-
-        // Get file name from path
-        std::string file_name = img_path.substr(img_path.find_last_of('/') + 1);
 
         // Attempt to load image
         ILboolean success = ilLoadImage(img_path.c_str());
         if (success == IL_TRUE)
         {
+            // Generate an image name (ID) after confirming image is loaded
+            ilGenImages(1, &img_id);
+            ilBindImage(img_id);
+
+            // Query the image format
+            ILenum image_format = ilGetInteger(IL_IMAGE_FORMAT);
+
+            // Convert the image to RGB or RGBA as needed
+            if (image_format != IL_RGBA && image_format != IL_RGB)
+            {
+                image_format = (ilGetInteger(IL_IMAGE_CHANNELS) == 4) ? IL_RGBA : IL_RGB;
+                ilConvertImage(image_format, IL_UNSIGNED_BYTE);
+            }
+
+            // Add the image ID to the reference vector
             ref_image_ids.push_back(img_id);
-            ROS_INFO("DevIL: Loaded image: %s", file_name.c_str());
-            ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
+
+            // Log successful load
+            ROS_INFO("DevIL: Loaded image: File[%s] Format[%d]", img_path.c_str(), image_format);
         }
         else
         {
             ILenum error = ilGetError();
-            ilDeleteImages(1, &img_id);
-            ROS_ERROR("DevIL: Failed to load image: Error[%s] File[%s]", iluErrorString(error), file_name.c_str());
+            ROS_ERROR("DevIL: Failed to load image: Error[%s] File[%s]", iluErrorString(error), img_path.c_str());
         }
     }
 }
+
+
 
 /**
  * @brief Saves the control point positions and homography matrix to an XML file.
