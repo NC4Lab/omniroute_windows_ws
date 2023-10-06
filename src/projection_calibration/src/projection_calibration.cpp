@@ -622,6 +622,20 @@ void resetParamCP()
     }
 }
 
+/**
+ * @brief Loads control point parameters and homography matrix from an XML file.
+ * 
+ * This function reads an XML file specified by the global variable `configPath` to load 
+ * configuration data for control points (stored in cpParam) and the homography matrix (stored in H).
+ * 
+ * The XML file is expected to have a specific structure with elements labeled "cpParam" and "H".
+ * Each of these elements should contain nested "Row" and "Cell" elements to represent the matrix data.
+ * 
+ * @note This function uses the pugiXML library to parse the XML file.
+ * @note The global variables `configPath`, `cpParam`, and `H` are used in this function.
+ * 
+ * @warning This function will log an error message and return if the XML file cannot be loaded.
+ */
 void loadCoordinatesXML()
 {
     // Get file name from path
@@ -679,6 +693,20 @@ void loadCoordinatesXML()
     }
 }
 
+/**
+ * @brief Loads images from specified file paths and stores their IDs in a reference vector.
+ * 
+ * This function takes a vector of file paths (`ref_img_paths`) and iteratively loads each image
+ * using the DevIL library. The function then stores the ILuint IDs of successfully loaded images 
+ * in a reference vector (`ref_image_ids`). 
+ * 
+ * @param ref_image_ids A reference to a vector of ILuint where the IDs of the loaded images will be stored.
+ * @param ref_img_paths A reference to a vector of file paths to the images to be loaded.
+ * 
+ * @note Utilizes the DevIL image library for image loading operations.
+ * 
+ * @warning Logs an error message and continues if any image fails to load.
+ */
 void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string> &ref_img_paths)
 {
     // Iterate through img file paths
