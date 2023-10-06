@@ -57,13 +57,16 @@ void callbackFrameBufferSize(GLFWwindow *, int, int);
 static void callbackError(int, const char *);
 
 // Function to draw a given control point marker
-void drawControlPoint(float, float, float, float, std::vector<float>);
+void drawControlPoint(float, float, float, std::vector<float>);
 
 // Function to draw a rectangle with given corners
 void drawWall(std::vector<cv::Point2f>);
 
 // Function to draw multiple wall images
 void drawWallsAll();
+
+// Function to load number textures
+void loadImgTextures(std::vector<ILuint> &, std::vector<std::string> &);
 
 // Function to merge two ILuint images
 ILuint mergeImages(ILuint, ILuint);
@@ -76,9 +79,6 @@ std::vector<cv::Point2f> computeWallVertices(float, float, float, float, float);
 
 // Function to compute homography matrix
 void computeHomography();
-
-// Function to load number textures
-void loadImgTextures(std::vector<ILuint> &, std::vector<std::string> &);
 
 // Function to load coordinates from an XML file
 void loadCoordinatesXML();
@@ -147,7 +147,7 @@ std::string packagePath = ros::package::getPath("projection_calibration");
 std::string workspacePath = packagePath.substr(0, packagePath.rfind("/src"));
 std::string configPath = workspacePath + "/data/proj_cfg/proj_cfg.xml";
 std::string img_test_path = workspacePath + "/data/img/test_patterns";
-std::string img_mon_num_path = workspacePath + "/data/img/mon_numbers";
+std::string img_state_path = workspacePath + "/data/img/state_images";
 
 // Test image variables
 std::vector<ILuint> imgTestIDs; // Container to hold the loaded images
@@ -164,12 +164,22 @@ std::vector<ILuint> imgMonNumIDs; // Container to hold the loaded images
 int imgMonNumInd = 0;             // Index of the image to be loaded
 std::vector<std::string> imgMonNumPaths = {
     // List of monitor number image file paths
-    img_mon_num_path + "/m0.bmp",
-    img_mon_num_path + "/m1.bmp",
-    img_mon_num_path + "/m2.bmp",
-    img_mon_num_path + "/m3.bmp",
-    img_mon_num_path + "/m4.bmp",
-    img_mon_num_path + "/m5.bmp",
+    img_state_path + "/m0.bmp",
+    img_state_path + "/m1.bmp",
+    img_state_path + "/m2.bmp",
+    img_state_path + "/m3.bmp",
+    img_state_path + "/m4.bmp",
+    img_state_path + "/m5.bmp",
+};
+
+// Mode image variables
+std::vector<ILuint> imgModeIDs; // Container to hold the loaded images
+int imgModeInd = 0;             // Index of the image to be loaded
+std::vector<std::string> imgModePaths = {
+    // List of mode image file paths
+    img_state_path + "/position.bmp",
+    img_state_path + "/dimension.bmp",
+    img_state_path + "/shear.bmp",
 };
 
 // Variables related to window and OpenGL

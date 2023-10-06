@@ -88,18 +88,21 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         else if (key == GLFW_KEY_A)
         {
             cpModMode = "position";
+            imgModeInd = 0;
         }
 
         // Control point height [up, down]
         else if (key == GLFW_KEY_D)
         {
             cpModMode = "dimension";
+            imgModeInd = 1;
         }
 
         // Control point shear [up, down]
         else if (key == GLFW_KEY_S)
         {
             cpModMode = "shear";
+            imgModeInd = 2;
         }
 
         // ---------- XML Handling [ENTER, L] ----------
@@ -270,7 +273,7 @@ void drawControlPoint(float x, float y, float radius, std::vector<float> rgb)
 /**
  * @brief Draws a textured wall using OpenGL.
  *
- * @param corners Vector of vertex/corner points for the wall.
+ * @param img_vertices Vector of vertex/corner points for the wall.
  */
 void drawWall(std::vector<cv::Point2f> img_vertices)
 {
@@ -333,10 +336,10 @@ void drawWallsAll()
             // Bind image
             if (i_wall == 1 && j_wall == 1)
             {
-                // ilBindImage(imgMonNumIDs[imgMonNumInd]); // show mmonitor number
                 // Merge images
-                ILuint merge_images = mergeImages(imgMonNumIDs[imgMonNumInd], imgTestIDs[imgTestInd]);
-                ilBindImage(merge_images);
+                ILuint merge_images_1 = mergeImages(imgTestIDs[imgTestInd], imgMonNumIDs[imgMonNumInd]);
+                ILuint merge_images_2 = mergeImages(merge_images_1, imgModeIDs[imgModeInd]);
+                ilBindImage(merge_images_2);
             }
             else
             {
@@ -383,104 +386,100 @@ void drawWallsAll()
             drawWall(img_vertices);
         }
     }
+
+    // Disable OpenGL texture mapping
+    glDisable(GL_TEXTURE_2D);
 }
 
 /**
- * @brief Merge two images with or without alpha channels.
- * 
- * This function merges two DevIL images (ILuint) into a single image.
- * It handles cases where one or both images may have an alpha channel.
- * The dimensions of the two images must match.
+ * @brief Merges two images by overlaying non-white pixels from the second image onto the first.
  *
- * @param img1 ID of the first image to merge.
- * @param img2 ID of the second image to merge.
- * @return ILuint ID of the merged image, or 0 on error.
+ * This function takes two images, img1 and img2, represented as ILuint IDs. It overlays img2 onto img1,
+ * replacing pixels in img1 with corresponding non-white pixels from img2. The resulting merged image is
+ * returned as a new ILuint ID.
  *
- * @warning This function assumes that both images have the same dimensions.
+ * @param img1 The ILuint ID of the baseline image.
+ * @param img2 The ILuint ID of the mask image.
+ * @return ILuint ID of the merged image. Returns 0 if an error occurs.
+ *
+ * @warning The dimensions of img1 and img2 must match.
  */
 ILuint mergeImages(ILuint img1, ILuint img2)
 {
-    // Bind and get dimensions for img1
+    // Bind and get dimensions of img1 (baseline image)
     ilBindImage(img1);
     int width1 = ilGetInteger(IL_IMAGE_WIDTH);
     int height1 = ilGetInteger(IL_IMAGE_HEIGHT);
-    int channels1 = ilGetInteger(IL_IMAGE_CHANNELS); // Number of channels
+    ILubyte *data1 = ilGetData();
     ILenum error = ilGetError();
-    if (error != IL_NO_ERROR) {
+    if (error != IL_NO_ERROR)
+    {
         ROS_ERROR("Error binding img1: %s", iluErrorString(error));
         return 0;
     }
 
-    // Bind and get dimensions for img2
+    // Bind and get dimensions of img2 (mask image)
     ilBindImage(img2);
     int width2 = ilGetInteger(IL_IMAGE_WIDTH);
     int height2 = ilGetInteger(IL_IMAGE_HEIGHT);
-    int channels2 = ilGetInteger(IL_IMAGE_CHANNELS); // Number of channels
+    ILubyte *data2 = ilGetData();
     error = ilGetError();
-    if (error != IL_NO_ERROR) {
+    if (error != IL_NO_ERROR)
+    {
         ROS_ERROR("Error binding img2: %s", iluErrorString(error));
         return 0;
     }
 
-    // Check if dimensions match
-    if (width1 != width2 || height1 != height2) {
-        ROS_ERROR("Image dimensions do not match: img1(%d, %d), img2(%d, %d)", width1, height1, width2, height2);
+    // Check for dimension match
+    if (width1 != width2 || height1 != height2)
+    {
+        ROS_ERROR("Dimensions do not match: img1(%d, %d), img2(%d, %d)",
+                  width1, height1, width2, height2);
         return 0;
     }
 
-    // Create a new merged image with RGBA format
+    // Create merged image
     ILuint mergedImg;
     ilGenImages(1, &mergedImg);
     ilBindImage(mergedImg);
     ilTexImage(width1, height1, 1, 4, IL_RGBA, IL_UNSIGNED_BYTE, NULL);
     error = ilGetError();
-    if (error != IL_NO_ERROR) {
+    if (error != IL_NO_ERROR)
+    {
         ROS_ERROR("Error creating merged image: %s", iluErrorString(error));
         return 0;
     }
 
-    // Get image data
-    ilBindImage(img1);
-    ILubyte *data1 = ilGetData();
-    ilBindImage(img2);
-    ILubyte *data2 = ilGetData();
-
-    if (!data1 || !data2) {
-        ROS_ERROR("Failed to get image data");
-        return 0;
-    }
-
-    // Allocate memory for merged image data
+    // Initialize mergedData array
     ILubyte *mergedData = new ILubyte[width1 * height1 * 4];
 
-    // Merge images
-    for (int y = 0; y < height1; ++y) {
-        for (int x = 0; x < width1; ++x) {
-            int index = (y * width1 + x) * 4;  // 4 channels in the merged image
-
-            // Copy RGB channels
-            for (int c = 0; c < 3; ++c) {
-                mergedData[index + c] = (data1[index + c] + data2[index + c]) / 2;
+    // Loop to overlay non-white pixels from img2 onto img1
+    for (int i = 0; i < width1 * height1 * 4; i += 4)
+    {
+        if (data2[i] != 255 || data2[i + 1] != 255 || data2[i + 2] != 255)
+        {
+            // If the pixel is not white in img2, use it in the merged image
+            for (int j = 0; j < 4; ++j)
+            {
+                mergedData[i + j] = data2[i + j];
             }
-
-            // Handle alpha channel
-            if (channels1 == 4 && channels2 == 4) {
-                mergedData[index + 3] = (data1[index + 3] + data2[index + 3]) / 2;  // Average alpha
-            } else if (channels1 == 4) {
-                mergedData[index + 3] = data1[index + 3];  // Use alpha from img1
-            } else if (channels2 == 4) {
-                mergedData[index + 3] = data2[index + 3];  // Use alpha from img2
-            } else {
-                mergedData[index + 3] = 255;  // Default to fully opaque
+        }
+        else
+        {
+            // Otherwise, use the pixel from img1
+            for (int j = 0; j < 4; ++j)
+            {
+                mergedData[i + j] = data1[i + j];
             }
         }
     }
 
-    // Set the merged data
+    // Set mergedData to the new image
     ilBindImage(mergedImg);
     ilSetPixels(0, 0, 0, width1, height1, 1, IL_RGBA, IL_UNSIGNED_BYTE, mergedData);
     error = ilGetError();
-    if (error != IL_NO_ERROR) {
+    if (error != IL_NO_ERROR)
+    {
         ROS_ERROR("Error setting pixels for merged image: %s", iluErrorString(error));
         delete[] mergedData;
         return 0;
@@ -492,10 +491,23 @@ ILuint mergeImages(ILuint img1, ILuint img2)
     return mergedImg;
 }
 
-
+/**
+ * @brief Changes the display mode and monitor of the application window.
+ * 
+ * This function switches the application window between full-screen and windowed modes
+ * and moves it to the monitor specified by the global variable imgMonNumInd.
+ * 
+ * In full-screen mode, the window is resized to match the dimensions of the selected monitor.
+ * In windowed mode, the window is resized to a default size and positioned near the top-left
+ * corner of the selected monitor.
+ * 
+ * @note The global variables monitor, monitors, imgMonNumInd, window, and isFullScreen are
+ *       used to control the behavior of this function.
+ * 
+ * @warning This function relies on the GLFW library for window management and ROS for logging.
+ */
 void changeWindowMonMode()
 {
-    // Use modulo to loop back to the first monitor if we've reached the end
     monitor = monitors[imgMonNumInd];
 
     if (monitor)
@@ -557,6 +569,20 @@ std::vector<cv::Point2f> computeWallVertices(float x0, float y0, float width, fl
     return rect_vertices;
 }
 
+/**
+ * @brief Computes the homography matrix based on control points and wall image vertices.
+ * 
+ * This function calculates the homography matrix that maps points from the source image (wall images)
+ * to the destination image (control points). The homography matrix is stored in the global variable H.
+ * 
+ * Control points are specified in normalized coordinates and are fetched from the global variable cpPositions.
+ * Wall image vertices are calculated based on the dimensions and spacing of the maze walls.
+ * 
+ * @note This function uses the OpenCV library to compute the homography matrix.
+ * @note The global variables cpPositions, MAZE_SIZE, and wallSpace are used to control the behavior of this function.
+ * 
+ * @warning Make sure that the number of control points and wall image vertices are the same and that they are ordered correspondingly.
+ */
 void computeHomography()
 {
     // Get the corner/vertex values for each of the control points
@@ -631,90 +657,38 @@ void loadCoordinatesXML()
     }
 }
 
-// void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string> &ref_img_paths)
-// {
-//     // Iterate through img file paths
-//     for (const std::string &img_path : ref_img_paths)
-//     {
-//         ILuint img_id;
-//         ilGenImages(1, &img_id);
-//         ilBindImage(img_id);
-
-//         // Get width and height of image
-//         int width = ilGetInteger(IL_IMAGE_WIDTH);
-//         int height = ilGetInteger(IL_IMAGE_HEIGHT);
-
-//         // Get file name from path
-//         std::string file_name = img_path.substr(img_path.find_last_of('/') + 1);
-
-//         // Attempt to load image
-//         ILboolean success = ilLoadImage(img_path.c_str());
-//         if (success == IL_TRUE)
-//         {
-//             // Check if the image has an alpha channel
-//             int num_channels = ilGetInteger(IL_IMAGE_CHANNELS);
-//             ILenum image_format = (num_channels == 4) ? IL_RGBA : IL_RGB;
-
-//             // Convert the image to the appropriate format
-//             ilConvertImage(image_format, IL_UNSIGNED_BYTE);
-
-//             // Add the image ID to the reference vector
-//             ref_image_ids.push_back(img_id);
-            
-//             ROS_INFO("DevIL: Loaded image: File[%s]", file_name.c_str());
-//         }
-//         else
-//         {
-//             ILenum error = ilGetError();
-//             ilDeleteImages(1, &img_id);
-//             ROS_ERROR("DevIL: Failed to load image: Error[%s] File[%s]", iluErrorString(error), file_name.c_str());
-//         }
-//     }
-// }
-
 void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string> &ref_img_paths)
 {
-    // Clear existing image IDs to avoid conflicts
-    ref_image_ids.clear();
-
     // Iterate through img file paths
     for (const std::string &img_path : ref_img_paths)
     {
         ILuint img_id;
+        ilGenImages(1, &img_id);
+        ilBindImage(img_id);
+
+        // Get width and height of image
+        int width = ilGetInteger(IL_IMAGE_WIDTH);
+        int height = ilGetInteger(IL_IMAGE_HEIGHT);
+
+        // Get file name from path
+        std::string file_name = img_path.substr(img_path.find_last_of('/') + 1);
 
         // Attempt to load image
         ILboolean success = ilLoadImage(img_path.c_str());
         if (success == IL_TRUE)
         {
-            // Generate an image name (ID) after confirming image is loaded
-            ilGenImages(1, &img_id);
-            ilBindImage(img_id);
-
-            // Query the image format
-            ILenum image_format = ilGetInteger(IL_IMAGE_FORMAT);
-
-            // Convert the image to RGB or RGBA as needed
-            if (image_format != IL_RGBA && image_format != IL_RGB)
-            {
-                image_format = (ilGetInteger(IL_IMAGE_CHANNELS) == 4) ? IL_RGBA : IL_RGB;
-                ilConvertImage(image_format, IL_UNSIGNED_BYTE);
-            }
-
-            // Add the image ID to the reference vector
             ref_image_ids.push_back(img_id);
-
-            // Log successful load
-            ROS_INFO("DevIL: Loaded image: File[%s] Format[%d]", img_path.c_str(), image_format);
+            ROS_INFO("DevIL: Loaded image: File[%s]", file_name.c_str());
+            ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
         }
         else
         {
             ILenum error = ilGetError();
-            ROS_ERROR("DevIL: Failed to load image: Error[%s] File[%s]", iluErrorString(error), img_path.c_str());
+            ilDeleteImages(1, &img_id);
+            ROS_ERROR("DevIL: Failed to load image: Error[%s] File[%s]", iluErrorString(error), file_name.c_str());
         }
     }
 }
-
-
 
 /**
  * @brief Saves the control point positions and homography matrix to an XML file.
@@ -853,6 +827,7 @@ int main(int argc, char **argv)
     // Load images
     loadImgTextures(imgTestIDs, imgTestPaths);
     loadImgTextures(imgMonNumIDs, imgMonNumPaths);
+    loadImgTextures(imgModeIDs, imgModePaths);
 
     // TODO: Check necessity of these lines
     textureImgWidth = ilGetInteger(IL_IMAGE_WIDTH);
@@ -905,7 +880,7 @@ int main(int argc, char **argv)
 
     while (!glfwWindowShouldClose(window))
     {
-        glEnable(GL_TEXTURE_2D);
+        // Clear back buffer for new frame
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Draw/update wall images
