@@ -20,7 +20,7 @@
  * Key Bindings:
  * - [1-4]: Select target control point (Top-left, Top-right, Bottom-right, Bottom-left)
  * - [F1-F12]: Set image to image 1 to 12
- * - [A, D, S]: Change control point mode(position/translation, dimension/height, shear)
+ * - [A, D, S]: Change control point parameter (position/translation, dimension/height, shear)
  * - [ENTER]: Save coordinates to XML
  * - [L]: Load coordinates from XML
  * - [F]: Fullscreen on second monitor
@@ -37,72 +37,95 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
     if (action == GLFW_RELEASE)
     {
-        // ---------- Target selector keys [1-4] ----------
+
+        // ---------- Control Point Reset [R] ----------
+
+        if (key == GLFW_KEY_R)
+        {
+            resetParamCP();
+        }
+
+        // ---------- Target selector keys [F1-F4] ----------
 
         // Top-left control point
-        if (key == GLFW_KEY_1)
+        else if (key == GLFW_KEY_F1)
         {
             cpSelected = 0;
         }
 
         // Top-right control point
-        else if (key == GLFW_KEY_2)
+        else if (key == GLFW_KEY_F2)
         {
             cpSelected = 1;
         }
 
         // Bottom-right control point
-        else if (key == GLFW_KEY_3)
+        else if (key == GLFW_KEY_F3)
         {
             cpSelected = 2;
         }
 
         // Bottom-left control point
-        else if (key == GLFW_KEY_4)
+        else if (key == GLFW_KEY_F4)
         {
             cpSelected = 3;
         }
 
-        // ---------- Image selector keys [F1-F12] ----------
-
-        else if (key == GLFW_KEY_F1)
-        {
-            imgTestInd = 0;
-        }
-        else if (key == GLFW_KEY_F2)
-        {
-            imgTestInd = 1;
-        }
-        else if (key == GLFW_KEY_F3)
-        {
-            imgTestInd = 2;
-        }
-        else if (key == GLFW_KEY_F4)
-        {
-            imgTestInd = 3;
-        }
-
-        // ---------- Change mode keys [A, D, S] ----------
+        // ---------- Change calibration point parameter keys [A, D, S] ----------
 
         // Control point position [up, down, left, right]
         else if (key == GLFW_KEY_A)
         {
             cpModMode = "position";
-            imgModeInd = 0;
+            imgParamInd = 0;
         }
 
         // Control point height [up, down]
         else if (key == GLFW_KEY_D)
         {
             cpModMode = "dimension";
-            imgModeInd = 1;
+            imgParamInd = 1;
         }
 
         // Control point shear [up, down]
         else if (key == GLFW_KEY_S)
         {
             cpModMode = "shear";
-            imgModeInd = 2;
+            imgParamInd = 2;
+        }
+
+        // ---------- Monitor handling [F, M] ----------
+
+        // Set/unset Fullscreen
+        else if (key == GLFW_KEY_F)
+        {
+            isFullScreen = !isFullScreen;
+        }
+
+        // Move the window to another monitor
+        else if (key == GLFW_KEY_0)
+        {
+            imgMonInd = 0;
+        }
+        else if (key == GLFW_KEY_1 && nMonitors > 1)
+        {
+            imgMonInd = 1;
+        }
+        else if (key == GLFW_KEY_2 && nMonitors > 2)
+        {
+            imgMonInd = 2;
+        }
+        else if (key == GLFW_KEY_3 && nMonitors > 3)
+        {
+            imgMonInd = 3;
+        }
+        else if (key == GLFW_KEY_4 && nMonitors > 4)
+        {
+            imgMonInd = 4;
+        }
+        else if (key == GLFW_KEY_5 && nMonitors > 5)
+        {
+            imgMonInd = 5;
         }
 
         // ---------- XML Handling [ENTER, L] ----------
@@ -118,97 +141,118 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         {
             loadCoordinatesXML();
         }
-
-        // ---------- Monitor handling [F, M] ----------
-
-        // Set/unset Fullscreen
-        else if (key == GLFW_KEY_F)
-        {
-            isFullScreen = !isFullScreen;
-            changeWindowMonMode();
-        }
-
-        // Move the window to the other monitor
-        else if (key == GLFW_KEY_M)
-        {
-            imgMonInd = (imgMonInd < monitorCount - 1) ? imgMonInd + 1 : 0;
-            changeWindowMonMode();
-        }
-
-        // ---------- Control Point Reset [R] ----------
-
-        else if (key == GLFW_KEY_R)
-        {
-            resetParamCP();
-        }
     }
 
     // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
     else if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {
 
-        // ---------- Control point position change [LEFT, RIGHT, UP, DOWN] ----------
-        if (cpModMode == "position")
-        {
-            // Set the position increment based on whether the shift key is pressed
-            float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.05f : 0.01f;
+        // ---------- Calibration mode [ALT + [LEFT, RIGHT]] ----------
 
-            // Listen for arrow key input to move selected control point
+        if (mods & GLFW_MOD_ALT)
+        {
+            // Listen for arrow key input to switch through calibration modes
             if (key == GLFW_KEY_LEFT)
             {
-                cpParam[cpSelected][0] -= pos_inc;
+                imgCalInd = (imgCalInd > 0) ? imgCalInd - 1 : nCalModes - 1;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                cpParam[cpSelected][0] += pos_inc;
+                imgCalInd = (imgCalInd < nCalModes - 1) ? imgCalInd + 1 : 0;
             }
-            else if (key == GLFW_KEY_UP)
+            // Reset control point parameters when switching calibration modes
+            if (key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT)
             {
-                cpParam[cpSelected][1] += pos_inc;
-            }
-            else if (key == GLFW_KEY_DOWN)
-            {
-                cpParam[cpSelected][1] -= pos_inc;
+                resetParamCP();
             }
         }
 
-        // ---------- Control point dimension/hight change [UP, DOWN] ----------
-        if (cpModMode == "dimension")
-        {
-            // Set the dimension increment based on whether the shift key is pressed
-            float dim_inc = (mods & GLFW_MOD_SHIFT) ? 0.0025f : 0.0005f;
+        // ---------- Image change [ALT + [LEFT, RIGHT]] ----------
 
-            // Listen for arrow key input to adjust dimension/height
-            if (key == GLFW_KEY_UP)
+        else if (mods & GLFW_MOD_CONTROL)
+        {
+            // Listen for arrow key input to switch through images
+            if (key == GLFW_KEY_LEFT)
             {
-                cpParam[cpSelected][3] += dim_inc;
+                imgTestInd = (imgTestInd > 0) ? imgTestInd - 1 : nTestImg - 1;
             }
-            else if (key == GLFW_KEY_DOWN)
+            else if (key == GLFW_KEY_RIGHT)
             {
-                cpParam[cpSelected][3] -= dim_inc;
+                imgTestInd = (imgTestInd < nTestImg - 1) ? imgTestInd + 1 : 0;
             }
         }
 
-        // ---------- Control point shear change [UP, DOWN] ----------
-        if (cpModMode == "shear")
+        // ---------- Control point adjustments [SHIFT or no modifier] ----------
+        else
         {
-            // Set the shear increment based on whether the shift key is pressed
-            float shr_inc = (mods & GLFW_MOD_SHIFT) ? 0.025f : 0.005f;
+            // ---------- Control point position change [LEFT, RIGHT, UP, DOWN] ----------
+            if (cpModMode == "position")
+            {
+                // Set the position increment based on whether the shift key is pressed
+                float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.05f : 0.01f;
 
-            // Listen for arrow key input to adjust shear
-            if (key == GLFW_KEY_UP)
-            {
-                cpParam[cpSelected][4] += shr_inc;
+                // Listen for arrow key input to move selected control point
+                if (key == GLFW_KEY_LEFT)
+                {
+                    cpParam[cpSelected][0] -= pos_inc;
+                }
+                else if (key == GLFW_KEY_RIGHT)
+                {
+                    cpParam[cpSelected][0] += pos_inc;
+                }
+                else if (key == GLFW_KEY_UP)
+                {
+                    cpParam[cpSelected][1] += pos_inc;
+                }
+                else if (key == GLFW_KEY_DOWN)
+                {
+                    cpParam[cpSelected][1] -= pos_inc;
+                }
             }
-            else if (key == GLFW_KEY_DOWN)
+
+            // ---------- Control point dimension/hight change [UP, DOWN] ----------
+            if (cpModMode == "dimension")
             {
-                cpParam[cpSelected][4] -= shr_inc;
+                // Set the dimension increment based on whether the shift key is pressed
+                float dim_inc = (mods & GLFW_MOD_SHIFT) ? 0.0025f : 0.0005f;
+
+                // Listen for arrow key input to adjust dimension/height
+                if (key == GLFW_KEY_UP)
+                {
+                    cpParam[cpSelected][3] += dim_inc;
+                }
+                else if (key == GLFW_KEY_DOWN)
+                {
+                    cpParam[cpSelected][3] -= dim_inc;
+                }
+            }
+
+            // ---------- Control point shear change [UP, DOWN] ----------
+            if (cpModMode == "shear")
+            {
+                // Set the shear increment based on whether the shift key is pressed
+                float shr_inc = (mods & GLFW_MOD_SHIFT) ? 0.025f : 0.005f;
+
+                // Listen for arrow key input to adjust shear
+                if (key == GLFW_KEY_UP)
+                {
+                    cpParam[cpSelected][4] += shr_inc;
+                }
+                else if (key == GLFW_KEY_DOWN)
+                {
+                    cpParam[cpSelected][4] -= shr_inc;
+                }
             }
         }
     }
 
     // ---------- Recompute homography matrix ----------
+
+    // Recompute homography matrix
     computeHomography();
+
+    // Update the window monitor and mode
+    updateWindowMonMode();
 }
 
 /**
@@ -344,9 +388,10 @@ void drawWallsAll()
             if (i_wall == 1 && j_wall == 1)
             {
                 // Merge images
-                ILuint merge_images_1 = mergeImages(imgTestIDs[imgTestInd], imgMonIDs[imgMonInd]);
-                ILuint merge_images_2 = mergeImages(merge_images_1, imgModeIDs[imgModeInd]);
-                ilBindImage(merge_images_2);
+                ILuint merge_images_1 = mergeImages(imgTestIDs[imgTestInd], imgMonIDs[imgMonInd]); // merge test pattern and active monitor image
+                ILuint merge_images_2 = mergeImages(merge_images_1, imgParamIDs[imgParamInd]);     // merge previous image and active cp parameter image
+                ILuint merge_images_3 = mergeImages(merge_images_2, imgCalIDs[imgCalInd]);         // merge previous image and active calibration image
+                ilBindImage(merge_images_3);
             }
             else
             {
@@ -400,17 +445,15 @@ void drawWallsAll()
 
 /**
  * @brief Loads images from specified file paths and stores their IDs in a reference vector.
- * 
+ *
  * This function takes a vector of file paths (`ref_img_paths`) and iteratively loads each image
- * using the DevIL library. The function then stores the ILuint IDs of successfully loaded images 
- * in a reference vector (`ref_image_ids`). 
- * 
+ * using the DevIL library. The function then stores the ILuint IDs of successfully loaded images
+ * in a reference vector (`ref_image_ids`).
+ *
  * @param ref_image_ids A reference to a vector of ILuint where the IDs of the loaded images will be stored.
  * @param ref_img_paths A reference to a vector of file paths to the images to be loaded.
- * 
+ *
  * @note Utilizes the DevIL image library for image loading operations.
- * 
- * @warning Logs an error message and continues if any image fails to load.
  */
 void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string> &ref_img_paths)
 {
@@ -557,13 +600,23 @@ ILuint mergeImages(ILuint img1, ILuint img2)
  *
  * @note The global variables monitor, monitors, imgMonNumInd, window, and isFullScreen are
  *       used to control the behavior of this function.
- *
- * @warning This function relies on the GLFW library for window management and ROS for logging.
+ *       Will only exicute if monotor parameters have changed.
  */
-void changeWindowMonMode()
+void updateWindowMonMode()
 {
+    static int imp_mon_ind_last = imgMonInd;
+    static int is_fullscreen_last = !isFullScreen;
+
+    // Check if monitor or fullscreen mode has changed
+    if (imp_mon_ind_last == imgMonInd && is_fullscreen_last == isFullScreen)
+    {
+        return;
+    }
+
+    // Get GLFWmonitor for active monitor
     monitor = monitors[imgMonInd];
 
+    // Update window size and position
     if (monitor)
     {
         // Get the video mode of the selected monitor
@@ -587,6 +640,10 @@ void changeWindowMonMode()
     {
         ROS_WARN("FAILED: Move window to monitor %d and set to %s", imgMonInd, isFullScreen ? "fullscreen" : "windowed");
     }
+
+    // Update last monitor and fullscreen mode
+    imp_mon_ind_last = imgMonInd;
+    is_fullscreen_last = isFullScreen;
 }
 
 /**
@@ -634,8 +691,6 @@ std::vector<cv::Point2f> computeWallVertices(float x0, float y0, float width, fl
  *
  * @note This function uses the OpenCV library to compute the homography matrix.
  * @note The global variables cpParam, MAZE_SIZE, and wallSpace are used to control the behavior of this function.
- *
- * @warning Make sure that the number of control points and wall image vertices are the same and that they are ordered correspondingly.
  */
 void computeHomography()
 {
@@ -667,26 +722,41 @@ void resetParamCP()
             cpParam[i][j] = cpParamDefault[i][j];
         }
     }
+
+    // Add an offset when calibrating left or right wall images
+    float horz_offset = 0.2f;
+    if (imgCalInd == 1) // left wall
+    {
+        cpParam[0][0] -= horz_offset;
+        cpParam[1][0] -= horz_offset;
+        cpParam[2][0] -= horz_offset;
+        cpParam[3][0] -= horz_offset;
+    }
+    else if (imgCalInd == 2) // right wall
+    {
+        cpParam[0][0] += horz_offset;
+        cpParam[1][0] += horz_offset;
+        cpParam[2][0] += horz_offset;
+        cpParam[3][0] += horz_offset;
+    }
 }
 
 /**
  * @brief Loads control point parameters and homography matrix from an XML file.
- * 
- * This function reads an XML file specified by the global variable `configPath` to load 
+ *
+ * This function reads an XML file specified by the global variable `configPath` to load
  * configuration data for control points (stored in cpParam) and the homography matrix (stored in H).
- * 
+ *
  * The XML file is expected to have a specific structure with elements labeled "cpParam" and "H".
  * Each of these elements should contain nested "Row" and "Cell" elements to represent the matrix data.
- * 
+ *
  * @note This function uses the pugiXML library to parse the XML file.
  * @note The global variables `configPath`, `cpParam`, and `H` are used in this function.
- * 
- * @warning This function will log an error message and return if the XML file cannot be loaded.
  */
 void loadCoordinatesXML()
 {
-    // Get file name based on the active monitor and the save path
-    std::string file_name = "cfg_" + std::to_string(imgMonInd)  + ".xml";
+    // Get file name and path based on the active calibration mode and monitor
+    std::string file_name = "cfg_c" + std::to_string(imgCalInd) + "m" + std::to_string(imgMonInd) + ".xml";
     std::string full_path = configDirPath + "/" + file_name;
 
     // Create an XML document object
@@ -829,8 +899,8 @@ void saveCoordinatesXML()
         }
     }
 
-    // Get file name based on the active monitor and the xml dir path
-    std::string file_name = "cfg_" + std::to_string(imgMonInd) + ".xml";
+    // Get file name and path based on the active calibration mode and monitor
+    std::string file_name = "cfg_c" + std::to_string(imgCalInd) + "m" + std::to_string(imgMonInd) + ".xml";
     std::string full_path = configDirPath + "/" + file_name;
 
     // Save the XML document to a file specified by 'configPath'
@@ -868,9 +938,9 @@ int main(int argc, char **argv)
     // Log paths for debugging
     ROS_INFO("SETTINGS: Package Path: %s", packagePath.c_str());
     ROS_INFO("SETTINGS: Config XML Path: %s", configDirPath.c_str());
-    ROS_INFO("SETTINGS: Display: XYLim=[%0.2f,%0.2f] Width=%d Height=%d AR=%0.2f", xy_lim, xy_lim, winWidth, winHeight, winAspectRatio);
+    ROS_INFO("SETTINGS: Display: XYLim=[%0.2f,%0.2f] Width=%d Height=%d AR=%0.2f", xy_lim, xy_lim, winWidthPxl, winHeightPxl, winAspectRatio);
     ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", wallWidth, wallSpace);
-    ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(wallWidth * (float)winWidth), (int)(wallSpace * (float)winWidth));
+    ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(wallWidth * (float)winWidthPxl), (int)(wallSpace * (float)winWidthPxl));
 
     // Initialize control point parameters
     resetParamCP();
@@ -881,7 +951,8 @@ int main(int argc, char **argv)
     // Load images
     loadImgTextures(imgTestIDs, imgTestPaths);
     loadImgTextures(imgMonIDs, imgMonPaths);
-    loadImgTextures(imgModeIDs, imgModePaths);
+    loadImgTextures(imgParamIDs, imgParamPaths);
+    loadImgTextures(imgCalIDs, imgCalPaths);
 
     // TODO: Check necessity of these lines
     textureImgWidth = ilGetInteger(IL_IMAGE_WIDTH);
@@ -896,7 +967,7 @@ int main(int argc, char **argv)
     }
 
     // Create GLFW window
-    window = glfwCreateWindow(winWidth, winHeight, windowName.c_str(), NULL, NULL);
+    window = glfwCreateWindow(winWidthPxl, winHeightPxl, windowName.c_str(), NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -915,20 +986,20 @@ int main(int argc, char **argv)
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glGenTextures(1, &fboTexture);
     glBindTexture(GL_TEXTURE_2D, fboTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, winWidth, winHeight, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, winWidthPxl, winHeightPxl, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Get the list of available monitors and their count
-    monitors = glfwGetMonitors(&monitorCount);
+    monitors = glfwGetMonitors(&nMonitors);
     // TEMP: hardcoding for now
-    monitorCount = 2;
+    nMonitors = 2;
 
     // Set the window to the first monitor
     computeHomography();
-    changeWindowMonMode();
+    updateWindowMonMode();
 
     // _______________ MAIN LOOP _______________
 

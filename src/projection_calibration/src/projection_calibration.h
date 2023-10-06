@@ -71,8 +71,8 @@ void loadImgTextures(std::vector<ILuint> &, std::vector<std::string> &);
 // Function to merge two ILuint images
 ILuint mergeImages(ILuint, ILuint);
 
-// Function to change the window monitor and mode (full-screen or windowed)
-void changeWindowMonMode();
+// Function to change the window monitor and mode (e.g., full-screen or windowed)
+void updateWindowMonMode();
 
 // Function to computer wall vertices
 std::vector<cv::Point2f> computeWallVertices(float, float, float, float, float);
@@ -98,10 +98,22 @@ int main(int, char **);
 const int MAZE_SIZE = 3;
 
 // Spricify window resolution: 4K resolution (3840x2160)
-int winWidth = 3840;
-int winHeight = 2160;
-float winAspectRatio = (float)winWidth / (float)winHeight;
+int winWidthPxl = 3840;
+int winHeightPxl = 2160;
+float winAspectRatio = (float)winWidthPxl / (float)winHeightPxl;
 
+// Specify the window name
+std::string windowName = "Projection Calibration";
+
+// Variables related to control points
+const float cpSize = 0.015f;
+const float xy_lim = 0.5f;
+const float ht_scale = winAspectRatio * 1.8 * 0.75;
+cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
+int cpSelected = 0;
+std::string cpModMode = "position";
+std::vector<float> cpActiveRGB = {1.0f, 0.0f, 0.0f};   // Active control point marker color
+std::vector<float> cpInactiveRGB = {0.0f, 0.0f, 1.0f}; // Inactive control point marker color
 /**
  * @brief Array to hold the position and transformation parameters for control points in normalized coordinates [-1, 1].
  *
@@ -121,11 +133,6 @@ float winAspectRatio = (float)winWidth / (float)winHeight;
  *   - [3]: Height parameter
  *   - [4]: Shearing factor
  */
-
-// Variables related to control points
-const float cpSize = 0.015f;
-const float xy_lim = 0.5f;
-const float ht_scale = winAspectRatio * 1.8 * 0.75;
 float cpParamDefault[4][5] = {
     {-xy_lim, xy_lim, cpSize, cpSize *ht_scale, 0.0f}, // top-left control point
     {xy_lim, xy_lim, cpSize, cpSize *ht_scale, 0.0f},  // top-right control point
@@ -133,58 +140,71 @@ float cpParamDefault[4][5] = {
     {-xy_lim, -xy_lim, cpSize, cpSize *ht_scale, 0.0f} // bottom-left control point
 };
 float cpParam[4][5];
-cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
-int cpSelected = 0;
-std::string cpModMode = "position";
-std::vector<float> cpActiveRGB = {1.0f, 0.0f, 0.0f};   // Active control point marker color
-std::vector<float> cpInactiveRGB = {0.0f, 0.0f, 1.0f}; // Inactive control point marker color
 
-// Wall image size and spacing
-const float wallWidth = 0.02;
+// Wall image size and spacing (pixels)
+int wallWidthPxl = 300;
+int heightHeightPxl = 540;
+
+// Wall image size and spacing (normalized?)
+/// @todo: Figure out how these values are used
+const float wallWidth = 0.02; 
 const float wallSpace = 2.5 * wallWidth;
-// const float wallWidth = cpSize;
-// const float wallSpace = 0.05f;
 
-// Variables related to file paths
-std::string windowName = "Projection Calibration";
+// Directory paths
 std::string packagePath = ros::package::getPath("projection_calibration");
 std::string workspacePath = packagePath.substr(0, packagePath.rfind("/src"));
 std::string configDirPath = workspacePath + "/data/proj_cfg";
-std::string img_test_path = workspacePath + "/data/img/test_patterns";
-std::string img_state_path = workspacePath + "/data/img/state_images";
+std::string imgTestPath = workspacePath + "/data/img/test_patterns";
+std::string imgStatePath = workspacePath + "/data/img/ui_state_images";
 
 // Test image variables
 std::vector<ILuint> imgTestIDs; // Container to hold the loaded images
-int imgTestInd = 0;             // Index of the image to be loaded
 std::vector<std::string> imgTestPaths = {
     // List of test image file paths
-    img_test_path + "/1_test_pattern.bmp",
-    img_test_path + "/2_manu_pirate.bmp",
-    img_test_path + "/3_earthlings.bmp",
+    imgTestPath + "/1_test_pattern.bmp",
+    imgTestPath + "/2_manu_pirate.bmp",
+    imgTestPath + "/3_earthlings.bmp",
 };
+int imgTestInd = 0; // Index of the image to be loaded
+size_t nTestImg = imgTestPaths.size(); // Number of test images
 
-// Monitor number image variables
-std::vector<ILuint> imgMonIDs; // Container to hold the loaded images
-int imgMonInd = 0;             // Index of the image to be loaded
+// Monitor variables
+std::vector<ILuint> imgMonIDs; // Container to hold the loaded images for ui
 std::vector<std::string> imgMonPaths = {
     // List of monitor number image file paths
-    img_state_path + "/m0.bmp",
-    img_state_path + "/m1.bmp",
-    img_state_path + "/m2.bmp",
-    img_state_path + "/m3.bmp",
-    img_state_path + "/m4.bmp",
-    img_state_path + "/m5.bmp",
+    imgStatePath + "/m0.bmp",
+    imgStatePath + "/m1.bmp",
+    imgStatePath + "/m2.bmp",
+    imgStatePath + "/m3.bmp",
+    imgStatePath + "/m4.bmp",
+    imgStatePath + "/m5.bmp",
 };
+int imgMonInd = 0; // Index of the image to be loaded
+int nMonitors;          // Number of monitors connected to the system
+bool isFullScreen = false; // Flag to indicate if the window is in full screen mode
 
-// Mode image variables
-std::vector<ILuint> imgModeIDs; // Container to hold the loaded images
-int imgModeInd = 0;             // Index of the image to be loaded
-std::vector<std::string> imgModePaths = {
-    // List of mode image file paths
-    img_state_path + "/position.bmp",
-    img_state_path + "/dimension.bmp",
-    img_state_path + "/shear.bmp",
+// Control point parameter image variables for ui
+std::vector<ILuint> imgParamIDs; // Container to hold the loaded images for ui
+std::vector<std::string> imgParamPaths = {
+    // List of cp parameter image file paths
+    imgStatePath + "/p.bmp",
+    imgStatePath + "/d.bmp",
+    imgStatePath + "/s.bmp",
 };
+int imgParamInd = 0; // Index of the image to be loaded
+
+// Callibration image variables for ui
+std::vector<ILuint> imgCalIDs; // Container to hold the loaded images for ui
+std::vector<std::string> imgCalPaths = {
+    // List of mode image file paths
+    imgStatePath + "/c-wm.bmp",
+    imgStatePath + "/c-wl.bmp",
+    imgStatePath + "/c-wr.bmp",
+    imgStatePath + "/c-f.bmp",
+    imgStatePath + "/c-d.bmp",
+};
+int imgCalInd = 0; // Index of the image to be loaded
+size_t nCalModes = imgCalPaths.size(); // Number of calibration modes
 
 // Variables related to window and OpenGL
 GLFWwindow *window;
@@ -192,8 +212,6 @@ GLuint fbo;
 GLuint fboTexture;
 GLFWmonitor *monitor = NULL;
 GLFWmonitor **monitors;
-int monitorCount;          // Number of monitors connected to the system
-bool isFullScreen = false; // Flag to indicate if the window is in full screen mode
 
 // Variables related to mouse input (UNUSED)
 ILint textureImgWidth;
