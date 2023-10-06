@@ -134,6 +134,13 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             imgMonNumInd = (imgMonNumInd < monitorCount - 1) ? imgMonNumInd + 1 : 0;
             changeWindowMonMode();
         }
+
+        // ---------- Control Point Reset [R] ----------
+
+        else if (key == GLFW_KEY_R)
+        {
+            resetParamCP();
+        }
     }
 
     // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
@@ -149,19 +156,19 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Listen for arrow key input to move selected control point
             if (key == GLFW_KEY_LEFT)
             {
-                cpPositions[cpSelected][0] -= pos_inc;
+                cpParam[cpSelected][0] -= pos_inc;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                cpPositions[cpSelected][0] += pos_inc;
+                cpParam[cpSelected][0] += pos_inc;
             }
             else if (key == GLFW_KEY_UP)
             {
-                cpPositions[cpSelected][1] += pos_inc;
+                cpParam[cpSelected][1] += pos_inc;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                cpPositions[cpSelected][1] -= pos_inc;
+                cpParam[cpSelected][1] -= pos_inc;
             }
         }
 
@@ -174,11 +181,11 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Listen for arrow key input to adjust dimension/height
             if (key == GLFW_KEY_UP)
             {
-                cpPositions[cpSelected][3] += dim_inc;
+                cpParam[cpSelected][3] += dim_inc;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                cpPositions[cpSelected][3] -= dim_inc;
+                cpParam[cpSelected][3] -= dim_inc;
             }
         }
 
@@ -191,11 +198,11 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Listen for arrow key input to adjust shear
             if (key == GLFW_KEY_UP)
             {
-                cpPositions[cpSelected][4] += shr_inc;
+                cpParam[cpSelected][4] += shr_inc;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                cpPositions[cpSelected][4] -= shr_inc;
+                cpParam[cpSelected][4] -= shr_inc;
             }
         }
     }
@@ -315,12 +322,12 @@ void drawWall(std::vector<cv::Point2f> img_vertices)
 void drawWallsAll()
 {
     // Extract shear and height values from control points
-    float height1 = cpPositions[0][3];
-    float height3 = cpPositions[2][3];
-    float height4 = cpPositions[3][3];
-    float shear1 = cpPositions[0][4];
-    float shear3 = cpPositions[2][4];
-    float shear4 = cpPositions[3][4];
+    float height1 = cpParam[0][3];
+    float height3 = cpParam[2][3];
+    float height4 = cpParam[3][3];
+    float shear1 = cpParam[0][4];
+    float shear3 = cpParam[2][4];
+    float shear4 = cpParam[3][4];
 
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
@@ -493,17 +500,17 @@ ILuint mergeImages(ILuint img1, ILuint img2)
 
 /**
  * @brief Changes the display mode and monitor of the application window.
- * 
+ *
  * This function switches the application window between full-screen and windowed modes
  * and moves it to the monitor specified by the global variable imgMonNumInd.
- * 
+ *
  * In full-screen mode, the window is resized to match the dimensions of the selected monitor.
  * In windowed mode, the window is resized to a default size and positioned near the top-left
  * corner of the selected monitor.
- * 
+ *
  * @note The global variables monitor, monitors, imgMonNumInd, window, and isFullScreen are
  *       used to control the behavior of this function.
- * 
+ *
  * @warning This function relies on the GLFW library for window management and ROS for logging.
  */
 void changeWindowMonMode()
@@ -571,26 +578,26 @@ std::vector<cv::Point2f> computeWallVertices(float x0, float y0, float width, fl
 
 /**
  * @brief Computes the homography matrix based on control points and wall image vertices.
- * 
+ *
  * This function calculates the homography matrix that maps points from the source image (wall images)
  * to the destination image (control points). The homography matrix is stored in the global variable H.
- * 
- * Control points are specified in normalized coordinates and are fetched from the global variable cpPositions.
+ *
+ * Control points are specified in normalized coordinates and are fetched from the global variable cpParam.
  * Wall image vertices are calculated based on the dimensions and spacing of the maze walls.
- * 
+ *
  * @note This function uses the OpenCV library to compute the homography matrix.
- * @note The global variables cpPositions, MAZE_SIZE, and wallSpace are used to control the behavior of this function.
- * 
+ * @note The global variables cpParam, MAZE_SIZE, and wallSpace are used to control the behavior of this function.
+ *
  * @warning Make sure that the number of control points and wall image vertices are the same and that they are ordered correspondingly.
  */
 void computeHomography()
 {
     // Get the corner/vertex values for each of the control points
     std::vector<cv::Point2f> cp_vertices;
-    cp_vertices.push_back(cv::Point2f(cpPositions[0][0], cpPositions[0][1]));
-    cp_vertices.push_back(cv::Point2f(cpPositions[1][0], cpPositions[1][1]));
-    cp_vertices.push_back(cv::Point2f(cpPositions[2][0], cpPositions[2][1]));
-    cp_vertices.push_back(cv::Point2f(cpPositions[3][0], cpPositions[3][1]));
+    cp_vertices.push_back(cv::Point2f(cpParam[0][0], cpParam[0][1]));
+    cp_vertices.push_back(cv::Point2f(cpParam[1][0], cpParam[1][1]));
+    cp_vertices.push_back(cv::Point2f(cpParam[2][0], cpParam[2][1]));
+    cp_vertices.push_back(cv::Point2f(cpParam[3][0], cpParam[3][1]));
 
     // Get the corner/vertex values for each of the wall images
     std::vector<cv::Point2f> img_vertices;
@@ -598,6 +605,21 @@ void computeHomography()
 
     // Compute the homography matrix
     H = findHomography(img_vertices, cp_vertices);
+}
+
+/**
+ * @brief Used to reset control point parameter list.
+ */
+void resetParamCP()
+{
+    // Copy the default array to the dynamic one
+    for (int i = 0; i < 4; ++i)
+    {
+        for (int j = 0; j < 5; ++j)
+        {
+            cpParam[i][j] = cpParamDefault[i][j];
+        }
+    }
 }
 
 void loadCoordinatesXML()
@@ -613,10 +635,10 @@ void loadCoordinatesXML()
         return;
     }
 
-    // Retrieve cpPositions
-    std::vector<std::vector<float>> cpPositions2;
-    pugi::xml_node cpPositionsNode = doc.child("config").child("cpPositions");
-    for (pugi::xml_node rowNode = cpPositionsNode.child("Row"); rowNode; rowNode = rowNode.next_sibling("Row"))
+    // Retrieve cpParam
+    std::vector<std::vector<float>> cpParam2;
+    pugi::xml_node cpParamNode = doc.child("config").child("cpParam");
+    for (pugi::xml_node rowNode = cpParamNode.child("Row"); rowNode; rowNode = rowNode.next_sibling("Row"))
     {
         std::vector<float> row;
         for (pugi::xml_node cellNode = rowNode.child("Cell"); cellNode; cellNode = cellNode.next_sibling("Cell"))
@@ -624,14 +646,14 @@ void loadCoordinatesXML()
             float value = std::stof(cellNode.child_value());
             row.push_back(value);
         }
-        cpPositions2.push_back(row);
+        cpParam2.push_back(row);
     }
 
     for (int i = 0; i < 4; i++)
     {
         for (int j = 0; j < 5; j++)
         {
-            cpPositions[i][j] = cpPositions2[i][j];
+            cpParam[i][j] = cpParam2[i][j];
         }
     }
 
@@ -703,13 +725,13 @@ void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string
  * Example XML structure:
  * @code
  * <config>
- *   <cpPositions>
+ *   <cpParam>
  *     <Row>
  *       <Cell>value</Cell>
  *       ...
  *     </Row>
  *     ...
- *   </cpPositions>
+ *   </cpParam>
  *   <H>
  *     <Row>
  *       <Cell>value</Cell>
@@ -731,12 +753,12 @@ void saveCoordinatesXML()
     pugi::xml_node root = doc.append_child("config");
 
     // Create a child node for storing control point positions
-    pugi::xml_node arrayNode = root.append_child("cpPositions");
+    pugi::xml_node arrayNode = root.append_child("cpParam");
 
-    // Iterate over the rows of the 2D array 'cpPositions'
-    for (const auto &row : cpPositions)
+    // Iterate over the rows of the 2D array 'cpParam'
+    for (const auto &row : cpParam)
     {
-        // Create a row element under "cpPositions"
+        // Create a row element under "cpParam"
         pugi::xml_node rowNode = arrayNode.append_child("Row");
 
         // Iterate over the elements in the row
@@ -810,16 +832,15 @@ int main(int argc, char **argv)
     ros::NodeHandle nh("~");
     ROS_INFO("RUNNING MAIN");
 
-    // TODO: Use rosparam for these settings
-    // nh.param<std::string>("configPath", tempPath, "");
-    // nh.param<std::string>("windowName", tempName, "");
-
     // Log paths for debugging
     ROS_INFO("SETTINGS: Package Path: %s", packagePath.c_str());
     ROS_INFO("SETTINGS: Config XML Path: %s", configPath.c_str());
     ROS_INFO("SETTINGS: Display: XYLim=[%0.2f,%0.2f] Width=%d Height=%d AR=%0.2f", xy_lim, xy_lim, winWidth, winHeight, winAspectRatio);
     ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", wallWidth, wallSpace);
     ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(wallWidth * (float)winWidth), (int)(wallSpace * (float)winWidth));
+
+    // Initialize control point parameters
+    resetParamCP();
 
     // Initialize DevIL library
     ilInit();
@@ -889,7 +910,7 @@ int main(int argc, char **argv)
         // Draw/update control points
         for (int i = 0; i < 4; i++)
         {
-            drawControlPoint(cpPositions[i][0], cpPositions[i][1], cpPositions[i][2], cpSelected == i ? cpActiveRGB : cpInactiveRGB);
+            drawControlPoint(cpParam[i][0], cpParam[i][1], cpParam[i][2], cpSelected == i ? cpActiveRGB : cpInactiveRGB);
         }
 
         // Swap buffers and poll events

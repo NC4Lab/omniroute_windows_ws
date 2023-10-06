@@ -80,6 +80,9 @@ std::vector<cv::Point2f> computeWallVertices(float, float, float, float, float);
 // Function to compute homography matrix
 void computeHomography();
 
+// Funciton to reset control point parameter list
+void resetParamCP();
+
 // Function to load coordinates from an XML file
 void loadCoordinatesXML();
 
@@ -123,12 +126,13 @@ float winAspectRatio = (float)winWidth / (float)winHeight;
 const float cpSize = 0.015f;
 const float xy_lim = 0.5f;
 const float ht_scale = winAspectRatio * 1.8 * 0.75;
-float cpPositions[4][5] = {
+float cpParamDefault[4][5] = {
     {-xy_lim, xy_lim, cpSize, cpSize *ht_scale, 0.0f}, // top-left control point
     {xy_lim, xy_lim, cpSize, cpSize *ht_scale, 0.0f},  // top-right control point
     {xy_lim, -xy_lim, cpSize, cpSize *ht_scale, 0.0f}, // bottom-right control point
     {-xy_lim, -xy_lim, cpSize, cpSize *ht_scale, 0.0f} // bottom-left control point
 };
+float cpParam[4][5];
 cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
 int cpSelected = 0;
 std::string cpModMode = "position";
