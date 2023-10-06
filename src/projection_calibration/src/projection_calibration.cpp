@@ -131,7 +131,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // Move the window to the other monitor
         else if (key == GLFW_KEY_M)
         {
-            imgMonNumInd = (imgMonNumInd < monitorCount - 1) ? imgMonNumInd + 1 : 0;
+            imgMonInd = (imgMonInd < monitorCount - 1) ? imgMonInd + 1 : 0;
             changeWindowMonMode();
         }
 
@@ -176,7 +176,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         if (cpModMode == "dimension")
         {
             // Set the dimension increment based on whether the shift key is pressed
-            float dim_inc = (mods & GLFW_MOD_SHIFT) ? 0.001f : 0.0005f;
+            float dim_inc = (mods & GLFW_MOD_SHIFT) ? 0.0025f : 0.0005f;
 
             // Listen for arrow key input to adjust dimension/height
             if (key == GLFW_KEY_UP)
@@ -193,7 +193,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         if (cpModMode == "shear")
         {
             // Set the shear increment based on whether the shift key is pressed
-            float shr_inc = (mods & GLFW_MOD_SHIFT) ? 0.05f : 0.001f;
+            float shr_inc = (mods & GLFW_MOD_SHIFT) ? 0.025f : 0.005f;
 
             // Listen for arrow key input to adjust shear
             if (key == GLFW_KEY_UP)
@@ -344,7 +344,7 @@ void drawWallsAll()
             if (i_wall == 1 && j_wall == 1)
             {
                 // Merge images
-                ILuint merge_images_1 = mergeImages(imgTestIDs[imgTestInd], imgMonNumIDs[imgMonNumInd]);
+                ILuint merge_images_1 = mergeImages(imgTestIDs[imgTestInd], imgMonIDs[imgMonInd]);
                 ILuint merge_images_2 = mergeImages(merge_images_1, imgModeIDs[imgModeInd]);
                 ilBindImage(merge_images_2);
             }
@@ -396,6 +396,53 @@ void drawWallsAll()
 
     // Disable OpenGL texture mapping
     glDisable(GL_TEXTURE_2D);
+}
+
+/**
+ * @brief Loads images from specified file paths and stores their IDs in a reference vector.
+ * 
+ * This function takes a vector of file paths (`ref_img_paths`) and iteratively loads each image
+ * using the DevIL library. The function then stores the ILuint IDs of successfully loaded images 
+ * in a reference vector (`ref_image_ids`). 
+ * 
+ * @param ref_image_ids A reference to a vector of ILuint where the IDs of the loaded images will be stored.
+ * @param ref_img_paths A reference to a vector of file paths to the images to be loaded.
+ * 
+ * @note Utilizes the DevIL image library for image loading operations.
+ * 
+ * @warning Logs an error message and continues if any image fails to load.
+ */
+void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string> &ref_img_paths)
+{
+    // Iterate through img file paths
+    for (const std::string &img_path : ref_img_paths)
+    {
+        ILuint img_id;
+        ilGenImages(1, &img_id);
+        ilBindImage(img_id);
+
+        // Get width and height of image
+        int width = ilGetInteger(IL_IMAGE_WIDTH);
+        int height = ilGetInteger(IL_IMAGE_HEIGHT);
+
+        // Get file name from path
+        std::string file_name = img_path.substr(img_path.find_last_of('/') + 1);
+
+        // Attempt to load image
+        ILboolean success = ilLoadImage(img_path.c_str());
+        if (success == IL_TRUE)
+        {
+            ref_image_ids.push_back(img_id);
+            ROS_INFO("DevIL: Loaded image: File[%s]", file_name.c_str());
+            ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
+        }
+        else
+        {
+            ILenum error = ilGetError();
+            ilDeleteImages(1, &img_id);
+            ROS_ERROR("DevIL: Failed to load image: Error[%s] File[%s]", iluErrorString(error), file_name.c_str());
+        }
+    }
 }
 
 /**
@@ -515,7 +562,7 @@ ILuint mergeImages(ILuint img1, ILuint img2)
  */
 void changeWindowMonMode()
 {
-    monitor = monitors[imgMonNumInd];
+    monitor = monitors[imgMonInd];
 
     if (monitor)
     {
@@ -534,11 +581,11 @@ void changeWindowMonMode()
             // Set the window to windowed mode and position it on the current monitor
             glfwSetWindowMonitor(window, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * winAspectRatio), 500, 0);
         }
-        ROS_INFO("RAN: Move window to monitor %d and set to %s", imgMonNumInd, isFullScreen ? "fullscreen" : "windowed");
+        ROS_INFO("RAN: Move window to monitor %d and set to %s", imgMonInd, isFullScreen ? "fullscreen" : "windowed");
     }
     else
     {
-        ROS_WARN("FAILED: Move window to monitor %d and set to %s", imgMonNumInd, isFullScreen ? "fullscreen" : "windowed");
+        ROS_WARN("FAILED: Move window to monitor %d and set to %s", imgMonInd, isFullScreen ? "fullscreen" : "windowed");
     }
 }
 
@@ -638,12 +685,13 @@ void resetParamCP()
  */
 void loadCoordinatesXML()
 {
-    // Get file name from path
-    std::string file_name = configPath.substr(configPath.find_last_of('/') + 1);
+    // Get file name based on the active monitor and the save path
+    std::string file_name = "cfg_" + std::to_string(imgMonInd)  + ".xml";
+    std::string full_path = configDirPath + "/" + file_name;
 
     // Create an XML document object
     pugi::xml_document doc;
-    if (!doc.load_file(configPath.c_str()))
+    if (!doc.load_file(full_path.c_str()))
     {
         ROS_ERROR("LOAD XML: Could Not Load XML: File[%s]", file_name.c_str());
         return;
@@ -689,53 +737,6 @@ void loadCoordinatesXML()
         for (int j = 0; j < 3; j++)
         {
             H.at<float>(i, j) = H2[i][j];
-        }
-    }
-}
-
-/**
- * @brief Loads images from specified file paths and stores their IDs in a reference vector.
- * 
- * This function takes a vector of file paths (`ref_img_paths`) and iteratively loads each image
- * using the DevIL library. The function then stores the ILuint IDs of successfully loaded images 
- * in a reference vector (`ref_image_ids`). 
- * 
- * @param ref_image_ids A reference to a vector of ILuint where the IDs of the loaded images will be stored.
- * @param ref_img_paths A reference to a vector of file paths to the images to be loaded.
- * 
- * @note Utilizes the DevIL image library for image loading operations.
- * 
- * @warning Logs an error message and continues if any image fails to load.
- */
-void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string> &ref_img_paths)
-{
-    // Iterate through img file paths
-    for (const std::string &img_path : ref_img_paths)
-    {
-        ILuint img_id;
-        ilGenImages(1, &img_id);
-        ilBindImage(img_id);
-
-        // Get width and height of image
-        int width = ilGetInteger(IL_IMAGE_WIDTH);
-        int height = ilGetInteger(IL_IMAGE_HEIGHT);
-
-        // Get file name from path
-        std::string file_name = img_path.substr(img_path.find_last_of('/') + 1);
-
-        // Attempt to load image
-        ILboolean success = ilLoadImage(img_path.c_str());
-        if (success == IL_TRUE)
-        {
-            ref_image_ids.push_back(img_id);
-            ROS_INFO("DevIL: Loaded image: File[%s]", file_name.c_str());
-            ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
-        }
-        else
-        {
-            ILenum error = ilGetError();
-            ilDeleteImages(1, &img_id);
-            ROS_ERROR("DevIL: Failed to load image: Error[%s] File[%s]", iluErrorString(error), file_name.c_str());
         }
     }
 }
@@ -828,14 +829,18 @@ void saveCoordinatesXML()
         }
     }
 
+    // Get file name based on the active monitor and the xml dir path
+    std::string file_name = "cfg_" + std::to_string(imgMonInd) + ".xml";
+    std::string full_path = configDirPath + "/" + file_name;
+
     // Save the XML document to a file specified by 'configPath'
-    if (doc.save_file(configPath.c_str()))
+    if (doc.save_file(full_path.c_str()))
     {
-        ROS_INFO("SAVE XML: File Saved Successfully: Path[%s]", configPath.c_str());
+        ROS_INFO("SAVE XML: File Saved Successfully: File[%s]", file_name.c_str());
     }
     else
     {
-        ROS_ERROR("SAVE XML: Failed to Save XML: Path[%s]", configPath.c_str());
+        ROS_ERROR("SAVE XML: Failed to Save XML: File[%s]", file_name.c_str());
     }
 }
 
@@ -862,7 +867,7 @@ int main(int argc, char **argv)
 
     // Log paths for debugging
     ROS_INFO("SETTINGS: Package Path: %s", packagePath.c_str());
-    ROS_INFO("SETTINGS: Config XML Path: %s", configPath.c_str());
+    ROS_INFO("SETTINGS: Config XML Path: %s", configDirPath.c_str());
     ROS_INFO("SETTINGS: Display: XYLim=[%0.2f,%0.2f] Width=%d Height=%d AR=%0.2f", xy_lim, xy_lim, winWidth, winHeight, winAspectRatio);
     ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", wallWidth, wallSpace);
     ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(wallWidth * (float)winWidth), (int)(wallSpace * (float)winWidth));
@@ -875,7 +880,7 @@ int main(int argc, char **argv)
 
     // Load images
     loadImgTextures(imgTestIDs, imgTestPaths);
-    loadImgTextures(imgMonNumIDs, imgMonNumPaths);
+    loadImgTextures(imgMonIDs, imgMonPaths);
     loadImgTextures(imgModeIDs, imgModePaths);
 
     // TODO: Check necessity of these lines

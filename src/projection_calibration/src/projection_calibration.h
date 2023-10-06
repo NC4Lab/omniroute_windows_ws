@@ -149,7 +149,7 @@ const float wallSpace = 2.5 * wallWidth;
 std::string windowName = "Projection Calibration";
 std::string packagePath = ros::package::getPath("projection_calibration");
 std::string workspacePath = packagePath.substr(0, packagePath.rfind("/src"));
-std::string configPath = workspacePath + "/data/proj_cfg/proj_cfg.xml";
+std::string configDirPath = workspacePath + "/data/proj_cfg";
 std::string img_test_path = workspacePath + "/data/img/test_patterns";
 std::string img_state_path = workspacePath + "/data/img/state_images";
 
@@ -164,9 +164,9 @@ std::vector<std::string> imgTestPaths = {
 };
 
 // Monitor number image variables
-std::vector<ILuint> imgMonNumIDs; // Container to hold the loaded images
-int imgMonNumInd = 0;             // Index of the image to be loaded
-std::vector<std::string> imgMonNumPaths = {
+std::vector<ILuint> imgMonIDs; // Container to hold the loaded images
+int imgMonInd = 0;             // Index of the image to be loaded
+std::vector<std::string> imgMonPaths = {
     // List of monitor number image file paths
     img_state_path + "/m0.bmp",
     img_state_path + "/m1.bmp",
