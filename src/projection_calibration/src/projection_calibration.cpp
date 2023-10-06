@@ -954,10 +954,6 @@ int main(int argc, char **argv)
     loadImgTextures(imgParamIDs, imgParamPaths);
     loadImgTextures(imgCalIDs, imgCalPaths);
 
-    // TODO: Check necessity of these lines
-    textureImgWidth = ilGetInteger(IL_IMAGE_WIDTH);
-    textureImgHeight = ilGetInteger(IL_IMAGE_HEIGHT);
-
     // Initialize GLFW
     glfwSetErrorCallback(callbackError);
     if (!glfwInit())

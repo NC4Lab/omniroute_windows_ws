@@ -213,8 +213,4 @@ GLuint fboTexture;
 GLFWmonitor *monitor = NULL;
 GLFWmonitor **monitors;
 
-// Variables related to mouse input (UNUSED)
-ILint textureImgWidth;
-ILint textureImgHeight;
-
 #endif
