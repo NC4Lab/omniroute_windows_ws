@@ -744,7 +744,7 @@ void saveCoordinatesXML()
 int main(int argc, char **argv)
 {
     ROS_INFO("!!!!!!!!!!!!!!!!!!!!!!!!! %d", foo(5));
-    return 0;
+    //return 0;
     // _______________ SETUP _______________
 
     // ROS Initialization

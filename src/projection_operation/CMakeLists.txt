@@ -20,16 +20,6 @@ if(catkin_FOUND)
 else()
   message(FATAL_ERROR "[ENV]: catkin not found")
 endif()
-if(NOT catkin_LIBRARIES)
-  message(FATAL_ERROR "[ENV]: catkin_LIBRARIES is not populated")
-else()
-  message(STATUS "[ENV]: catkin_LIBRARIES is populated")
-endif()
-if(NOT catkin_INCLUDE_DIRS)
-  message(FATAL_ERROR "[ENV]: catkin_INCLUDE_DIRS is not populated")
-else()
-  message(STATUS "[ENV]: catkin_INCLUDE_DIRS is populated")
-endif()
 
 # Find OpenCV
 find_package(OpenCV REQUIRED) 
@@ -158,10 +148,27 @@ else()
   message(FATAL_ERROR "[ENV]: GLAD_SRC not set")
 endif()
 
+# ==================== SETUP PROJECTION_UTILS LIBRARY ====================
+
 # Declare the local libraries
 add_library(projection_utils src/projection_utils.cpp)
 
-# Create executable PROJECTION_CALIBRATION
+# Specify libraries to link a library or executable target against
+target_link_libraries(projection_utils
+  ${catkin_LIBRARIES}
+  ${OpenCV_LIBRARIES}
+  ${GLAD_LIBRARY}
+  ${GLFW_LIBRARY}
+  ${DevIL_LIBRARY}
+  ${ILU_LIBRARY}
+  ${ILUT_LIBRARY}
+  ${PugiXML_LIBRARY}
+  ${OpenGL_LIBRARY}
+)
+
+# ==================== SETUP PROJECTION_CALIBRATION LIBRARY ====================
+
+# Create executable
 add_executable(projection_calibration 
   src/projection_calibration.cpp 
   ${GLAD_SRC}
@@ -181,7 +188,7 @@ target_link_libraries(projection_calibration
   ${ILUT_LIBRARY}
   ${PugiXML_LIBRARY}
   ${OpenGL_LIBRARY}
-  projection_utils  # Include your custom library here
+  projection_utils  
 )
 
 # Copy DevIL DLLs to the executable directory so they are accessible at runtime
@@ -192,6 +199,7 @@ add_custom_command(TARGET projection_calibration POST_BUILD
                    "$ENV{DevIL_DIR}/lib/x64/Release/ILUT.dll"
                    $<TARGET_FILE_DIR:projection_calibration>)
 
-# Install targets 
-install(TARGETS projection_calibration
+# ==================== INSTALL TARGETS ====================
+
+install(TARGETS projection_calibration projection_utils
 RUNTIME DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
