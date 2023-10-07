@@ -1,11 +1,11 @@
 // ##########################################################################################################
 
-// ======================================== projection_calibration.h ========================================
+// ======================================== projection_utils.h ========================================
 
 // ##########################################################################################################
 
-#ifndef _PROJECTION_CALIBRATION_H
-#define _PROJECTION_CALIBRATION_H
+#ifndef _PROJECTION_UTILS_H
+#define _PROJECTION_UTILS_H
 
 // ================================================== INCLUDE ==================================================
 
@@ -270,7 +270,7 @@ void loadCoordinatesXML();
 void saveCoordinatesXML();
 
 /**
- * @brief  Entry point for the projection_calibration_node ROS node.
+ * @brief  Entry point for the projection_utils_node ROS node.
  *
  * This program initializes ROS, DevIL, and GLFW, and then enters a main loop
  * to handle image projection and calibration tasks.
@@ -341,7 +341,7 @@ const float wallWidth = 0.02;
 const float wallSpace = 2.5 * wallWidth;
 
 // Directory paths
-std::string packagePath = ros::package::getPath("projection_calibration");
+std::string packagePath = ros::package::getPath("projection_utils");
 std::string workspacePath = packagePath.substr(0, packagePath.rfind("/src"));
 std::string configDirPath = workspacePath + "/data/proj_cfg";
 std::string imgTestPath = workspacePath + "/data/img/test_patterns";

@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<package format="2">common_utils
+  <name>common_utils</name>
+  <version>0.0.0</version>
+  <description>The common_utils package</description>
+
+  <!-- Maintainer Information -->
+  <maintainer email="adanwardlester@gmail.com">AdamWardLester</maintainer>
+
+  <!-- License Information (Update this based on your license) -->
+  <license>TODO</license>
+
+  <!-- Build tool dependency -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- Build dependencies: Packages needed at compile time -->
+  <!-- Added OpenCV (cv_bridge is ROS's bridge to use OpenCV) -->
+  <build_depend>cv_bridge</build_depend>
+  <!-- ROS library -->
+  <build_depend>roslib</build_depend>
+  <!-- ROS C++ Standard Library -->
+  <build_depend>roscpp</build_depend>
+  <!-- Standard ROS Messages -->
+  <build_depend>std_msgs</build_depend>
+
+  <!-- Build export dependencies: Packages needed to build against this package -->
+  <!-- These dependencies will be included when another package builds on top of this one -->
+  <build_export_depend>cv_bridge</build_export_depend>
+  <build_export_depend>roscpp</build_export_depend>
+  <build_export_depend>std_msgs</build_export_depend>
+
+  <!-- Execution dependencies: Packages needed at runtime -->
+  <!-- Added OpenCV (cv_bridge for ROS's OpenCV support) -->
+  <exec_depend>cv_bridge</exec_depend>
+  <!-- ROS library -->
+  <exec_depend>roslib</exec_depend>
+  <!-- ROS C++ Standard Library -->
+  <exec_depend>roscpp</exec_depend>
+  <!-- Standard ROS Messages -->
+  <exec_depend>std_msgs</exec_depend>
+
+  <!-- Export tag for other unspecified tags -->
+  <export>
+    <!-- Placeholder for other tools to request additional information -->
+  </export>
+</package>
