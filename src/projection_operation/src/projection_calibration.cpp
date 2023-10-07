@@ -1,0 +1,859 @@
+// ############################################################################################################
+
+// ======================================== projection_calibration.cpp ========================================
+
+// ############################################################################################################
+
+// ================================================== INCLUDE ==================================================
+#include "projection_calibration.h"
+
+// ================================================== FUNCTIONS ==================================================
+
+void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+
+    // Set the current OpenGL context to the window
+    glfwMakeContextCurrent(window);
+
+    // _______________ ANY KEY RELEASE ACTION _______________
+
+    if (action == GLFW_RELEASE)
+    {
+
+        // ---------- Control Point Reset [R] ----------
+
+        if (key == GLFW_KEY_R)
+        {
+            resetParamCP();
+        }
+
+        // ---------- Target selector keys [F1-F4] ----------
+
+        // Top-left control point
+        else if (key == GLFW_KEY_F1)
+        {
+            cpSelected = 0;
+        }
+
+        // Top-right control point
+        else if (key == GLFW_KEY_F2)
+        {
+            cpSelected = 1;
+        }
+
+        // Bottom-right control point
+        else if (key == GLFW_KEY_F3)
+        {
+            cpSelected = 2;
+        }
+
+        // Bottom-left control point
+        else if (key == GLFW_KEY_F4)
+        {
+            cpSelected = 3;
+        }
+
+        // ---------- Change calibration point parameter keys [A, D, S] ----------
+
+        // Control point position [up, down, left, right]
+        else if (key == GLFW_KEY_A)
+        {
+            cpModMode = "position";
+            imgParamInd = 0;
+        }
+
+        // Control point height [up, down]
+        else if (key == GLFW_KEY_D)
+        {
+            cpModMode = "dimension";
+            imgParamInd = 1;
+        }
+
+        // Control point shear [up, down]
+        else if (key == GLFW_KEY_S)
+        {
+            cpModMode = "shear";
+            imgParamInd = 2;
+        }
+
+        // ---------- Monitor handling [F, M] ----------
+
+        // Set/unset Fullscreen
+        else if (key == GLFW_KEY_F)
+        {
+            isFullScreen = !isFullScreen;
+        }
+
+        // Move the window to another monitor
+        else if (key == GLFW_KEY_0)
+        {
+            imgMonInd = 0;
+        }
+        else if (key == GLFW_KEY_1 && nMonitors > 1)
+        {
+            imgMonInd = 1;
+        }
+        else if (key == GLFW_KEY_2 && nMonitors > 2)
+        {
+            imgMonInd = 2;
+        }
+        else if (key == GLFW_KEY_3 && nMonitors > 3)
+        {
+            imgMonInd = 3;
+        }
+        else if (key == GLFW_KEY_4 && nMonitors > 4)
+        {
+            imgMonInd = 4;
+        }
+        else if (key == GLFW_KEY_5 && nMonitors > 5)
+        {
+            imgMonInd = 5;
+        }
+
+        // ---------- XML Handling [ENTER, L] ----------
+
+        // Save coordinates to XML
+        else if (key == GLFW_KEY_ENTER)
+        {
+            saveCoordinatesXML();
+        }
+
+        // Load coordinates from XML
+        else if (key == GLFW_KEY_L)
+        {
+            loadCoordinatesXML();
+        }
+    }
+
+    // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
+    else if (action == GLFW_PRESS || action == GLFW_REPEAT)
+    {
+
+        // ---------- Calibration mode [ALT + [LEFT, RIGHT]] ----------
+
+        if (mods & GLFW_MOD_ALT)
+        {
+            // Listen for arrow key input to switch through calibration modes
+            if (key == GLFW_KEY_LEFT)
+            {
+                imgCalInd = (imgCalInd > 0) ? imgCalInd - 1 : nCalModes - 1;
+            }
+            else if (key == GLFW_KEY_RIGHT)
+            {
+                imgCalInd = (imgCalInd < nCalModes - 1) ? imgCalInd + 1 : 0;
+            }
+            // Reset control point parameters when switching calibration modes
+            if (key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT)
+            {
+                resetParamCP();
+            }
+        }
+
+        // ---------- Image change [ALT + [LEFT, RIGHT]] ----------
+
+        else if (mods & GLFW_MOD_CONTROL)
+        {
+            // Listen for arrow key input to switch through images
+            if (key == GLFW_KEY_LEFT)
+            {
+                imgTestInd = (imgTestInd > 0) ? imgTestInd - 1 : nTestImg - 1;
+            }
+            else if (key == GLFW_KEY_RIGHT)
+            {
+                imgTestInd = (imgTestInd < nTestImg - 1) ? imgTestInd + 1 : 0;
+            }
+        }
+
+        // ---------- Control point adjustments [SHIFT or no modifier] ----------
+        else
+        {
+            // ---------- Control point position change [LEFT, RIGHT, UP, DOWN] ----------
+            if (cpModMode == "position")
+            {
+                // Set the position increment based on whether the shift key is pressed
+                float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.05f : 0.01f;
+
+                // Listen for arrow key input to move selected control point
+                if (key == GLFW_KEY_LEFT)
+                {
+                    cpParam[cpSelected][0] -= pos_inc;
+                }
+                else if (key == GLFW_KEY_RIGHT)
+                {
+                    cpParam[cpSelected][0] += pos_inc;
+                }
+                else if (key == GLFW_KEY_UP)
+                {
+                    cpParam[cpSelected][1] += pos_inc;
+                }
+                else if (key == GLFW_KEY_DOWN)
+                {
+                    cpParam[cpSelected][1] -= pos_inc;
+                }
+            }
+
+            // ---------- Control point dimension/hight change [UP, DOWN] ----------
+            if (cpModMode == "dimension")
+            {
+                // Set the dimension increment based on whether the shift key is pressed
+                float dim_inc = (mods & GLFW_MOD_SHIFT) ? 0.0025f : 0.0005f;
+
+                // Listen for arrow key input to adjust dimension/height
+                if (key == GLFW_KEY_UP)
+                {
+                    cpParam[cpSelected][3] += dim_inc;
+                }
+                else if (key == GLFW_KEY_DOWN)
+                {
+                    cpParam[cpSelected][3] -= dim_inc;
+                }
+            }
+
+            // ---------- Control point shear change [UP, DOWN] ----------
+            if (cpModMode == "shear")
+            {
+                // Set the shear increment based on whether the shift key is pressed
+                float shr_inc = (mods & GLFW_MOD_SHIFT) ? 0.025f : 0.005f;
+
+                // Listen for arrow key input to adjust shear
+                if (key == GLFW_KEY_UP)
+                {
+                    cpParam[cpSelected][4] += shr_inc;
+                }
+                else if (key == GLFW_KEY_DOWN)
+                {
+                    cpParam[cpSelected][4] -= shr_inc;
+                }
+            }
+        }
+    }
+
+    // ---------- Recompute homography matrix ----------
+
+    // Recompute homography matrix
+    computeHomography();
+
+    // Update the window monitor and mode
+    updateWindowMonMode();
+}
+
+void callbackFrameBufferSize(GLFWwindow *window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+}
+
+static void callbackError(int error, const char *description)
+{
+    ROS_ERROR("Error: %s\n", description);
+}
+
+void drawControlPoint(float x, float y, float radius, std::vector<float> rgb)
+{
+    int segments = 100; // Number of segments to approximate a circle
+
+    // Begin drawing a filled circle
+    glBegin(GL_TRIANGLE_FAN);
+
+    // Set the color to green
+    glColor3f(rgb[0], rgb[1], rgb[2]);
+
+    // Center of the circle
+    glVertex2f(x, y);
+
+    // Calculate and draw the vertices of the circle
+    for (int i = 0; i <= segments; i++)
+    {
+        float theta = 2.0f * 3.1415926f * float(i) / float(segments);
+        float px = x + radius * cosf(theta);
+        float py = y + (radius * winAspectRatio) * sinf(theta);
+        glVertex2f(px, py);
+    }
+
+    // End drawing
+    glEnd();
+}
+
+void drawWall(std::vector<cv::Point2f> img_vertices)
+{
+
+    // Start drawing a quadrilateral
+    glBegin(GL_QUADS);
+
+    // Set the color to white
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    // Set texture and vertex coordinates for each corner
+    // Bottom-left corner
+    glTexCoord2f(0.0f, 1.0f);
+    glVertex2f(img_vertices[0].x, img_vertices[0].y);
+
+    // Bottom-right corner
+    glTexCoord2f(1.0f, 1.0f);
+    glVertex2f(img_vertices[1].x, img_vertices[1].y);
+
+    // Top-right corner
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex2f(img_vertices[2].x, img_vertices[2].y);
+
+    // Top-left corner
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex2f(img_vertices[3].x, img_vertices[3].y);
+
+    // End drawing
+    glEnd();
+}
+
+void drawWallsAll()
+{
+    // Extract shear and height values from control points
+    float height1 = cpParam[0][3];
+    float height3 = cpParam[2][3];
+    float height4 = cpParam[3][3];
+    float shear1 = cpParam[0][4];
+    float shear3 = cpParam[2][4];
+    float shear4 = cpParam[3][4];
+
+    // Enable OpenGL texture mapping
+    glEnable(GL_TEXTURE_2D);
+
+    // Iterate through the maze grid
+    for (float i_wall = 0; i_wall < MAZE_SIZE; i_wall++)
+    {
+
+        // Iterate through each cell in the maze row
+        for (float j_wall = 0; j_wall < MAZE_SIZE; j_wall++)
+        {
+
+            // Bind image
+            if (i_wall == 1 && j_wall == 1)
+            {
+                // Merge images
+                ILuint merge_images_1 = mergeImages(imgTestIDs[imgTestInd], imgMonIDs[imgMonInd]); // merge test pattern and active monitor image
+                ILuint merge_images_2 = mergeImages(merge_images_1, imgParamIDs[imgParamInd]);     // merge previous image and active cp parameter image
+                ILuint merge_images_3 = mergeImages(merge_images_2, imgCalIDs[imgCalInd]);         // merge previous image and active calibration image
+                ilBindImage(merge_images_3);
+            }
+            else
+            {
+                ilBindImage(imgTestIDs[imgTestInd]); // show test pattern
+            }
+
+            // Set texture image
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
+                         ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
+                         GL_UNSIGNED_BYTE, ilGetData());
+
+            // Bind texture to framebuffer object
+            glBindTexture(GL_TEXTURE_2D, fboTexture);
+
+            // Calculate shear and height for the current wall
+            float shear_val = shear4 + (i_wall / (MAZE_SIZE - 1)) * (shear3 - shear4) +
+                              (j_wall / (MAZE_SIZE - 1)) * (shear1 - shear4);
+            float height_val = height4 + (i_wall / (MAZE_SIZE - 1)) * (height3 - height4) +
+                               (j_wall / (MAZE_SIZE - 1)) * (height1 - height4);
+
+            // Create wall vertices
+            std::vector<cv::Point2f> img_vertices = computeWallVertices(0.0f, 0.0f, wallWidth, height_val, shear_val);
+
+            // Apply perspective warping to vertices
+            for (auto &p : img_vertices)
+            {
+                // Update vertex positions based on shear and height
+                p.x += i_wall * wallSpace;
+                p.y += j_wall * wallSpace;
+
+                // Apply homography matrix to warp perspective
+                float data[] = {p.x, p.y, 1};
+                cv::Mat ptMat(3, 1, CV_32F, data);
+                H.convertTo(H, ptMat.type());
+                ptMat = H * ptMat;
+                ptMat /= ptMat.at<float>(2);
+
+                // Update vertex coordinates
+                p.x = ptMat.at<float>(0, 0);
+                p.y = ptMat.at<float>(0, 1);
+            }
+
+            // Draw the wall
+            drawWall(img_vertices);
+        }
+    }
+
+    // Disable OpenGL texture mapping
+    glDisable(GL_TEXTURE_2D);
+}
+
+void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string> &ref_img_paths)
+{
+    // Iterate through img file paths
+    for (const std::string &img_path : ref_img_paths)
+    {
+        ILuint img_id;
+        ilGenImages(1, &img_id);
+        ilBindImage(img_id);
+
+        // Get width and height of image
+        int width = ilGetInteger(IL_IMAGE_WIDTH);
+        int height = ilGetInteger(IL_IMAGE_HEIGHT);
+
+        // Get file name from path
+        std::string file_name = img_path.substr(img_path.find_last_of('/') + 1);
+
+        // Attempt to load image
+        ILboolean success = ilLoadImage(img_path.c_str());
+        if (success == IL_TRUE)
+        {
+            ref_image_ids.push_back(img_id);
+            ROS_INFO("DevIL: Loaded image: File[%s]", file_name.c_str());
+            ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
+        }
+        else
+        {
+            ILenum error = ilGetError();
+            ilDeleteImages(1, &img_id);
+            ROS_ERROR("DevIL: Failed to load image: Error[%s] File[%s]", iluErrorString(error), file_name.c_str());
+        }
+    }
+}
+
+ILuint mergeImages(ILuint img1, ILuint img2)
+{
+    // Bind and get dimensions of img1 (baseline image)
+    ilBindImage(img1);
+    int width1 = ilGetInteger(IL_IMAGE_WIDTH);
+    int height1 = ilGetInteger(IL_IMAGE_HEIGHT);
+    ILubyte *data1 = ilGetData();
+    ILenum error = ilGetError();
+    if (error != IL_NO_ERROR)
+    {
+        ROS_ERROR("Error binding img1: %s", iluErrorString(error));
+        return 0;
+    }
+
+    // Bind and get dimensions of img2 (mask image)
+    ilBindImage(img2);
+    int width2 = ilGetInteger(IL_IMAGE_WIDTH);
+    int height2 = ilGetInteger(IL_IMAGE_HEIGHT);
+    ILubyte *data2 = ilGetData();
+    error = ilGetError();
+    if (error != IL_NO_ERROR)
+    {
+        ROS_ERROR("Error binding img2: %s", iluErrorString(error));
+        return 0;
+    }
+
+    // Check for dimension match
+    if (width1 != width2 || height1 != height2)
+    {
+        ROS_ERROR("Dimensions do not match: img1(%d, %d), img2(%d, %d)",
+                  width1, height1, width2, height2);
+        return 0;
+    }
+
+    // Create merged image
+    ILuint mergedImg;
+    ilGenImages(1, &mergedImg);
+    ilBindImage(mergedImg);
+    ilTexImage(width1, height1, 1, 4, IL_RGBA, IL_UNSIGNED_BYTE, NULL);
+    error = ilGetError();
+    if (error != IL_NO_ERROR)
+    {
+        ROS_ERROR("Error creating merged image: %s", iluErrorString(error));
+        return 0;
+    }
+
+    // Initialize mergedData array
+    ILubyte *mergedData = new ILubyte[width1 * height1 * 4];
+
+    // Loop to overlay non-white pixels from img2 onto img1
+    for (int i = 0; i < width1 * height1 * 4; i += 4)
+    {
+        if (data2[i] != 255 || data2[i + 1] != 255 || data2[i + 2] != 255)
+        {
+            // If the pixel is not white in img2, use it in the merged image
+            for (int j = 0; j < 4; ++j)
+            {
+                mergedData[i + j] = data2[i + j];
+            }
+        }
+        else
+        {
+            // Otherwise, use the pixel from img1
+            for (int j = 0; j < 4; ++j)
+            {
+                mergedData[i + j] = data1[i + j];
+            }
+        }
+    }
+
+    // Set mergedData to the new image
+    ilBindImage(mergedImg);
+    ilSetPixels(0, 0, 0, width1, height1, 1, IL_RGBA, IL_UNSIGNED_BYTE, mergedData);
+    error = ilGetError();
+    if (error != IL_NO_ERROR)
+    {
+        ROS_ERROR("Error setting pixels for merged image: %s", iluErrorString(error));
+        delete[] mergedData;
+        return 0;
+    }
+
+    // Clean up
+    delete[] mergedData;
+
+    return mergedImg;
+}
+
+void updateWindowMonMode()
+{
+    static int imp_mon_ind_last = imgMonInd;
+    static int is_fullscreen_last = !isFullScreen;
+
+    // Check if monitor or fullscreen mode has changed
+    if (imp_mon_ind_last == imgMonInd && is_fullscreen_last == isFullScreen)
+    {
+        return;
+    }
+
+    // Get GLFWmonitor for active monitor
+    monitor = monitors[imgMonInd];
+
+    // Update window size and position
+    if (monitor)
+    {
+        // Get the video mode of the selected monitor
+        const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+
+        // Set the window to full-screen mode on the current monitor
+        glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+
+        if (!isFullScreen)
+        {
+            // Get the position of the current monitor
+            int monitor_x, monitor_y;
+            glfwGetMonitorPos(monitor, &monitor_x, &monitor_y);
+
+            // Set the window to windowed mode and position it on the current monitor
+            glfwSetWindowMonitor(window, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * winAspectRatio), 500, 0);
+        }
+        ROS_INFO("RAN: Move window to monitor %d and set to %s", imgMonInd, isFullScreen ? "fullscreen" : "windowed");
+    }
+    else
+    {
+        ROS_WARN("FAILED: Move window to monitor %d and set to %s", imgMonInd, isFullScreen ? "fullscreen" : "windowed");
+    }
+
+    // Update last monitor and fullscreen mode
+    imp_mon_ind_last = imgMonInd;
+    is_fullscreen_last = isFullScreen;
+}
+
+std::vector<cv::Point2f> computeWallVertices(float x0, float y0, float width, float height, float shear_amount)
+{
+    std::vector<cv::Point2f> rect_vertices;
+
+    // Top-left corner after applying shear
+    rect_vertices.push_back(cv::Point2f(x0 + height * shear_amount, y0 + height));
+
+    // Top-right corner after applying shear
+    rect_vertices.push_back(cv::Point2f(x0 + height * shear_amount + width, y0 + height));
+
+    // Bottom-right corner
+    rect_vertices.push_back(cv::Point2f(x0 + width, y0));
+
+    // Bottom-left corner
+    rect_vertices.push_back(cv::Point2f(x0, y0));
+
+    return rect_vertices;
+}
+
+void computeHomography()
+{
+    // Get the corner/vertex values for each of the control points
+    std::vector<cv::Point2f> cp_vertices;
+    cp_vertices.push_back(cv::Point2f(cpParam[0][0], cpParam[0][1]));
+    cp_vertices.push_back(cv::Point2f(cpParam[1][0], cpParam[1][1]));
+    cp_vertices.push_back(cv::Point2f(cpParam[2][0], cpParam[2][1]));
+    cp_vertices.push_back(cv::Point2f(cpParam[3][0], cpParam[3][1]));
+
+    // Get the corner/vertex values for each of the wall images
+    std::vector<cv::Point2f> img_vertices;
+    img_vertices = computeWallVertices(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * wallSpace, (float(MAZE_SIZE) - 1) * wallSpace, 0);
+
+    // Compute the homography matrix
+    H = findHomography(img_vertices, cp_vertices);
+}
+
+void resetParamCP()
+{
+    // Copy the default array to the dynamic one
+    for (int i = 0; i < 4; ++i)
+    {
+        for (int j = 0; j < 5; ++j)
+        {
+            cpParam[i][j] = cpParamDefault[i][j];
+        }
+    }
+
+    // Add an offset when calibrating left or right wall images
+    float horz_offset = 0.2f;
+    if (imgCalInd == 1) // left wall
+    {
+        cpParam[0][0] -= horz_offset;
+        cpParam[1][0] -= horz_offset;
+        cpParam[2][0] -= horz_offset;
+        cpParam[3][0] -= horz_offset;
+    }
+    else if (imgCalInd == 2) // right wall
+    {
+        cpParam[0][0] += horz_offset;
+        cpParam[1][0] += horz_offset;
+        cpParam[2][0] += horz_offset;
+        cpParam[3][0] += horz_offset;
+    }
+}
+
+void loadCoordinatesXML()
+{
+    // Get file name and path based on the active calibration mode and monitor
+    std::string file_name = "cfg_c" + std::to_string(imgCalInd) + "m" + std::to_string(imgMonInd) + ".xml";
+    std::string full_path = configDirPath + "/" + file_name;
+
+    // Create an XML document object
+    pugi::xml_document doc;
+    if (!doc.load_file(full_path.c_str()))
+    {
+        ROS_ERROR("LOAD XML: Could Not Load XML: File[%s]", file_name.c_str());
+        return;
+    }
+
+    // Retrieve cpParam
+    std::vector<std::vector<float>> cpParam2;
+    pugi::xml_node cpParamNode = doc.child("config").child("cpParam");
+    for (pugi::xml_node rowNode = cpParamNode.child("Row"); rowNode; rowNode = rowNode.next_sibling("Row"))
+    {
+        std::vector<float> row;
+        for (pugi::xml_node cellNode = rowNode.child("Cell"); cellNode; cellNode = cellNode.next_sibling("Cell"))
+        {
+            float value = std::stof(cellNode.child_value());
+            row.push_back(value);
+        }
+        cpParam2.push_back(row);
+    }
+
+    for (int i = 0; i < 4; i++)
+    {
+        for (int j = 0; j < 5; j++)
+        {
+            cpParam[i][j] = cpParam2[i][j];
+        }
+    }
+
+    // Retrieve H
+    std::vector<std::vector<float>> H2;
+    pugi::xml_node HNode = doc.child("config").child("H");
+    for (pugi::xml_node rowNode = HNode.child("Row"); rowNode; rowNode = rowNode.next_sibling("Row"))
+    {
+        std::vector<float> row;
+        for (pugi::xml_node cellNode = rowNode.child("Cell"); cellNode; cellNode = cellNode.next_sibling("Cell"))
+        {
+            float value = std::stof(cellNode.child_value());
+            row.push_back(value);
+        }
+        H2.push_back(row);
+    }
+    for (int i = 0; i < 3; i++)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            H.at<float>(i, j) = H2[i][j];
+        }
+    }
+}
+
+void saveCoordinatesXML()
+{
+    // Create an XML document object
+    pugi::xml_document doc;
+
+    // Create the root element "config"
+    pugi::xml_node root = doc.append_child("config");
+
+    // Create a child node for storing control point positions
+    pugi::xml_node arrayNode = root.append_child("cpParam");
+
+    // Iterate over the rows of the 2D array 'cpParam'
+    for (const auto &row : cpParam)
+    {
+        // Create a row element under "cpParam"
+        pugi::xml_node rowNode = arrayNode.append_child("Row");
+
+        // Iterate over the elements in the row
+        for (const auto &value : row)
+        {
+            // Create a cell element under the row
+            pugi::xml_node cellNode = rowNode.append_child("Cell");
+            cellNode.append_child(pugi::node_pcdata).set_value(std::to_string(value).c_str());
+        }
+    }
+
+    // Create a 2D array to store the homography matrix
+    float array2[3][3];
+
+    // Copy data from cv::Mat 'H' to the 2D array 'array2'
+    for (int i = 0; i < 3; i++)
+    {
+        for (int j = 0; j < 3; j++)
+        {
+            array2[i][j] = H.at<float>(i, j);
+        }
+    }
+
+    // Create a child node for storing the homography matrix
+    pugi::xml_node arrayNode2 = root.append_child("H");
+
+    // Iterate over the rows of the 2D array 'array2'
+    for (const auto &row : array2)
+    {
+        // Create a row element under "H"
+        pugi::xml_node rowNode = arrayNode2.append_child("Row");
+
+        // Iterate over the elements in the row
+        for (const auto &value : row)
+        {
+            // Create a cell element under the row
+            pugi::xml_node cellNode = rowNode.append_child("Cell");
+            cellNode.append_child(pugi::node_pcdata).set_value(std::to_string(value).c_str());
+        }
+    }
+
+    // Get file name and path based on the active calibration mode and monitor
+    std::string file_name = "cfg_c" + std::to_string(imgCalInd) + "m" + std::to_string(imgMonInd) + ".xml";
+    std::string full_path = configDirPath + "/" + file_name;
+
+    // Save the XML document to a file specified by 'configPath'
+    if (doc.save_file(full_path.c_str()))
+    {
+        ROS_INFO("SAVE XML: File Saved Successfully: File[%s]", file_name.c_str());
+    }
+    else
+    {
+        ROS_ERROR("SAVE XML: Failed to Save XML: File[%s]", file_name.c_str());
+    }
+}
+
+int main(int argc, char **argv)
+{
+    ROS_INFO("!!!!!!!!!!!!!!!!!!!!!!!!! %d", foo(5));
+    return 0;
+    // _______________ SETUP _______________
+
+    // ROS Initialization
+    ros::init(argc, argv, "projection_calibration_node", ros::init_options::AnonymousName);
+    ros::NodeHandle n;
+    ros::NodeHandle nh("~");
+    ROS_INFO("RUNNING MAIN");
+
+    // Log paths for debugging
+    ROS_INFO("SETTINGS: Package Path: %s", packagePath.c_str());
+    ROS_INFO("SETTINGS: Config XML Path: %s", configDirPath.c_str());
+    ROS_INFO("SETTINGS: Display: XYLim=[%0.2f,%0.2f] Width=%d Height=%d AR=%0.2f", xy_lim, xy_lim, winWidthPxl, winHeightPxl, winAspectRatio);
+    ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", wallWidth, wallSpace);
+    ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(wallWidth * (float)winWidthPxl), (int)(wallSpace * (float)winWidthPxl));
+
+    // Initialize control point parameters
+    resetParamCP();
+
+    // Initialize DevIL library
+    ilInit();
+
+    // Load images
+    loadImgTextures(imgTestIDs, imgTestPaths);
+    loadImgTextures(imgMonIDs, imgMonPaths);
+    loadImgTextures(imgParamIDs, imgParamPaths);
+    loadImgTextures(imgCalIDs, imgCalPaths);
+
+    // Initialize GLFW
+    glfwSetErrorCallback(callbackError);
+    if (!glfwInit())
+    {
+        ROS_ERROR("GLFW: Initialization Failed");
+        return -1;
+    }
+
+    // Create GLFW window
+    window = glfwCreateWindow(winWidthPxl, winHeightPxl, windowName.c_str(), NULL, NULL);
+    if (!window)
+    {
+        glfwTerminate();
+        ROS_ERROR("GLFW: Create Window Failed");
+        return -1;
+    }
+
+    // Set OpenGL context and callbacks
+    glfwMakeContextCurrent(window);
+    gladLoadGL();
+    glfwSetKeyCallback(window, callbackKeyBinding);
+    glfwSetFramebufferSizeCallback(window, callbackFrameBufferSize);
+
+    // Initialize FBO and attach texture to it
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glGenTextures(1, &fboTexture);
+    glBindTexture(GL_TEXTURE_2D, fboTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, winWidthPxl, winHeightPxl, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // Get the list of available monitors and their count
+    monitors = glfwGetMonitors(&nMonitors);
+    // TEMP: hardcoding for now
+    nMonitors = 2;
+
+    // Set the window to the first monitor
+    computeHomography();
+    updateWindowMonMode();
+
+    // _______________ MAIN LOOP _______________
+
+    while (!glfwWindowShouldClose(window))
+    {
+        // Clear back buffer for new frame
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // Draw/update wall images
+        drawWallsAll();
+
+        // Draw/update control points
+        for (int i = 0; i < 4; i++)
+        {
+            drawControlPoint(cpParam[i][0], cpParam[i][1], cpParam[i][2], cpSelected == i ? cpActiveRGB : cpInactiveRGB);
+        }
+
+        // Swap buffers and poll events
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+
+        // Exit condition
+        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(window))
+            break;
+    }
+
+    // _______________ CLEANUP _______________
+
+    // Destroy GLFW window and DevIL images
+    glfwDestroyWindow(window);
+    for (ILuint imageID : imgTestIDs)
+    {
+        ilDeleteImages(1, &imageID);
+    }
+
+    // Shutdown DevIL
+    ilShutDown();
+
+    // Terminate GLFW
+    glfwTerminate();
+
+    return 0;
+}

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.0.2)
-project(projection_calibration)
+project(projection_operation)
 message("[ENV]: PROJECT_NAME set to: ${PROJECT_NAME}")
 message("[ENV]: CMAKE_SOURCE_DIR set to: ${CMAKE_SOURCE_DIR}")
 
@@ -140,6 +140,7 @@ endif()
 
 # Add the include directories
 include_directories(
+  include
   ${catkin_INCLUDE_DIRS}  
   ${ROS_NOETIC_INCLUDE_DIR}
   ${GLAD_INCLUDE_DIR}
@@ -157,17 +158,20 @@ else()
   message(FATAL_ERROR "[ENV]: GLAD_SRC not set")
 endif()
 
-# Declare a C++ executable
-add_executable(${PROJECT_NAME}_node 
-  src/${PROJECT_NAME}.cpp 
+# Declare the local libraries
+add_library(projection_utils src/projection_utils.cpp)
+
+# Create executable PROJECTION_CALIBRATION
+add_executable(projection_calibration 
+  src/projection_calibration.cpp 
   ${GLAD_SRC}
 )
 
 # Add cmake target dependencies of the executable
-add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(projection_calibration ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 # Specify libraries to link a library or executable target against
-target_link_libraries(${PROJECT_NAME}_node
+target_link_libraries(projection_calibration
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
   ${GLAD_LIBRARY}
@@ -177,18 +181,17 @@ target_link_libraries(${PROJECT_NAME}_node
   ${ILUT_LIBRARY}
   ${PugiXML_LIBRARY}
   ${OpenGL_LIBRARY}
+  projection_utils  # Include your custom library here
 )
 
 # Copy DevIL DLLs to the executable directory so they are accessible at runtime
-add_custom_command(TARGET ${PROJECT_NAME}_node POST_BUILD
+add_custom_command(TARGET projection_calibration POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
                    "$ENV{DevIL_DIR}/lib/x64/Release/DevIL.dll"
                    "$ENV{DevIL_DIR}/lib/x64/Release/ILU.dll"
                    "$ENV{DevIL_DIR}/lib/x64/Release/ILUT.dll"
-                   $<TARGET_FILE_DIR:${PROJECT_NAME}_node>)
-
+                   $<TARGET_FILE_DIR:projection_calibration>)
 
 # Install targets 
-install(TARGETS ${PROJECT_NAME}_node
-  RUNTIME DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
-)
+install(TARGETS projection_calibration
+RUNTIME DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
