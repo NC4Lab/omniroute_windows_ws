@@ -188,22 +188,28 @@ void computeHomography();
 void resetParamCP();
 
 /**
- * @brief Loads control point parameters and homography matrix from an XML file.
+ * @brief Loads homography matrix from an XML file.
  *
- * This function reads an XML file specified by the global variable `configPath` to load
- * configuration data for control points (stored in cpParam) and the homography matrix (stored in H).
+ * This function is a wrapper that calls the 3-argument version with a dummy 2D array.
  *
- * The XML file is expected to have a specific structure with elements labeled "cpParam" and "H".
- * Each of these elements should contain nested "Row" and "Cell" elements to represent the matrix data.
- *
- * @note This function uses the pugiXML library to parse the XML file.
- * @note The global variables `configPath`, `cpParam`, and `H` are used in this function.
- * 
- * @param: cpParam: 2D array to hold the position and transformation parameters for control points in normalized coordinates [-1, 1].
- * @param: configPath: Path to the XML file containing the control point parameters and homography matrix.
+ * @param ref_H Homography matrix to populate.
+ * @param full_path Path to the XML file.
  */
-void loadCoordinatesXML(cv::Mat&, std::string);
-void loadCoordinatesXML(cv::Mat&, float (&)[4][5], std::string);
+void loadCoordinatesXML(cv::Mat& ref_H, std::string full_path);
+
+/**
+ * @brief Loads control points and homography matrix from an XML file.
+ *
+ * This is the primary function containing the implementation. It reads an XML file 
+ * to populate the `ref_H` and `ref_cp_param` matrices.
+ *
+ * @note Uses pugiXML for XML parsing.
+ *
+ * @param ref_H Homography matrix to populate.
+ * @param ref_cp_param 2D array for control points in normalized coordinates [-1, 1].
+ * @param full_path Path to the XML file.
+ */
+void loadCoordinatesXML(cv::Mat& ref_H, float (&ref_cp_param)[4][5], std::string full_path);
 
 /**
  * @brief Saves the control point positions and homography matrix to an XML file.
@@ -294,7 +300,7 @@ std::vector<float> cpInactiveRGB = {0.0f, 0.0f, 1.0f}; // Inactive control point
  *   - [3]: Height parameter
  *   - [4]: Shearing factor
  */
-float cpParamDefault[4][5] = {
+float cpParam_default[4][5] = {
     {-xy_lim, xy_lim, cpSize, cpSize *ht_scale, 0.0f}, // top-left control point
     {xy_lim, xy_lim, cpSize, cpSize *ht_scale, 0.0f},  // top-right control point
     {xy_lim, -xy_lim, cpSize, cpSize *ht_scale, 0.0f}, // bottom-right control point

@@ -595,7 +595,7 @@ void resetParamCP()
     {
         for (int j = 0; j < 5; ++j)
         {
-            cpParam[i][j] = cpParamDefault[i][j];
+            cpParam[i][j] = cpParam_default[i][j];
         }
     }
 
@@ -615,6 +615,16 @@ void resetParamCP()
         cpParam[2][0] += horz_offset;
         cpParam[3][0] += horz_offset;
     }
+}
+
+
+void loadCoordinatesXML(cv::Mat& ref_H, std::string full_path)
+{
+    // Create a dummy array to store control point paramameter 2D array
+    float ref_cp_param[4][5];
+
+    // Pass to the actual function
+    loadCoordinatesXML(ref_H, ref_cp_param, full_path);
 }
 
 void loadCoordinatesXML(cv::Mat& ref_H, float (&ref_cp_param)[4][5], std::string full_path)
@@ -701,14 +711,14 @@ void saveCoordinatesXML()
     }
 
     // Create a 2D array to store the homography matrix
-    float array2[3][3];
+    float array_2d[3][3];
 
     // Copy data from cv::Mat 'H' to the 2D array 'array2'
     for (int i = 0; i < 3; i++)
     {
         for (int j = 0; j < 3; j++)
         {
-            array2[i][j] = H.at<float>(i, j);
+            array_2d[i][j] = H.at<float>(i, j);
         }
     }
 
@@ -716,7 +726,7 @@ void saveCoordinatesXML()
     pugi::xml_node arrayNode2 = root.append_child("H");
 
     // Iterate over the rows of the 2D array 'array2'
-    for (const auto &row : array2)
+    for (const auto &row : array_2d)
     {
         // Create a row element under "H"
         pugi::xml_node rowNode = arrayNode2.append_child("Row");
