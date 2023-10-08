@@ -30,7 +30,7 @@
 #include <IL/ilut.h>
 #include <IL/devil_cpp_wrapper.hpp>
 
-// Define BOOST_BIND_GLOBAL_PLACEHOLDERS (to avoid linker warnings)
+// Define BOOST_BIND_GLOBAL_PLACEHOLDERS to suppress deprecation warnings related to Boost's bind placeholders
 #define BOOST_BIND_GLOBAL_PLACEHOLDERS
 
 // ROS for robot operating system functionalities
@@ -60,7 +60,17 @@
 
 // ================================================== VARIABLES ==================================================
 
-extern int TEMP_VAR = 5;
+// Number of rows and columns in the maze
+extern const int MAZE_SIZE = 3;
+
+// Wall image size and spacing (pixels)
+extern const int WALL_WIDTH_PXL = 300;
+extern const int WALL_HEIGHT_PXL = 540;
+
+// Wall image size and spacing (normalized?)
+/// @todo: Figure out how these values are used and what units they are in
+extern const float WALL_WIDTH = 0.02f;
+extern const float WALL_SPACE = 2.5f * WALL_WIDTH;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -158,15 +168,16 @@ ILuint mergeImages(ILuint, ILuint);
  *
  * This function generates a rectangle's corner points starting from the top-left corner
  * and going clockwise. The rectangle is defined by its top-left corner (x0, y0),
- * width, height, and a shear amount.
+ * width, height, and a shear amount. The units for x0, y0, width, and height are in
+ * OpenGL's Normalized Device Coordinates (NDC), ranging from -1 to 1.
  *
- * @param x0 The x-coordinate of the top-left corner of the rectangle.
- * @param y0 The y-coordinate of the top-left corner of the rectangle.
- * @param width The width of the rectangle.
- * @param height The height of the rectangle.
+ * @param x0 The x-coordinate of the top-left corner of the rectangle in NDC.
+ * @param y0 The y-coordinate of the top-left corner of the rectangle in NDC.
+ * @param width The width of the rectangle in NDC.
+ * @param height The height of the rectangle in NDC.
  * @param shear_amount The amount of shear to apply to the rectangle.
  *
- * @return std::vector<cv::Point2f> A vector of 4 points representing the corners of the rectangle.
+ * @return std::vector<cv::Point2f> A vector of 4 points representing the corners of the rectangle, in NDC.
  */
 std::vector<cv::Point2f> computeRectVertices(float, float, float, float, float);
 

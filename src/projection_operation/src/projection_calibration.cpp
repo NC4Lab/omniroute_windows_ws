@@ -282,7 +282,7 @@ void drawControlPoint(float x, float y, float radius, std::vector<float> rgb)
     glEnd();
 }
 
-void drawRectImage(std::vector<cv::Point2f> img_vertices)
+void drawRectImage(std::vector<cv::Point2f> rect_vertices)
 {
 
     // Start drawing a quadrilateral
@@ -295,25 +295,25 @@ void drawRectImage(std::vector<cv::Point2f> img_vertices)
 
     // Bottom-left corner
     glTexCoord2f(0.0f, 1.0f);
-    glVertex2f(img_vertices[0].x, img_vertices[0].y);
+    glVertex2f(rect_vertices[0].x, rect_vertices[0].y);
 
     // Bottom-right corner
     glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(img_vertices[1].x, img_vertices[1].y);
+    glVertex2f(rect_vertices[1].x, rect_vertices[1].y);
 
     // Top-right corner
     glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(img_vertices[2].x, img_vertices[2].y);
+    glVertex2f(rect_vertices[2].x, rect_vertices[2].y);
 
     // Top-left corner
     glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(img_vertices[3].x, img_vertices[3].y);
+    glVertex2f(rect_vertices[3].x, rect_vertices[3].y);
 
     // End drawing
     glEnd();
 }
 
-void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], int maze_size, float wall_width, float wall_space, GLuint fbo_texture, ILuint img_base_id, ILuint img_mon_id, ILuint img_param_id, ILuint img_cal_id)
+void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], GLuint fbo_texture, ILuint img_base_id, ILuint img_mon_id, ILuint img_param_id, ILuint img_cal_id)
 {
     // Extract shear and height values from control points
     float height1 = cp_param[0][3];
@@ -327,11 +327,11 @@ void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], int maze_size, float wal
     glEnable(GL_TEXTURE_2D);
 
     // Iterate through the maze grid
-    for (float i_wall = 0; i_wall < maze_size; i_wall++)
+    for (float i_wall = 0; i_wall < MAZE_SIZE; i_wall++)
     {
 
         // Iterate through each cell in the maze row
-        for (float j_wall = 0; j_wall < maze_size; j_wall++)
+        for (float j_wall = 0; j_wall < MAZE_SIZE; j_wall++)
         {
             // Bind image
             if (i_wall == 1 && j_wall == 1)
@@ -355,21 +355,43 @@ void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], int maze_size, float wal
             // Bind texture to framebuffer object
             glBindTexture(GL_TEXTURE_2D, fbo_texture);
 
+            // Calculate shear and height for the current wall using bilinear interpolation.
+            // The shear and height values are linearly interpolated based on the wall's
+            // position within the maze (i_wall, j_wall) and the predefined corner values
+            // (shear1, shear3, shear4) and (height1, height3, height4).
+            //
+            // 1. Normalization: i_wall and j_wall are normalized by dividing by (MAZE_SIZE - 1).
+            //    This scales the indices to the range [0, 1].
+            //
+            // 2. Linear Interpolation Across i_wall:
+            //    - For shear: (i_wall / (MAZE_SIZE - 1)) * (shear3 - shear4)
+            //    - For height: (i_wall / (MAZE_SIZE - 1)) * (height3 - height4)
+            //    These terms interpolate values between the shear and height at corners 3 and 4.
+            //
+            // 3. Linear Interpolation Across j_wall:
+            //    - For shear: (j_wall / (MAZE_SIZE - 1)) * (shear1 - shear4)
+            //    - For height: (j_wall / (MAZE_SIZE - 1)) * (height1 - height4)
+            //    These terms interpolate values between the shear and height at corners 1 and 4.
+            //
+            // 4. Combining Interpolations: The interpolated values for shear and height
+            //    along i_wall and j_wall are summed with the base values (shear4, height4)
+            //    to obtain the final shear_val and height_val for the current wall.
+
             // Calculate shear and height for the current wall
-            float shear_val = shear4 + (i_wall / (maze_size - 1)) * (shear3 - shear4) +
-                              (j_wall / (maze_size - 1)) * (shear1 - shear4);
-            float height_val = height4 + (i_wall / (maze_size - 1)) * (height3 - height4) +
-                               (j_wall / (maze_size - 1)) * (height1 - height4);
+            float shear_val = shear4 + (i_wall / (MAZE_SIZE - 1)) * (shear3 - shear4) +
+                              (j_wall / (MAZE_SIZE - 1)) * (shear1 - shear4);
+            float height_val = height4 + (i_wall / (MAZE_SIZE - 1)) * (height3 - height4) +
+                               (j_wall / (MAZE_SIZE - 1)) * (height1 - height4);
 
             // Create wall vertices
-            std::vector<cv::Point2f> img_vertices = computeRectVertices(0.0f, 0.0f, wall_width, height_val, shear_val);
+            std::vector<cv::Point2f> rect_vertices = computeRectVertices(0.0f, 0.0f, WALL_WIDTH, height_val, shear_val);
 
             // Apply perspective warping to vertices
-            for (auto &p : img_vertices)
+            for (auto &p : rect_vertices)
             {
                 // Update vertex positions based on shear and height
-                p.x += i_wall * wall_space;
-                p.y += j_wall * wall_space;
+                p.x += i_wall * WALL_SPACE;
+                p.y += j_wall * WALL_SPACE;
 
                 // Apply homography matrix to warp perspective
                 float data[] = {p.x, p.y, 1};
@@ -384,7 +406,7 @@ void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], int maze_size, float wal
             }
 
             // Draw the wall
-            drawRectImage(img_vertices);
+            drawRectImage(rect_vertices);
         }
     }
 
@@ -447,7 +469,7 @@ void computeHomography()
 
     // Get the corner/vertex values for each of the wall images
     std::vector<cv::Point2f> img_vertices;
-    img_vertices = computeRectVertices(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * wallSpace, (float(MAZE_SIZE) - 1) * wallSpace, 0);
+    img_vertices = computeRectVertices(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * WALL_SPACE, (float(MAZE_SIZE) - 1) * WALL_SPACE, 0);
 
     // Compute the homography matrix
     H = findHomography(img_vertices, cp_vertices);
@@ -484,8 +506,6 @@ void resetParamCP()
 
 int main(int argc, char **argv)
 {
-    // ROS_INFO("!!!!!!!!!!!! TEMP_VAR[%d]", TEMP_VAR);
-    // return;
     //  _______________ SETUP _______________
 
     // ROS Initialization
@@ -498,8 +518,8 @@ int main(int argc, char **argv)
     ROS_INFO("SETTINGS: Package Path: %s", packagePath.c_str());
     ROS_INFO("SETTINGS: Config XML Path: %s", configDirPath.c_str());
     ROS_INFO("SETTINGS: Display: XYLim=[%0.2f,%0.2f] Width=%d Height=%d AR=%0.2f", xy_lim, xy_lim, winWidthPxl, winHeightPxl, winAspectRatio);
-    ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", wallWidth, wallSpace);
-    ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(wallWidth * (float)winWidthPxl), (int)(wallSpace * (float)winWidthPxl));
+    ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", WALL_WIDTH, WALL_SPACE);
+    ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(WALL_WIDTH * (float)winWidthPxl), (int)(WALL_SPACE * (float)winWidthPxl));
 
     // Initialize control point parameters
     resetParamCP();
@@ -570,7 +590,7 @@ int main(int argc, char **argv)
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Draw/update wall images
-        drawWallsAll(H, cpParam, MAZE_SIZE, wallWidth, wallSpace, fboTexture, imgTestIDs[imgTestInd], imgMonIDs[imgMonInd], imgParamIDs[imgParamInd], imgCalIDs[imgCalInd]);
+        drawWallsAll(H, cpParam, fboTexture, imgTestIDs[imgTestInd], imgMonIDs[imgMonInd], imgParamIDs[imgParamInd], imgCalIDs[imgCalInd]);
 
         // Draw/update control points
         for (int i = 0; i < 4; i++)

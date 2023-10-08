@@ -14,9 +14,6 @@
 
 // ================================================== VARIABLES ==================================================
 
-// Number of rows and columns in the maze
-const int MAZE_SIZE = 3;
-
 // Spricify window resolution: 4K resolution (3840x2160)
 int winWidthPxl = 3840;
 int winHeightPxl = 2160;
@@ -60,15 +57,6 @@ float cpParam_default[4][5] = {
     {-xy_lim, -xy_lim, cpSize, cpSize *ht_scale, 0.0f} // bottom-left control point
 };
 float cpParam[4][5];
-
-// Wall image size and spacing (pixels)
-int wallWidthPxl = 300;
-int heightHeightPxl = 540;
-
-// Wall image size and spacing (normalized?)
-/// @todo: Figure out how these values are used
-const float wallWidth = 0.02f;
-const float wallSpace = 2.5f * wallWidth;
 
 // Directory paths
 std::string packagePath = ros::package::getPath("projection_operation");
@@ -214,7 +202,7 @@ void drawRectImage(std::vector<cv::Point2f>);
  * to handle image loading and OpenGL for rendering. The function also performs perspective
  * warping based on the homography matrix and shear and height values extracted from control points.
  */
-void drawWallsAll(cv::Mat &, float[4][5], int, float, float, GLuint, ILuint, ILuint, ILuint, ILuint);
+void drawWallsAll(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint);
 
 /**
  * @brief Changes the display mode and monitor of the application window.

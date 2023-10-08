@@ -199,6 +199,39 @@ add_custom_command(TARGET projection_calibration POST_BUILD
                    "$ENV{DevIL_DIR}/lib/x64/Release/ILUT.dll"
                    $<TARGET_FILE_DIR:projection_calibration>)
 
+# # ==================== SETUP PROJECTION_DISPLAY LIBRARY ====================
+
+# # Create executable
+# add_executable(projection_display 
+#   src/projection_display.cpp 
+#   ${GLAD_SRC}
+# )
+
+# # Add cmake target dependencies of the executable
+# add_dependencies(projection_display ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+
+# # Specify libraries to link a library or executable target against
+# target_link_libraries(projection_display
+#   ${catkin_LIBRARIES}
+#   ${OpenCV_LIBRARIES}
+#   ${GLAD_LIBRARY}
+#   ${GLFW_LIBRARY}
+#   ${DevIL_LIBRARY}
+#   ${ILU_LIBRARY}
+#   ${ILUT_LIBRARY}
+#   ${PugiXML_LIBRARY}
+#   ${OpenGL_LIBRARY}
+#   projection_utils  
+# )
+
+# # Copy DevIL DLLs to the executable directory so they are accessible at runtime
+# add_custom_command(TARGET projection_display POST_BUILD
+#                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+#                    "$ENV{DevIL_DIR}/lib/x64/Release/DevIL.dll"
+#                    "$ENV{DevIL_DIR}/lib/x64/Release/ILU.dll"
+#                    "$ENV{DevIL_DIR}/lib/x64/Release/ILUT.dll"
+#                    $<TARGET_FILE_DIR:projection_display>)
+
 # ==================== INSTALL TARGETS ====================
 
 install(TARGETS projection_calibration projection_utils
