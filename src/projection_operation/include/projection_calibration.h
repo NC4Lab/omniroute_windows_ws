@@ -91,18 +91,8 @@ void drawWall(std::vector<cv::Point2f>);
  * @brief Draws all walls in the maze grid with texture mapping and perspective warping.
  *
  * This function iterates through the maze grid to draw each wall. It uses the DevIL library
- * to handle image loading and OpenGL for rendering. The function also performs perspective 
+ * to handle image loading and OpenGL for rendering. The function also performs perspective
  * warping based on the homography matrix and shear and height values extracted from control points.
- *
- * The function performs the following operations:
- * - Enables OpenGL texture mapping.
- * - Iterates through each cell in the maze grid.
- *   - Merges various images based on conditions and binds them.
- *   - Sets the texture image.
- *   - Calculates shear and height for the current wall.
- *   - Warps perspective based on the homography matrix.
- *   - Draws the wall.
- * - Disables OpenGL texture mapping.
  */
 void drawWallsAll();
 
@@ -186,65 +176,6 @@ void computeHomography();
  * @brief Used to reset control point parameter list.
  */
 void resetParamCP();
-
-/**
- * @brief Loads homography matrix from an XML file.
- *
- * This function is a wrapper that calls the 3-argument version with a dummy 2D array.
- *
- * @param ref_H Homography matrix to populate.
- * @param full_path Path to the XML file.
- */
-void loadCoordinatesXML(cv::Mat& ref_H, std::string full_path);
-
-/**
- * @brief Loads control points and homography matrix from an XML file.
- *
- * This is the primary function containing the implementation. It reads an XML file 
- * to populate the `ref_H` and `ref_cp_param` matrices.
- *
- * @note Uses pugiXML for XML parsing.
- *
- * @param ref_H Homography matrix to populate.
- * @param ref_cp_param 2D array for control points in normalized coordinates [-1, 1].
- * @param full_path Path to the XML file.
- */
-void loadCoordinatesXML(cv::Mat& ref_H, float (&ref_cp_param)[4][5], std::string full_path);
-
-/**
- * @brief Saves the control point positions and homography matrix to an XML file.
- *
- * This function uses the pugixml library to create an XML document and populate it with
- * the control point positions and homography matrix. The control point positions are stored in a 2D array
- * and the homography matrix is stored in a cv::Mat object. Both are saved under their respective
- * XML nodes.
- *
- * @note The XML file is saved to the path specified by the global variable 'configPath'.
- *
- * Example XML structure:
- * @code
- * <config>
- *   <cpParam>
- *     <Row>
- *       <Cell>value</Cell>
- *       ...
- *     </Row>
- *     ...
- *   </cpParam>
- *   <H>
- *     <Row>
- *       <Cell>value</Cell>
- *       ...
- *     </Row>
- *     ...
- *   </H>
- * </config>
- * @endcode
- *
- * @return void
- */
-void saveCoordinatesXML();
-//void loadCoordinatesXML(float [4][5], std::string);
 
 /**
  * @brief  Entry point for the projection_calibration_node ROS node.
