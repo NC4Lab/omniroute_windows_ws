@@ -10,6 +10,43 @@
 
 // ================================================== FUNCTIONS ==================================================
 
+// void initializeGL(GLFWwindow*& window, int win_width_pxl, int win_height_pxl, std::string window_name, GLuint &fboTexture)
+// {
+//     // Initialize GLFW
+//     //glfwSetErrorCallback(callbackErrorGLFW);
+//     if (!glfwInit())
+//     {
+//         ROS_ERROR("GLFW: Initialization Failed");
+//         exit(-1);
+//     }
+
+//     // Create GLFW window
+//     window = glfwCreateWindow(win_width_pxl, win_height_pxl, window_name.c_str(), NULL, NULL);
+//     if (!window)
+//     {
+//         glfwTerminate();
+//         ROS_ERROR("GLFW: Create Window Failed");
+//         exit(-1);
+//     }
+
+//     // Set OpenGL context and callbacks
+//     glfwMakeContextCurrent(window);
+//     gladLoadGL();
+//     //glfwSetFramebufferSizeCallback(window, callbackFrameBufferSizeGLFW);
+
+//     // Initialize FBO and attach texture to it
+//     GLuint fbo;
+//     glGenFramebuffers(1, &fbo);
+//     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+//     glGenTextures(1, &fboTexture);
+//     glBindTexture(GL_TEXTURE_2D, fboTexture);
+//     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, win_width_pxl, win_height_pxl, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
+//     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+// }
+
 std::string formatCoordinatesFilePathXML(int cal_ind, int mon_ind, std::string config_dir_path)
 {
     std::string file_path =
@@ -242,7 +279,7 @@ ILuint mergeImages(ILuint img1, ILuint img2)
     return mergedImg;
 }
 
-std::vector<cv::Point2f> computeWallVertices(float x0, float y0, float width, float height, float shear_amount)
+std::vector<cv::Point2f> computeRectVertices(float x0, float y0, float width, float height, float shear_amount)
 {
     std::vector<cv::Point2f> rect_vertices;
 
@@ -261,32 +298,35 @@ std::vector<cv::Point2f> computeWallVertices(float x0, float y0, float width, fl
     return rect_vertices;
 }
 
-// void drawWall(std::vector<cv::Point2f> img_vertices)
-// {
+void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string> &ref_img_paths)
+{
+    // Iterate through img file paths
+    for (const std::string &img_path : ref_img_paths)
+    {
+        ILuint img_id;
+        ilGenImages(1, &img_id);
+        ilBindImage(img_id);
 
-//     // Start drawing a quadrilateral
-//     glBegin(GL_QUADS);
+        // Get width and height of image
+        int width = ilGetInteger(IL_IMAGE_WIDTH);
+        int height = ilGetInteger(IL_IMAGE_HEIGHT);
 
-//     // Set the color to white
-//     glColor3f(1.0f, 1.0f, 1.0f);
+        // Get file name from path
+        std::string file_name = img_path.substr(img_path.find_last_of('/') + 1);
 
-//     // Set texture and vertex coordinates for each corner
-//     // Bottom-left corner
-//     glTexCoord2f(0.0f, 1.0f);
-//     glVertex2f(img_vertices[0].x, img_vertices[0].y);
-
-//     // Bottom-right corner
-//     glTexCoord2f(1.0f, 1.0f);
-//     glVertex2f(img_vertices[1].x, img_vertices[1].y);
-
-//     // Top-right corner
-//     glTexCoord2f(1.0f, 0.0f);
-//     glVertex2f(img_vertices[2].x, img_vertices[2].y);
-
-//     // Top-left corner
-//     glTexCoord2f(0.0f, 0.0f);
-//     glVertex2f(img_vertices[3].x, img_vertices[3].y);
-
-//     // End drawing
-//     glEnd();
-// }
+        // Attempt to load image
+        ILboolean success = ilLoadImage(img_path.c_str());
+        if (success == IL_TRUE)
+        {
+            ref_image_ids.push_back(img_id);
+            ROS_INFO("DevIL: Loaded image: File[%s]", file_name.c_str());
+            ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
+        }
+        else
+        {
+            ILenum error = ilGetError();
+            ilDeleteImages(1, &img_id);
+            ROS_ERROR("DevIL: Failed to load image: Error[%s] File[%s]", iluErrorString(error), file_name.c_str());
+        }
+    }
+}

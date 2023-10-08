@@ -48,6 +48,8 @@
 
 // ================================================== FUNCTIONS ==================================================
 
+// void initializeGL(GLFWwindow *&, int, int, std::string, GLuint &);
+
 /**
  * @brief Formats the file name for the XML file based on the active calibration mode and monitor.
  *
@@ -57,7 +59,7 @@
  * @param cal_ind Index of the active or desired calibration mode.
  * @param mon_ind Index of the active or desired monitor.
  * @param config_dir_path Path to the directory where the XML file will be loaded/saved.
- * 
+ *
  */
 std::string formatCoordinatesFilePathXML(int cal_ind, int mon_ind, std::string);
 
@@ -69,12 +71,12 @@ std::string formatCoordinatesFilePathXML(int cal_ind, int mon_ind, std::string);
  * @param ref_H Homography matrix to populate.
  * @param full_path Path to the XML file.
  */
-void loadCoordinatesXML(cv::Mat& ref_H, std::string full_path);
+void loadCoordinatesXML(cv::Mat &ref_H, std::string full_path);
 
 /**
  * @brief Loads control points and homography matrix from an XML file.
  *
- * This is the primary function containing the implementation. It reads an XML file 
+ * This is the primary function containing the implementation. It reads an XML file
  * to populate the `ref_H` and `ref_cp_param` matrices.
  *
  * @note Uses pugiXML for XML parsing.
@@ -83,7 +85,7 @@ void loadCoordinatesXML(cv::Mat& ref_H, std::string full_path);
  * @param ref_cp_param 2D array for control points in normalized coordinates [-1, 1].
  * @param full_path Path to the XML file.
  */
-void loadCoordinatesXML(cv::Mat& ref_H, float (&ref_cp_param)[4][5], std::string full_path);
+void loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cp_param)[4][5], std::string full_path);
 
 /**
  * @brief Saves the control point positions and homography matrix to an XML file.
@@ -150,13 +152,20 @@ ILuint mergeImages(ILuint, ILuint);
  *
  * @return std::vector<cv::Point2f> A vector of 4 points representing the corners of the rectangle.
  */
-std::vector<cv::Point2f> computeWallVertices(float, float, float, float, float);
+std::vector<cv::Point2f> computeRectVertices(float, float, float, float, float);
 
-// /**
-//  * @brief Draws a textured wall using OpenGL.
-//  *
-//  * @param img_vertices Vector of vertex/corner points for the wall.
-//  */
-// void drawWall(std::vector<cv::Point2f>);
+/**
+ * @brief Loads images from specified file paths and stores their IDs in a reference vector.
+ *
+ * This function takes a vector of file paths (`ref_img_paths`) and iteratively loads each image
+ * using the DevIL library. The function then stores the ILuint IDs of successfully loaded images
+ * in a reference vector (`ref_image_ids`).
+ *
+ * @param ref_image_ids A reference to a vector of ILuint where the IDs of the loaded images will be stored.
+ * @param ref_img_paths A reference to a vector of file paths to the images to be loaded.
+ *
+ * @note Utilizes the DevIL image library for image loading operations.
+ */
+void loadImgTextures(std::vector<ILuint> &, std::vector<std::string> &);
 
 #endif

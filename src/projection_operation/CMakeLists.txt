@@ -150,8 +150,8 @@ endif()
 
 # ==================== SETUP PROJECTION_UTILS LIBRARY ====================
 
-# Declare the local libraries
-add_library(projection_utils src/projection_utils.cpp)
+# Declare the local libraries and GLAD
+add_library(projection_utils src/projection_utils.cpp ${GLAD_SRC})
 
 # Specify libraries to link a library or executable target against
 target_link_libraries(projection_utils

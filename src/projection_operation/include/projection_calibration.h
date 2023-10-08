@@ -85,7 +85,7 @@ void drawControlPoint(float, float, float, std::vector<float>);
  *
  * @param img_vertices Vector of vertex/corner points for the wall.
  */
-void drawWall(std::vector<cv::Point2f>);
+void drawRectImage(std::vector<cv::Point2f>);
 
 /**
  * @brief Draws all walls in the maze grid with texture mapping and perspective warping.
@@ -95,21 +95,6 @@ void drawWall(std::vector<cv::Point2f>);
  * warping based on the homography matrix and shear and height values extracted from control points.
  */
 void drawWallsAll(cv::Mat &, float[4][5], int, float, float, GLuint, ILuint, ILuint, ILuint, ILuint);
-
-
-/**
- * @brief Loads images from specified file paths and stores their IDs in a reference vector.
- *
- * This function takes a vector of file paths (`ref_img_paths`) and iteratively loads each image
- * using the DevIL library. The function then stores the ILuint IDs of successfully loaded images
- * in a reference vector (`ref_image_ids`).
- *
- * @param ref_image_ids A reference to a vector of ILuint where the IDs of the loaded images will be stored.
- * @param ref_img_paths A reference to a vector of file paths to the images to be loaded.
- *
- * @note Utilizes the DevIL image library for image loading operations.
- */
-void loadImgTextures(std::vector<ILuint> &, std::vector<std::string> &);
 
 /**
  * @brief Changes the display mode and monitor of the application window.
@@ -275,7 +260,6 @@ size_t nCalModes = imgCalPaths.size(); // Number of calibration modes
 
 // Variables related to window and OpenGL
 GLFWwindow *window;
-GLuint fbo;
 GLuint fboTexture;
 GLFWmonitor *monitor = NULL;
 GLFWmonitor **monitors;

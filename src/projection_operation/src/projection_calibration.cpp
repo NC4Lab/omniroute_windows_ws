@@ -282,7 +282,7 @@ void drawControlPoint(float x, float y, float radius, std::vector<float> rgb)
     glEnd();
 }
 
-void drawWall(std::vector<cv::Point2f> img_vertices)
+void drawRectImage(std::vector<cv::Point2f> img_vertices)
 {
 
     // Start drawing a quadrilateral
@@ -292,6 +292,7 @@ void drawWall(std::vector<cv::Point2f> img_vertices)
     glColor3f(1.0f, 1.0f, 1.0f);
 
     // Set texture and vertex coordinates for each corner
+
     // Bottom-left corner
     glTexCoord2f(0.0f, 1.0f);
     glVertex2f(img_vertices[0].x, img_vertices[0].y);
@@ -332,7 +333,6 @@ void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], int maze_size, float wal
         // Iterate through each cell in the maze row
         for (float j_wall = 0; j_wall < maze_size; j_wall++)
         {
-
             // Bind image
             if (i_wall == 1 && j_wall == 1)
             {
@@ -362,7 +362,7 @@ void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], int maze_size, float wal
                                (j_wall / (maze_size - 1)) * (height1 - height4);
 
             // Create wall vertices
-            std::vector<cv::Point2f> img_vertices = computeWallVertices(0.0f, 0.0f, wall_width, height_val, shear_val);
+            std::vector<cv::Point2f> img_vertices = computeRectVertices(0.0f, 0.0f, wall_width, height_val, shear_val);
 
             // Apply perspective warping to vertices
             for (auto &p : img_vertices)
@@ -384,45 +384,12 @@ void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], int maze_size, float wal
             }
 
             // Draw the wall
-            drawWall(img_vertices);
+            drawRectImage(img_vertices);
         }
     }
 
     // Disable OpenGL texture mapping
     glDisable(GL_TEXTURE_2D);
-}
-
-void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string> &ref_img_paths)
-{
-    // Iterate through img file paths
-    for (const std::string &img_path : ref_img_paths)
-    {
-        ILuint img_id;
-        ilGenImages(1, &img_id);
-        ilBindImage(img_id);
-
-        // Get width and height of image
-        int width = ilGetInteger(IL_IMAGE_WIDTH);
-        int height = ilGetInteger(IL_IMAGE_HEIGHT);
-
-        // Get file name from path
-        std::string file_name = img_path.substr(img_path.find_last_of('/') + 1);
-
-        // Attempt to load image
-        ILboolean success = ilLoadImage(img_path.c_str());
-        if (success == IL_TRUE)
-        {
-            ref_image_ids.push_back(img_id);
-            ROS_INFO("DevIL: Loaded image: File[%s]", file_name.c_str());
-            ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
-        }
-        else
-        {
-            ILenum error = ilGetError();
-            ilDeleteImages(1, &img_id);
-            ROS_ERROR("DevIL: Failed to load image: Error[%s] File[%s]", iluErrorString(error), file_name.c_str());
-        }
-    }
 }
 
 void updateWindowMonMode()
@@ -480,7 +447,7 @@ void computeHomography()
 
     // Get the corner/vertex values for each of the wall images
     std::vector<cv::Point2f> img_vertices;
-    img_vertices = computeWallVertices(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * wallSpace, (float(MAZE_SIZE) - 1) * wallSpace, 0);
+    img_vertices = computeRectVertices(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * wallSpace, (float(MAZE_SIZE) - 1) * wallSpace, 0);
 
     // Compute the homography matrix
     H = findHomography(img_vertices, cp_vertices);
@@ -520,7 +487,7 @@ int main(int argc, char **argv)
     //  _______________ SETUP _______________
 
     // ROS Initialization
-    ros::init(argc, argv, "projection_calibration_node", ros::init_options::AnonymousName);
+    ros::init(argc, argv, "projection_calibration", ros::init_options::AnonymousName);
     ros::NodeHandle n;
     ros::NodeHandle nh("~");
     ROS_INFO("RUNNING MAIN");
@@ -568,6 +535,7 @@ int main(int argc, char **argv)
     glfwSetFramebufferSizeCallback(window, callbackFrameBufferSizeGLFW);
 
     // Initialize FBO and attach texture to it
+    GLuint fbo;
     glGenFramebuffers(1, &fbo);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glGenTextures(1, &fboTexture);
@@ -578,13 +546,18 @@ int main(int argc, char **argv)
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    // // Call to initializeGL to set up OpenGL context and GLFW
+    // initializeGL(window, winWidthPxl, winHeightPxl, windowName, fboTexture);
+
     // Get the list of available monitors and their count
     monitors = glfwGetMonitors(&nMonitors);
     // TEMP: hardcoding for now
     nMonitors = 2;
 
-    // Set the window to the first monitor
+    // Do initial computations of homography matrix
     computeHomography();
+
+    // Update the window monitor and mode
     updateWindowMonMode();
 
     // _______________ MAIN LOOP _______________
