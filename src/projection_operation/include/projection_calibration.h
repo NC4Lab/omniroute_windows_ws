@@ -12,43 +12,6 @@
 // Local custom libraries
 #include "projection_utils.h"
 
-// // OpenGL (GLAD and GLFW) for graphics and windowing
-// #define GLAPIENTRY APIENTRY
-// #include "glad/glad.h"
-// #define GLFW_INCLUDE_NONE
-// #include <GLFW/glfw3.h>
-
-// // DevIL for image loading and manipulation
-// #include <IL/il.h>
-// #include <IL/ilu.h>
-// #include <IL/ilut.h>
-// #include <IL/devil_cpp_wrapper.hpp>
-
-// // ROS for robot operating system functionalities
-// #include <ros/ros.h>
-// #include <ros/console.h>
-// #include <ros/package.h>
-// #include <XmlRpcValue.h>
-
-// // Standard Library for various utilities
-// #include <fstream>
-// #include <cstdlib>
-// #include <iostream>
-// #include <algorithm>
-// #include <vector>
-// #include <string>
-
-// // PugiXML for XML parsing
-// #include "pugixml.hpp"
-
-// // OpenCV for computer vision tasks
-// #include <opencv2/calib3d.hpp>
-// #include <opencv2/core/types.hpp>
-// #include <opencv2/core/hal/interface.h>
-// #include "opencv2/imgproc.hpp"
-// #include "opencv2/imgcodecs.hpp"
-// #include "opencv2/highgui.hpp"
-
 // ================================================== FUNCTIONS ==================================================
 
 /**
@@ -235,8 +198,12 @@ void resetParamCP();
  *
  * @note This function uses the pugiXML library to parse the XML file.
  * @note The global variables `configPath`, `cpParam`, and `H` are used in this function.
+ * 
+ * @param: cpParam: 2D array to hold the position and transformation parameters for control points in normalized coordinates [-1, 1].
+ * @param: configPath: Path to the XML file containing the control point parameters and homography matrix.
  */
-void loadCoordinatesXML();
+void loadCoordinatesXML(cv::Mat&, std::string);
+void loadCoordinatesXML(cv::Mat&, float (&)[4][5], std::string);
 
 /**
  * @brief Saves the control point positions and homography matrix to an XML file.
@@ -271,6 +238,7 @@ void loadCoordinatesXML();
  * @return void
  */
 void saveCoordinatesXML();
+//void loadCoordinatesXML(float [4][5], std::string);
 
 /**
  * @brief  Entry point for the projection_calibration_node ROS node.

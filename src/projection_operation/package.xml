@@ -39,8 +39,4 @@
   <!-- Standard ROS Messages -->
   <exec_depend>std_msgs</exec_depend>
 
-  <!-- Export tag for other unspecified tags -->
-  <export>
-    <!-- Placeholder for other tools to request additional information -->
-  </export>
 </package>

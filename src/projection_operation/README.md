@@ -1,5 +1,9 @@
 # proj_pkg_test
 
+### ==================== TODO ====================
+
+1. Add description of how #include are being handled in package.
+
 ### ==================== INSTALL GLAD LIBRARY ====================
 
 1. **Download GLAD**

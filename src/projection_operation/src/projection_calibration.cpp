@@ -5,6 +5,7 @@
 // ############################################################################################################
 
 // ================================================== INCLUDE ==================================================
+
 #include "projection_calibration.h"
 
 // ================================================== FUNCTIONS ==================================================
@@ -121,7 +122,11 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // Load coordinates from XML
         else if (key == GLFW_KEY_L)
         {
-            loadCoordinatesXML();
+            std::string file_path =
+                configDirPath + "/" +
+                "cfg_c" + std::to_string(imgCalInd) + "m" + std::to_string(imgMonInd) +
+                ".xml";
+            loadCoordinatesXML(H, cpParam, file_path);
         }
     }
 
@@ -612,11 +617,10 @@ void resetParamCP()
     }
 }
 
-void loadCoordinatesXML()
+void loadCoordinatesXML(cv::Mat& ref_H, float (&ref_cp_param)[4][5], std::string full_path)
 {
-    // Get file name and path based on the active calibration mode and monitor
-    std::string file_name = "cfg_c" + std::to_string(imgCalInd) + "m" + std::to_string(imgMonInd) + ".xml";
-    std::string full_path = configDirPath + "/" + file_name;
+    // Get file name from path
+    std::string file_name = full_path.substr(full_path.find_last_of('/') + 1);
 
     // Create an XML document object
     pugi::xml_document doc;
@@ -627,7 +631,7 @@ void loadCoordinatesXML()
     }
 
     // Retrieve cpParam
-    std::vector<std::vector<float>> cpParam2;
+    std::vector<std::vector<float>> cp_param_temp;
     pugi::xml_node cpParamNode = doc.child("config").child("cpParam");
     for (pugi::xml_node rowNode = cpParamNode.child("Row"); rowNode; rowNode = rowNode.next_sibling("Row"))
     {
@@ -637,19 +641,19 @@ void loadCoordinatesXML()
             float value = std::stof(cellNode.child_value());
             row.push_back(value);
         }
-        cpParam2.push_back(row);
+        cp_param_temp.push_back(row);
     }
 
     for (int i = 0; i < 4; i++)
     {
         for (int j = 0; j < 5; j++)
         {
-            cpParam[i][j] = cpParam2[i][j];
+            ref_cp_param[i][j] = cp_param_temp[i][j];
         }
     }
 
     // Retrieve H
-    std::vector<std::vector<float>> H2;
+    std::vector<std::vector<float>> H_temp;
     pugi::xml_node HNode = doc.child("config").child("H");
     for (pugi::xml_node rowNode = HNode.child("Row"); rowNode; rowNode = rowNode.next_sibling("Row"))
     {
@@ -659,13 +663,13 @@ void loadCoordinatesXML()
             float value = std::stof(cellNode.child_value());
             row.push_back(value);
         }
-        H2.push_back(row);
+        H_temp.push_back(row);
     }
     for (int i = 0; i < 3; i++)
     {
         for (int j = 0; j < 3; j++)
         {
-            H.at<float>(i, j) = H2[i][j];
+            ref_H.at<float>(i, j) = H_temp[i][j];
         }
     }
 }
@@ -743,9 +747,12 @@ void saveCoordinatesXML()
 
 int main(int argc, char **argv)
 {
+    
+    // TEMP
     ROS_INFO("!!!!!!!!!!!!!!!!!!!!!!!!! %d", foo(5));
-    //return 0;
-    // _______________ SETUP _______________
+    // return 0;
+
+    //  _______________ SETUP _______________
 
     // ROS Initialization
     ros::init(argc, argv, "projection_calibration_node", ros::init_options::AnonymousName);
