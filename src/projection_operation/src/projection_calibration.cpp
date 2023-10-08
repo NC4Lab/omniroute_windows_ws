@@ -145,7 +145,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Listen for arrow key input to switch through calibration modes
             if (key == GLFW_KEY_LEFT)
             {
-                imgCalInd = (imgCalInd > 0) ? imgCalInd - 1 : nCalModes - 1;
+                imgCalInd = (imgCalInd > 0) ? imgCalInd - 1 : (int)nCalModes - 1;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
@@ -165,7 +165,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Listen for arrow key input to switch through images
             if (key == GLFW_KEY_LEFT)
             {
-                imgTestInd = (imgTestInd > 0) ? imgTestInd - 1 : nTestImg - 1;
+                imgTestInd = (imgTestInd > 0) ? imgTestInd - 1 : (int)nTestImg - 1;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
@@ -395,7 +395,7 @@ void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], int maze_size, float wal
 void updateWindowMonMode()
 {
     static int imp_mon_ind_last = imgMonInd;
-    static int is_fullscreen_last = !isFullScreen;
+    static bool is_fullscreen_last = !isFullScreen;
 
     // Check if monitor or fullscreen mode has changed
     if (imp_mon_ind_last == imgMonInd && is_fullscreen_last == isFullScreen)
@@ -484,6 +484,8 @@ void resetParamCP()
 
 int main(int argc, char **argv)
 {
+    // ROS_INFO("!!!!!!!!!!!! TEMP_VAR[%d]", TEMP_VAR);
+    // return;
     //  _______________ SETUP _______________
 
     // ROS Initialization

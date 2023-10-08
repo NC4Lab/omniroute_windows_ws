@@ -9,17 +9,29 @@
 
 // ================================================== INCLUDE ==================================================
 
+// Check if APIENTRY is already defined and undefine it
+#ifdef APIENTRY
+  #undef APIENTRY
+#endif
+
 // OpenGL (GLAD and GLFW) for graphics and windowing
-#define GLAPIENTRY APIENTRY
 #include "glad/glad.h"
 #define GLFW_INCLUDE_NONE
 #include <GLFW/glfw3.h>
+
+// Undefine APIENTRY after GLFW and GLAD headers
+#ifdef APIENTRY
+  #undef APIENTRY
+#endif
 
 // DevIL for image loading and manipulation
 #include <IL/il.h>
 #include <IL/ilu.h>
 #include <IL/ilut.h>
 #include <IL/devil_cpp_wrapper.hpp>
+
+// Define BOOST_BIND_GLOBAL_PLACEHOLDERS (to avoid linker warnings)
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS
 
 // ROS for robot operating system functionalities
 #include <ros/ros.h>
@@ -45,6 +57,10 @@
 #include "opencv2/imgproc.hpp"
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/highgui.hpp"
+
+// ================================================== VARIABLES ==================================================
+
+extern int TEMP_VAR = 5;
 
 // ================================================== FUNCTIONS ==================================================
 
