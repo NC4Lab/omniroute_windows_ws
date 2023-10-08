@@ -54,7 +54,7 @@ void callbackKeyBinding(GLFWwindow *, int, int, int, int);
  * @param width The new width of the framebuffer.
  * @param height The new height of the framebuffer.
  */
-void callbackFrameBufferSize(GLFWwindow *, int, int);
+void callbackFrameBufferSizeGLFW(GLFWwindow *, int, int);
 
 /**
  * @brief Callback function for handling errors.
@@ -65,7 +65,7 @@ void callbackFrameBufferSize(GLFWwindow *, int, int);
  * @param error The error code.
  * @param description The error description.
  */
-static void callbackError(int, const char *);
+static void callbackErrorGLFW(int, const char *);
 
 /**
  * @brief Draws a control point as a quadrilateral using OpenGL.
@@ -94,7 +94,8 @@ void drawWall(std::vector<cv::Point2f>);
  * to handle image loading and OpenGL for rendering. The function also performs perspective
  * warping based on the homography matrix and shear and height values extracted from control points.
  */
-void drawWallsAll();
+void drawWallsAll(cv::Mat &, float[4][5], int, float, float, GLuint, ILuint, ILuint, ILuint, ILuint);
+
 
 /**
  * @brief Loads images from specified file paths and stores their IDs in a reference vector.
@@ -111,21 +112,6 @@ void drawWallsAll();
 void loadImgTextures(std::vector<ILuint> &, std::vector<std::string> &);
 
 /**
- * @brief Merges two images by overlaying non-white pixels from the second image onto the first.
- *
- * This function takes two images, img1 and img2, represented as ILuint IDs. It overlays img2 onto img1,
- * replacing pixels in img1 with corresponding non-white pixels from img2. The resulting merged image is
- * returned as a new ILuint ID.
- *
- * @param img1 The ILuint ID of the baseline image.
- * @param img2 The ILuint ID of the mask image.
- * @return ILuint ID of the merged image. Returns 0 if an error occurs.
- *
- * @warning The dimensions of img1 and img2 must match.
- */
-ILuint mergeImages(ILuint, ILuint);
-
-/**
  * @brief Changes the display mode and monitor of the application window.
  *
  * This function switches the application window between full-screen and windowed modes
@@ -140,23 +126,6 @@ ILuint mergeImages(ILuint, ILuint);
  *       Will only exicute if monotor parameters have changed.
  */
 void updateWindowMonMode();
-
-/**
- * @brief Creates a vector of points representing a rectangle with shear for each wall.
- *
- * This function generates a rectangle's corner points starting from the top-left corner
- * and going clockwise. The rectangle is defined by its top-left corner (x0, y0),
- * width, height, and a shear amount.
- *
- * @param x0 The x-coordinate of the top-left corner of the rectangle.
- * @param y0 The y-coordinate of the top-left corner of the rectangle.
- * @param width The width of the rectangle.
- * @param height The height of the rectangle.
- * @param shear_amount The amount of shear to apply to the rectangle.
- *
- * @return std::vector<cv::Point2f> A vector of 4 points representing the corners of the rectangle.
- */
-std::vector<cv::Point2f> computeWallVertices(float, float, float, float, float);
 
 /**
  * @brief Computes the homography matrix based on control points and wall image vertices.

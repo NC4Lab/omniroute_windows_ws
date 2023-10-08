@@ -120,4 +120,43 @@ void loadCoordinatesXML(cv::Mat& ref_H, float (&ref_cp_param)[4][5], std::string
  */
 void saveCoordinatesXML(cv::Mat, float[4][5], std::string);
 
+/**
+ * @brief Merges two images by overlaying non-white pixels from the second image onto the first.
+ *
+ * This function takes two images, img1 and img2, represented as ILuint IDs. It overlays img2 onto img1,
+ * replacing pixels in img1 with corresponding non-white pixels from img2. The resulting merged image is
+ * returned as a new ILuint ID.
+ *
+ * @param img1 The ILuint ID of the baseline image.
+ * @param img2 The ILuint ID of the mask image.
+ * @return ILuint ID of the merged image. Returns 0 if an error occurs.
+ *
+ * @warning The dimensions of img1 and img2 must match.
+ */
+ILuint mergeImages(ILuint, ILuint);
+
+/**
+ * @brief Creates a vector of points representing a rectangle with shear for each wall.
+ *
+ * This function generates a rectangle's corner points starting from the top-left corner
+ * and going clockwise. The rectangle is defined by its top-left corner (x0, y0),
+ * width, height, and a shear amount.
+ *
+ * @param x0 The x-coordinate of the top-left corner of the rectangle.
+ * @param y0 The y-coordinate of the top-left corner of the rectangle.
+ * @param width The width of the rectangle.
+ * @param height The height of the rectangle.
+ * @param shear_amount The amount of shear to apply to the rectangle.
+ *
+ * @return std::vector<cv::Point2f> A vector of 4 points representing the corners of the rectangle.
+ */
+std::vector<cv::Point2f> computeWallVertices(float, float, float, float, float);
+
+// /**
+//  * @brief Draws a textured wall using OpenGL.
+//  *
+//  * @param img_vertices Vector of vertex/corner points for the wall.
+//  */
+// void drawWall(std::vector<cv::Point2f>);
+
 #endif

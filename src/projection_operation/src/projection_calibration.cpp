@@ -246,12 +246,12 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     updateWindowMonMode();
 }
 
-void callbackFrameBufferSize(GLFWwindow *window, int width, int height)
+void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
 }
 
-static void callbackError(int error, const char *description)
+static void callbackErrorGLFW(int error, const char *description)
 {
     ROS_ERROR("Error: %s\n", description);
 }
@@ -312,34 +312,34 @@ void drawWall(std::vector<cv::Point2f> img_vertices)
     glEnd();
 }
 
-void drawWallsAll()
+void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], int maze_size, float wall_width, float wall_space, GLuint fbo_texture, ILuint img_base_id, ILuint img_mon_id, ILuint img_param_id, ILuint img_cal_id)
 {
     // Extract shear and height values from control points
-    float height1 = cpParam[0][3];
-    float height3 = cpParam[2][3];
-    float height4 = cpParam[3][3];
-    float shear1 = cpParam[0][4];
-    float shear3 = cpParam[2][4];
-    float shear4 = cpParam[3][4];
+    float height1 = cp_param[0][3];
+    float height3 = cp_param[2][3];
+    float height4 = cp_param[3][3];
+    float shear1 = cp_param[0][4];
+    float shear3 = cp_param[2][4];
+    float shear4 = cp_param[3][4];
 
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
 
     // Iterate through the maze grid
-    for (float i_wall = 0; i_wall < MAZE_SIZE; i_wall++)
+    for (float i_wall = 0; i_wall < maze_size; i_wall++)
     {
 
         // Iterate through each cell in the maze row
-        for (float j_wall = 0; j_wall < MAZE_SIZE; j_wall++)
+        for (float j_wall = 0; j_wall < maze_size; j_wall++)
         {
 
             // Bind image
             if (i_wall == 1 && j_wall == 1)
             {
                 // Merge images
-                ILuint merge_images_1 = mergeImages(imgTestIDs[imgTestInd], imgMonIDs[imgMonInd]); // merge test pattern and active monitor image
-                ILuint merge_images_2 = mergeImages(merge_images_1, imgParamIDs[imgParamInd]);     // merge previous image and active cp parameter image
-                ILuint merge_images_3 = mergeImages(merge_images_2, imgCalIDs[imgCalInd]);         // merge previous image and active calibration image
+                ILuint merge_images_1 = mergeImages(img_base_id, img_mon_id);      // merge test pattern and active monitor image
+                ILuint merge_images_2 = mergeImages(merge_images_1, img_param_id); // merge previous image and active cp parameter image
+                ILuint merge_images_3 = mergeImages(merge_images_2, img_cal_id);   // merge previous image and active calibration image
                 ilBindImage(merge_images_3);
             }
             else
@@ -353,29 +353,29 @@ void drawWallsAll()
                          GL_UNSIGNED_BYTE, ilGetData());
 
             // Bind texture to framebuffer object
-            glBindTexture(GL_TEXTURE_2D, fboTexture);
+            glBindTexture(GL_TEXTURE_2D, fbo_texture);
 
             // Calculate shear and height for the current wall
-            float shear_val = shear4 + (i_wall / (MAZE_SIZE - 1)) * (shear3 - shear4) +
-                              (j_wall / (MAZE_SIZE - 1)) * (shear1 - shear4);
-            float height_val = height4 + (i_wall / (MAZE_SIZE - 1)) * (height3 - height4) +
-                               (j_wall / (MAZE_SIZE - 1)) * (height1 - height4);
+            float shear_val = shear4 + (i_wall / (maze_size - 1)) * (shear3 - shear4) +
+                              (j_wall / (maze_size - 1)) * (shear1 - shear4);
+            float height_val = height4 + (i_wall / (maze_size - 1)) * (height3 - height4) +
+                               (j_wall / (maze_size - 1)) * (height1 - height4);
 
             // Create wall vertices
-            std::vector<cv::Point2f> img_vertices = computeWallVertices(0.0f, 0.0f, wallWidth, height_val, shear_val);
+            std::vector<cv::Point2f> img_vertices = computeWallVertices(0.0f, 0.0f, wall_width, height_val, shear_val);
 
             // Apply perspective warping to vertices
             for (auto &p : img_vertices)
             {
                 // Update vertex positions based on shear and height
-                p.x += i_wall * wallSpace;
-                p.y += j_wall * wallSpace;
+                p.x += i_wall * wall_space;
+                p.y += j_wall * wall_space;
 
                 // Apply homography matrix to warp perspective
                 float data[] = {p.x, p.y, 1};
                 cv::Mat ptMat(3, 1, CV_32F, data);
-                H.convertTo(H, ptMat.type());
-                ptMat = H * ptMat;
+                ref_H.convertTo(ref_H, ptMat.type());
+                ptMat = ref_H * ptMat;
                 ptMat /= ptMat.at<float>(2);
 
                 // Update vertex coordinates
@@ -425,93 +425,6 @@ void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string
     }
 }
 
-ILuint mergeImages(ILuint img1, ILuint img2)
-{
-    // Bind and get dimensions of img1 (baseline image)
-    ilBindImage(img1);
-    int width1 = ilGetInteger(IL_IMAGE_WIDTH);
-    int height1 = ilGetInteger(IL_IMAGE_HEIGHT);
-    ILubyte *data1 = ilGetData();
-    ILenum error = ilGetError();
-    if (error != IL_NO_ERROR)
-    {
-        ROS_ERROR("Error binding img1: %s", iluErrorString(error));
-        return 0;
-    }
-
-    // Bind and get dimensions of img2 (mask image)
-    ilBindImage(img2);
-    int width2 = ilGetInteger(IL_IMAGE_WIDTH);
-    int height2 = ilGetInteger(IL_IMAGE_HEIGHT);
-    ILubyte *data2 = ilGetData();
-    error = ilGetError();
-    if (error != IL_NO_ERROR)
-    {
-        ROS_ERROR("Error binding img2: %s", iluErrorString(error));
-        return 0;
-    }
-
-    // Check for dimension match
-    if (width1 != width2 || height1 != height2)
-    {
-        ROS_ERROR("Dimensions do not match: img1(%d, %d), img2(%d, %d)",
-                  width1, height1, width2, height2);
-        return 0;
-    }
-
-    // Create merged image
-    ILuint mergedImg;
-    ilGenImages(1, &mergedImg);
-    ilBindImage(mergedImg);
-    ilTexImage(width1, height1, 1, 4, IL_RGBA, IL_UNSIGNED_BYTE, NULL);
-    error = ilGetError();
-    if (error != IL_NO_ERROR)
-    {
-        ROS_ERROR("Error creating merged image: %s", iluErrorString(error));
-        return 0;
-    }
-
-    // Initialize mergedData array
-    ILubyte *mergedData = new ILubyte[width1 * height1 * 4];
-
-    // Loop to overlay non-white pixels from img2 onto img1
-    for (int i = 0; i < width1 * height1 * 4; i += 4)
-    {
-        if (data2[i] != 255 || data2[i + 1] != 255 || data2[i + 2] != 255)
-        {
-            // If the pixel is not white in img2, use it in the merged image
-            for (int j = 0; j < 4; ++j)
-            {
-                mergedData[i + j] = data2[i + j];
-            }
-        }
-        else
-        {
-            // Otherwise, use the pixel from img1
-            for (int j = 0; j < 4; ++j)
-            {
-                mergedData[i + j] = data1[i + j];
-            }
-        }
-    }
-
-    // Set mergedData to the new image
-    ilBindImage(mergedImg);
-    ilSetPixels(0, 0, 0, width1, height1, 1, IL_RGBA, IL_UNSIGNED_BYTE, mergedData);
-    error = ilGetError();
-    if (error != IL_NO_ERROR)
-    {
-        ROS_ERROR("Error setting pixels for merged image: %s", iluErrorString(error));
-        delete[] mergedData;
-        return 0;
-    }
-
-    // Clean up
-    delete[] mergedData;
-
-    return mergedImg;
-}
-
 void updateWindowMonMode()
 {
     static int imp_mon_ind_last = imgMonInd;
@@ -554,25 +467,6 @@ void updateWindowMonMode()
     // Update last monitor and fullscreen mode
     imp_mon_ind_last = imgMonInd;
     is_fullscreen_last = isFullScreen;
-}
-
-std::vector<cv::Point2f> computeWallVertices(float x0, float y0, float width, float height, float shear_amount)
-{
-    std::vector<cv::Point2f> rect_vertices;
-
-    // Top-left corner after applying shear
-    rect_vertices.push_back(cv::Point2f(x0 + height * shear_amount, y0 + height));
-
-    // Top-right corner after applying shear
-    rect_vertices.push_back(cv::Point2f(x0 + height * shear_amount + width, y0 + height));
-
-    // Bottom-right corner
-    rect_vertices.push_back(cv::Point2f(x0 + width, y0));
-
-    // Bottom-left corner
-    rect_vertices.push_back(cv::Point2f(x0, y0));
-
-    return rect_vertices;
 }
 
 void computeHomography()
@@ -651,7 +545,7 @@ int main(int argc, char **argv)
     loadImgTextures(imgCalIDs, imgCalPaths);
 
     // Initialize GLFW
-    glfwSetErrorCallback(callbackError);
+    glfwSetErrorCallback(callbackErrorGLFW);
     if (!glfwInit())
     {
         ROS_ERROR("GLFW: Initialization Failed");
@@ -671,7 +565,7 @@ int main(int argc, char **argv)
     glfwMakeContextCurrent(window);
     gladLoadGL();
     glfwSetKeyCallback(window, callbackKeyBinding);
-    glfwSetFramebufferSizeCallback(window, callbackFrameBufferSize);
+    glfwSetFramebufferSizeCallback(window, callbackFrameBufferSizeGLFW);
 
     // Initialize FBO and attach texture to it
     glGenFramebuffers(1, &fbo);
@@ -701,7 +595,7 @@ int main(int argc, char **argv)
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Draw/update wall images
-        drawWallsAll();
+        drawWallsAll(H, cpParam, MAZE_SIZE, wallWidth, wallSpace, fboTexture, imgTestIDs[imgTestInd], imgMonIDs[imgMonInd], imgParamIDs[imgParamInd], imgCalIDs[imgCalInd]);
 
         // Draw/update control points
         for (int i = 0; i < 4; i++)
