@@ -24,5 +24,5 @@ call devel\setup.bat
 echo Running Package EXE
 ::rosrun goodbuy_world_pkg goodbuy_world_node
 ::rosrun proj_pkg_test proj_pkg_test_node
-rosrun projection_operation projection_calibration
-::rosrun projection_operation projection_display
+::rosrun projection_operation projection_calibration
+rosrun projection_operation projection_display

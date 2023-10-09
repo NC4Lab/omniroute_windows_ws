@@ -34,8 +34,7 @@ std::vector<std::string> imgWallPathVec = {
     image_runtime_dir_path + "/triangle.bmp"};
 
 // Projector and monitor variables
-int nMonitors;      // Number of monitors connected to the system
-int indMonitor = 0; // Index of the active monitor
+int nMonitors; // Number of monitors connected to the system
 
 // Projector variables
 const int nProjectors = 2;               // Number of projectors
@@ -51,7 +50,6 @@ std::vector<std::string> windowNameVec = {
 };
 
 // Window for OpenGL
-GLFWwindow *p_windowID;
 GLFWwindow *p_windowIDVec[nProjectors];
 
 // FBO variables for OpenGL
@@ -108,20 +106,29 @@ void callbackFrameBufferSizeGLFW(GLFWwindow *, int, int);
 static void callbackErrorGLFW(int, const char *);
 
 /**
+ * @brief Check and print OpenGL errors.
+ *
+ * @param msg_str String to include in the message.
+ */
+void checkErrorGL(std::string);
+
+/**
  * @brief Set up a GLFW window and its associated Framebuffer Object (FBO) and texture.
- * 
+ *
  * This function creates a GLFW window, sets its OpenGL context and callbacks, and initializes
  * an FBO and texture to be used for offscreen rendering.
  *
- * @param p_window_arr_id Pointer to an array of GLFWwindow pointers, where each pointer corresponds to a projector window.
- * @param win_ind Index of the window in the array for which the setup is to be done.
+ * @param pp_window_id GLFWwindow pointer array, where each pointer corresponds to a projector window.
+ * @param win_ind Index of the window for which the setup is to be done.
+ * @param pp_ref_monitor_id Reference to the GLFWmonitor pointer array.
+ * @param mon_ind Index of the monitor to move the window to.
  * @param ref_window_name Reference to the name to be assigned to the GLFW window.
  * @param ref_fbo_id Reference to the GLuint variable where the generated FBO ID will be stored.
  * @param ref_fbo_texture_id Reference to the GLuint variable where the generated FBO texture ID will be stored.
  *
  * @return Void. The function will terminate the GLFW context and log an error if window creation fails.
  */
-void setupProjGLFW(GLFWwindow **, int, const std::string &, GLuint &, GLuint &);
+void setupProjGLFW(GLFWwindow **, int, GLFWmonitor **&, int, const std::string &, GLuint &, GLuint &);
 
 /**
  * @brief Draws a textured rectangle using OpenGL.

@@ -253,7 +253,7 @@ void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
 
 static void callbackErrorGLFW(int error, const char *description)
 {
-    ROS_ERROR("Error: %s\n", description);
+    ROS_ERROR("[GLFW] Error Flagged: %s", description);
 }
 
 void drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec)
@@ -374,47 +374,47 @@ void drawWallsAll(
     glDisable(GL_TEXTURE_2D);
 }
 
-void updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitors, int win_mon_ind, bool is_fullscreen)
+void updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_id, int mon_ind, bool is_fullscreen)
 {
-    static int imp_mon_ind_last = win_mon_ind;
+    static int imp_mon_ind_last = mon_ind;
     static bool is_fullscreen_last = !is_fullscreen;
 
     // Check if monitor or fullscreen mode has changed
-    if (imp_mon_ind_last == win_mon_ind && is_fullscreen_last == is_fullscreen)
+    if (imp_mon_ind_last == mon_ind && is_fullscreen_last == is_fullscreen)
     {
         return;
     }
 
     // Get GLFWmonitor for active monitor
-    GLFWmonitor *p_ref_monitor = pp_ref_monitors[win_mon_ind];
+    GLFWmonitor *p_ref_monitor_id = pp_ref_monitor_id[mon_ind];
 
     // Update window size and position
-    if (p_ref_monitor)
+    if (p_ref_monitor_id)
     {
         // Get the video mode of the selected monitor
-        const GLFWvidmode *mode = glfwGetVideoMode(p_ref_monitor);
+        const GLFWvidmode *mode = glfwGetVideoMode(p_ref_monitor_id);
 
         // Set the window to full-screen mode on the current monitor
-        glfwSetWindowMonitor(p_window_id, p_ref_monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+        glfwSetWindowMonitor(p_window_id, p_ref_monitor_id, 0, 0, mode->width, mode->height, mode->refreshRate);
 
         if (!is_fullscreen)
         {
             // Get the position of the current monitor
             int monitor_x, monitor_y;
-            glfwGetMonitorPos(p_ref_monitor, &monitor_x, &monitor_y);
+            glfwGetMonitorPos(p_ref_monitor_id, &monitor_x, &monitor_y);
 
             // Set the window to windowed mode and position it on the current monitor
             glfwSetWindowMonitor(p_window_id, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * PROJ_WIN_ASPECT_RATIO), 500, 0);
         }
-        ROS_INFO("RAN: Move window to monitor %d and set to %s", win_mon_ind, is_fullscreen ? "fullscreen" : "windowed");
+        ROS_INFO("RAN: Move window to monitor %d and set to %s", mon_ind, is_fullscreen ? "fullscreen" : "windowed");
     }
     else
     {
-        ROS_WARN("FAILED: Move window to monitor %d and set to %s", win_mon_ind, is_fullscreen ? "fullscreen" : "windowed");
+        ROS_WARN("FAILED: Move window to monitor %d and set to %s", mon_ind, is_fullscreen ? "fullscreen" : "windowed");
     }
 
     // Update last monitor and fullscreen mode
-    imp_mon_ind_last = win_mon_ind;
+    imp_mon_ind_last = mon_ind;
     is_fullscreen_last = is_fullscreen;
 }
 

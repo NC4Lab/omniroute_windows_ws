@@ -35,19 +35,31 @@ void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
 
 static void callbackErrorGLFW(int error, const char *description)
 {
-    ROS_ERROR("Error: %s\n", description);
+    ROS_ERROR("[GLFW] Error Flagged: %s", description);
+}
+
+void checkErrorGL(std::string msg_str)
+{
+    GLenum err;
+    while ((err = glGetError()) != GL_NO_ERROR)
+    {
+        // Log or print the error code
+        ROS_INFO("[OpenGL] Error Flagged [%s]: Error Number[%s]: ", msg_str, err);
+    }
 }
 
 void setupProjGLFW(
-    GLFWwindow **p_window_arr_id,
+    GLFWwindow **pp_window_id,
     int win_ind,
+    GLFWmonitor **&pp_ref_monitor_id,
+    int mon_ind,
     const std::string &ref_window_name,
     GLuint &ref_fbo_id,
     GLuint &ref_fbo_texture_id)
 {
     // Create GLFW window
-    p_window_arr_id[win_ind] = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, ref_window_name.c_str(), NULL, NULL);
-    if (!p_window_arr_id[win_ind])
+    pp_window_id[win_ind] = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, ref_window_name.c_str(), NULL, NULL);
+    if (!pp_window_id[win_ind])
     {
         glfwTerminate();
         ROS_ERROR("GLFW: Create Window Failed");
@@ -55,10 +67,10 @@ void setupProjGLFW(
     }
 
     // Set OpenGL context and callbacks
-    glfwMakeContextCurrent(p_window_arr_id[win_ind]);
+    glfwMakeContextCurrent(pp_window_id[win_ind]);
     gladLoadGL();
-    glfwSetKeyCallback(p_window_arr_id[win_ind], callbackKeyBinding);
-    glfwSetFramebufferSizeCallback(p_window_arr_id[win_ind], callbackFrameBufferSizeGLFW);
+    glfwSetKeyCallback(pp_window_id[win_ind], callbackKeyBinding);
+    glfwSetFramebufferSizeCallback(pp_window_id[win_ind], callbackFrameBufferSizeGLFW);
 
     // Initialize FBO and attach texture to it
     glGenFramebuffers(1, &ref_fbo_id);
@@ -70,6 +82,31 @@ void setupProjGLFW(
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ref_fbo_texture_id, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // Get GLFWmonitor for active monitor
+    GLFWmonitor *p_ref_monitor_id = pp_ref_monitor_id[mon_ind];
+
+    // Update window size and position
+    if (pp_ref_monitor_id)
+    {
+        // Get the video mode of the selected monitor
+        const GLFWvidmode *mode = glfwGetVideoMode(p_ref_monitor_id);
+
+        // Set the window to full-screen mode on the specified monitor
+        glfwSetWindowMonitor(pp_window_id[win_ind], p_ref_monitor_id, 0, 0, mode->width, mode->height, mode->refreshRate);
+
+        ROS_INFO("GLFW: Setup Window[%d] On Monitor[%d]", win_ind, mon_ind);
+    }
+    else
+    {
+        ROS_ERROR("GLFW: Monitor[%d] Not Found", mon_ind);
+    }
+
+    // TEMP Minimize the window
+    glfwIconifyWindow(pp_window_id[win_ind]);
+
+    // Check for errors
+    checkErrorGL("setupProjGLFW");
 }
 
 void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
@@ -161,7 +198,7 @@ int main(int argc, char **argv)
     // Create GLFW window
     for (int i = 0; i < nProjectors; ++i)
     {
-        setupProjGLFW(p_windowIDVec, i, windowNameVec[i], fboIDVec[i], fboTextureIDVec[i]);
+        setupProjGLFW(p_windowIDVec, i, p_monitorIDVec, indProjectorMonitorArr[i], windowNameVec[i], fboIDVec[i], fboTextureIDVec[i]);
     }
 
     // --------------- DevIL SETUP ---------------
@@ -181,16 +218,17 @@ int main(int argc, char **argv)
         // Initialize a variable to check if all windows should close
         shouldClose = true;
 
+        // Update the window contents and process events for each projectors window
         for (int i = 0; i < nProjectors; ++i)
         {
-            p_windowID = p_windowIDVec[i];
+            GLFWwindow *p_window_id = p_windowIDVec[i];
 
-            if (!glfwWindowShouldClose(p_windowID))
+            if (!glfwWindowShouldClose(p_window_id))
             {
                 shouldClose = false; // At least one window is still open
 
                 // Make the window's context current
-                glfwMakeContextCurrent(p_windowID);
+                glfwMakeContextCurrent(p_window_id);
 
                 // Clear back buffer for new frame
                 glClear(GL_COLOR_BUFFER_BIT);
@@ -250,22 +288,34 @@ int main(int argc, char **argv)
                 glDisable(GL_TEXTURE_2D);
 
                 // Swap buffers and poll events
-                glfwSwapBuffers(p_windowID);
+                glfwSwapBuffers(p_window_id);
             }
 
             // Exit condition
-            if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_windowID))
+            if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_window_id))
+            {
+                shouldClose = true;
                 break;
+            }
         }
 
         // Poll for and process events for all windows
         glfwPollEvents();
+
+        // Check for errors
+        checkErrorGL("Main Loop");
     }
 
     // _______________ CLEANUP _______________
 
-    // Destroy GLFW window and DevIL images
-    glfwDestroyWindow(p_windowID);
+    // Destroy GLFW window
+    for (int i = 0; i < nProjectors; ++i)
+    {
+        glfwDestroyWindow(p_windowIDVec[i]);
+    }
+
+    // Destroy DevIL images
+
     for (ILuint image_id : imgWallIDVec)
     {
         ilDeleteImages(1, &image_id);

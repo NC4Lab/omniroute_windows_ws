@@ -226,8 +226,8 @@ void drawWallsAll(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint
  *       Will only exicute if monotor parameters have changed.
  *
  * @param p_window Pointer to the GLFWwindow pointer that will be updated.
- * @param pp_ref_monitors Reference to the GLFWmonitor pointer array.
- * @param win_mon_ind Index of the monitor to move the window to.
+ * @param pp_ref_monitor_id Reference to the GLFWmonitor pointer array.
+ * @param mon_ind Index of the monitor to move the window to.
  * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
  */
 void updateWindowMonMode(GLFWwindow *, GLFWmonitor **&, int, bool);
