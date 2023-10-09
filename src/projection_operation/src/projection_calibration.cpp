@@ -25,7 +25,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         if (key == GLFW_KEY_R)
         {
-             resetParamCP(cpParam, cpParam_default, calModeInd);
+            resetParamCP(cpParam, cpParam_default, calModeInd);
         }
 
         // ---------- Target selector keys [F1-F4] ----------
@@ -154,7 +154,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Reset control point parameters when switching calibration modes
             if (key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT)
             {
-                 resetParamCP(cpParam, cpParam_default, calModeInd);
+                resetParamCP(cpParam, cpParam_default, calModeInd);
             }
         }
 
@@ -509,16 +509,23 @@ int main(int argc, char **argv)
     glfwSetKeyCallback(p_windowID, callbackKeyBinding);
     glfwSetFramebufferSizeCallback(p_windowID, callbackFrameBufferSizeGLFW);
 
-    // Initialize FBO and attach texture to it
+    // Initialize FBO and texture
     GLuint fbo_id;
+    GLuint fbo_texture_id;
+
+    // Generate and set up the FBO
     glGenFramebuffers(1, &fbo_id);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
-    glGenTextures(1, &fboTextureID);
-    glBindTexture(GL_TEXTURE_2D, fboTextureID);
+
+    // Generate and set up the texture
+    glGenTextures(1, &fbo_texture_id);
+    glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTextureID, 0);
+
+    // Attach the texture to the FBO
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture_id, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // --------------- DevIL SETUP ---------------
@@ -551,7 +558,7 @@ int main(int argc, char **argv)
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Draw/update wall images
-        drawWallsAll(H, cpParam, fboTextureID, imgTestIDVec[imgTestInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
+        drawWallsAll(H, cpParam, fbo_texture_id, imgTestIDVec[imgTestInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
 
         // Draw/update control points
         for (int i = 0; i < 4; i++)

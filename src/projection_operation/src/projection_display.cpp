@@ -48,7 +48,7 @@ void checkErrorGL(std::string msg_str)
     }
 }
 
-void setupProjGLFW(
+int setupProjGLFW(
     GLFWwindow **pp_window_id,
     int win_ind,
     GLFWmonitor **&pp_ref_monitor_id,
@@ -63,7 +63,7 @@ void setupProjGLFW(
     {
         glfwTerminate();
         ROS_ERROR("GLFW: Create Window Failed");
-        return;
+        return -1;
     }
 
     // Set OpenGL context and callbacks
@@ -72,14 +72,18 @@ void setupProjGLFW(
     glfwSetKeyCallback(pp_window_id[win_ind], callbackKeyBinding);
     glfwSetFramebufferSizeCallback(pp_window_id[win_ind], callbackFrameBufferSizeGLFW);
 
-    // Initialize FBO and attach texture to it
+    // Generate and set up the FBO
     glGenFramebuffers(1, &ref_fbo_id);
     glBindFramebuffer(GL_FRAMEBUFFER, ref_fbo_id);
+
+    // Generate and set up the texture
     glGenTextures(1, &ref_fbo_texture_id);
     glBindTexture(GL_TEXTURE_2D, ref_fbo_texture_id);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    // Attach the texture to the FBO
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ref_fbo_texture_id, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -100,13 +104,16 @@ void setupProjGLFW(
     else
     {
         ROS_ERROR("GLFW: Monitor[%d] Not Found", mon_ind);
+        return -1;
     }
 
     // TEMP Minimize the window
-    glfwIconifyWindow(pp_window_id[win_ind]);
+    //glfwIconifyWindow(pp_window_id[win_ind]);
 
     // Check for errors
     checkErrorGL("setupProjGLFW");
+
+    return 0;
 }
 
 void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
@@ -198,7 +205,11 @@ int main(int argc, char **argv)
     // Create GLFW window
     for (int i = 0; i < nProjectors; ++i)
     {
-        setupProjGLFW(p_windowIDVec, i, p_monitorIDVec, indProjectorMonitorArr[i], windowNameVec[i], fboIDVec[i], fboTextureIDVec[i]);
+        if(setupProjGLFW(p_windowIDVec, i, p_monitorIDVec, indProjectorMonitorArr[i], windowNameVec[i], fboIDVec[i], fboTextureIDVec[i]) != 0)
+        {
+            ROS_ERROR("GLFW: Setup Failed for Window[%d]", i);
+            return -1;
+        };
     }
 
     // --------------- DevIL SETUP ---------------
@@ -233,7 +244,7 @@ int main(int argc, char **argv)
                 // Clear back buffer for new frame
                 glClear(GL_COLOR_BUFFER_BIT);
 
-                // Bind the FBO
+                // // Bind the FBO
                 glBindFramebuffer(GL_FRAMEBUFFER, fboIDVec[i]);
 
                 // Enable OpenGL texture mapping
@@ -281,13 +292,13 @@ int main(int argc, char **argv)
                     }
                 }
 
-                // Unbind the FBO
-                glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
                 // Disable OpenGL texture mapping
                 glDisable(GL_TEXTURE_2D);
 
-                // Swap buffers and poll events
+                // Unbind the FBO
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+                // Swap buffers
                 glfwSwapBuffers(p_window_id);
             }
 
@@ -299,7 +310,7 @@ int main(int argc, char **argv)
             }
         }
 
-        // Poll for and process events for all windows
+        // Poll and process events for all windows
         glfwPollEvents();
 
         // Check for errors
@@ -308,14 +319,18 @@ int main(int argc, char **argv)
 
     // _______________ CLEANUP _______________
 
-    // Destroy GLFW window
+    // Destroy GL objects
     for (int i = 0; i < nProjectors; ++i)
     {
+        // Destroy GLFW window
         glfwDestroyWindow(p_windowIDVec[i]);
+
+        //  Delete each FBO and texture
+        glDeleteFramebuffers(1, &fboIDVec[i]);
+        glDeleteTextures(1, &fboTextureIDVec[i]);
     }
 
     // Destroy DevIL images
-
     for (ILuint image_id : imgWallIDVec)
     {
         ilDeleteImages(1, &image_id);

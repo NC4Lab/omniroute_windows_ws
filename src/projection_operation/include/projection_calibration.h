@@ -117,7 +117,6 @@ size_t nCalModes = imgCalPathVec.size(); // Number of calibration modes
 // Variables related to window and OpenGL
 GLFWwindow *p_windowID;
 GLFWmonitor **p_monitorIDVec;
-GLuint fboTextureID;
 
 // ================================================== FUNCTIONS ==================================================
 

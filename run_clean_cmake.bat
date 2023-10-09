@@ -1,5 +1,9 @@
 @echo off  :: Command Echoing Off
 
+:: Source the ROS setup file
+echo Sourcing ROS setup file
+call C:\opt\ros\noetic\x64\setup.bat
+
 :: Delete the build and devel folders
 echo Deleting build and devel folders
 rmdir /s /q build

@@ -126,9 +126,9 @@ void checkErrorGL(std::string);
  * @param ref_fbo_id Reference to the GLuint variable where the generated FBO ID will be stored.
  * @param ref_fbo_texture_id Reference to the GLuint variable where the generated FBO texture ID will be stored.
  *
- * @return Void. The function will terminate the GLFW context and log an error if window creation fails.
+ * @return 0 on successful execution, -1 on failure.
  */
-void setupProjGLFW(GLFWwindow **, int, GLFWmonitor **&, int, const std::string &, GLuint &, GLuint &);
+int setupProjGLFW(GLFWwindow **, int, GLFWmonitor **&, int, const std::string &, GLuint &, GLuint &);
 
 /**
  * @brief Draws a textured rectangle using OpenGL.

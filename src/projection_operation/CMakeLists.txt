@@ -169,16 +169,16 @@ target_link_libraries(projection_utils
 # ==================== SETUP PROJECTION_CALIBRATION LIBRARY ====================
 
 # Create executable
-add_executable(projection_calibration 
+add_executable(projection_calibration_node
   src/projection_calibration.cpp 
   ${GLAD_SRC}
 )
 
 # Add cmake target dependencies of the executable
-add_dependencies(projection_calibration ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(projection_calibration_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 # Specify libraries to link a library or executable target against
-target_link_libraries(projection_calibration
+target_link_libraries(projection_calibration_node
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
   ${GLAD_LIBRARY}
@@ -192,26 +192,26 @@ target_link_libraries(projection_calibration
 )
 
 # Copy DevIL DLLs to the executable directory so they are accessible at runtime
-add_custom_command(TARGET projection_calibration POST_BUILD
+add_custom_command(TARGET projection_calibration_node POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
                    "$ENV{DevIL_DIR}/lib/x64/Release/DevIL.dll"
                    "$ENV{DevIL_DIR}/lib/x64/Release/ILU.dll"
                    "$ENV{DevIL_DIR}/lib/x64/Release/ILUT.dll"
-                   $<TARGET_FILE_DIR:projection_calibration>)
+                   $<TARGET_FILE_DIR:projection_calibration_node>)
 
 # ==================== SETUP PROJECTION_DISPLAY LIBRARY ====================
 
 # Create executable
-add_executable(projection_display 
+add_executable(projection_display_node 
   src/projection_display.cpp 
   ${GLAD_SRC}
 )
 
 # Add cmake target dependencies of the executable
-add_dependencies(projection_display ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+add_dependencies(projection_display_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 # Specify libraries to link a library or executable target against
-target_link_libraries(projection_display
+target_link_libraries(projection_display_node
   ${catkin_LIBRARIES}
   ${OpenCV_LIBRARIES}
   ${GLAD_LIBRARY}
@@ -225,14 +225,14 @@ target_link_libraries(projection_display
 )
 
 # Copy DevIL DLLs to the executable directory so they are accessible at runtime
-add_custom_command(TARGET projection_display POST_BUILD
+add_custom_command(TARGET projection_display_node POST_BUILD
                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
                    "$ENV{DevIL_DIR}/lib/x64/Release/DevIL.dll"
                    "$ENV{DevIL_DIR}/lib/x64/Release/ILU.dll"
                    "$ENV{DevIL_DIR}/lib/x64/Release/ILUT.dll"
-                   $<TARGET_FILE_DIR:projection_display>)
+                   $<TARGET_FILE_DIR:projection_display_node>)
 
 # ==================== INSTALL TARGETS ====================
 
-install(TARGETS projection_calibration projection_display projection_utils
+install(TARGETS projection_calibration_node projection_display_node projection_utils
 RUNTIME DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
