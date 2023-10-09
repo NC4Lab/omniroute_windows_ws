@@ -20,17 +20,12 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
     if (action == GLFW_RELEASE)
     {
-
-        
     }
 
     // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
     else if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {
-
-       
     }
-
 }
 
 void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
@@ -43,110 +38,244 @@ static void callbackErrorGLFW(int error, const char *description)
     ROS_ERROR("Error: %s\n", description);
 }
 
+void setupProjGLFW(
+    GLFWwindow **p_window_arr_id,
+    int win_ind,
+    const std::string &ref_window_name,
+    GLuint &ref_fbo_id,
+    GLuint &ref_fbo_texture_id)
+{
+    // Create GLFW window
+    p_window_arr_id[win_ind] = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, ref_window_name.c_str(), NULL, NULL);
+    if (!p_window_arr_id[win_ind])
+    {
+        glfwTerminate();
+        ROS_ERROR("GLFW: Create Window Failed");
+        return;
+    }
+
+    // Set OpenGL context and callbacks
+    glfwMakeContextCurrent(p_window_arr_id[win_ind]);
+    gladLoadGL();
+    glfwSetKeyCallback(p_window_arr_id[win_ind], callbackKeyBinding);
+    glfwSetFramebufferSizeCallback(p_window_arr_id[win_ind], callbackFrameBufferSizeGLFW);
+
+    // Initialize FBO and attach texture to it
+    glGenFramebuffers(1, &ref_fbo_id);
+    glBindFramebuffer(GL_FRAMEBUFFER, ref_fbo_id);
+    glGenTextures(1, &ref_fbo_texture_id);
+    glBindTexture(GL_TEXTURE_2D, ref_fbo_texture_id);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ref_fbo_texture_id, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
+{
+
+    // Start drawing a quadrilateral
+    glBegin(GL_QUADS);
+
+    // Set the color to white
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    // Set texture and vertex coordinates for each corner
+
+    // Bottom-left corner
+    glTexCoord2f(0.0f, 1.0f);
+    glVertex2f(rect_vertices_vec[0].x, rect_vertices_vec[0].y);
+
+    // Bottom-right corner
+    glTexCoord2f(1.0f, 1.0f);
+    glVertex2f(rect_vertices_vec[1].x, rect_vertices_vec[1].y);
+
+    // Top-right corner
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex2f(rect_vertices_vec[2].x, rect_vertices_vec[2].y);
+
+    // Top-left corner
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex2f(rect_vertices_vec[3].x, rect_vertices_vec[3].y);
+
+    // End drawing
+    glEnd();
+}
+
+void drawWallsAll()
+{
+}
+
 int main(int argc, char **argv)
 {
-    // //  _______________ SETUP _______________
+    //  _______________ SETUP _______________
 
-    // // ROS Initialization
-    // ros::init(argc, argv, "projection_display", ros::init_options::AnonymousName);
-    // ros::NodeHandle n;
-    // ros::NodeHandle nh("~");
-    // ROS_INFO("RUNNING MAIN");
+    // ROS Initialization
+    ros::init(argc, argv, "projection_display", ros::init_options::AnonymousName);
+    ros::NodeHandle n;
+    ros::NodeHandle nh("~");
+    ROS_INFO("RUNNING MAIN");
 
-    // // Log paths for debugging
-    // ROS_INFO("SETTINGS: Config XML Path: %s", configDirPath.c_str());
-    // ROS_INFO("SETTINGS: Display: XYLim=[%0.2f,%0.2f] Width=%d Height=%d AR=%0.2f", cp_xy_lim, cp_xy_lim, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
-    // ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", WALL_WIDTH, WALL_SPACE);
-    // ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(WALL_WIDTH * (float)PROJ_WIN_WIDTH_PXL), (int)(WALL_SPACE * (float)PROJ_WIN_WIDTH_PXL));
+    // Log paths for debugging
+    ROS_INFO("SETTINGS: Config XML Path: %s", CONFIG_DIR_PATH.c_str());
+    ROS_INFO("SETTINGS: Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
+    ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", WALL_WIDTH, WALL_SPACE);
+    ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(WALL_WIDTH * (float)PROJ_WIN_WIDTH_PXL), (int)(WALL_SPACE * (float)PROJ_WIN_WIDTH_PXL));
 
-    // // Initialize DevIL library
-    // ilInit();
+    // --------------- OpenGL SETUP ---------------
 
-    // // Load images
-    // // loadImgTextures(imgTestIDs, imgTestPaths);
+    // Initialize GLFW
+    glfwSetErrorCallback(callbackErrorGLFW);
+    if (!glfwInit())
+    {
+        ROS_ERROR("GLFW: Initialization Failed");
+        return -1;
+    }
 
-    // // Initialize GLFW
-    // glfwSetErrorCallback(callbackErrorGLFW);
-    // if (!glfwInit())
-    // {
-    //     ROS_ERROR("GLFW: Initialization Failed");
-    //     return -1;
-    // }
+    // Get the list of available monitors and their count
+    p_monitorIDVec = glfwGetMonitors(&nMonitors);
+    ROS_INFO("GLFW: Found %d monitors", nMonitors);
 
-    // // Create GLFW window
-    // window = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, windowName.c_str(), NULL, NULL);
-    // if (!window)
-    // {
-    //     glfwTerminate();
-    //     ROS_ERROR("GLFW: Create Window Failed");
-    //     return -1;
-    // }
+    // TEMP: hardcoding for now
+    nMonitors = 3;
 
-    // // Set OpenGL context and callbacks
-    // glfwMakeContextCurrent(window);
-    // gladLoadGL();
-    // glfwSetKeyCallback(window, callbackKeyBinding);
-    // glfwSetFramebufferSizeCallback(window, callbackFrameBufferSizeGLFW);
+    // Make sure nProj is not greater than the total number of monitors found
+    if (nProjectors > nMonitors)
+    {
+        ROS_ERROR("GLFW: Error Fewer Monitors[%d] Found than Expected Projectors[%d]", nMonitors, nProjectors);
+        return -1;
+    }
 
-    // // Initialize FBO and attach texture to it
-    // GLuint fbo;
-    // glGenFramebuffers(1, &fbo);
-    // glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    // glGenTextures(1, &fboTexture);
-    // glBindTexture(GL_TEXTURE_2D, fboTexture);
-    // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
-    // glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    // Copy the last n_projectors entries from GLFWmonitor monitor pointer array
+    int startIndex = nMonitors - nProjectors;
+    for (int i = 0; i < nProjectors; ++i)
+    {
+        // Get the monotor indices for the projectors
+        indProjectorMonitorArr[i] = startIndex + i;
 
-    // // // Call to initializeGL to set up OpenGL context and GLFW
-    // // initializeGL(window, winWidthPxl, winHeightPxl, windowName, fboTexture);
+        // Copy the GLFWmonitor pointer
+        p_projectorIDVec[i] = p_monitorIDVec[indProjectorMonitorArr[i]];
+    }
 
-    // // Get the list of available monitors and their count
-    // monitors = glfwGetMonitors(&nMonitors);
-    // // TEMP: hardcoding for now
-    // nMonitors = 2;
+    // Create GLFW window
+    for (int i = 0; i < nProjectors; ++i)
+    {
+        setupProjGLFW(p_windowIDVec, i, windowNameVec[i], fboIDVec[i], fboTextureIDVec[i]);
+    }
 
-    // // _______________ MAIN LOOP _______________
+    // --------------- DevIL SETUP ---------------
 
-    // while (!glfwWindowShouldClose(window))
-    // {
-    //     // Clear back buffer for new frame
-    //     glClear(GL_COLOR_BUFFER_BIT);
+    // Initialize DevIL library
+    ilInit();
 
-    //     // Draw/update wall images
-    //     drawWallsAll(H, cpParam, fboTexture, imgTestIDs[imgTestInd], imgMonIDs[imgMonInd], imgParamIDs[imgParamInd], imgCalIDs[imgCalInd]);
+    // Load images
+    loadImgTextures(imgWallIDVec, imgWallPathVec);
 
-    //     // Draw/update control points
-    //     for (int i = 0; i < 4; i++)
-    //     {
-    //         drawControlPoint(cpParam[i][0], cpParam[i][1], cpParam[i][2], cpSelected == i ? cpActiveRGB : cpInactiveRGB);
-    //     }
+    // _______________ MAIN LOOP _______________
 
-    //     // Swap buffers and poll events
-    //     glfwSwapBuffers(window);
-    //     glfwPollEvents();
+    bool shouldClose = false;
 
-    //     // Exit condition
-    //     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(window))
-    //         break;
-    // }
+    while (!shouldClose)
+    {
+        // Initialize a variable to check if all windows should close
+        shouldClose = true;
 
-    // // _______________ CLEANUP _______________
+        for (int i = 0; i < nProjectors; ++i)
+        {
+            p_windowID = p_windowIDVec[i];
 
-    // // Destroy GLFW window and DevIL images
-    // glfwDestroyWindow(window);
-    // for (ILuint imageID : imgTestIDs)
-    // {
-    //     ilDeleteImages(1, &imageID);
-    // }
+            if (!glfwWindowShouldClose(p_windowID))
+            {
+                shouldClose = false; // At least one window is still open
 
-    // // Shutdown DevIL
-    // ilShutDown();
+                // Make the window's context current
+                glfwMakeContextCurrent(p_windowID);
 
-    // // Terminate GLFW
-    // glfwTerminate();
+                // Clear back buffer for new frame
+                glClear(GL_COLOR_BUFFER_BIT);
+
+                // Bind the FBO
+                glBindFramebuffer(GL_FRAMEBUFFER, fboIDVec[i]);
+
+                // Enable OpenGL texture mapping
+                glEnable(GL_TEXTURE_2D);
+
+                // Loop through the calibration modes [left, middle, right]
+                for (int j = 0; j < 3; j++)
+                {
+                    // Load the image transform coordinates from the XML file
+                    std::string file_path = formatCoordinatesFilePathXML(indProjectorMonitorArr[i], j, CONFIG_DIR_PATH);
+                    loadCoordinatesXML(H, cpParam, file_path);
+
+                    // Bind texture to framebuffer object
+                    glBindTexture(GL_TEXTURE_2D, fboTextureIDVec[i]);
+
+                    // Iterate through the maze grid
+                    for (float i_wall = 0; i_wall < MAZE_SIZE; i_wall++)
+                    {
+                        // Iterate through each cell in the maze row
+                        for (float j_wall = 0; j_wall < MAZE_SIZE; j_wall++)
+                        {
+                            // Bind image
+                            ilBindImage(imgWallIDVec[0]);
+
+                            // Set texture image
+                            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
+                                         ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
+                                         GL_UNSIGNED_BYTE, ilGetData());
+
+                            // Calculate shear and height for the current wall
+                            float height_val = calculateInterpolatedValue(cpParam, 3, i_wall, j_wall, MAZE_SIZE);
+                            float shear_val = calculateInterpolatedValue(cpParam, 4, i_wall, j_wall, MAZE_SIZE);
+
+                            // Create wall vertices
+                            std::vector<cv::Point2f> rect_vertices = computeRectVertices(0.0f, 0.0f, WALL_WIDTH, height_val, shear_val);
+
+                            // Apply perspective warping to vertices
+                            float x_offset = i_wall * WALL_SPACE;
+                            float y_offset = j_wall * WALL_SPACE;
+                            std::vector<cv::Point2f> rect_vertices_warped = computePerspectiveWarp(rect_vertices, H, x_offset, y_offset);
+
+                            // Draw the wall
+                            drawRectImage(rect_vertices_warped);
+                        }
+                    }
+                }
+
+                // Unbind the FBO
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+                // Disable OpenGL texture mapping
+                glDisable(GL_TEXTURE_2D);
+
+                // Swap buffers and poll events
+                glfwSwapBuffers(p_windowID);
+            }
+
+            // Exit condition
+            if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_windowID))
+                break;
+        }
+
+        // Poll for and process events for all windows
+        glfwPollEvents();
+    }
+
+    // _______________ CLEANUP _______________
+
+    // Destroy GLFW window and DevIL images
+    glfwDestroyWindow(p_windowID);
+    for (ILuint image_id : imgWallIDVec)
+    {
+        ilDeleteImages(1, &image_id);
+    }
+
+    // Shutdown DevIL
+    ilShutDown();
+
+    // Terminate GLFW
+    glfwTerminate();
 
     return 0;
 }

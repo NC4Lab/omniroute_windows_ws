@@ -43,7 +43,8 @@ const float cp_height = cp_size * PROJ_WIN_ASPECT_RATIO * 1.8 * 0.75;
  *   - [3]: Height parameter
  *   - [4]: Shearing factor
  */
-float cpParam_default[4][5] = { // Default control point parameters
+float cpParam_default[4][5] = {
+    // Default control point parameters
     {-cp_xy_lim, cp_xy_lim, cp_size, cp_height, 0.0f}, // top-left control point
     {cp_xy_lim, cp_xy_lim, cp_size, cp_height, 0.0f},  // top-right control point
     {cp_xy_lim, -cp_xy_lim, cp_size, cp_height, 0.0f}, // bottom-right control point
@@ -54,73 +55,69 @@ float cpParam[4][5]; // Dynamic array to hold the control point parameters
 // Other variables related to control points
 int cpSelected = 0;
 std::string cpModMode = "position";
-std::vector<float> cpActiveRGB = {1.0f, 0.0f, 0.0f};   // Active control point marker color
-std::vector<float> cpInactiveRGB = {0.0f, 0.0f, 1.0f}; // Inactive control point marker color
+std::vector<float> cpActiveRGBVec = {1.0f, 0.0f, 0.0f};   // Active control point marker color
+std::vector<float> cpInactiveRGBVec = {0.0f, 0.0f, 1.0f}; // Inactive control point marker color
 
-// The homography matrix used to warp perspective.
+// The 3x3 homography matrix of 32-bit floating-point numbers used to warp perspective.
 cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
 
 // Directory paths
-std::string package_path = ros::package::getPath("projection_operation");
-std::string workspacePath = package_path.substr(0, package_path.rfind("/src"));
-std::string configDirPath = workspacePath + "/data/proj_cfg";
-std::string imgTestPath = workspacePath + "/data/img/test_patterns";
-std::string imgStatePath = workspacePath + "/data/img/ui_state_images";
+std::string image_test_dir_path = IMAGE_TOP_DIR_PATH + "/calibration_images";
+std::string image_state_dir_path = IMAGE_TOP_DIR_PATH + "/ui_state_images";
 
 // Test image variables
-std::vector<ILuint> imgTestIDs; // Container to hold the loaded images
-std::vector<std::string> imgTestPaths = {
+std::vector<ILuint> imgTestIDVec; // Container to hold the loaded images
+std::vector<std::string> imgTestPathVec = {
     // List of test image file paths
-    imgTestPath + "/1_test_pattern.bmp",
-    imgTestPath + "/2_manu_pirate.bmp",
-    imgTestPath + "/3_earthlings.bmp",
+    image_test_dir_path + "/1_test_pattern.bmp",
+    image_test_dir_path + "/2_manu_pirate.bmp",
+    image_test_dir_path + "/3_earthlings.bmp",
 };
-int imgTestInd = 0;                    // Index of the image to be loaded
-size_t nTestImg = imgTestPaths.size(); // Number of test images
+int imgTestInd = 0;                      // Index of the image to be loaded
+size_t nTestImg = imgTestPathVec.size(); // Number of test images
 
 // Monitor variables
-std::vector<ILuint> imgMonIDs; // Container to hold the loaded images for ui
-std::vector<std::string> imgMonPaths = {
+std::vector<ILuint> imgMonIDVec; // Container to hold the loaded images for ui
+std::vector<std::string> imgMonPathVec = {
     // List of monitor number image file paths
-    imgStatePath + "/m0.bmp",
-    imgStatePath + "/m1.bmp",
-    imgStatePath + "/m2.bmp",
-    imgStatePath + "/m3.bmp",
-    imgStatePath + "/m4.bmp",
-    imgStatePath + "/m5.bmp",
+    image_state_dir_path + "/m0.bmp",
+    image_state_dir_path + "/m1.bmp",
+    image_state_dir_path + "/m2.bmp",
+    image_state_dir_path + "/m3.bmp",
+    image_state_dir_path + "/m4.bmp",
+    image_state_dir_path + "/m5.bmp",
 };
-int imgMonInd = 0;         // Index of the image to be loaded
+int winMonInd = 0;         // Index of the image to be loaded
 int nMonitors;             // Number of monitors connected to the system
 bool isFullScreen = false; // Flag to indicate if the window is in full screen mode
 
 // Control point parameter image variables for ui
-std::vector<ILuint> imgParamIDs; // Container to hold the loaded images for ui
-std::vector<std::string> imgParamPaths = {
+std::vector<ILuint> imgParamIDVec; // Container to hold the loaded images for ui
+std::vector<std::string> imgParamPathVec = {
     // List of cp parameter image file paths
-    imgStatePath + "/p.bmp",
-    imgStatePath + "/d.bmp",
-    imgStatePath + "/s.bmp",
+    image_state_dir_path + "/p.bmp",
+    image_state_dir_path + "/d.bmp",
+    image_state_dir_path + "/s.bmp",
 };
 int imgParamInd = 0; // Index of the image to be loaded
 
 // Callibration image variables for ui
-std::vector<ILuint> imgCalIDs; // Container to hold the loaded images for ui
-std::vector<std::string> imgCalPaths = {
+std::vector<ILuint> imgCalIDVec; // Container to hold the loaded images for ui
+std::vector<std::string> imgCalPathVec = {
     // List of mode image file paths
-    imgStatePath + "/c-wm.bmp",
-    imgStatePath + "/c-wl.bmp",
-    imgStatePath + "/c-wr.bmp",
-    imgStatePath + "/c-f.bmp",
-    imgStatePath + "/c-d.bmp",
+    image_state_dir_path + "/c-wl.bmp", // left walls
+    image_state_dir_path + "/c-wm.bmp", // middle walls
+    image_state_dir_path + "/c-wr.bmp", // right walls
+    // image_state_dir_path + "/c-f.bmp",  // maze floor
+    // image_state_dir_path + "/c-d.bmp",  // distal cues
 };
-int imgCalInd = 0;                     // Index of the image to be loaded
-size_t nCalModes = imgCalPaths.size(); // Number of calibration modes
+int calModeInd = 0;                       // Index of the image to be loaded
+size_t nCalModes = imgCalPathVec.size(); // Number of calibration modes
 
 // Variables related to window and OpenGL
-GLFWwindow *window;
-GLuint fboTexture;
-GLFWmonitor *monitor = NULL;
-GLFWmonitor **monitors;
+GLFWwindow *p_windowID;
+GLFWmonitor **p_monitorIDVec;
+GLuint fboTextureID;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -186,14 +183,14 @@ static void callbackErrorGLFW(int, const char *);
  * @param x The x-coordinate of the bottom-left corner of the control point.
  * @param y The y-coordinate of the bottom-left corner of the control point.
  * @param radius The radius of the control point.
- * @param rgb Vector of rgb values to color the marker.
+ * @param rgb_vec Vector of rgb values to color the marker.
  */
 void drawControlPoint(float, float, float, std::vector<float>);
 
 /**
- * @brief Draws a textured wall using OpenGL.
+ * @brief Draws a textured rectangle using OpenGL.
  *
- * @param img_vertices Vector of vertex/corner points for the wall.
+ * @param rect_vertices_vec Vector of vertex/corner points for a rectangular image.
  */
 void drawRectImage(std::vector<cv::Point2f>);
 
@@ -203,7 +200,7 @@ void drawRectImage(std::vector<cv::Point2f>);
  * This function iterates through the maze grid to draw each wall. It uses the DevIL library
  * to handle image loading and OpenGL for rendering. The function also performs perspective
  * warping based on the homography matrix and shear and height values extracted from control points.
- * 
+ *
  * @param ref_H The homography matrix used to warp perspective.
  * @param cp_param The array of control point parameters.
  * @param fbo_texture The OpenGL texture ID of the framebuffer object.
@@ -227,13 +224,13 @@ void drawWallsAll(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint
  * @note The global variables monitor, monitors, imgMonNumInd, window, and isFullScreen are
  *       used to control the behavior of this function.
  *       Will only exicute if monotor parameters have changed.
- * 
- * @param ref_monitor Reference to the GLFWmonitor pointer that will be updated.
- * @param ref_monitors Reference to the GLFWmonitor pointer array.
+ *
+ * @param p_window Pointer to the GLFWwindow pointer that will be updated.
+ * @param pp_ref_monitors Reference to the GLFWmonitor pointer array.
+ * @param win_mon_ind Index of the monitor to move the window to.
  * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
- * @param imp_mon_ind Index of the monitor to move the window to.
  */
-void updateWindowMonMode(GLFWmonitor *&, GLFWmonitor **&, bool, int);
+void updateWindowMonMode(GLFWwindow *, GLFWmonitor **&, int, bool);
 
 /**
  * @brief Computes the homography matrix based on control points and wall image vertices.
@@ -246,13 +243,20 @@ void updateWindowMonMode(GLFWmonitor *&, GLFWmonitor **&, bool, int);
  *
  * @note This function uses the OpenCV library to compute the homography matrix.
  * @note The global variables cpParam, MAZE_SIZE, and wallSpace are used to control the behavior of this function.
+ *
+ * @param ref_H The homography matrix used to warp perspective.
+ * @param cp_param The array of control point parameters.
  */
-void computeHomography();
+void computeHomography(cv::Mat &, float[4][5]);
 
 /**
  * @brief Used to reset control point parameter list.
+ *
+ * @param ref_cp_param Reference to 2D array for control points.
+ * @param cp_param_default 2D array for default control points.
+ * @param cal_ind Index of the active calibration mode.
  */
-void resetParamCP();
+void resetParamCP(float (&)[4][5], float[4][5], int);
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.

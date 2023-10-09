@@ -25,7 +25,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         if (key == GLFW_KEY_R)
         {
-            resetParamCP();
+             resetParamCP(cpParam, cpParam_default, calModeInd);
         }
 
         // ---------- Target selector keys [F1-F4] ----------
@@ -88,27 +88,27 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // Move the window to another monitor
         else if (key == GLFW_KEY_0)
         {
-            imgMonInd = 0;
+            winMonInd = 0;
         }
         else if (key == GLFW_KEY_1 && nMonitors > 1)
         {
-            imgMonInd = 1;
+            winMonInd = 1;
         }
         else if (key == GLFW_KEY_2 && nMonitors > 2)
         {
-            imgMonInd = 2;
+            winMonInd = 2;
         }
         else if (key == GLFW_KEY_3 && nMonitors > 3)
         {
-            imgMonInd = 3;
+            winMonInd = 3;
         }
         else if (key == GLFW_KEY_4 && nMonitors > 4)
         {
-            imgMonInd = 4;
+            winMonInd = 4;
         }
         else if (key == GLFW_KEY_5 && nMonitors > 5)
         {
-            imgMonInd = 5;
+            winMonInd = 5;
         }
 
         // ---------- XML Handling [ENTER, L] ----------
@@ -117,7 +117,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         else if (key == GLFW_KEY_ENTER)
         {
             // Get the path to the config directory and format the save file name
-            std::string file_path = formatCoordinatesFilePathXML(imgCalInd, imgMonInd, configDirPath);
+            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
 
             // Save the coordinates to the XML file
             saveCoordinatesXML(H, cpParam, file_path);
@@ -127,7 +127,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         else if (key == GLFW_KEY_L)
         {
             // Get the path to the config directory and format the load file name
-            std::string file_path = formatCoordinatesFilePathXML(imgCalInd, imgMonInd, configDirPath);
+            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
 
             // Load the coordinates from the XML file
             loadCoordinatesXML(H, cpParam, file_path);
@@ -145,16 +145,16 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Listen for arrow key input to switch through calibration modes
             if (key == GLFW_KEY_LEFT)
             {
-                imgCalInd = (imgCalInd > 0) ? imgCalInd - 1 : (int)nCalModes - 1;
+                calModeInd = (calModeInd > 0) ? calModeInd - 1 : (int)nCalModes - 1;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                imgCalInd = (imgCalInd < nCalModes - 1) ? imgCalInd + 1 : 0;
+                calModeInd = (calModeInd < nCalModes - 1) ? calModeInd + 1 : 0;
             }
             // Reset control point parameters when switching calibration modes
             if (key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT)
             {
-                resetParamCP();
+                 resetParamCP(cpParam, cpParam_default, calModeInd);
             }
         }
 
@@ -240,10 +240,10 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     // ---------- Recompute homography matrix ----------
 
     // Recompute homography matrix
-    computeHomography();
+    computeHomography(H, cpParam);
 
     // Update the window monitor and mode
-    updateWindowMonMode(monitor, monitors, isFullScreen, imgMonInd);
+    updateWindowMonMode(p_windowID, p_monitorIDVec, winMonInd, isFullScreen);
 }
 
 void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
@@ -256,7 +256,7 @@ static void callbackErrorGLFW(int error, const char *description)
     ROS_ERROR("Error: %s\n", description);
 }
 
-void drawControlPoint(float x, float y, float radius, std::vector<float> rgb)
+void drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec)
 {
     int segments = 100; // Number of segments to approximate a circle
 
@@ -264,7 +264,7 @@ void drawControlPoint(float x, float y, float radius, std::vector<float> rgb)
     glBegin(GL_TRIANGLE_FAN);
 
     // Set the color to green
-    glColor3f(rgb[0], rgb[1], rgb[2]);
+    glColor3f(rgb_vec[0], rgb_vec[1], rgb_vec[2]);
 
     // Center of the circle
     glVertex2f(x, y);
@@ -282,7 +282,7 @@ void drawControlPoint(float x, float y, float radius, std::vector<float> rgb)
     glEnd();
 }
 
-void drawRectImage(std::vector<cv::Point2f> rect_vertices)
+void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
 {
 
     // Start drawing a quadrilateral
@@ -295,41 +295,39 @@ void drawRectImage(std::vector<cv::Point2f> rect_vertices)
 
     // Bottom-left corner
     glTexCoord2f(0.0f, 1.0f);
-    glVertex2f(rect_vertices[0].x, rect_vertices[0].y);
+    glVertex2f(rect_vertices_vec[0].x, rect_vertices_vec[0].y);
 
     // Bottom-right corner
     glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(rect_vertices[1].x, rect_vertices[1].y);
+    glVertex2f(rect_vertices_vec[1].x, rect_vertices_vec[1].y);
 
     // Top-right corner
     glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(rect_vertices[2].x, rect_vertices[2].y);
+    glVertex2f(rect_vertices_vec[2].x, rect_vertices_vec[2].y);
 
     // Top-left corner
     glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(rect_vertices[3].x, rect_vertices[3].y);
+    glVertex2f(rect_vertices_vec[3].x, rect_vertices_vec[3].y);
 
     // End drawing
     glEnd();
 }
 
-void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], GLuint fbo_texture, ILuint img_base_id, ILuint img_mon_id, ILuint img_param_id, ILuint img_cal_id)
+void drawWallsAll(
+    cv::Mat &ref_H,
+    float cp_param[4][5],
+    GLuint fbo_texture,
+    ILuint img_base_id,
+    ILuint img_mon_id,
+    ILuint img_param_id,
+    ILuint img_cal_id)
 {
-    // Extract shear and height values from control points
-    float height1 = cp_param[0][3];
-    float height3 = cp_param[2][3];
-    float height4 = cp_param[3][3];
-    float shear1 = cp_param[0][4];
-    float shear3 = cp_param[2][4];
-    float shear4 = cp_param[3][4];
-
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
 
     // Iterate through the maze grid
     for (float i_wall = 0; i_wall < MAZE_SIZE; i_wall++)
     {
-
         // Iterate through each cell in the maze row
         for (float j_wall = 0; j_wall < MAZE_SIZE; j_wall++)
         {
@@ -344,7 +342,7 @@ void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], GLuint fbo_texture, ILui
             }
             else
             {
-                ilBindImage(imgTestIDs[imgTestInd]); // show test pattern
+                ilBindImage(imgTestIDVec[imgTestInd]); // show test pattern
             }
 
             // Set texture image
@@ -355,40 +353,20 @@ void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], GLuint fbo_texture, ILui
             // Bind texture to framebuffer object
             glBindTexture(GL_TEXTURE_2D, fbo_texture);
 
-            // Calculate shear for the current wall
-            float shear_val = calculateInterpolatedValue(
-                i_wall, j_wall, MAZE_SIZE,
-                shear1, shear3, shear4);
-
-            // Calculate height for the current wall
-            float height_val = calculateInterpolatedValue(
-                i_wall, j_wall, MAZE_SIZE,
-                height1, height3, height4);
+            // Calculate shear and height for the current wall
+            float height_val = calculateInterpolatedValue(cp_param, 3, i_wall, j_wall, MAZE_SIZE);
+            float shear_val = calculateInterpolatedValue(cp_param, 4, i_wall, j_wall, MAZE_SIZE);
 
             // Create wall vertices
             std::vector<cv::Point2f> rect_vertices = computeRectVertices(0.0f, 0.0f, WALL_WIDTH, height_val, shear_val);
 
             // Apply perspective warping to vertices
-            for (auto &p : rect_vertices)
-            {
-                // Update vertex positions based on shear and height
-                p.x += i_wall * WALL_SPACE;
-                p.y += j_wall * WALL_SPACE;
-
-                // Apply homography matrix to warp perspective
-                float data[] = {p.x, p.y, 1};
-                cv::Mat ptMat(3, 1, CV_32F, data);
-                ref_H.convertTo(ref_H, ptMat.type());
-                ptMat = ref_H * ptMat;
-                ptMat /= ptMat.at<float>(2);
-
-                // Update vertex coordinates
-                p.x = ptMat.at<float>(0, 0);
-                p.y = ptMat.at<float>(0, 1);
-            }
+            float x_offset = i_wall * WALL_SPACE;
+            float y_offset = j_wall * WALL_SPACE;
+            std::vector<cv::Point2f> rect_vertices_warped = computePerspectiveWarp(rect_vertices, ref_H, x_offset, y_offset);
 
             // Draw the wall
-            drawRectImage(rect_vertices);
+            drawRectImage(rect_vertices_warped);
         }
     }
 
@@ -396,93 +374,93 @@ void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], GLuint fbo_texture, ILui
     glDisable(GL_TEXTURE_2D);
 }
 
-void updateWindowMonMode(GLFWmonitor *&ref_monitor, GLFWmonitor **&ref_monitors, bool is_fullscreen, int imp_mon_ind)
+void updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitors, int win_mon_ind, bool is_fullscreen)
 {
-    static int imp_mon_ind_last = imp_mon_ind;
+    static int imp_mon_ind_last = win_mon_ind;
     static bool is_fullscreen_last = !is_fullscreen;
 
     // Check if monitor or fullscreen mode has changed
-    if (imp_mon_ind_last == imp_mon_ind && is_fullscreen_last == is_fullscreen)
+    if (imp_mon_ind_last == win_mon_ind && is_fullscreen_last == is_fullscreen)
     {
         return;
     }
 
     // Get GLFWmonitor for active monitor
-    ref_monitor = ref_monitors[imp_mon_ind];
+    GLFWmonitor *p_ref_monitor = pp_ref_monitors[win_mon_ind];
 
     // Update window size and position
-    if (ref_monitor)
+    if (p_ref_monitor)
     {
         // Get the video mode of the selected monitor
-        const GLFWvidmode *mode = glfwGetVideoMode(ref_monitor);
+        const GLFWvidmode *mode = glfwGetVideoMode(p_ref_monitor);
 
         // Set the window to full-screen mode on the current monitor
-        glfwSetWindowMonitor(window, ref_monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+        glfwSetWindowMonitor(p_window_id, p_ref_monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
 
         if (!is_fullscreen)
         {
             // Get the position of the current monitor
             int monitor_x, monitor_y;
-            glfwGetMonitorPos(ref_monitor, &monitor_x, &monitor_y);
+            glfwGetMonitorPos(p_ref_monitor, &monitor_x, &monitor_y);
 
             // Set the window to windowed mode and position it on the current monitor
-            glfwSetWindowMonitor(window, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * PROJ_WIN_ASPECT_RATIO), 500, 0);
+            glfwSetWindowMonitor(p_window_id, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * PROJ_WIN_ASPECT_RATIO), 500, 0);
         }
-        ROS_INFO("RAN: Move window to monitor %d and set to %s", imp_mon_ind, is_fullscreen ? "fullscreen" : "windowed");
+        ROS_INFO("RAN: Move window to monitor %d and set to %s", win_mon_ind, is_fullscreen ? "fullscreen" : "windowed");
     }
     else
     {
-        ROS_WARN("FAILED: Move window to monitor %d and set to %s", imp_mon_ind, is_fullscreen ? "fullscreen" : "windowed");
+        ROS_WARN("FAILED: Move window to monitor %d and set to %s", win_mon_ind, is_fullscreen ? "fullscreen" : "windowed");
     }
 
     // Update last monitor and fullscreen mode
-    imp_mon_ind_last = imp_mon_ind;
+    imp_mon_ind_last = win_mon_ind;
     is_fullscreen_last = is_fullscreen;
 }
 
-void computeHomography()
+void computeHomography(cv::Mat &ref_H, float cp_param[4][5])
 {
     // Get the corner/vertex values for each of the control points
     std::vector<cv::Point2f> cp_vertices;
-    cp_vertices.push_back(cv::Point2f(cpParam[0][0], cpParam[0][1])); // top-left
-    cp_vertices.push_back(cv::Point2f(cpParam[1][0], cpParam[1][1])); // top-right
-    cp_vertices.push_back(cv::Point2f(cpParam[2][0], cpParam[2][1])); // bottom-right
-    cp_vertices.push_back(cv::Point2f(cpParam[3][0], cpParam[3][1])); // bottom-left
+    cp_vertices.push_back(cv::Point2f(cp_param[0][0], cp_param[0][1])); // top-left
+    cp_vertices.push_back(cv::Point2f(cp_param[1][0], cp_param[1][1])); // top-right
+    cp_vertices.push_back(cv::Point2f(cp_param[2][0], cp_param[2][1])); // bottom-right
+    cp_vertices.push_back(cv::Point2f(cp_param[3][0], cp_param[3][1])); // bottom-left
 
     // Get the corner/vertex values for each of the wall images
     std::vector<cv::Point2f> img_vertices;
     img_vertices = computeRectVertices(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * WALL_SPACE, (float(MAZE_SIZE) - 1) * WALL_SPACE, 0);
 
     // Compute the homography matrix
-    H = findHomography(img_vertices, cp_vertices);
+    ref_H = findHomography(img_vertices, cp_vertices);
 }
 
-void resetParamCP()
+void resetParamCP(float (&ref_cp_param)[4][5], float cp_param_default[4][5], int cal_ind)
 {
     // Copy the default array to the dynamic one
     for (int i = 0; i < 4; ++i)
     {
         for (int j = 0; j < 5; ++j)
         {
-            cpParam[i][j] = cpParam_default[i][j];
+            ref_cp_param[i][j] = cp_param_default[i][j];
         }
     }
 
     // Add an offset when calibrating left or right wall images
     float horz_offset = 0.2f;
-    if (imgCalInd == 1) // left wall
+    if (cal_ind == 0) // left wall
     {
-        cpParam[0][0] -= horz_offset; // top-left
-        cpParam[1][0] -= horz_offset; // top-right
-        cpParam[2][0] -= horz_offset; // bottom-right
-        cpParam[3][0] -= horz_offset; // bottom-left
+        ref_cp_param[0][0] -= horz_offset; // top-left
+        ref_cp_param[1][0] -= horz_offset; // top-right
+        ref_cp_param[2][0] -= horz_offset; // bottom-right
+        ref_cp_param[3][0] -= horz_offset; // bottom-left
     }
-    else if (imgCalInd == 2) // right wall
+    else if (cal_ind == 2) // right wall
     {
-        cpParam[0][0] += horz_offset; // top-left
-        cpParam[1][0] += horz_offset; // top-right
-        cpParam[2][0] += horz_offset; // bottom-right
-        cpParam[3][0] += horz_offset; // bottom-left
+        ref_cp_param[0][0] += horz_offset; // top-left
+        ref_cp_param[1][0] += horz_offset; // top-right
+        ref_cp_param[2][0] += horz_offset; // bottom-right
+        ref_cp_param[3][0] += horz_offset; // bottom-left
     }
 }
 
@@ -497,22 +475,12 @@ int main(int argc, char **argv)
     ROS_INFO("RUNNING MAIN");
 
     // Log paths for debugging
-    ROS_INFO("SETTINGS: Config XML Path: %s", configDirPath.c_str());
-    ROS_INFO("SETTINGS: Display: XYLim=[%0.2f,%0.2f] Width=%d Height=%d AR=%0.2f", cp_xy_lim, cp_xy_lim, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
+    ROS_INFO("SETTINGS: Config XML Path: %s", CONFIG_DIR_PATH.c_str());
+    ROS_INFO("SETTINGS: Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
     ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", WALL_WIDTH, WALL_SPACE);
     ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(WALL_WIDTH * (float)PROJ_WIN_WIDTH_PXL), (int)(WALL_SPACE * (float)PROJ_WIN_WIDTH_PXL));
 
-    // Initialize control point parameters
-    resetParamCP();
-
-    // Initialize DevIL library
-    ilInit();
-
-    // Load images
-    loadImgTextures(imgTestIDs, imgTestPaths);
-    loadImgTextures(imgMonIDs, imgMonPaths);
-    loadImgTextures(imgParamIDs, imgParamPaths);
-    loadImgTextures(imgCalIDs, imgCalPaths);
+    // --------------- OpenGL SETUP ---------------
 
     // Initialize GLFW
     glfwSetErrorCallback(callbackErrorGLFW);
@@ -522,9 +490,13 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    // Get the list of available monitors and their count
+    p_monitorIDVec = glfwGetMonitors(&nMonitors);
+    ROS_INFO("GLFW: Found %d monitors", nMonitors);
+
     // Create GLFW window
-    window = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, windowName.c_str(), NULL, NULL);
-    if (!window)
+    p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, windowName.c_str(), NULL, NULL);
+    if (!p_windowID)
     {
         glfwTerminate();
         ROS_ERROR("GLFW: Create Window Failed");
@@ -532,69 +504,77 @@ int main(int argc, char **argv)
     }
 
     // Set OpenGL context and callbacks
-    glfwMakeContextCurrent(window);
+    glfwMakeContextCurrent(p_windowID);
     gladLoadGL();
-    glfwSetKeyCallback(window, callbackKeyBinding);
-    glfwSetFramebufferSizeCallback(window, callbackFrameBufferSizeGLFW);
+    glfwSetKeyCallback(p_windowID, callbackKeyBinding);
+    glfwSetFramebufferSizeCallback(p_windowID, callbackFrameBufferSizeGLFW);
 
     // Initialize FBO and attach texture to it
-    GLuint fbo;
-    glGenFramebuffers(1, &fbo);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glGenTextures(1, &fboTexture);
-    glBindTexture(GL_TEXTURE_2D, fboTexture);
+    GLuint fbo_id;
+    glGenFramebuffers(1, &fbo_id);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
+    glGenTextures(1, &fboTextureID);
+    glBindTexture(GL_TEXTURE_2D, fboTextureID);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTextureID, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // // Call to initializeGL to set up OpenGL context and GLFW
-    // initializeGL(window, winWidthPxl, winHeightPxl, windowName, fboTexture);
+    // --------------- DevIL SETUP ---------------
 
-    // Get the list of available monitors and their count
-    monitors = glfwGetMonitors(&nMonitors);
-    // TEMP: hardcoding for now
-    nMonitors = 2;
+    // Initialize DevIL library
+    ilInit();
+
+    // Load images
+    loadImgTextures(imgTestIDVec, imgTestPathVec);
+    loadImgTextures(imgMonIDVec, imgMonPathVec);
+    loadImgTextures(imgParamIDVec, imgParamPathVec);
+    loadImgTextures(imgCalIDVec, imgCalPathVec);
+
+    // --------------- Runtime SETUP ---------------
+
+    // Initialize control point parameters
+    resetParamCP(cpParam, cpParam_default, calModeInd);
 
     // Do initial computations of homography matrix
-    computeHomography();
+    computeHomography(H, cpParam);
 
     // Update the window monitor and mode
-    updateWindowMonMode(monitor, monitors, isFullScreen, imgMonInd);
+    updateWindowMonMode(p_windowID, p_monitorIDVec, winMonInd, isFullScreen);
 
     // _______________ MAIN LOOP _______________
 
-    while (!glfwWindowShouldClose(window))
+    while (!glfwWindowShouldClose(p_windowID))
     {
         // Clear back buffer for new frame
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Draw/update wall images
-        drawWallsAll(H, cpParam, fboTexture, imgTestIDs[imgTestInd], imgMonIDs[imgMonInd], imgParamIDs[imgParamInd], imgCalIDs[imgCalInd]);
+        drawWallsAll(H, cpParam, fboTextureID, imgTestIDVec[imgTestInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
 
         // Draw/update control points
         for (int i = 0; i < 4; i++)
         {
-            drawControlPoint(cpParam[i][0], cpParam[i][1], cpParam[i][2], cpSelected == i ? cpActiveRGB : cpInactiveRGB);
+            drawControlPoint(cpParam[i][0], cpParam[i][1], cpParam[i][2], cpSelected == i ? cpActiveRGBVec : cpInactiveRGBVec);
         }
 
         // Swap buffers and poll events
-        glfwSwapBuffers(window);
+        glfwSwapBuffers(p_windowID);
         glfwPollEvents();
 
         // Exit condition
-        if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(window))
+        if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_windowID))
             break;
     }
 
     // _______________ CLEANUP _______________
 
     // Destroy GLFW window and DevIL images
-    glfwDestroyWindow(window);
-    for (ILuint imageID : imgTestIDs)
+    glfwDestroyWindow(p_windowID);
+    for (ILuint image_id : imgTestIDVec)
     {
-        ilDeleteImages(1, &imageID);
+        ilDeleteImages(1, &image_id);
     }
 
     // Shutdown DevIL
