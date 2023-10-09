@@ -243,7 +243,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     computeHomography();
 
     // Update the window monitor and mode
-    updateWindowMonMode();
+    updateWindowMonMode(monitor, monitors, isFullScreen, imgMonInd);
 }
 
 void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
@@ -274,7 +274,7 @@ void drawControlPoint(float x, float y, float radius, std::vector<float> rgb)
     {
         float theta = 2.0f * 3.1415926f * float(i) / float(segments);
         float px = x + radius * cosf(theta);
-        float py = y + (radius * winAspectRatio) * sinf(theta);
+        float py = y + (radius * PROJ_WIN_ASPECT_RATIO) * sinf(theta);
         glVertex2f(px, py);
     }
 
@@ -355,33 +355,15 @@ void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], GLuint fbo_texture, ILui
             // Bind texture to framebuffer object
             glBindTexture(GL_TEXTURE_2D, fbo_texture);
 
-            // Calculate shear and height for the current wall using bilinear interpolation.
-            // The shear and height values are linearly interpolated based on the wall's
-            // position within the maze (i_wall, j_wall) and the predefined corner values
-            // (shear1, shear3, shear4) and (height1, height3, height4).
-            //
-            // 1. Normalization: i_wall and j_wall are normalized by dividing by (MAZE_SIZE - 1).
-            //    This scales the indices to the range [0, 1].
-            //
-            // 2. Linear Interpolation Across i_wall:
-            //    - For shear: (i_wall / (MAZE_SIZE - 1)) * (shear3 - shear4)
-            //    - For height: (i_wall / (MAZE_SIZE - 1)) * (height3 - height4)
-            //    These terms interpolate values between the shear and height at corners 3 and 4.
-            //
-            // 3. Linear Interpolation Across j_wall:
-            //    - For shear: (j_wall / (MAZE_SIZE - 1)) * (shear1 - shear4)
-            //    - For height: (j_wall / (MAZE_SIZE - 1)) * (height1 - height4)
-            //    These terms interpolate values between the shear and height at corners 1 and 4.
-            //
-            // 4. Combining Interpolations: The interpolated values for shear and height
-            //    along i_wall and j_wall are summed with the base values (shear4, height4)
-            //    to obtain the final shear_val and height_val for the current wall.
+            // Calculate shear for the current wall
+            float shear_val = calculateInterpolatedValue(
+                i_wall, j_wall, MAZE_SIZE,
+                shear1, shear3, shear4);
 
-            // Calculate shear and height for the current wall
-            float shear_val = shear4 + (i_wall / (MAZE_SIZE - 1)) * (shear3 - shear4) +
-                              (j_wall / (MAZE_SIZE - 1)) * (shear1 - shear4);
-            float height_val = height4 + (i_wall / (MAZE_SIZE - 1)) * (height3 - height4) +
-                               (j_wall / (MAZE_SIZE - 1)) * (height1 - height4);
+            // Calculate height for the current wall
+            float height_val = calculateInterpolatedValue(
+                i_wall, j_wall, MAZE_SIZE,
+                height1, height3, height4);
 
             // Create wall vertices
             std::vector<cv::Point2f> rect_vertices = computeRectVertices(0.0f, 0.0f, WALL_WIDTH, height_val, shear_val);
@@ -414,58 +396,58 @@ void drawWallsAll(cv::Mat &ref_H, float cp_param[4][5], GLuint fbo_texture, ILui
     glDisable(GL_TEXTURE_2D);
 }
 
-void updateWindowMonMode()
+void updateWindowMonMode(GLFWmonitor *&ref_monitor, GLFWmonitor **&ref_monitors, bool is_fullscreen, int imp_mon_ind)
 {
-    static int imp_mon_ind_last = imgMonInd;
-    static bool is_fullscreen_last = !isFullScreen;
+    static int imp_mon_ind_last = imp_mon_ind;
+    static bool is_fullscreen_last = !is_fullscreen;
 
     // Check if monitor or fullscreen mode has changed
-    if (imp_mon_ind_last == imgMonInd && is_fullscreen_last == isFullScreen)
+    if (imp_mon_ind_last == imp_mon_ind && is_fullscreen_last == is_fullscreen)
     {
         return;
     }
 
     // Get GLFWmonitor for active monitor
-    monitor = monitors[imgMonInd];
+    ref_monitor = ref_monitors[imp_mon_ind];
 
     // Update window size and position
-    if (monitor)
+    if (ref_monitor)
     {
         // Get the video mode of the selected monitor
-        const GLFWvidmode *mode = glfwGetVideoMode(monitor);
+        const GLFWvidmode *mode = glfwGetVideoMode(ref_monitor);
 
         // Set the window to full-screen mode on the current monitor
-        glfwSetWindowMonitor(window, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
+        glfwSetWindowMonitor(window, ref_monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
 
-        if (!isFullScreen)
+        if (!is_fullscreen)
         {
             // Get the position of the current monitor
             int monitor_x, monitor_y;
-            glfwGetMonitorPos(monitor, &monitor_x, &monitor_y);
+            glfwGetMonitorPos(ref_monitor, &monitor_x, &monitor_y);
 
             // Set the window to windowed mode and position it on the current monitor
-            glfwSetWindowMonitor(window, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * winAspectRatio), 500, 0);
+            glfwSetWindowMonitor(window, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * PROJ_WIN_ASPECT_RATIO), 500, 0);
         }
-        ROS_INFO("RAN: Move window to monitor %d and set to %s", imgMonInd, isFullScreen ? "fullscreen" : "windowed");
+        ROS_INFO("RAN: Move window to monitor %d and set to %s", imp_mon_ind, is_fullscreen ? "fullscreen" : "windowed");
     }
     else
     {
-        ROS_WARN("FAILED: Move window to monitor %d and set to %s", imgMonInd, isFullScreen ? "fullscreen" : "windowed");
+        ROS_WARN("FAILED: Move window to monitor %d and set to %s", imp_mon_ind, is_fullscreen ? "fullscreen" : "windowed");
     }
 
     // Update last monitor and fullscreen mode
-    imp_mon_ind_last = imgMonInd;
-    is_fullscreen_last = isFullScreen;
+    imp_mon_ind_last = imp_mon_ind;
+    is_fullscreen_last = is_fullscreen;
 }
 
 void computeHomography()
 {
     // Get the corner/vertex values for each of the control points
     std::vector<cv::Point2f> cp_vertices;
-    cp_vertices.push_back(cv::Point2f(cpParam[0][0], cpParam[0][1]));
-    cp_vertices.push_back(cv::Point2f(cpParam[1][0], cpParam[1][1]));
-    cp_vertices.push_back(cv::Point2f(cpParam[2][0], cpParam[2][1]));
-    cp_vertices.push_back(cv::Point2f(cpParam[3][0], cpParam[3][1]));
+    cp_vertices.push_back(cv::Point2f(cpParam[0][0], cpParam[0][1])); // top-left
+    cp_vertices.push_back(cv::Point2f(cpParam[1][0], cpParam[1][1])); // top-right
+    cp_vertices.push_back(cv::Point2f(cpParam[2][0], cpParam[2][1])); // bottom-right
+    cp_vertices.push_back(cv::Point2f(cpParam[3][0], cpParam[3][1])); // bottom-left
 
     // Get the corner/vertex values for each of the wall images
     std::vector<cv::Point2f> img_vertices;
@@ -490,17 +472,17 @@ void resetParamCP()
     float horz_offset = 0.2f;
     if (imgCalInd == 1) // left wall
     {
-        cpParam[0][0] -= horz_offset;
-        cpParam[1][0] -= horz_offset;
-        cpParam[2][0] -= horz_offset;
-        cpParam[3][0] -= horz_offset;
+        cpParam[0][0] -= horz_offset; // top-left
+        cpParam[1][0] -= horz_offset; // top-right
+        cpParam[2][0] -= horz_offset; // bottom-right
+        cpParam[3][0] -= horz_offset; // bottom-left
     }
     else if (imgCalInd == 2) // right wall
     {
-        cpParam[0][0] += horz_offset;
-        cpParam[1][0] += horz_offset;
-        cpParam[2][0] += horz_offset;
-        cpParam[3][0] += horz_offset;
+        cpParam[0][0] += horz_offset; // top-left
+        cpParam[1][0] += horz_offset; // top-right
+        cpParam[2][0] += horz_offset; // bottom-right
+        cpParam[3][0] += horz_offset; // bottom-left
     }
 }
 
@@ -515,11 +497,10 @@ int main(int argc, char **argv)
     ROS_INFO("RUNNING MAIN");
 
     // Log paths for debugging
-    ROS_INFO("SETTINGS: Package Path: %s", packagePath.c_str());
     ROS_INFO("SETTINGS: Config XML Path: %s", configDirPath.c_str());
-    ROS_INFO("SETTINGS: Display: XYLim=[%0.2f,%0.2f] Width=%d Height=%d AR=%0.2f", xy_lim, xy_lim, winWidthPxl, winHeightPxl, winAspectRatio);
+    ROS_INFO("SETTINGS: Display: XYLim=[%0.2f,%0.2f] Width=%d Height=%d AR=%0.2f", cp_xy_lim, cp_xy_lim, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
     ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", WALL_WIDTH, WALL_SPACE);
-    ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(WALL_WIDTH * (float)winWidthPxl), (int)(WALL_SPACE * (float)winWidthPxl));
+    ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(WALL_WIDTH * (float)PROJ_WIN_WIDTH_PXL), (int)(WALL_SPACE * (float)PROJ_WIN_WIDTH_PXL));
 
     // Initialize control point parameters
     resetParamCP();
@@ -542,7 +523,7 @@ int main(int argc, char **argv)
     }
 
     // Create GLFW window
-    window = glfwCreateWindow(winWidthPxl, winHeightPxl, windowName.c_str(), NULL, NULL);
+    window = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, windowName.c_str(), NULL, NULL);
     if (!window)
     {
         glfwTerminate();
@@ -562,7 +543,7 @@ int main(int argc, char **argv)
     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
     glGenTextures(1, &fboTexture);
     glBindTexture(GL_TEXTURE_2D, fboTexture);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, winWidthPxl, winHeightPxl, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
@@ -580,7 +561,7 @@ int main(int argc, char **argv)
     computeHomography();
 
     // Update the window monitor and mode
-    updateWindowMonMode();
+    updateWindowMonMode(monitor, monitors, isFullScreen, imgMonInd);
 
     // _______________ MAIN LOOP _______________
 

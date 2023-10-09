@@ -14,23 +14,16 @@
 
 // ================================================== VARIABLES ==================================================
 
-// Spricify window resolution: 4K resolution (3840x2160)
-int winWidthPxl = 3840;
-int winHeightPxl = 2160;
-float winAspectRatio = (float)winWidthPxl / (float)winHeightPxl;
-
 // Specify the window name
 std::string windowName = "Projection Calibration";
 
-// Variables related to control points
-const float cpSize = 0.015f;
-const float xy_lim = 0.5f;
-const float ht_scale = winAspectRatio * 1.8 * 0.75;
-cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
-int cpSelected = 0;
-std::string cpModMode = "position";
-std::vector<float> cpActiveRGB = {1.0f, 0.0f, 0.0f};   // Active control point marker color
-std::vector<float> cpInactiveRGB = {0.0f, 0.0f, 1.0f}; // Inactive control point marker color
+// Variables related to control point parameters
+/// @todo: clearify the units of these variables
+const float cp_size = 0.015f;
+const float cp_xy_lim = 0.5f;
+const float cp_height = cp_size * PROJ_WIN_ASPECT_RATIO * 1.8 * 0.75;
+
+// Control point parameter arrays
 /**
  * @brief Array to hold the position and transformation parameters for control points in normalized coordinates [-1, 1].
  *
@@ -46,21 +39,30 @@ std::vector<float> cpInactiveRGB = {0.0f, 0.0f, 1.0f}; // Inactive control point
  * - Columns:
  *   - [0]: X-distance from center [-1,1]
  *   - [1]: Y-distance from center [-1,1]
- *   - [2]: Width parameter
+ *   - [2]: Width/Radius parameter
  *   - [3]: Height parameter
  *   - [4]: Shearing factor
  */
-float cpParam_default[4][5] = {
-    {-xy_lim, xy_lim, cpSize, cpSize *ht_scale, 0.0f}, // top-left control point
-    {xy_lim, xy_lim, cpSize, cpSize *ht_scale, 0.0f},  // top-right control point
-    {xy_lim, -xy_lim, cpSize, cpSize *ht_scale, 0.0f}, // bottom-right control point
-    {-xy_lim, -xy_lim, cpSize, cpSize *ht_scale, 0.0f} // bottom-left control point
+float cpParam_default[4][5] = { // Default control point parameters
+    {-cp_xy_lim, cp_xy_lim, cp_size, cp_height, 0.0f}, // top-left control point
+    {cp_xy_lim, cp_xy_lim, cp_size, cp_height, 0.0f},  // top-right control point
+    {cp_xy_lim, -cp_xy_lim, cp_size, cp_height, 0.0f}, // bottom-right control point
+    {-cp_xy_lim, -cp_xy_lim, cp_size, cp_height, 0.0f} // bottom-left control point
 };
-float cpParam[4][5];
+float cpParam[4][5]; // Dynamic array to hold the control point parameters
+
+// Other variables related to control points
+int cpSelected = 0;
+std::string cpModMode = "position";
+std::vector<float> cpActiveRGB = {1.0f, 0.0f, 0.0f};   // Active control point marker color
+std::vector<float> cpInactiveRGB = {0.0f, 0.0f, 1.0f}; // Inactive control point marker color
+
+// The homography matrix used to warp perspective.
+cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
 
 // Directory paths
-std::string packagePath = ros::package::getPath("projection_operation");
-std::string workspacePath = packagePath.substr(0, packagePath.rfind("/src"));
+std::string package_path = ros::package::getPath("projection_operation");
+std::string workspacePath = package_path.substr(0, package_path.rfind("/src"));
 std::string configDirPath = workspacePath + "/data/proj_cfg";
 std::string imgTestPath = workspacePath + "/data/img/test_patterns";
 std::string imgStatePath = workspacePath + "/data/img/ui_state_images";
@@ -201,6 +203,14 @@ void drawRectImage(std::vector<cv::Point2f>);
  * This function iterates through the maze grid to draw each wall. It uses the DevIL library
  * to handle image loading and OpenGL for rendering. The function also performs perspective
  * warping based on the homography matrix and shear and height values extracted from control points.
+ * 
+ * @param ref_H The homography matrix used to warp perspective.
+ * @param cp_param The array of control point parameters.
+ * @param fbo_texture The OpenGL texture ID of the framebuffer object.
+ * @param img_base_id The DevIL image ID of the base image.
+ * @param img_mon_id The DevIL image ID of the monitor image.
+ * @param img_param_id The DevIL image ID of the parameter image.
+ * @param img_cal_id The DevIL image ID of the calibration image.
  */
 void drawWallsAll(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint);
 
@@ -217,8 +227,13 @@ void drawWallsAll(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint
  * @note The global variables monitor, monitors, imgMonNumInd, window, and isFullScreen are
  *       used to control the behavior of this function.
  *       Will only exicute if monotor parameters have changed.
+ * 
+ * @param ref_monitor Reference to the GLFWmonitor pointer that will be updated.
+ * @param ref_monitors Reference to the GLFWmonitor pointer array.
+ * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
+ * @param imp_mon_ind Index of the monitor to move the window to.
  */
-void updateWindowMonMode();
+void updateWindowMonMode(GLFWmonitor *&, GLFWmonitor **&, bool, int);
 
 /**
  * @brief Computes the homography matrix based on control points and wall image vertices.
@@ -240,7 +255,7 @@ void computeHomography();
 void resetParamCP();
 
 /**
- * @brief  Entry point for the projection_calibration_node ROS node.
+ * @brief  Entry point for the projection_calibration ROS node.
  *
  * This program initializes ROS, DevIL, and GLFW, and then enters a main loop
  * to handle image projection and calibration tasks.

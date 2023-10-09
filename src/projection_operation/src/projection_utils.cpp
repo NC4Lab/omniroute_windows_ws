@@ -56,7 +56,7 @@ std::string formatCoordinatesFilePathXML(int cal_ind, int mon_ind, std::string c
     return file_path;
 }
 
-void loadCoordinatesXML(cv::Mat& ref_H, std::string full_path)
+void loadCoordinatesXML(cv::Mat &ref_H, std::string full_path)
 {
     // Create a dummy array to store control point paramameter 2D array
     float ref_cp_param[4][5];
@@ -65,7 +65,7 @@ void loadCoordinatesXML(cv::Mat& ref_H, std::string full_path)
     loadCoordinatesXML(ref_H, ref_cp_param, full_path);
 }
 
-void loadCoordinatesXML(cv::Mat& ref_H, float (&ref_cp_param)[4][5], std::string full_path)
+void loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cp_param)[4][5], std::string full_path)
 {
     // Get file name from path
     std::string file_name = full_path.substr(full_path.find_last_of('/') + 1);
@@ -279,6 +279,24 @@ ILuint mergeImages(ILuint img1, ILuint img2)
     return mergedImg;
 }
 
+float calculateInterpolatedValue(
+    int i_index, int j_index, int GRID_SIZE,
+    float corner1, float corner3, float corner4)
+{
+    // Step 1: Normalize the indices by dividing by (GRID_SIZE - 1)
+    float normalized_i = static_cast<float>(i_index) / (GRID_SIZE - 1);
+    float normalized_j = static_cast<float>(j_index) / (GRID_SIZE - 1);
+
+    // Step 2: Linearly interpolate values between corners 3 and 4 based on i_index
+    float interp_val_i = normalized_i * (corner3 - corner4);
+
+    // Step 3: Linearly interpolate values between corners 1 and 4 based on j_index
+    float interp_val_j = normalized_j * (corner1 - corner4);
+
+    // Step 4: Sum the interpolated values along i_index and j_index with the base corner values (corner4)
+    return corner4 + interp_val_i + interp_val_j;
+}
+
 std::vector<cv::Point2f> computeRectVertices(float x0, float y0, float width, float height, float shear_amount)
 {
     std::vector<cv::Point2f> rect_vertices;
@@ -307,10 +325,6 @@ void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string
         ilGenImages(1, &img_id);
         ilBindImage(img_id);
 
-        // Get width and height of image
-        int width = ilGetInteger(IL_IMAGE_WIDTH);
-        int height = ilGetInteger(IL_IMAGE_HEIGHT);
-
         // Get file name from path
         std::string file_name = img_path.substr(img_path.find_last_of('/') + 1);
 
@@ -318,15 +332,39 @@ void loadImgTextures(std::vector<ILuint> &ref_image_ids, std::vector<std::string
         ILboolean success = ilLoadImage(img_path.c_str());
         if (success == IL_TRUE)
         {
+            // Get width and height of image
+            int width = ilGetInteger(IL_IMAGE_WIDTH);
+            int height = ilGetInteger(IL_IMAGE_HEIGHT);
+
+            // Check if width and height are equal to WALL_WIDTH_PXL and WALL_HEIGHT_PXL
+            if (width != WALL_WIDTH_PXL || height != WALL_HEIGHT_PXL)
+            {
+                ROS_ERROR("DevIL: Image is Wrong Size: File[%s] Size Actual[%d,%d] Size Expected[%d,%d]",
+                          file_name.c_str(), width, height, WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
+                ilDeleteImages(1, &img_id);
+                continue;
+            }
+
+            // // // Check if image is IL_BGR (Blue, Green, Red)
+            // ILenum format = ilGetInteger(IL_IMAGE_FORMAT);
+            // if (format != IL_BGR)
+            // {
+            //     ROS_ERROR("DevIL: Image is Not IL_BGR: File[%s]", file_name.c_str());
+            //     ilDeleteImages(1, &img_id);
+            //     continue;
+            // }
+
+            // Add image ID to vector
             ref_image_ids.push_back(img_id);
-            ROS_INFO("DevIL: Loaded image: File[%s]", file_name.c_str());
+            ROS_INFO("DevIL: Loaded Image: File[%s] Size[%d,%d]",
+                     file_name.c_str(), width, height);
             ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
         }
         else
         {
             ILenum error = ilGetError();
             ilDeleteImages(1, &img_id);
-            ROS_ERROR("DevIL: Failed to load image: Error[%s] File[%s]", iluErrorString(error), file_name.c_str());
+            ROS_ERROR("DevIL: Failed to Load Image: Error[%s] File[%s]", iluErrorString(error), file_name.c_str());
         }
     }
 }

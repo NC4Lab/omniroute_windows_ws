@@ -67,10 +67,15 @@ extern const int MAZE_SIZE = 3;
 extern const int WALL_WIDTH_PXL = 300;
 extern const int WALL_HEIGHT_PXL = 540;
 
-// Wall image size and spacing (normalized?)
+// Wall image size and spacingOpenGL's Normalized Device Coordinates (NDC) [-1, 1]
 /// @todo: Figure out how these values are used and what units they are in
-extern const float WALL_WIDTH = 0.02f;
-extern const float WALL_SPACE = 2.5f * WALL_WIDTH;
+extern const float WALL_WIDTH = 0.02f; 
+extern const float WALL_SPACE = 2.5f * WALL_WIDTH; 
+
+// Spricify window resolution: 4K resolution (3840x2160)
+extern const int PROJ_WIN_WIDTH_PXL = 3840;
+extern const int PROJ_WIN_HEIGHT_PXL = 2160;
+extern const float PROJ_WIN_ASPECT_RATIO = (float)PROJ_WIN_WIDTH_PXL / (float)PROJ_WIN_HEIGHT_PXL;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -164,12 +169,30 @@ void saveCoordinatesXML(cv::Mat, float[4][5], std::string);
 ILuint mergeImages(ILuint, ILuint);
 
 /**
+ * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
+ * 
+ * This function performs bilinear interpolation based on the position of a point 
+ * within a 2D grid (i_index, j_index) and predefined values at the grid corners.
+ *
+ * @param i_index The index of the point along the first axis within the grid.
+ * @param j_index The index of the point along the second axis within the grid.
+ * @param GRID_SIZE The size of the 2D grid.
+ * @param corner1, corner3, corner4 Predefined values at the grid corners.
+ * 
+ * @return float The calculated interpolated value.
+ */
+float calculateInterpolatedValue(
+    int i_index, int j_index, int GRID_SIZE,
+    float corner1, float corner3, float corner4);
+
+
+/**
  * @brief Creates a vector of points representing a rectangle with shear for each wall.
  *
  * This function generates a rectangle's corner points starting from the top-left corner
  * and going clockwise. The rectangle is defined by its top-left corner (x0, y0),
  * width, height, and a shear amount. The units for x0, y0, width, and height are in
- * OpenGL's Normalized Device Coordinates (NDC), ranging from -1 to 1.
+ * OpenGL's Normalized Device Coordinates (NDC) [-1, 1].
  *
  * @param x0 The x-coordinate of the top-left corner of the rectangle in NDC.
  * @param y0 The y-coordinate of the top-left corner of the rectangle in NDC.
