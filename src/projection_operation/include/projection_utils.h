@@ -85,6 +85,40 @@ extern const std::string CONFIG_DIR_PATH = workspace_path + "/data/proj_cfg";
 // Directory paths for configuration images
 extern const std::string IMAGE_TOP_DIR_PATH = workspace_path + "/data/proj_img";
 
+// Variables related to control point parameters
+/// @todo: clearify the units of these variables
+const float cp_size = 0.015f;
+const float cp_xy_lim = 0.5f;
+const float cp_height = cp_size * PROJ_WIN_ASPECT_RATIO * 1.8f * 0.75f;
+
+// Control point parameter arrays
+/**
+ * @brief Array to hold the position and transformation parameters for control points in normalized coordinates [-1, 1].
+ *
+ * Each row corresponds to a specific control point on the screen, and each column holds a different attribute
+ * of that control point.
+ *
+ * - Rows:
+ *   - [0]: Top-left control point
+ *   - [1]: Top-right control point
+ *   - [2]: Bottom-right control point
+ *   - [3]: Bottom-left control point
+ *
+ * - Columns:
+ *   - [0]: X-distance from center [-1,1]
+ *   - [1]: Y-distance from center [-1,1]
+ *   - [2]: Width/Radius parameter
+ *   - [3]: Height parameter
+ *   - [4]: Shearing factor
+ */
+extern const float CP_PARAM[4][5] = {
+    // Default control point parameters
+    {-cp_xy_lim, cp_xy_lim, cp_size, cp_height, 0.0f}, // top-left control point
+    {cp_xy_lim, cp_xy_lim, cp_size, cp_height, 0.0f},  // top-right control point
+    {cp_xy_lim, -cp_xy_lim, cp_size, cp_height, 0.0f}, // bottom-right control point
+    {-cp_xy_lim, -cp_xy_lim, cp_size, cp_height, 0.0f} // bottom-left control point
+};
+
 // ================================================== FUNCTIONS ==================================================
 
 // void initializeGL(GLFWwindow *&, int, int, std::string, GLuint &);
@@ -235,5 +269,13 @@ std::vector<cv::Point2f> computeRectVertices(float, float, float, float, float);
  * @return std::vector<cv::Point2f> The warped vertices.
 */
 std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f>, cv::Mat &, float, float);
+
+/**
+ * @brief Used to reset control point parameter list.
+ *
+ * @param ref_cp_param Reference to 2D array for control points.
+ * @param cal_ind Index of the active calibration mode.
+ */
+void resetParamCP(float (&)[4][5], int);
 
 #endif

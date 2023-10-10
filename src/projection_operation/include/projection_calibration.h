@@ -17,39 +17,7 @@
 // Specify the window name
 std::string windowName = "Projection Calibration";
 
-// Variables related to control point parameters
-/// @todo: clearify the units of these variables
-const float cp_size = 0.015f;
-const float cp_xy_lim = 0.5f;
-const float cp_height = cp_size * PROJ_WIN_ASPECT_RATIO * 1.8 * 0.75;
-
-// Control point parameter arrays
-/**
- * @brief Array to hold the position and transformation parameters for control points in normalized coordinates [-1, 1].
- *
- * Each row corresponds to a specific control point on the screen, and each column holds a different attribute
- * of that control point.
- *
- * - Rows:
- *   - [0]: Top-left control point
- *   - [1]: Top-right control point
- *   - [2]: Bottom-right control point
- *   - [3]: Bottom-left control point
- *
- * - Columns:
- *   - [0]: X-distance from center [-1,1]
- *   - [1]: Y-distance from center [-1,1]
- *   - [2]: Width/Radius parameter
- *   - [3]: Height parameter
- *   - [4]: Shearing factor
- */
-float cpParam_default[4][5] = {
-    // Default control point parameters
-    {-cp_xy_lim, cp_xy_lim, cp_size, cp_height, 0.0f}, // top-left control point
-    {cp_xy_lim, cp_xy_lim, cp_size, cp_height, 0.0f},  // top-right control point
-    {cp_xy_lim, -cp_xy_lim, cp_size, cp_height, 0.0f}, // bottom-right control point
-    {-cp_xy_lim, -cp_xy_lim, cp_size, cp_height, 0.0f} // bottom-left control point
-};
+// Dynamic control point parameter arrays
 float cpParam[4][5]; // Dynamic array to hold the control point parameters
 
 // Other variables related to control points
@@ -62,19 +30,19 @@ std::vector<float> cpInactiveRGBVec = {0.0f, 0.0f, 1.0f}; // Inactive control po
 cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
 
 // Directory paths
-std::string image_test_dir_path = IMAGE_TOP_DIR_PATH + "/calibration_images";
+std::string image_wall_dir_path = IMAGE_TOP_DIR_PATH + "/calibration_images";
 std::string image_state_dir_path = IMAGE_TOP_DIR_PATH + "/ui_state_images";
 
 // Test image variables
-std::vector<ILuint> imgTestIDVec; // Container to hold the loaded images
-std::vector<std::string> imgTestPathVec = {
-    // List of test image file paths
-    image_test_dir_path + "/1_test_pattern.bmp",
-    image_test_dir_path + "/2_manu_pirate.bmp",
-    image_test_dir_path + "/3_earthlings.bmp",
+std::vector<ILuint> imgWallIDVec; // Container to hold the loaded images
+std::vector<std::string> imgWallPathVec = {
+    // List of image file paths
+    image_wall_dir_path + "/1_test_pattern.bmp",
+    image_wall_dir_path + "/2_manu_pirate.bmp",
+    image_wall_dir_path + "/3_earthlings.bmp",
 };
-int imgTestInd = 0;                      // Index of the image to be loaded
-size_t nTestImg = imgTestPathVec.size(); // Number of test images
+int imgWallInd = 0;                      // Index of the image to be loaded
+size_t nWallImg = imgWallPathVec.size(); // Number of test images
 
 // Monitor variables
 std::vector<ILuint> imgMonIDVec; // Container to hold the loaded images for ui
@@ -111,7 +79,7 @@ std::vector<std::string> imgCalPathVec = {
     // image_state_dir_path + "/c-f.bmp",  // maze floor
     // image_state_dir_path + "/c-d.bmp",  // distal cues
 };
-int calModeInd = 0;                       // Index of the image to be loaded
+int calModeInd = 0;                      // Index of the image to be loaded
 size_t nCalModes = imgCalPathVec.size(); // Number of calibration modes
 
 // Variables related to window and OpenGL
@@ -247,15 +215,6 @@ void updateWindowMonMode(GLFWwindow *, GLFWmonitor **&, int, bool);
  * @param cp_param The array of control point parameters.
  */
 void computeHomography(cv::Mat &, float[4][5]);
-
-/**
- * @brief Used to reset control point parameter list.
- *
- * @param ref_cp_param Reference to 2D array for control points.
- * @param cp_param_default 2D array for default control points.
- * @param cal_ind Index of the active calibration mode.
- */
-void resetParamCP(float (&)[4][5], float[4][5], int);
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.

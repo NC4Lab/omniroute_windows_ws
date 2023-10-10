@@ -443,3 +443,32 @@ std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f> rect_ve
     // Return warped vertices
     return rect_vertices_vec;
 }
+
+void resetParamCP(float (&ref_cp_param)[4][5], int cal_ind)
+{
+    // Copy the default array to the dynamic one
+    for (int i = 0; i < 4; ++i)
+    {
+        for (int j = 0; j < 5; ++j)
+        {
+            ref_cp_param[i][j] = CP_PARAM[i][j];
+        }
+    }
+
+    // Add an offset when calibrating left or right wall images
+    float horz_offset = 0.2f;
+    if (cal_ind == 0) // left wall
+    {
+        ref_cp_param[0][0] -= horz_offset; // top-left
+        ref_cp_param[1][0] -= horz_offset; // top-right
+        ref_cp_param[2][0] -= horz_offset; // bottom-right
+        ref_cp_param[3][0] -= horz_offset; // bottom-left
+    }
+    else if (cal_ind == 2) // right wall
+    {
+        ref_cp_param[0][0] += horz_offset; // top-left
+        ref_cp_param[1][0] += horz_offset; // top-right
+        ref_cp_param[2][0] += horz_offset; // bottom-right
+        ref_cp_param[3][0] += horz_offset; // bottom-left
+    }
+}

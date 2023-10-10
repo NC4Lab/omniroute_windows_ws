@@ -25,7 +25,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         if (key == GLFW_KEY_R)
         {
-            resetParamCP(cpParam, cpParam_default, calModeInd);
+            resetParamCP(cpParam, calModeInd);
         }
 
         // ---------- Target selector keys [F1-F4] ----------
@@ -154,7 +154,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Reset control point parameters when switching calibration modes
             if (key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT)
             {
-                resetParamCP(cpParam, cpParam_default, calModeInd);
+                resetParamCP(cpParam, calModeInd);
             }
         }
 
@@ -165,11 +165,11 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Listen for arrow key input to switch through images
             if (key == GLFW_KEY_LEFT)
             {
-                imgTestInd = (imgTestInd > 0) ? imgTestInd - 1 : (int)nTestImg - 1;
+                imgWallInd = (imgWallInd > 0) ? imgWallInd - 1 : (int)nWallImg - 1;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                imgTestInd = (imgTestInd < nTestImg - 1) ? imgTestInd + 1 : 0;
+                imgWallInd = (imgWallInd < nWallImg - 1) ? imgWallInd + 1 : 0;
             }
         }
 
@@ -288,7 +288,8 @@ void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
     // Start drawing a quadrilateral
     glBegin(GL_QUADS);
 
-    // Set the color to white
+    // Set the color to white (for texture mapping)
+    /// @note: this is nececary when drawing the control points
     glColor3f(1.0f, 1.0f, 1.0f);
 
     // Set texture and vertex coordinates for each corner
@@ -316,7 +317,7 @@ void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
 void drawWallsAll(
     cv::Mat &ref_H,
     float cp_param[4][5],
-    GLuint fbo_texture,
+    GLuint fbo_texture_id,
     ILuint img_base_id,
     ILuint img_mon_id,
     ILuint img_param_id,
@@ -342,8 +343,20 @@ void drawWallsAll(
             }
             else
             {
-                ilBindImage(imgTestIDVec[imgTestInd]); // show test pattern
+                ilBindImage(imgWallIDVec[img_base_id]); // show test pattern
             }
+
+            // Calculate shear and height for the current wall
+            float height_val = calculateInterpolatedValue(cp_param, 3, i_wall, j_wall, MAZE_SIZE);
+            float shear_val = calculateInterpolatedValue(cp_param, 4, i_wall, j_wall, MAZE_SIZE);
+
+            // Create wall vertices
+            std::vector<cv::Point2f> rect_vertices_vec = computeRectVertices(0.0f, 0.0f, WALL_WIDTH, height_val, shear_val);
+
+            // Apply perspective warping to vertices
+            float x_offset = i_wall * WALL_SPACE;
+            float y_offset = j_wall * WALL_SPACE;
+            std::vector<cv::Point2f> rect_vertices_warped = computePerspectiveWarp(rect_vertices_vec, ref_H, x_offset, y_offset);
 
             // Set texture image
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
@@ -351,19 +364,7 @@ void drawWallsAll(
                          GL_UNSIGNED_BYTE, ilGetData());
 
             // Bind texture to framebuffer object
-            glBindTexture(GL_TEXTURE_2D, fbo_texture);
-
-            // Calculate shear and height for the current wall
-            float height_val = calculateInterpolatedValue(cp_param, 3, i_wall, j_wall, MAZE_SIZE);
-            float shear_val = calculateInterpolatedValue(cp_param, 4, i_wall, j_wall, MAZE_SIZE);
-
-            // Create wall vertices
-            std::vector<cv::Point2f> rect_vertices = computeRectVertices(0.0f, 0.0f, WALL_WIDTH, height_val, shear_val);
-
-            // Apply perspective warping to vertices
-            float x_offset = i_wall * WALL_SPACE;
-            float y_offset = j_wall * WALL_SPACE;
-            std::vector<cv::Point2f> rect_vertices_warped = computePerspectiveWarp(rect_vertices, ref_H, x_offset, y_offset);
+            glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
 
             // Draw the wall
             drawRectImage(rect_vertices_warped);
@@ -433,35 +434,6 @@ void computeHomography(cv::Mat &ref_H, float cp_param[4][5])
 
     // Compute the homography matrix
     ref_H = findHomography(img_vertices, cp_vertices);
-}
-
-void resetParamCP(float (&ref_cp_param)[4][5], float cp_param_default[4][5], int cal_ind)
-{
-    // Copy the default array to the dynamic one
-    for (int i = 0; i < 4; ++i)
-    {
-        for (int j = 0; j < 5; ++j)
-        {
-            ref_cp_param[i][j] = cp_param_default[i][j];
-        }
-    }
-
-    // Add an offset when calibrating left or right wall images
-    float horz_offset = 0.2f;
-    if (cal_ind == 0) // left wall
-    {
-        ref_cp_param[0][0] -= horz_offset; // top-left
-        ref_cp_param[1][0] -= horz_offset; // top-right
-        ref_cp_param[2][0] -= horz_offset; // bottom-right
-        ref_cp_param[3][0] -= horz_offset; // bottom-left
-    }
-    else if (cal_ind == 2) // right wall
-    {
-        ref_cp_param[0][0] += horz_offset; // top-left
-        ref_cp_param[1][0] += horz_offset; // top-right
-        ref_cp_param[2][0] += horz_offset; // bottom-right
-        ref_cp_param[3][0] += horz_offset; // bottom-left
-    }
 }
 
 int main(int argc, char **argv)
@@ -534,7 +506,7 @@ int main(int argc, char **argv)
     ilInit();
 
     // Load images
-    loadImgTextures(imgTestIDVec, imgTestPathVec);
+    loadImgTextures(imgWallIDVec, imgWallPathVec);
     loadImgTextures(imgMonIDVec, imgMonPathVec);
     loadImgTextures(imgParamIDVec, imgParamPathVec);
     loadImgTextures(imgCalIDVec, imgCalPathVec);
@@ -542,13 +514,25 @@ int main(int argc, char **argv)
     // --------------- Runtime SETUP ---------------
 
     // Initialize control point parameters
-    resetParamCP(cpParam, cpParam_default, calModeInd);
+    resetParamCP(cpParam, calModeInd);
+
+    // // TEMP
+    // glClear(GL_COLOR_BUFFER_BIT);
+    // drawWallsAll(H, cpParam, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
+    // glfwSwapBuffers(p_windowID);
+    // ros::Duration(1.0).sleep(); // Sleeps for 1 second
 
     // Do initial computations of homography matrix
     computeHomography(H, cpParam);
 
     // Update the window monitor and mode
     updateWindowMonMode(p_windowID, p_monitorIDVec, winMonInd, isFullScreen);
+
+        // TEMP
+    glClear(GL_COLOR_BUFFER_BIT);
+    drawWallsAll(H, cpParam, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
+    glfwSwapBuffers(p_windowID);
+    ros::Duration(1.0).sleep(); // Sleeps for 1 second
 
     // _______________ MAIN LOOP _______________
 
@@ -558,7 +542,7 @@ int main(int argc, char **argv)
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Draw/update wall images
-        drawWallsAll(H, cpParam, fbo_texture_id, imgTestIDVec[imgTestInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
+        drawWallsAll(H, cpParam, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
 
         // Draw/update control points
         for (int i = 0; i < 4; i++)
@@ -579,7 +563,7 @@ int main(int argc, char **argv)
 
     // Destroy GLFW window and DevIL images
     glfwDestroyWindow(p_windowID);
-    for (ILuint image_id : imgTestIDVec)
+    for (ILuint image_id : imgWallIDVec)
     {
         ilDeleteImages(1, &image_id);
     }

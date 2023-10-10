@@ -1,112 +1,182 @@
-// projection_display.cpp
+// // // Initialize an empty vector of cv::Point2f
+// // std::vector<cv::Point2f> rect_vertices_vec;
+// // rect_vertices_vec.push_back(cv::Point2f(-0.2f, 0.36f));
+// // rect_vertices_vec.push_back(cv::Point2f(0.0f, 0.36f));
+// // rect_vertices_vec.push_back(cv::Point2f(0.0f, 0.0f));
+// // rect_vertices_vec.push_back(cv::Point2f(-0.2f, 0.0f));
+// // drawRectImage(rect_vertices_vec);
 
-#include "projection_display.h"
+// void renderTestImage_v1(GLFWwindow *p_window_id, GLuint img_id)
+// {
+//     // Make the window's context current
+//     glfwMakeContextCurrent(p_window_id);
 
-// Variables
+//     // Clear the back buffer
+//     glClear(GL_COLOR_BUFFER_BIT);
 
-const int nProjectors = 2;
+//     // Enable 2D texturing
+//     glEnable(GL_TEXTURE_2D);
 
-std::string windowNames[nProjectors] = {
-    "Projection Display 1",
-    "Projection Display 2",
-    "Projection Display 3",
-    "Projection Display 4"};
+//     // Bind the texture
+//     glBindTexture(GL_TEXTURE_2D, img_id);
 
-GLFWwindow *p_windowIDVec[nProjectors];
-GLuint fboIDVec[nProjectors];
-GLuint fboTextureIDVec[nProjectors];
+//     // Draw a textured quad to FBO
+//     glBegin(GL_QUADS);
+//     glTexCoord2f(0.0f, 0.0f);
+//     glVertex2f(-0.5f, -0.5f);
+//     glTexCoord2f(1.0f, 0.0f);
+//     glVertex2f(0.5f, -0.5f);
+//     glTexCoord2f(1.0f, 1.0f);
+//     glVertex2f(0.5f, 0.5f);
+//     glTexCoord2f(0.0f, 1.0f);
+//     glVertex2f(-0.5f, 0.5f);
+//     glEnd();
 
-// Functions
+//     // Unbind the texture
+//     glBindTexture(GL_TEXTURE_2D, 0);
 
-void drawWallsAllForWindow(int windowIndex)
-{
-    drawWallsAll(H, cpParam, fbo_texture_id,
-                 imgTestIDVec[imgTestInd],
-                 imgMonIDVec[winMonInd],
-                 imgParamIDVec[imgParamInd],
-                 imgCalIDVec[calModeInd]);
-}
+//     // Disable 2D texturing
+//     glDisable(GL_TEXTURE_2D);
 
-int main(int argc, char **argv)
-{
-        //  _______________ SETUP _______________
+//     // Swap front and back buffers
+//     glfwSwapBuffers(p_window_id);
+// }
 
-    // ROS Initialization
-    ros::init(argc, argv, "projection_calibration", ros::init_options::AnonymousName);
-    ros::NodeHandle n;
-    ros::NodeHandle nh("~");
-    ROS_INFO("RUNNING MAIN");
+// void renderTestImage_v2(GLFWwindow *p_window_id, GLuint fbo_id, GLuint fbo_texture_id, ILuint img_id)
+// {
+//     // // Make the window's context current
+//     // glfwMakeContextCurrent(p_window_id);
 
-    GLuint fbo_ids[nProjectors];
-    GLuint fbo_texture_ids[nProjectors];
+//     // Clear the back buffer
+//     glClear(GL_COLOR_BUFFER_BIT);
 
-        // --------------- OpenGL SETUP ---------------
+//     // Bind the FBO
+//     glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
 
-    // Initialize GLFW and create windows
-    for (int i = 0; i < nProjectors; ++i)
-    {
-        p_windowIDVec[i] = glfwCreateWindow(
-            PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL,
-            windowNames[i].c_str(), NULL, NULL);
-        if (!p_windowIDVec[i])
-        {
-            glfwTerminate();
-            return -1;
-        }
+//     // Enable 2D texturing
+//     glEnable(GL_TEXTURE_2D);
 
-        // Set OpenGL context and callbacks
-        glfwMakeContextCurrent(p_windowIDVec[i]);
-        gladLoadGL();
-        glfwSetKeyCallback(p_windowIDVec[i], callbackKeyBinding);
-        glfwSetFramebufferSizeCallback(p_windowIDVec[i],
-                                       callbackFrameBufferSizeGLFW);
+//     // Bind the FBO's texture
+//     glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
 
-        // Generate and set up the FBO
-        glGenFramebuffers(1, &fbo_ids[i]);
-        glBindFramebuffer(GL_FRAMEBUFFER, fbo_ids[i]);
+//     // Load image into FBO's texture
+//     ilBindImage(img_id);
+//     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ilGetInteger(IL_IMAGE_WIDTH),
+//                  ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGBA,
+//                  GL_UNSIGNED_BYTE, ilGetData());
 
-        // Generate and set up the texture
-        glGenTextures(1, &fbo_texture_ids[i]);
-        glBindTexture(GL_TEXTURE_2D, fbo_texture_ids[i]);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//     // // Draw a textured quad to FBO
+//     // glBegin(GL_QUADS);
+//     // glTexCoord2f(0.0f, 0.0f);
+//     // glVertex2f(-0.5f, -0.5f);
+//     // glTexCoord2f(1.0f, 0.0f);
+//     // glVertex2f(0.5f, -0.5f);
+//     // glTexCoord2f(1.0f, 1.0f);
+//     // glVertex2f(0.5f, 0.5f);
+//     // glTexCoord2f(0.0f, 1.0f);
+//     // glVertex2f(-0.5f, 0.5f);
+//     // glEnd();
 
-        // Attach the texture to the FBO
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture_ids[i], 0);
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    }
+//     // Initialize an empty vector of cv::Point2f
+//     std::vector<cv::Point2f> rect_vertices_vec;
+//     rect_vertices_vec.push_back(cv::Point2f(-0.2f, 0.36f));
+//     rect_vertices_vec.push_back(cv::Point2f(0.0f, 0.36f));
+//     rect_vertices_vec.push_back(cv::Point2f(0.0f, 0.0f));
+//     rect_vertices_vec.push_back(cv::Point2f(-0.2f, 0.0f));
+//     drawRectImage(rect_vertices_vec);
 
-    // --------------- DevIL SETUP ---------------
+//     // Unbind the FBO's texture
+//     glBindTexture(GL_TEXTURE_2D, 0);
 
-    // Initialize DevIL library
-    ilInit();
+//     // Unbind the FBO and revert to the default framebuffer
+//     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // Load images
-    loadImgTextures(imgWallIDVec, imgWallPathVec);
+//     // Disable 2D texturing
+//     glDisable(GL_TEXTURE_2D);
 
-    // Main loop
-    while (true)
-    {
-        for (int i = 0; i < nProjectors; ++i)
-        {
-            glfwMakeContextCurrent(p_windowIDVec[i]);
-            glClear(GL_COLOR_BUFFER_BIT);
+//     // Swap front and back buffers
+//     glfwSwapBuffers(p_window_id);
 
-            // Draw walls for this window
-            drawWallsAllForWindow(i);
+//     ROS_INFO("TESTING: Rendered Test Image using FBO[%d] and Texture [%d]",
+//              fbo_id, fbo_texture_id);
+// }
 
-            glfwSwapBuffers(p_windowIDVec[i]);
-            glfwPollEvents();
+// void renderTestImage_v3(GLFWwindow *p_window_id, GLuint fbo_id, GLuint fbo_texture_id, ILuint img_id)
+// {
+//     // Make the window's context current
+//     glfwMakeContextCurrent(p_window_id);
 
-            if (glfwWindowShouldClose(p_windowIDVec[i]))
-            {
-                // Handle window close
-            }
-        }
-    }
+//     // Clear the back buffer
+//     glClear(GL_COLOR_BUFFER_BIT);
 
-    // Cleanup code
+//     // Bind the FBO
+//     glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
 
-    return 0;
-}
+//     // Check for FBO completeness
+//     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+//     if (status != GL_FRAMEBUFFER_COMPLETE)
+//     {
+//         ROS_ERROR("FBO is not complete");
+//         return;
+//     }
+
+//     // Enable 2D texturing
+//     glEnable(GL_TEXTURE_2D);
+
+//     // Bind the FBO's texture
+//     glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
+
+//     // Load image into FBO's texture
+//     ilBindImage(img_id);
+//     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, ilGetInteger(IL_IMAGE_WIDTH),
+//                  ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGBA,
+//                  GL_UNSIGNED_BYTE, ilGetData());
+
+//     // Draw a textured quad to FBO
+//     glBegin(GL_QUADS);
+//     glTexCoord2f(0.0f, 0.0f);
+//     glVertex2f(-0.5f, -0.5f);
+//     glTexCoord2f(1.0f, 0.0f);
+//     glVertex2f(0.5f, -0.5f);
+//     glTexCoord2f(1.0f, 1.0f);
+//     glVertex2f(0.5f, 0.5f);
+//     glTexCoord2f(0.0f, 1.0f);
+//     glVertex2f(-0.5f, 0.5f);
+//     glEnd();
+
+//     // Add a delay
+//     ros::Duration(1.0).sleep(); // Sleeps for 1 second
+
+//     // Unbind the FBO and revert to the default framebuffer
+//     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+//     // Clear the back buffer again
+//     glClear(GL_COLOR_BUFFER_BIT);
+
+//     // Bind the FBO's texture
+//     glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
+
+//     // Draw a textured quad to default framebuffer
+//     glBegin(GL_QUADS);
+//     glTexCoord2f(0.0f, 0.0f);
+//     glVertex2f(-0.5f, -0.5f);
+//     glTexCoord2f(1.0f, 0.0f);
+//     glVertex2f(0.5f, -0.5f);
+//     glTexCoord2f(1.0f, 1.0f);
+//     glVertex2f(0.5f, 0.5f);
+//     glTexCoord2f(0.0f, 1.0f);
+//     glVertex2f(-0.5f, 0.5f);
+//     glEnd();
+
+//     // Unbind the FBO's texture
+//     glBindTexture(GL_TEXTURE_2D, 0);
+
+//     // Disable 2D texturing
+//     glDisable(GL_TEXTURE_2D);
+
+//     // Swap front and back buffers
+//     glfwSwapBuffers(p_window_id);
+
+//     ROS_INFO("TESTING: Rendered Test Image using FBO[%d] and Texture [%d]",
+//              fbo_id, fbo_texture_id);
+// }

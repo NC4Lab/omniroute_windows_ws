@@ -21,23 +21,24 @@ float cpParam[4][5];
 cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
 
 // Directory paths
-std::string image_runtime_dir_path = IMAGE_TOP_DIR_PATH + "/runtime_images/shapes";
+std::string image_wall_dir_path = IMAGE_TOP_DIR_PATH + "/runtime_images/shapes";
 
 // Image file paths
 std::vector<ILuint> imgWallIDVec; // Container to hold the loaded images for ui
 std::vector<std::string> imgWallPathVec = {
     // List of image file paths
-    image_runtime_dir_path + "/circle.bmp",
-    image_runtime_dir_path + "/pentagon.bmp",
-    image_runtime_dir_path + "/square.bmp",
-    image_runtime_dir_path + "/star.bmp",
-    image_runtime_dir_path + "/triangle.bmp"};
+    image_wall_dir_path + "/square.bmp",
+    image_wall_dir_path + "/circle.bmp",
+    image_wall_dir_path + "/triangle.bmp",
+    image_wall_dir_path + "/star.bmp",
+    image_wall_dir_path + "/pentagon.bmp",
+};
 
-// Projector and monitor variables
+// Monitor variables
 int nMonitors; // Number of monitors connected to the system
 
 // Projector variables
-const int nProjectors = 2;               // Number of projectors
+const int nProjectors = 1;               // Number of projectors
 int indProjector = 0;                    // Index of the active projector
 int indProjectorMonitorArr[nProjectors]; // Index of the monitor for each projector
 
@@ -145,6 +146,27 @@ void drawRectImage(std::vector<cv::Point2f>);
  * warping based on the homography matrix and shear and height values extracted from control points.
  */
 void drawWallsAll();
+
+/**
+ * @brief Changes the display mode and monitor of the application window.
+ *
+ * This function switches the application window between full-screen and windowed modes
+ * and moves it to the monitor specified by the global variable imgMonNumInd.
+ *
+ * In full-screen mode, the window is resized to match the dimensions of the selected monitor.
+ * In windowed mode, the window is resized to a default size and positioned near the top-left
+ * corner of the selected monitor.
+ *
+ * @note The global variables monitor, monitors, imgMonNumInd, window, and isFullScreen are
+ *       used to control the behavior of this function.
+ *       Will only exicute if monotor parameters have changed.
+ *
+ * @param p_window Pointer to the GLFWwindow pointer that will be updated.
+ * @param pp_ref_monitor_id Reference to the GLFWmonitor pointer array.
+ * @param mon_ind Index of the monitor to move the window to.
+ * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
+ */
+void updateWindowMonMode(GLFWwindow *, GLFWmonitor **&, int, bool);
 
 /**
  * @brief  Entry point for the projection_display ROS node.
