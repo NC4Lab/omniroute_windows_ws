@@ -144,13 +144,23 @@ int setupProjGLFW(GLFWwindow **, int, GLFWmonitor **&, int, const std::string &,
 void drawRectImage(std::vector<cv::Point2f>);
 
 /**
- * @brief Draws all walls in the maze grid with texture mapping and perspective warping.
+ * @brief Draws walls on the OpenGL window.
  *
- * This function iterates through the maze grid to draw each wall. It uses the DevIL library
- * to handle image loading and OpenGL for rendering. The function also performs perspective
- * warping based on the homography matrix and shear and height values extracted from control points.
+ * This function is responsible for drawing the walls on the OpenGL window.
+ * It iterates through each calibration mode and each wall in the maze to
+ * draw the corresponding image.
+ *
+ * @param ref_H Reference to the Homography Matrix.
+ * @param cp_param Array containing control point parameters.
+ * @param proj_i Index of the projector being used.
+ * @param p_window_id Pointer to the GLFW window.
+ * @param fbo_texture_id Framebuffer Object's texture ID.
+ * @param ref_image_ids_vec Reference to the vector containing image IDs.
+ *
+ * @return Returns 0 on success, -1 otherwise.
  */
-void drawWalls();
+int drawWalls(cv::Mat&, float[4][5], int, GLFWwindow*, GLuint, std::vector<ILuint>&);
+
 
 /**
  * @brief Changes the display mode and monitor of the application window.
