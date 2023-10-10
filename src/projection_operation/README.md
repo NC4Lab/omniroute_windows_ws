@@ -1,4 +1,44 @@
-# proj_pkg_test
+# projection_operation
+
+### ==================== CALIBRATION UI KEYBINDINGS ====================
+
+The following keyboard shortcuts are available for interacting with the application. The actions are grouped by the type of key event they are associated with: **Key Release Actions** and **Key Press or Repeat Actions**.
+
+### Key Release Actions
+
+- **`R`**: Reset control point parameters.
+
+- **`F1` - `F4`**: 
+  - `F1`: Select Top-Left control point.
+  - `F2`: Select Top-Right control point.
+  - `F3`: Select Bottom-Right control point.
+  - `F4`: Select Bottom-Left control point.
+  
+- **Calibration Point Parameters**:
+  - **`A`**: Change control point position.
+  - **`D`**: Change control point dimensions.
+  - **`S`**: Change control point shear.
+
+- **Fullscreen and Monitor Control**:
+  - **`F`**: Toggle fullscreen mode.
+  - **`0` - `5`**: Select monitor index (Only if the monitor is available).
+
+- **XML Handling**:
+  - **`Enter`**: Save coordinates to XML.
+  - **`L`**: Load coordinates from XML.
+
+### Key Press or Repeat Actions
+
+- **Calibration Mode**:
+  - **`Alt + Left/Right`**: Change calibration mode and reset control point parameters.
+
+- **Image Change**:
+  - **`Ctrl + Left/Right`**: Change displayed image.
+
+- **Control Point Adjustments**:
+  - **`Shift or no modifier + Arrow keys`**: Adjust control point position, dimension, or shear.
+
+
 
 ### ==================== TODO ====================
 
