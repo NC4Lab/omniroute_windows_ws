@@ -8,7 +8,7 @@ The following keyboard shortcuts are available for interacting with the applicat
 
 - **`R`**: Reset control point parameters.
 
-- **Select Control Point**
+- **Select Control Point**:
   - `F1`: Select Top-Left control point.
   - `F2`: Select Top-Right control point.
   - `F3`: Select Bottom-Right control point.
