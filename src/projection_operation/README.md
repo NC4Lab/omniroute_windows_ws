@@ -1,6 +1,6 @@
 # projection_operation
 
-### ==================== CALIBRATION UI KEYBINDINGS ====================
+### ==================== PROJECTION CALIBRATION UI KEYBINDINGS ====================
 
 The following keyboard shortcuts are available for interacting with the application. The actions are grouped by the type of key event they are associated with: **Key Release Actions** and **Key Press or Repeat Actions**.
 
@@ -37,8 +37,6 @@ The following keyboard shortcuts are available for interacting with the applicat
 
 - **Control Point Adjustments**:
   - **`Shift or no modifier + Arrow keys`**: Adjust control point position, dimension, or shear.
-
-
 
 ### ==================== TODO ====================
 
