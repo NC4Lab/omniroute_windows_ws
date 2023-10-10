@@ -314,7 +314,7 @@ void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
     glEnd();
 }
 
-void drawWallsAll(
+void drawWalls(
     cv::Mat &ref_H,
     float cp_param[4][5],
     GLuint fbo_texture_id,
@@ -343,7 +343,7 @@ void drawWallsAll(
             }
             else
             {
-                ilBindImage(imgWallIDVec[img_base_id]); // show test pattern
+                ilBindImage(img_base_id); // show test pattern
             }
 
             // Calculate shear and height for the current wall
@@ -387,22 +387,22 @@ void updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_
     }
 
     // Get GLFWmonitor for active monitor
-    GLFWmonitor *p_ref_monitor_id = pp_ref_monitor_id[mon_ind];
+    GLFWmonitor *p_monitor_id = pp_ref_monitor_id[mon_ind];
 
     // Update window size and position
-    if (p_ref_monitor_id)
+    if (p_monitor_id)
     {
         // Get the video mode of the selected monitor
-        const GLFWvidmode *mode = glfwGetVideoMode(p_ref_monitor_id);
+        const GLFWvidmode *mode = glfwGetVideoMode(p_monitor_id);
 
         // Set the window to full-screen mode on the current monitor
-        glfwSetWindowMonitor(p_window_id, p_ref_monitor_id, 0, 0, mode->width, mode->height, mode->refreshRate);
+        glfwSetWindowMonitor(p_window_id, p_monitor_id, 0, 0, mode->width, mode->height, mode->refreshRate);
 
         if (!is_fullscreen)
         {
             // Get the position of the current monitor
             int monitor_x, monitor_y;
-            glfwGetMonitorPos(p_ref_monitor_id, &monitor_x, &monitor_y);
+            glfwGetMonitorPos(p_monitor_id, &monitor_x, &monitor_y);
 
             // Set the window to windowed mode and position it on the current monitor
             glfwSetWindowMonitor(p_window_id, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * PROJ_WIN_ASPECT_RATIO), 500, 0);
@@ -412,28 +412,12 @@ void updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_
     else
     {
         ROS_WARN("FAILED: Move window to monitor %d and set to %s", mon_ind, is_fullscreen ? "fullscreen" : "windowed");
+        return;
     }
 
     // Update last monitor and fullscreen mode
     imp_mon_ind_last = mon_ind;
     is_fullscreen_last = is_fullscreen;
-}
-
-void computeHomography(cv::Mat &ref_H, float cp_param[4][5])
-{
-    // Get the corner/vertex values for each of the control points
-    std::vector<cv::Point2f> cp_vertices;
-    cp_vertices.push_back(cv::Point2f(cp_param[0][0], cp_param[0][1])); // top-left
-    cp_vertices.push_back(cv::Point2f(cp_param[1][0], cp_param[1][1])); // top-right
-    cp_vertices.push_back(cv::Point2f(cp_param[2][0], cp_param[2][1])); // bottom-right
-    cp_vertices.push_back(cv::Point2f(cp_param[3][0], cp_param[3][1])); // bottom-left
-
-    // Get the corner/vertex values for each of the wall images
-    std::vector<cv::Point2f> img_vertices;
-    img_vertices = computeRectVertices(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * WALL_SPACE, (float(MAZE_SIZE) - 1) * WALL_SPACE, 0);
-
-    // Compute the homography matrix
-    ref_H = findHomography(img_vertices, cp_vertices);
 }
 
 int main(int argc, char **argv)
@@ -451,6 +435,12 @@ int main(int argc, char **argv)
     ROS_INFO("SETTINGS: Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
     ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", WALL_WIDTH, WALL_SPACE);
     ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(WALL_WIDTH * (float)PROJ_WIN_WIDTH_PXL), (int)(WALL_SPACE * (float)PROJ_WIN_WIDTH_PXL));
+
+    // Initialize control point parameters
+    resetParamCP(cpParam, calModeInd);
+
+    // Do initial computations of homography matrix
+    computeHomography(H, cpParam);
 
     // --------------- OpenGL SETUP ---------------
 
@@ -500,6 +490,9 @@ int main(int argc, char **argv)
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture_id, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+    // Update the window monitor and mode
+    updateWindowMonMode(p_windowID, p_monitorIDVec, winMonInd, isFullScreen);
+
     // --------------- DevIL SETUP ---------------
 
     // Initialize DevIL library
@@ -511,28 +504,11 @@ int main(int argc, char **argv)
     loadImgTextures(imgParamIDVec, imgParamPathVec);
     loadImgTextures(imgCalIDVec, imgCalPathVec);
 
-    // --------------- Runtime SETUP ---------------
-
-    // Initialize control point parameters
-    resetParamCP(cpParam, calModeInd);
-
     // // TEMP
     // glClear(GL_COLOR_BUFFER_BIT);
-    // drawWallsAll(H, cpParam, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
+    // drawWalls(H, cpParam, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
     // glfwSwapBuffers(p_windowID);
-    // ros::Duration(1.0).sleep(); // Sleeps for 1 second
-
-    // Do initial computations of homography matrix
-    computeHomography(H, cpParam);
-
-    // Update the window monitor and mode
-    updateWindowMonMode(p_windowID, p_monitorIDVec, winMonInd, isFullScreen);
-
-        // TEMP
-    glClear(GL_COLOR_BUFFER_BIT);
-    drawWallsAll(H, cpParam, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
-    glfwSwapBuffers(p_windowID);
-    ros::Duration(1.0).sleep(); // Sleeps for 1 second
+    // ros::Duration(5.0).sleep(); // Sleeps for 1 second
 
     // _______________ MAIN LOOP _______________
 
@@ -542,7 +518,7 @@ int main(int argc, char **argv)
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Draw/update wall images
-        drawWallsAll(H, cpParam, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
+        drawWalls(H, cpParam, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
 
         // Draw/update control points
         for (int i = 0; i < 4; i++)

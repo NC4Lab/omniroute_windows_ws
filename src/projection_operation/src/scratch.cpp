@@ -138,81 +138,81 @@
 
 
 
-// --------------- TEMP ---------------
+// // --------------- TEMP ---------------
 
-std::string windowName = "TEMP";
-GLFWwindow *p_windowID;
-int mon_ind = 1;
-int win_ind = 0;
+// std::string windowName = "TEMP";
+// GLFWwindow *p_windowID;
+// int mon_ind = 1;
+// int win_ind = 0;
 
-// Initialize GLFW
-glfwSetErrorCallback(callbackErrorGLFW);
-if (!glfwInit())
-{
-    ROS_ERROR("GLFW: Initialization Failed");
-    return -1;
-}
+// // Initialize GLFW
+// glfwSetErrorCallback(callbackErrorGLFW);
+// if (!glfwInit())
+// {
+//     ROS_ERROR("GLFW: Initialization Failed");
+//     return -1;
+// }
 
-// Get the list of available monitors and their count
-p_monitorIDVec = glfwGetMonitors(&nMonitors);
-ROS_INFO("GLFW: Found %d monitors", nMonitors);
+// // Get the list of available monitors and their count
+// p_monitorIDVec = glfwGetMonitors(&nMonitors);
+// ROS_INFO("GLFW: Found %d monitors", nMonitors);
 
-// Create GLFW window
-p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, windowName.c_str(), NULL, NULL);
-if (!p_windowID)
-{
-    glfwTerminate();
-    ROS_ERROR("GLFW: Create Window Failed");
-    return -1;
-}
+// // Create GLFW window
+// p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, windowName.c_str(), NULL, NULL);
+// if (!p_windowID)
+// {
+//     glfwTerminate();
+//     ROS_ERROR("GLFW: Create Window Failed");
+//     return -1;
+// }
 
-// Set OpenGL context and callbacks
-glfwMakeContextCurrent(p_windowID);
-gladLoadGL();
-glfwSetKeyCallback(p_windowID, callbackKeyBinding);
-glfwSetFramebufferSizeCallback(p_windowID, callbackFrameBufferSizeGLFW);
+// // Set OpenGL context and callbacks
+// glfwMakeContextCurrent(p_windowID);
+// gladLoadGL();
+// glfwSetKeyCallback(p_windowID, callbackKeyBinding);
+// glfwSetFramebufferSizeCallback(p_windowID, callbackFrameBufferSizeGLFW);
 
-// Initialize FBO and texture
-GLuint fbo_id;
-GLuint fbo_texture_id;
+// // Initialize FBO and texture
+// GLuint fbo_id;
+// GLuint fbo_texture_id;
 
-// Generate and set up the FBO
-glGenFramebuffers(1, &fbo_id);
-glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
+// // Generate and set up the FBO
+// glGenFramebuffers(1, &fbo_id);
+// glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
 
-// Generate and set up the texture
-glGenTextures(1, &fbo_texture_id);
-glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
-glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+// // Generate and set up the texture
+// glGenTextures(1, &fbo_texture_id);
+// glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
+// glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+// glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-// Attach the texture to the FBO
-glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture_id, 0);
-glBindFramebuffer(GL_FRAMEBUFFER, 0);
+// // Attach the texture to the FBO
+// glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture_id, 0);
+// glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-// Get GLFWmonitor for active monitor
-GLFWmonitor *p_ref_monitor_id = p_monitorIDVec[mon_ind];
+// // Get GLFWmonitor for active monitor
+// GLFWmonitor *p_ref_monitor_id = p_monitorIDVec[mon_ind];
 
-// Update window size and position
-if (p_ref_monitor_id)
-{
-    // Get the video mode of the selected monitor
-    const GLFWvidmode *mode = glfwGetVideoMode(p_ref_monitor_id);
+// // Update window size and position
+// if (p_ref_monitor_id)
+// {
+//     // Get the video mode of the selected monitor
+//     const GLFWvidmode *mode = glfwGetVideoMode(p_ref_monitor_id);
 
-    // Set the window to full-screen mode on the specified monitor
-    glfwSetWindowMonitor(p_windowID, p_ref_monitor_id, 0, 0, mode->width, mode->height, mode->refreshRate);
+//     // Set the window to full-screen mode on the specified monitor
+//     glfwSetWindowMonitor(p_windowID, p_ref_monitor_id, 0, 0, mode->width, mode->height, mode->refreshRate);
 
-    ROS_INFO("GLFW: Setup Window[%d] On Monitor[%d]", win_ind, mon_ind);
-}
-else
-{
-    ROS_ERROR("GLFW: Monitor[%d] Not Found", mon_ind);
-    return -1;
-}
+//     ROS_INFO("GLFW: Setup Window[%d] On Monitor[%d]", win_ind, mon_ind);
+// }
+// else
+// {
+//     ROS_ERROR("GLFW: Monitor[%d] Not Found", mon_ind);
+//     return -1;
+// }
 
-TEMP Minimize the window
-glfwIconifyWindow(p_windowID);
+// TEMP Minimize the window
+// glfwIconifyWindow(p_windowID);
 
-// Check for errors
-checkErrorGL("setupProjGLFW");
+// // Check for errors
+// checkErrorGL("setupProjGLFW");

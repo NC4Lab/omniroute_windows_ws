@@ -176,7 +176,7 @@ void drawRectImage(std::vector<cv::Point2f>);
  * @param img_param_id The DevIL image ID of the parameter image.
  * @param img_cal_id The DevIL image ID of the calibration image.
  */
-void drawWallsAll(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint);
+void drawWalls(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint);
 
 /**
  * @brief Changes the display mode and monitor of the application window.
@@ -192,29 +192,12 @@ void drawWallsAll(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint
  *       used to control the behavior of this function.
  *       Will only exicute if monotor parameters have changed.
  *
- * @param p_window Pointer to the GLFWwindow pointer that will be updated.
+ * @param p_window_id Pointer to the GLFWwindow pointer that will be updated.
  * @param pp_ref_monitor_id Reference to the GLFWmonitor pointer array.
  * @param mon_ind Index of the monitor to move the window to.
  * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
  */
 void updateWindowMonMode(GLFWwindow *, GLFWmonitor **&, int, bool);
-
-/**
- * @brief Computes the homography matrix based on control points and wall image vertices.
- *
- * This function calculates the homography matrix that maps points from the source image (wall images)
- * to the destination image (control points). The homography matrix is stored in the global variable H.
- *
- * Control points are specified in normalized coordinates and are fetched from the global variable cpParam.
- * Wall image vertices are calculated based on the dimensions and spacing of the maze walls.
- *
- * @note This function uses the OpenCV library to compute the homography matrix.
- * @note The global variables cpParam, MAZE_SIZE, and wallSpace are used to control the behavior of this function.
- *
- * @param ref_H The homography matrix used to warp perspective.
- * @param cp_param The array of control point parameters.
- */
-void computeHomography(cv::Mat &, float[4][5]);
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.

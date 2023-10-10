@@ -56,16 +56,7 @@ std::string formatCoordinatesFilePathXML(int mon_ind, int cal_ind, std::string c
     return file_path;
 }
 
-void loadCoordinatesXML(cv::Mat &ref_H, std::string full_path)
-{
-    // Create a dummy array to store control point paramameter 2D array
-    float cp_param[4][5];
-
-    // Pass to the actual function
-    loadCoordinatesXML(ref_H, cp_param, full_path);
-}
-
-void loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cp_param)[4][5], std::string full_path)
+int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cp_param)[4][5], std::string full_path, int verbose_level)
 {
     // Get file name from path
     std::string file_name = full_path.substr(full_path.find_last_of('/') + 1);
@@ -75,7 +66,7 @@ void loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cp_param)[4][5], std::string
     if (!doc.load_file(full_path.c_str()))
     {
         ROS_ERROR("LOAD XML: Could Not Load XML: File[%s]", file_name.c_str());
-        return;
+        return -1;
     }
 
     // Retrieve control point parameters
@@ -95,15 +86,15 @@ void loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cp_param)[4][5], std::string
     // Check the dimensions of control pount array
     if (cp_param_temp.size() != 4)
     {
-        ROS_ERROR("Control Point Array from XML has Wrong Number of Rows[%zu]", cp_param_temp.size());
-        return;
+        ROS_ERROR("LOAD XML: Control Point Array from XML has Wrong Number of Rows[%zu]", cp_param_temp.size());
+        return -1;
     }
     for (const auto &row : cp_param_temp)
     {
         if (row.size() != 5)
         {
-            ROS_ERROR("Control Point Array from XML has Wrong Number of Columns[%zu]", row.size());
-            return;
+            ROS_ERROR("LOAD XML: Control Point Array from XML has Wrong Number of Columns[%zu]", row.size());
+            return -1;
         }
     }
 
@@ -133,15 +124,15 @@ void loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cp_param)[4][5], std::string
     // Check the dimensions of homography matrix
     if (H_temp.size() != 3)
     {
-        ROS_ERROR("Homography Matrix from XML has Wrong Number of Rows[%zu]", H_temp.size());
-        return;
+        ROS_ERROR("LOAD XML: Homography Matrix from XML has Wrong Number of Rows[%zu]", H_temp.size());
+        return -1;
     }
     for (const auto &row : H_temp)
     {
         if (row.size() != 3)
         {
-            ROS_ERROR("Homography Matrix from XML has Wrong Number of Columns[%zu]", row.size());
-            return;
+            ROS_ERROR("LOAD XML: Homography Matrix from XML has Wrong Number of Columns[%zu]", row.size());
+            return -1;
         }
     }
 
@@ -153,6 +144,48 @@ void loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cp_param)[4][5], std::string
             ref_H.at<float>(i, j) = H_temp[i][j];
         }
     }
+
+    // Print the loaded data
+    if (verbose_level > 0)
+    {
+        // Print the file name
+        if (verbose_level == 1)
+        {
+            ROS_INFO("LOAD XML: Loaded XML: File[%s]", file_name.c_str());
+        }
+        // Print the control point array
+        if (verbose_level == 2)
+        {
+            std::ostringstream oss;
+            oss << "LOAD XML: Control Point Array:\n";
+            for (const auto &row : cp_param_temp)
+            {
+                for (const auto &value : row)
+                {
+                    oss << value << "\t";
+                }
+                oss << "\n";
+            }
+            ROS_INFO("%s", oss.str().c_str());
+        }
+        // Print the homography matrix
+        if (verbose_level == 3)
+        {
+            std::ostringstream oss;
+            oss << "LOAD XML: Homography Matrix:\n";
+            for (const auto &row : H_temp)
+            {
+                for (const auto &value : row)
+                {
+                    oss << value << "\t";
+                }
+                oss << "\n";
+            }
+            ROS_INFO("%s", oss.str().c_str());
+        }
+    }
+
+    return 0;
 }
 
 void saveCoordinatesXML(cv::Mat H, float cp_param[4][5], std::string full_path)
@@ -228,6 +261,7 @@ void saveCoordinatesXML(cv::Mat H, float cp_param[4][5], std::string full_path)
 void loadImgTextures(std::vector<ILuint> &ref_image_ids_vec, std::vector<std::string> img_paths_vec)
 {
     // Iterate through img file paths
+    int img_i = 0;
     for (const std::string &img_path : img_paths_vec)
     {
         ILuint img_id;
@@ -265,16 +299,18 @@ void loadImgTextures(std::vector<ILuint> &ref_image_ids_vec, std::vector<std::st
 
             // Add image ID to vector
             ref_image_ids_vec.push_back(img_id);
-            ROS_INFO("DevIL: Loaded Image: File[%s] Size[%d,%d]",
-                     file_name.c_str(), width, height);
+            ROS_INFO("DevIL: Loaded Image[%d]: File[%s] Size[%d,%d]",
+                     img_i, file_name.c_str(), width, height);
             ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
         }
         else
         {
             ILenum error = ilGetError();
             ilDeleteImages(1, &img_id);
-            ROS_ERROR("DevIL: Failed to Load Image: Error[%s] PATH[%s]", iluErrorString(error), img_path.c_str());
+            ROS_ERROR("DevIL: Failed to Load Image[%d]: Error[%s] PATH[%s]",
+                      img_i, iluErrorString(error), img_path.c_str());
         }
+        img_i++;
     }
 }
 
@@ -365,21 +401,7 @@ ILuint mergeImages(ILuint img1, ILuint img2)
     return mergedImg;
 }
 
-/**
- * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
- *
- * This function performs bilinear interpolation based on the position of a point
- * within a 2D grid (grid_i_ind, grid_j_ind) and predefined values at the grid corners.
- *
- * @param cp_param The array of control point parameters.
- * @param cp_ind The index of the control point parameter (3:height, 4:sheer).
- * @param grid_i_ind The index of the point along the first axis within the grid.
- * @param grid_j_ind The index of the point along the second axis within the grid.
- * @param GRID_SIZE The size of the 2D grid.
- *
- * @return float The calculated interpolated value.
- */
-float calculateInterpolatedValue(float cp_param[4][5], int cp_ind, int grid_i_ind, int grid_j_ind, int GRID_SIZE)
+float calculateInterpolatedValue(float cp_param[4][5], int cp_ind, int grid_ind_i, int grid_ind_j, int GRID_SIZE)
 {
     // Get the 3 corner values
     float corner1 = cp_param[0][cp_ind];
@@ -387,8 +409,8 @@ float calculateInterpolatedValue(float cp_param[4][5], int cp_ind, int grid_i_in
     float corner4 = cp_param[3][cp_ind];
 
     // Normalize the indices by dividing by (GRID_SIZE - 1)
-    float normalized_i = static_cast<float>(grid_i_ind) / (GRID_SIZE - 1);
-    float normalized_j = static_cast<float>(grid_j_ind) / (GRID_SIZE - 1);
+    float normalized_i = static_cast<float>(grid_ind_i) / (GRID_SIZE - 1);
+    float normalized_j = static_cast<float>(grid_ind_j) / (GRID_SIZE - 1);
 
     // Linearly interpolate values between corners 3 and 4 based on grid_i_ind
     float interp_val_i = normalized_i * (corner3 - corner4);
@@ -442,6 +464,23 @@ std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f> rect_ve
 
     // Return warped vertices
     return rect_vertices_vec;
+}
+
+void computeHomography(cv::Mat &ref_H, float cp_param[4][5])
+{
+    // Get the corner/vertex values for each of the control points
+    std::vector<cv::Point2f> cp_vertices;
+    cp_vertices.push_back(cv::Point2f(cp_param[0][0], cp_param[0][1])); // top-left
+    cp_vertices.push_back(cv::Point2f(cp_param[1][0], cp_param[1][1])); // top-right
+    cp_vertices.push_back(cv::Point2f(cp_param[2][0], cp_param[2][1])); // bottom-right
+    cp_vertices.push_back(cv::Point2f(cp_param[3][0], cp_param[3][1])); // bottom-left
+
+    // Get the corner/vertex values for each of the wall images
+    std::vector<cv::Point2f> img_vertices;
+    img_vertices = computeRectVertices(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * WALL_SPACE, (float(MAZE_SIZE) - 1) * WALL_SPACE, 0);
+
+    // Compute the homography matrix
+    ref_H = findHomography(img_vertices, cp_vertices);
 }
 
 void resetParamCP(float (&ref_cp_param)[4][5], int cal_ind)

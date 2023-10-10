@@ -60,6 +60,97 @@
 
 // ================================================== VARIABLES ==================================================
 
+/**
+ * @brief 4D array of hardcoded image indices to display.
+ *
+ * This array is used to map specific image indices to a combination of
+ * projector, chamber row, chamber column, calibration mode, and wall position.
+ *
+ * The array dimensions are as follows:
+ * - Projector: 0 to 3
+ * - Chamber Row: 0 to 2
+ * - Chamber Column: 0 to 2
+ * - Calibration Mode: 0 to 2 (represents l_wall, m_wall, r_wall)
+ *
+ * Format: array[4][3][3][3] = array[Projector][Chamber Row][Chamber Column][Calibration Mode{Left, Center, Right}]
+ */
+int TEMPLATE[4][3][3][3] = {
+    // Projector 0: East
+    {
+        // Chamber Row: Top, Column: Left, Center, Right
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Middle
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Bottom
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+    },
+    // Projector 1: North
+    {
+        // Chamber Row: Top, Column: Left, Center, Right
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Middle
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Bottom
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+    },
+    // Projector 2: West
+    {
+        // Chamber Row: Top, Column: Left, Center, Right
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Middle
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Bottom
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+    },
+    // Projector 3: South
+    {
+        // Chamber Row: Top, Column: Left, Center, Right
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Middle
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Bottom
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+    },
+};
+int IMG_PROJ_MAP[4][3][3][3] = {
+    // Projector 0: East
+    {
+        // Chamber Row: Top, Column: Left, Center, Right
+        {{0, 0, 1}, {3, 4, 3}, {5, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Middle
+        {{0, 1, 0}, {2, 3, 2}, {0, 5, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Bottom
+        {{1, 0, 0}, {1, 2, 1}, {0, 0, 5}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+    },
+    // Projector 1: North
+    {
+        // Chamber Row: Top, Column: Left, Center, Right
+        {{1, 1, 1}, {0, 0, 0}, {2, 2, 2}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Middle
+        {{3, 3, 3}, {0, 0, 0}, {1, 1, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Bottom
+        {{0, 0, 0}, {4, 4, 4}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+    },
+    // Projector 2: West
+    {
+        // Chamber Row: Top, Column: Left, Center, Right
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Middle
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Bottom
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+    },
+    // Projector 3: South
+    {
+        // Chamber Row: Top, Column: Left, Center, Right
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Middle
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Bottom
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+    },
+};
+
 // Number of rows and columns in the maze
 extern const int MAZE_SIZE = 3;
 
@@ -137,16 +228,6 @@ extern const float CP_PARAM[4][5] = {
 std::string formatCoordinatesFilePathXML(int, int, std::string);
 
 /**
- * @brief Loads homography matrix from an XML file.
- *
- * This function is a wrapper that calls the 3-argument version with a dummy 2D array.
- *
- * @param ref_H Homography matrix to populate.
- * @param full_path Path to the XML file.
- */
-void loadCoordinatesXML(cv::Mat &ref_H, std::string full_path);
-
-/**
  * @brief Loads control points and homography matrix from an XML file.
  *
  * This is the primary function containing the implementation. It reads an XML file
@@ -157,8 +238,11 @@ void loadCoordinatesXML(cv::Mat &ref_H, std::string full_path);
  * @param ref_H Homography matrix to populate.
  * @param ref_cp_param 2D array for control points in normalized coordinates [-1, 1].
  * @param full_path Path to the XML file.
+ * @param verbose_level Level of verbosity for printing loaded data (0:nothing, 1:file name, 2:control points, 3:homography matrix).
+ *
+ * @return 0 on successful execution, -1 on failure.
  */
-void loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cp_param)[4][5], std::string full_path);
+int loadCoordinatesXML(cv::Mat &, float (&)[4][5], std::string, int = 0);
 
 /**
  * @brief Saves the control point positions and homography matrix to an XML file.
@@ -228,12 +312,12 @@ ILuint mergeImages(ILuint, ILuint);
  * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
  *
  * This function performs bilinear interpolation based on the position of a point
- * within a 2D grid (grid_i_ind, grid_j_ind) and predefined values at the grid corners.
+ * within a 2D grid (grid_ind_i, grid_ind_j) and predefined values at the grid corners.
  *
  * @param cp_param The array of control point parameters.
  * @param cp_ind The index of the control point parameter (3:height, 4:sheer).
- * @param grid_i_ind The index of the point along the first axis within the grid.
- * @param grid_j_ind The index of the point along the second axis within the grid.
+ * @param grid_ind_i The index of the point along the first axis within the grid.
+ * @param grid_ind_j The index of the point along the second axis within the grid.
  * @param GRID_SIZE The size of the 2D grid.
  *
  * @return float The calculated interpolated value.
@@ -258,17 +342,34 @@ float calculateInterpolatedValue(float[4][5], int, int, int, int);
  */
 std::vector<cv::Point2f> computeRectVertices(float, float, float, float, float);
 
-/** 
+/**
  * @brief Computes the perspective warp for a given set of points.
- * 
+ *
  * @param rect_vertices_vec The vector of points representing the rectangle.
  * @param ref_H The homography matrix used to warp perspective.
  * @param x_offset The x-offset to apply to the vertices.
  * @param y_offset The y-offset to apply to the vertices.
- * 
+ *
  * @return std::vector<cv::Point2f> The warped vertices.
-*/
+ */
 std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f>, cv::Mat &, float, float);
+
+/**
+ * @brief Computes the homography matrix based on control points and wall image vertices.
+ *
+ * This function calculates the homography matrix that maps points from the source image (wall images)
+ * to the destination image (control points). The homography matrix is stored in the global variable H.
+ *
+ * Control points are specified in normalized coordinates and are fetched from the global variable cpParam.
+ * Wall image vertices are calculated based on the dimensions and spacing of the maze walls.
+ *
+ * @note This function uses the OpenCV library to compute the homography matrix.
+ * @note The global variables cpParam, MAZE_SIZE, and wallSpace are used to control the behavior of this function.
+ *
+ * @param ref_H The homography matrix used to warp perspective.
+ * @param cp_param The array of control point parameters.
+ */
+void computeHomography(cv::Mat &, float[4][5]);
 
 /**
  * @brief Used to reset control point parameter list.

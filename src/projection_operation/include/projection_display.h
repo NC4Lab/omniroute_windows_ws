@@ -23,24 +23,20 @@ cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
 // Directory paths
 std::string image_wall_dir_path = IMAGE_TOP_DIR_PATH + "/runtime_images/shapes";
 
-// Image file paths
+// Maze image container
+std::vector<ILuint> imgMazeIDVec(4);
+
+// Wall image file variables
 std::vector<ILuint> imgWallIDVec; // Container to hold the loaded images for ui
 std::vector<std::string> imgWallPathVec = {
     // List of image file paths
-    image_wall_dir_path + "/square.bmp",
-    image_wall_dir_path + "/circle.bmp",
-    image_wall_dir_path + "/triangle.bmp",
-    image_wall_dir_path + "/star.bmp",
-    image_wall_dir_path + "/pentagon.bmp",
+    image_wall_dir_path + "/blank.bmp",    // [0] Blank image
+    image_wall_dir_path + "/square.bmp",   // [1] Square image
+    image_wall_dir_path + "/circle.bmp",   // [2] Circle image
+    image_wall_dir_path + "/triangle.bmp", // [3] Triangle image
+    image_wall_dir_path + "/star.bmp",     // [4] Star image
+    image_wall_dir_path + "/pentagon.bmp", // [5] Pentagon image
 };
-
-// Monitor variables
-int nMonitors; // Number of monitors connected to the system
-
-// Projector variables
-const int nProjectors = 1;               // Number of projectors
-int indProjector = 0;                    // Index of the active projector
-int indProjectorMonitorArr[nProjectors]; // Index of the monitor for each projector
 
 // Specify the window names for the projectors
 std::vector<std::string> windowNameVec = {
@@ -48,6 +44,15 @@ std::vector<std::string> windowNameVec = {
     "Projector 1",
     "Projector 2",
     "Projector 3",
+};
+
+// Monitor and projector variables
+int nMonitors;             // Number of monitors (autopopulated)
+const int nProjectors = 2; // Number of projectors  (autopopulated)
+int indProjMonCalArr[nProjectors] = {
+    // Index of the monitor for each projector (hardcoded)
+    1,
+    2,
 };
 
 // Window for OpenGL
@@ -145,7 +150,7 @@ void drawRectImage(std::vector<cv::Point2f>);
  * to handle image loading and OpenGL for rendering. The function also performs perspective
  * warping based on the homography matrix and shear and height values extracted from control points.
  */
-void drawWallsAll();
+void drawWalls();
 
 /**
  * @brief Changes the display mode and monitor of the application window.
@@ -161,12 +166,14 @@ void drawWallsAll();
  *       used to control the behavior of this function.
  *       Will only exicute if monotor parameters have changed.
  *
- * @param p_window Pointer to the GLFWwindow pointer that will be updated.
+ * @param p_window_id Pointer to the GLFWwindow pointer that will be updated.
  * @param pp_ref_monitor_id Reference to the GLFWmonitor pointer array.
  * @param mon_ind Index of the monitor to move the window to.
- * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
+ * @param do_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
+ *
+ * @return 0 on successful execution, -1 on failure.
  */
-void updateWindowMonMode(GLFWwindow *, GLFWmonitor **&, int, bool);
+int updateWindowMonMode(GLFWwindow *, GLFWmonitor **&, int, bool);
 
 /**
  * @brief  Entry point for the projection_display ROS node.
