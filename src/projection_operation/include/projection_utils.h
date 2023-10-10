@@ -179,8 +179,8 @@ extern const std::string IMAGE_TOP_DIR_PATH = workspace_path + "/data/proj_img";
 // Variables related to control point parameters
 /// @todo: clearify the units of these variables
 const float cp_size = 0.015f;
-const float cp_xy_lim = 0.5f;
-const float cp_height = cp_size * PROJ_WIN_ASPECT_RATIO * 1.8f * 0.75f;
+const float cp_xy_lim = 0.2f;
+const float cp_height = cp_size * PROJ_WIN_ASPECT_RATIO;
 
 // Control point parameter arrays
 /**

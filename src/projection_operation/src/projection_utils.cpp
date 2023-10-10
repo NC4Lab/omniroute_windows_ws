@@ -495,7 +495,7 @@ void resetParamCP(float (&ref_cp_param)[4][5], int cal_ind)
     }
 
     // Add an offset when calibrating left or right wall images
-    float horz_offset = 0.2f;
+    float horz_offset = 0.05f;
     if (cal_ind == 0) // left wall
     {
         ref_cp_param[0][0] -= horz_offset; // top-left

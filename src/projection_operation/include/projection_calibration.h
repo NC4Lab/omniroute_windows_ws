@@ -79,7 +79,7 @@ std::vector<std::string> imgCalPathVec = {
     // image_state_dir_path + "/c-f.bmp",  // maze floor
     // image_state_dir_path + "/c-d.bmp",  // distal cues
 };
-int calModeInd = 0;                      // Index of the image to be loaded
+int calModeInd = 1;                      // Index of the image to be loaded
 size_t nCalModes = imgCalPathVec.size(); // Number of calibration modes
 
 // Variables related to window and OpenGL
