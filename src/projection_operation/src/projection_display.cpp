@@ -98,7 +98,7 @@ int setupProjGLFW(
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Tet window to wondowed mode
-    if (updateWindowMonMode(pp_window_id[win_ind], pp_ref_monitor_id, mon_ind, false) != 0)
+    if (updateWindowMonMode(pp_window_id[win_ind], pp_ref_monitor_id, mon_ind, true) != 0)
     {
         ROS_ERROR("GLFW: Failed to Update Window[%d] Monitor[%d] Mode", win_ind, mon_ind);
         return -1;
