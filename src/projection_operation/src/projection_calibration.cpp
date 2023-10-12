@@ -180,7 +180,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             if (cpModMode == "position")
             {
                 // Set the position increment based on whether the shift key is pressed
-                float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.05f : 0.01f;
+                float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.05f : 0.005f;
 
                 // Listen for arrow key input to move selected control point
                 if (key == GLFW_KEY_LEFT)
