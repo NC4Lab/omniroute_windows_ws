@@ -74,6 +74,7 @@
  *
  * Format: array[4][3][3][3] = array[Projector][Chamber Row][Chamber Column][Calibration Mode{Left, Center, Right}]
  */
+// Template of 4D array for hardcoded image indices to display
 int TEMPLATE[4][3][3][3] = {
     // Projector 0: East
     {
@@ -112,6 +113,7 @@ int TEMPLATE[4][3][3][3] = {
         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
     },
 };
+// Actual hardcoded image indices used to display
 int IMG_PROJ_MAP[4][3][3][3] = {
     // Projector 0: East
     {
@@ -315,7 +317,7 @@ ILuint mergeImages(ILuint, ILuint);
  * within a 2D grid (grid_ind_i, grid_ind_j) and predefined values at the grid corners.
  *
  * @param cp_param The array of control point parameters.
- * @param cp_ind The index of the control point parameter (3:height, 4:sheer).
+ * @param cp_param_ind The index of the control point parameter (3:height, 4:sheer).
  * @param grid_ind_i The index of the point along the first axis within the grid.
  * @param grid_ind_j The index of the point along the second axis within the grid.
  * @param GRID_SIZE The size of the 2D grid.
