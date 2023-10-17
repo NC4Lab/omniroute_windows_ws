@@ -401,12 +401,12 @@ ILuint mergeImages(ILuint img1, ILuint img2)
     return mergedImg;
 }
 
-float calculateInterpolatedValue(float cp_param[4][5], int cp_ind, int grid_ind_i, int grid_ind_j, int GRID_SIZE)
+float calculateInterpolatedValue(float cp_param[4][5], int cp_param_ind, int grid_ind_i, int grid_ind_j, int GRID_SIZE)
 {
     // Get the 3 corner values
-    float corner1 = cp_param[0][cp_ind];
-    float corner3 = cp_param[2][cp_ind];
-    float corner4 = cp_param[3][cp_ind];
+    float corner1 = cp_param[0][cp_param_ind];
+    float corner3 = cp_param[2][cp_param_ind];
+    float corner4 = cp_param[3][cp_param_ind];
 
     // Normalize the indices by dividing by (GRID_SIZE - 1)
     float normalized_i = static_cast<float>(grid_ind_i) / (GRID_SIZE - 1);

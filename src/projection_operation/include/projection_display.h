@@ -15,7 +15,7 @@
 // ================================================== VARIABLES ==================================================
 
 // Control point parameter array
-float cpParam[4][5];
+float calParam[4][5];
 
 // The homography matrix used to warp perspective.
 cv::Mat H = cv::Mat::eye(3, 3, CV_32F);

@@ -162,7 +162,7 @@ int drawWalls(
     {
         // Load the image transform coordinates from the XML file
         std::string file_path = formatCoordinatesFilePathXML(indProjMonCalArr[proj_i], cal_i, CONFIG_DIR_PATH);
-        if (loadCoordinatesXML(H, cpParam, file_path, 0) != 0)
+        if (loadCoordinatesXML(H, calParam, file_path, 0) != 0)
         {
             ROS_ERROR("XML: Missing XML File[%s]", file_path.c_str());
             return -1;
@@ -187,7 +187,7 @@ int drawWalls(
                 float shear_val = calculateInterpolatedValue(cp_param, 4, wall_i, wall_j, MAZE_SIZE);
 
                 // Create wall vertices
-                std::vector<cv::Point2f> rect_vertices_vec = computeRectVertices(0.0f, 0.0f, WALL_WIDTH, height_val, shear_val);
+                std::vector<cv::Point2f> rect_vertices_vec = computeRectVertices(0.0f, 0.0f, wall_width_ndc, height_val, shear_val);
 
                 // Apply perspective warping to vertices
                 float x_offset = wall_i * WALL_SPACE;
@@ -268,14 +268,14 @@ int main(int argc, char **argv)
     // Log paths for debugging
     ROS_INFO("SETTINGS: Config XML Path: %s", CONFIG_DIR_PATH.c_str());
     ROS_INFO("SETTINGS: Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
-    ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", WALL_WIDTH, WALL_SPACE);
-    ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(WALL_WIDTH * (float)PROJ_WIN_WIDTH_PXL), (int)(WALL_SPACE * (float)PROJ_WIN_WIDTH_PXL));
+    ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", wall_width_ndc, WALL_SPACE);
+    ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(wall_width_ndc * (float)PROJ_WIN_WIDTH_PXL), (int)(WALL_SPACE * (float)PROJ_WIN_WIDTH_PXL));
 
     // Initialize control point parameters
-    resetParamCP(cpParam, 0);
+    resetParamCP(calParam, 0);
 
     // Do initial computations of homography matrix
-    computeHomography(H, cpParam);
+    computeHomography(H, calParam);
 
     // --------------- OpenGL SETUP V2 ---------------
 
@@ -355,7 +355,7 @@ int main(int argc, char **argv)
                 glClear(GL_COLOR_BUFFER_BIT);
 
                 // Draw the walls
-                drawWalls(H, cpParam, proj_i, p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec);
+                drawWalls(H, calParam, proj_i, p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec);
 
                 // Unbind the texture
                 glBindTexture(GL_TEXTURE_2D, 0);

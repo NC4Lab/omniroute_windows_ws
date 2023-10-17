@@ -18,13 +18,14 @@
 std::string windowName = "Projection Calibration";
 
 // Dynamic control point parameter arrays
-float cpParam[4][5]; // Dynamic array to hold the control point parameters
+float calParam[4][5]; // Updated based on external variable CP_PARAM 
 
 // Other variables related to control points
+std::string calParamMode = "position"; // Parmeter being modified [position, dimension, shear]
 int cpSelected = 0;
-std::string cpModMode = "position";
-std::vector<float> cpActiveRGBVec = {1.0f, 0.0f, 0.0f};   // Active control point marker color
-std::vector<float> cpInactiveRGBVec = {0.0f, 0.0f, 1.0f}; // Inactive control point marker color
+std::vector<float> cpActiveRGBVec = {0.0f, 1.0f, 0.0f};   // Active control point marker color (green)
+std::vector<float> cpInactiveRGBVec = {1.0f, 0.0f, 0.0f}; // Inactive control point marker color (red)
+std::vector<float> cpDisabledRGBVec = {0.5f, 0.5f, 0.5f}; // Inactive control point marker color (red)
 
 // The 3x3 homography matrix of 32-bit floating-point numbers used to warp perspective.
 cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
@@ -95,20 +96,7 @@ GLFWmonitor **p_monitorIDVec;
  * It handles various key events for control points, monitor handling, XML operations, and more.
  *
  * ## Keybindings:
- * - **Any Key Release Action:**
- *   - `R`: Reset control point parameters.
- *   - `F1-F4`: Select a control point (Top-Left, Top-Right, Bottom-Right, Bottom-Left).
- *   - `A, D, S`: Change calibration point parameters.
- *   - `F`: Toggle fullscreen mode.
- *   - `M`: Move window to another monitor.
- *   - `0-5`: Select monitor index.
- *   - `Enter`: Save coordinates to XML.
- *   - `L`: Load coordinates from XML.
- *
- * - **Any Key Press or Repeat Action:**
- *   - `Alt + Left/Right`: Change calibration mode.
- *   - `Ctrl + Left/Right`: Change displayed image.
- *   - `Shift or no modifier + Arrow keys`: Adjust control point position, dimension, or shear.
+ * @see README.md
  *
  * @param window Pointer to the GLFW window that received the event.
  * @param key The keyboard key that was pressed or released.

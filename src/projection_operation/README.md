@@ -1,10 +1,22 @@
 # projection_operation
 
+### ==================== TODO ====================
+
+1. Add description of how #include are being handled in package.
+
 ### ==================== PROJECTION CALIBRATION UI KEYBINDINGS ====================
 
 The following keyboard shortcuts are available for interacting with the application. The actions are grouped by the type of key event they are associated with: **Key Release Actions** and **Key Press or Repeat Actions**.
 
 ### Key Release Actions
+
+- **Fullscreen and Monitor Control**:
+  - **`F`**: Toggle fullscreen mode.
+  - **`0` - `5`**: Select monitor index (Only if the monitor is available).
+
+- **XML Handling**:
+  - **`Enter`**: Save coordinates to XML.
+  - **`L`**: Load coordinates from XML.
 
 - **`R`**: Reset control point parameters.
 
@@ -15,17 +27,9 @@ The following keyboard shortcuts are available for interacting with the applicat
   - `F4`: Select Bottom-Left control point.
   
 - **Calibration Point Parameters**:
-  - **`A`**: Change control point position.
-  - **`D`**: Change control point dimensions.
-  - **`S`**: Change control point shear.
-
-- **Fullscreen and Monitor Control**:
-  - **`F`**: Toggle fullscreen mode.
-  - **`0` - `5`**: Select monitor index (Only if the monitor is available).
-
-- **XML Handling**:
-  - **`Enter`**: Save coordinates to XML.
-  - **`L`**: Load coordinates from XML.
+  - **`A`**: Switch to control point position adjustment mode.
+  - **`D`**: Switch to wall dimension (height) adjustment mode.
+  - **`S`**: Switch to wall shear adjustment mode.
 
 ### Key Press or Repeat Actions
 
@@ -36,11 +40,15 @@ The following keyboard shortcuts are available for interacting with the applicat
   - **`Ctrl + Left/Right`**: Change displayed image.
 
 - **Control Point Adjustments**:
-  - **`Shift or no modifier + Arrow keys`**: Adjust control point position, dimension, or shear.
-
-### ==================== TODO ====================
-
-1. Add description of how #include are being handled in package.
+  - **`Shift or no modifier + Arrow keys`**: 
+    - In **Position Adjustment Mode (`A`)**: 
+      - `Left/Right`: Move selected control point left or right.
+      - `Up/Down`: Move selected control point up or down.
+    - In **Dimension Adjustment Mode (`D`)**:
+      - `Left/Right`: Decrease or increase the wall width.
+      - `Up/Down`: Decrease or increase the wall height.
+    - In **Shear Adjustment Mode (`S`)**:
+      - `Left/Right`: Skew the wall to the left or right.
 
 ### ==================== INSTALL GLAD LIBRARY ====================
 

@@ -21,66 +21,10 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     if (action == GLFW_RELEASE)
     {
 
-        // ---------- Control Point Reset [R] ----------
-
-        if (key == GLFW_KEY_R)
-        {
-            resetParamCP(cpParam, calModeInd);
-        }
-
-        // ---------- Target selector keys [F1-F4] ----------
-
-        // Top-left control point
-        else if (key == GLFW_KEY_F1)
-        {
-            cpSelected = 0;
-        }
-
-        // Top-right control point
-        else if (key == GLFW_KEY_F2)
-        {
-            cpSelected = 1;
-        }
-
-        // Bottom-right control point
-        else if (key == GLFW_KEY_F3)
-        {
-            cpSelected = 2;
-        }
-
-        // Bottom-left control point
-        else if (key == GLFW_KEY_F4)
-        {
-            cpSelected = 3;
-        }
-
-        // ---------- Change calibration point parameter keys [A, D, S] ----------
-
-        // Control point position [up, down, left, right]
-        else if (key == GLFW_KEY_A)
-        {
-            cpModMode = "position";
-            imgParamInd = 0;
-        }
-
-        // Control point height [up, down]
-        else if (key == GLFW_KEY_D)
-        {
-            cpModMode = "dimension";
-            imgParamInd = 1;
-        }
-
-        // Control point shear [up, down]
-        else if (key == GLFW_KEY_S)
-        {
-            cpModMode = "shear";
-            imgParamInd = 2;
-        }
-
         // ---------- Monitor handling [F, M] ----------
 
         // Set/unset Fullscreen
-        else if (key == GLFW_KEY_F)
+        if (key == GLFW_KEY_F)
         {
             isFullScreen = !isFullScreen;
         }
@@ -120,7 +64,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
 
             // Save the coordinates to the XML file
-            saveCoordinatesXML(H, cpParam, file_path);
+            saveCoordinatesXML(H, calParam, file_path);
         }
 
         // Load coordinates from XML
@@ -130,7 +74,63 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
 
             // Load the coordinates from the XML file
-            loadCoordinatesXML(H, cpParam, file_path);
+            loadCoordinatesXML(H, calParam, file_path);
+        }
+
+        // ---------- Control Point Reset [R] ----------
+
+        else if (key == GLFW_KEY_R)
+        {
+            resetParamCP(calParam, calModeInd);
+        }
+
+        // ---------- Target selector keys [F1-F4] ----------
+
+        // Top-left control point
+        else if (key == GLFW_KEY_F1)
+        {
+            cpSelected = 0;
+        }
+
+        // Top-right control point
+        else if (key == GLFW_KEY_F2)
+        {
+            cpSelected = 1;
+        }
+
+        // Bottom-right control point
+        else if (key == GLFW_KEY_F3)
+        {
+            cpSelected = 2;
+        }
+
+        // Bottom-left control point
+        else if (key == GLFW_KEY_F4)
+        {
+            cpSelected = 3;
+        }
+
+        // ---------- Change calibration point parameter keys [A, D, S] ----------
+
+        // Control point position
+        else if (key == GLFW_KEY_A)
+        {
+            calParamMode = "position";
+            imgParamInd = 0;
+        }
+
+        // Wall dimension calibration 
+        else if (key == GLFW_KEY_D)
+        {
+            calParamMode = "dimension";
+            imgParamInd = 1;
+        }
+
+        // Wall shear calibration
+        else if (key == GLFW_KEY_S)
+        {
+            calParamMode = "shear";
+            imgParamInd = 2;
         }
     }
 
@@ -154,7 +154,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Reset control point parameters when switching calibration modes
             if (key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT)
             {
-                resetParamCP(cpParam, calModeInd);
+                resetParamCP(calParam, calModeInd);
             }
         }
 
@@ -177,61 +177,69 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         else
         {
             // ---------- Control point position change [LEFT, RIGHT, UP, DOWN] ----------
-            if (cpModMode == "position")
+            if (calParamMode == "position")
             {
                 // Set the position increment based on whether the shift key is pressed
-                float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.05f : 0.005f;
+                float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.0005f;
 
                 // Listen for arrow key input to move selected control point
                 if (key == GLFW_KEY_LEFT)
                 {
-                    cpParam[cpSelected][0] -= pos_inc;
+                    calParam[cpSelected][0] -= pos_inc; // Move left
                 }
                 else if (key == GLFW_KEY_RIGHT)
                 {
-                    cpParam[cpSelected][0] += pos_inc;
+                    calParam[cpSelected][0] += pos_inc; // Move right
                 }
                 else if (key == GLFW_KEY_UP)
                 {
-                    cpParam[cpSelected][1] += pos_inc;
+                    calParam[cpSelected][1] += pos_inc; // Move up
                 }
                 else if (key == GLFW_KEY_DOWN)
                 {
-                    cpParam[cpSelected][1] -= pos_inc;
+                    calParam[cpSelected][1] -= pos_inc; // Move down
                 }
             }
 
-            // ---------- Control point dimension/hight change [UP, DOWN] ----------
-            if (cpModMode == "dimension")
+            // ---------- Wall dimension calibration change [LEFT, RIGHT, UP, DOWN] ----------
+            if (calParamMode == "dimension")
             {
                 // Set the dimension increment based on whether the shift key is pressed
-                float dim_inc = (mods & GLFW_MOD_SHIFT) ? 0.0025f : 0.0005f;
+                float dim_inc = (mods & GLFW_MOD_SHIFT) ? 0.001f : 0.0001f;
 
                 // Listen for arrow key input to adjust dimension/height
-                if (key == GLFW_KEY_UP)
+                if (key == GLFW_KEY_LEFT)
                 {
-                    cpParam[cpSelected][3] += dim_inc;
+                    calParam[cpSelected][2] -= dim_inc; // Decrease width
+                }
+                else if (key == GLFW_KEY_RIGHT)
+                {
+                    calParam[cpSelected][2] += dim_inc; // Increase width
+                }
+                else if (key == GLFW_KEY_UP)
+                {
+                    calParam[cpSelected][3] += dim_inc; // Increase height
                 }
                 else if (key == GLFW_KEY_DOWN)
                 {
-                    cpParam[cpSelected][3] -= dim_inc;
+                    calParam[cpSelected][3] -= dim_inc; // Decrease height
                 }
             }
 
-            // ---------- Control point shear change [UP, DOWN] ----------
-            if (cpModMode == "shear")
+            // ---------- Wall shear calibration change [LEFT, RIGHT] ----------
+            if (calParamMode == "shear")
             {
                 // Set the shear increment based on whether the shift key is pressed
-                float shr_inc = (mods & GLFW_MOD_SHIFT) ? 0.025f : 0.005f;
+                float shr_inc = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.001f;
 
                 // Listen for arrow key input to adjust shear
-                if (key == GLFW_KEY_UP)
+                if (key == GLFW_KEY_LEFT)
                 {
-                    cpParam[cpSelected][4] += shr_inc;
+                    calParam[cpSelected][4] -= shr_inc; // Skew left
                 }
-                else if (key == GLFW_KEY_DOWN)
+                else if (key == GLFW_KEY_RIGHT)
                 {
-                    cpParam[cpSelected][4] -= shr_inc;
+                    calParam[cpSelected][4] += shr_inc; // Skew right
                 }
             }
         }
@@ -240,7 +248,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     // ---------- Recompute homography matrix ----------
 
     // Recompute homography matrix
-    computeHomography(H, cpParam);
+    computeHomography(H, calParam);
 
     // Update the window monitor and mode
     updateWindowMonMode(p_windowID, p_monitorIDVec, winMonInd, isFullScreen);
@@ -346,12 +354,13 @@ void drawWalls(
                 ilBindImage(img_base_id); // show test pattern
             }
 
-            // Calculate shear and height for the current wall
+            // Calculate width, height and shear for the current wall
+            float width_val = calculateInterpolatedValue(cp_param, 2, i_wall, j_wall, MAZE_SIZE);
             float height_val = calculateInterpolatedValue(cp_param, 3, i_wall, j_wall, MAZE_SIZE);
             float shear_val = calculateInterpolatedValue(cp_param, 4, i_wall, j_wall, MAZE_SIZE);
 
             // Create wall vertices
-            std::vector<cv::Point2f> rect_vertices_vec = computeRectVertices(0.0f, 0.0f, WALL_WIDTH, height_val, shear_val);
+            std::vector<cv::Point2f> rect_vertices_vec = computeRectVertices(0.0f, 0.0f, width_val, height_val, shear_val);
 
             // Apply perspective warping to vertices
             float x_offset = i_wall * WALL_SPACE;
@@ -433,14 +442,13 @@ int main(int argc, char **argv)
     // Log paths for debugging
     ROS_INFO("SETTINGS: Config XML Path: %s", CONFIG_DIR_PATH.c_str());
     ROS_INFO("SETTINGS: Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
-    ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", WALL_WIDTH, WALL_SPACE);
-    ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(WALL_WIDTH * (float)PROJ_WIN_WIDTH_PXL), (int)(WALL_SPACE * (float)PROJ_WIN_WIDTH_PXL));
+    ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
 
     // Initialize control point parameters
-    resetParamCP(cpParam, calModeInd);
+    resetParamCP(calParam, calModeInd);
 
     // Do initial computations of homography matrix
-    computeHomography(H, cpParam);
+    computeHomography(H, calParam);
 
     // --------------- OpenGL SETUP ---------------
 
@@ -518,12 +526,18 @@ int main(int argc, char **argv)
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Draw/update wall images
-        drawWalls(H, cpParam, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
+        drawWalls(H, calParam, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
 
         // Draw/update control points
         for (int i = 0; i < 4; i++)
         {
-            drawControlPoint(cpParam[i][0], cpParam[i][1], cpParam[i][2], cpSelected == i ? cpActiveRGBVec : cpInactiveRGBVec);
+            // Get control point color based on cp selection and mode
+            std::vector<float> cp_col =
+                (cpSelected != i) ? cpInactiveRGBVec : (cpSelected == 1 && (calParamMode != "position")) ? cpDisabledRGBVec
+                                                                                                      : cpActiveRGBVec;
+
+            // Draw the control point
+            drawControlPoint(calParam[i][0], calParam[i][1], CP_RADIUS_NDC, cp_col);
         }
 
         // Swap buffers and poll events

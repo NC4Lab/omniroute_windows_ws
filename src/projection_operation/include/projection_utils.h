@@ -153,18 +153,6 @@ int IMG_PROJ_MAP[4][3][3][3] = {
     },
 };
 
-// Number of rows and columns in the maze
-extern const int MAZE_SIZE = 3;
-
-// Wall image size and spacing (pixels)
-extern const int WALL_WIDTH_PXL = 300;
-extern const int WALL_HEIGHT_PXL = 540;
-
-// Wall image size and spacingOpenGL's Normalized Device Coordinates (NDC) [-1, 1]
-/// @todo: Figure out how these values are used and what units they are in
-extern const float WALL_WIDTH = 0.02f;
-extern const float WALL_SPACE = 2.5f * WALL_WIDTH;
-
 // Spricify window resolution: 4K resolution (3840x2160)
 extern const int PROJ_WIN_WIDTH_PXL = 3840;
 extern const int PROJ_WIN_HEIGHT_PXL = 2160;
@@ -178,16 +166,29 @@ extern const std::string CONFIG_DIR_PATH = workspace_path + "/data/proj_cfg";
 // Directory paths for configuration images
 extern const std::string IMAGE_TOP_DIR_PATH = workspace_path + "/data/proj_img";
 
+// Number of rows and columns in the maze
+extern const int MAZE_SIZE = 3;
+
+// Wall image size and spacing (pixels)
+extern const int WALL_WIDTH_PXL = 300;
+extern const int WALL_HEIGHT_PXL = 540;
+
+// Wall image size and spacingOpenGL's Normalized Device Coordinates (NDC) [-1, 1]
+/// @todo: Figure out how these values are used and what units they are in
+const float wall_width_ndc = 0.015f;
+const float wall_height_ndc = wall_width_ndc * PROJ_WIN_ASPECT_RATIO;
+extern const float WALL_SPACE = 2.0f * wall_width_ndc;
+
 // Variables related to control point parameters
-/// @todo: clearify the units of these variables
-const float cp_size = 0.01f;
-const float cp_xy_lim = 0.2f;
-const float cp_height = cp_size * PROJ_WIN_ASPECT_RATIO;
+extern const float CP_RADIUS_NDC = 0.005f;
+const float cp_xy_lim = 0.15f; // Offset from center of screen for control points
 
 // Control point parameter arrays
 /**
  * @brief Array to hold the position and transformation parameters for control points in normalized coordinates [-1, 1].
  *
+ * @note The second control point (index 1) can only be used to adjust the wall position.
+ * 
  * Each row corresponds to a specific control point on the screen, and each column holds a different attribute
  * of that control point.
  *
@@ -200,16 +201,16 @@ const float cp_height = cp_size * PROJ_WIN_ASPECT_RATIO;
  * - Columns:
  *   - [0]: X-distance from center [-1,1]
  *   - [1]: Y-distance from center [-1,1]
- *   - [2]: Width/Radius parameter
- *   - [3]: Height parameter
+ *   - [2]: Wall width parameter [-1,1]
+ *   - [3]: Wall height parameter [-1,1]
  *   - [4]: Shearing factor
  */
 extern const float CP_PARAM[4][5] = {
     // Default control point parameters
-    {-cp_xy_lim, cp_xy_lim, cp_size, cp_height, 0.0f}, // top-left control point
-    {cp_xy_lim, cp_xy_lim, cp_size, cp_height, 0.0f},  // top-right control point
-    {cp_xy_lim, -cp_xy_lim, cp_size, cp_height, 0.0f}, // bottom-right control point
-    {-cp_xy_lim, -cp_xy_lim, cp_size, cp_height, 0.0f} // bottom-left control point
+    {-cp_xy_lim, cp_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
+    {cp_xy_lim, cp_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f},  // top-right control point
+    {cp_xy_lim, -cp_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f}, // bottom-right control point
+    {-cp_xy_lim, -cp_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f} // bottom-left control point
 };
 
 // ================================================== FUNCTIONS ==================================================
