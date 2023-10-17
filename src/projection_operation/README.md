@@ -34,10 +34,10 @@ The following keyboard shortcuts are available for interacting with the applicat
 ### Key Press or Repeat Actions
 
 - **Calibration Mode**:
-  - **`Alt + Left/Right`**: Change calibration mode and reset control point parameters.
+  - **`Ctrl + Left/Right`**: Change calibration mode and reset control point parameters.
 
 - **Image Change**:
-  - **`Ctrl + Left/Right`**: Change displayed image.
+  - **`Alt + Left/Right`**: Change displayed image.
 
 - **Control Point Adjustments**:
   - **`Shift or no modifier + Arrow keys`**: 

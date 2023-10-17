@@ -118,20 +118,20 @@ int IMG_PROJ_MAP[4][3][3][3] = {
     // Projector 0: East
     {
         // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 1}, {3, 4, 3}, {5, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
         // Chamber Row: Middle
-        {{0, 1, 0}, {2, 3, 2}, {0, 5, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
         // Chamber Row: Bottom
-        {{1, 0, 0}, {1, 2, 1}, {0, 0, 5}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
     },
     // Projector 1: North
     {
         // Chamber Row: Top, Column: Left, Center, Right
-        {{1, 1, 1}, {0, 0, 0}, {2, 2, 2}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        {{0, 0, 0}, {1, 2, 3}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
         // Chamber Row: Middle
-        {{3, 3, 3}, {0, 0, 0}, {1, 1, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        {{1, 2, 3}, {0, 0, 0}, {3, 2, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
         // Chamber Row: Bottom
-        {{0, 0, 0}, {4, 4, 4}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        {{0, 0, 0}, {3, 2, 1}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
     },
     // Projector 2: West
     {
@@ -181,9 +181,9 @@ extern const float WALL_SPACE = 2.0f * wall_width_ndc;
 
 // Variables related to control point parameters
 extern const float CP_RADIUS_NDC = 0.005f;
-const float cp_xy_lim = 0.15f; // Offset from center of screen for control points
+const float cal_xy_lim = 0.15f; // Offset from center of screen for control points
 
-// Control point parameter arrays
+// Calibration parameter array
 /**
  * @brief Array to hold the position and transformation parameters for control points in normalized coordinates [-1, 1].
  *
@@ -205,12 +205,12 @@ const float cp_xy_lim = 0.15f; // Offset from center of screen for control point
  *   - [3]: Wall height parameter [-1,1]
  *   - [4]: Shearing factor
  */
-extern const float CP_PARAM[4][5] = {
+extern const float CAL_PARAM_DEFAULT[4][5] = {
     // Default control point parameters
-    {-cp_xy_lim, cp_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
-    {cp_xy_lim, cp_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f},  // top-right control point
-    {cp_xy_lim, -cp_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f}, // bottom-right control point
-    {-cp_xy_lim, -cp_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f} // bottom-left control point
+    {-cal_xy_lim, cal_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
+    {cal_xy_lim, cal_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f},  // top-right control point
+    {cal_xy_lim, -cal_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f}, // bottom-right control point
+    {-cal_xy_lim, -cal_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f} // bottom-left control point
 };
 
 // ================================================== FUNCTIONS ==================================================
@@ -234,12 +234,12 @@ std::string formatCoordinatesFilePathXML(int, int, std::string);
  * @brief Loads control points and homography matrix from an XML file.
  *
  * This is the primary function containing the implementation. It reads an XML file
- * to populate the `ref_H` and `ref_cp_param` matrices.
+ * to populate the `ref_H` and `ref_cal_param` matrices.
  *
  * @note Uses pugiXML for XML parsing.
  *
  * @param ref_H Homography matrix to populate.
- * @param ref_cp_param 2D array for control points in normalized coordinates [-1, 1].
+ * @param ref_cal_param 2D array for control points in normalized coordinates [-1, 1].
  * @param full_path Path to the XML file.
  * @param verbose_level Level of verbosity for printing loaded data (0:nothing, 1:file name, 2:control points, 3:homography matrix).
  *
@@ -260,13 +260,13 @@ int loadCoordinatesXML(cv::Mat &, float (&)[4][5], std::string, int = 0);
  * Example XML structure:
  * @code
  * <config>
- *   <cpParam>
+ *   <calParam>
  *     <Row>
  *       <Cell>value</Cell>
  *       ...
  *     </Row>
  *     ...
- *   </cpParam>
+ *   </calParam>
  *   <H>
  *     <Row>
  *       <Cell>value</Cell>
@@ -277,7 +277,7 @@ int loadCoordinatesXML(cv::Mat &, float (&)[4][5], std::string, int = 0);
  * </config>
  * @endcode
  *
- * @param cp_param 2D array of control point positions.
+ * @param cal_param 2D array of control point positions.
  * @param full_path Path to the XML file.
  */
 void saveCoordinatesXML(cv::Mat, float[4][5], std::string);
@@ -317,8 +317,8 @@ ILuint mergeImages(ILuint, ILuint);
  * This function performs bilinear interpolation based on the position of a point
  * within a 2D grid (grid_ind_i, grid_ind_j) and predefined values at the grid corners.
  *
- * @param cp_param The array of control point parameters.
- * @param cp_param_ind The index of the control point parameter (3:height, 4:sheer).
+ * @param cal_param The array of control point parameters.
+ * @param cal_param_ind The index of the control point parameter (3:height, 4:sheer).
  * @param grid_ind_i The index of the point along the first axis within the grid.
  * @param grid_ind_j The index of the point along the second axis within the grid.
  * @param GRID_SIZE The size of the 2D grid.
@@ -363,23 +363,22 @@ std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f>, cv::Ma
  * This function calculates the homography matrix that maps points from the source image (wall images)
  * to the destination image (control points). The homography matrix is stored in the global variable H.
  *
- * Control points are specified in normalized coordinates and are fetched from the global variable cpParam.
+ * Control points are specified in normalized coordinates based on the calibration paramiters array.
  * Wall image vertices are calculated based on the dimensions and spacing of the maze walls.
  *
  * @note This function uses the OpenCV library to compute the homography matrix.
- * @note The global variables cpParam, MAZE_SIZE, and wallSpace are used to control the behavior of this function.
  *
  * @param ref_H The homography matrix used to warp perspective.
- * @param cp_param The array of control point parameters.
+ * @param cal_param The array of control point parameters.
  */
 void computeHomography(cv::Mat &, float[4][5]);
 
 /**
  * @brief Used to reset control point parameter list.
  *
- * @param ref_cp_param Reference to 2D array for control points.
+ * @param ref_cal_param Reference to 2D array for control points.
  * @param cal_ind Index of the active calibration mode.
  */
-void resetParamCP(float (&)[4][5], int);
+void updateParamCP(float (&)[4][5], int);
 
 #endif

@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 <config>
-	<cp_param>
+	<cal_param>
 		<Row>
 			<Cell>-0.700000</Cell>
 			<Cell>0.500000</Cell>
@@ -29,7 +29,7 @@
 			<Cell>0.036000</Cell>
 			<Cell>0.000000</Cell>
 		</Row>
-	</cp_param>
+	</cal_param>
 	<H>
 		<Row>
 			<Cell>10.000001</Cell>

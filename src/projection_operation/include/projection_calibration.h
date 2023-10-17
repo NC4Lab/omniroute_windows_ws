@@ -63,7 +63,7 @@ bool isFullScreen = false; // Flag to indicate if the window is in full screen m
 // Control point parameter image variables for ui
 std::vector<ILuint> imgParamIDVec; // Container to hold the loaded images for ui
 std::vector<std::string> imgParamPathVec = {
-    // List of cp parameter image file paths
+    // List of calibration parameter image file paths
     image_state_dir_path + "/p.bmp",
     image_state_dir_path + "/d.bmp",
     image_state_dir_path + "/s.bmp",
@@ -85,7 +85,7 @@ size_t nCalModes = imgCalPathVec.size(); // Number of calibration modes
 
 // Variables related to window and OpenGL
 GLFWwindow *p_windowID;
-GLFWmonitor **p_monitorIDVec;
+GLFWmonitor **pp_monitorIDVec;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -157,7 +157,7 @@ void drawRectImage(std::vector<cv::Point2f>);
  * warping based on the homography matrix and shear and height values extracted from control points.
  *
  * @param ref_H The homography matrix used to warp perspective.
- * @param cp_param The array of control point parameters.
+ * @param cal_param_arr The array of control point parameters.
  * @param fbo_texture The OpenGL texture ID of the framebuffer object.
  * @param img_base_id The DevIL image ID of the base image.
  * @param img_mon_id The DevIL image ID of the monitor image.

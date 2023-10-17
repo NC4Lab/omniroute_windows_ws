@@ -56,7 +56,7 @@ std::string formatCoordinatesFilePathXML(int mon_ind, int cal_ind, std::string c
     return file_path;
 }
 
-int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cp_param)[4][5], std::string full_path, int verbose_level)
+int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cal_param)[4][5], std::string full_path, int verbose_level)
 {
     // Get file name from path
     std::string file_name = full_path.substr(full_path.find_last_of('/') + 1);
@@ -70,26 +70,26 @@ int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cp_param)[4][5], std::string 
     }
 
     // Retrieve control point parameters
-    std::vector<std::vector<float>> cp_param_temp;
-    pugi::xml_node cpParamNode = doc.child("config").child("cp_param");
-    for (pugi::xml_node rowNode = cpParamNode.child("Row"); rowNode; rowNode = rowNode.next_sibling("Row"))
+    std::vector<std::vector<float>> cal_param_temp;
+    pugi::xml_node cal_param_node = doc.child("config").child("cal_param");
+    for (pugi::xml_node row_node = cal_param_node.child("Row"); row_node; row_node = row_node.next_sibling("Row"))
     {
         std::vector<float> row;
-        for (pugi::xml_node cellNode = rowNode.child("Cell"); cellNode; cellNode = cellNode.next_sibling("Cell"))
+        for (pugi::xml_node cell_node = row_node.child("Cell"); cell_node; cell_node = cell_node.next_sibling("Cell"))
         {
-            float value = std::stof(cellNode.child_value());
+            float value = std::stof(cell_node.child_value());
             row.push_back(value);
         }
-        cp_param_temp.push_back(row);
+        cal_param_temp.push_back(row);
     }
 
     // Check the dimensions of control pount array
-    if (cp_param_temp.size() != 4)
+    if (cal_param_temp.size() != 4)
     {
-        ROS_ERROR("LOAD XML: Control Point Array from XML has Wrong Number of Rows[%zu]", cp_param_temp.size());
+        ROS_ERROR("LOAD XML: Control Point Array from XML has Wrong Number of Rows[%zu]", cal_param_temp.size());
         return -1;
     }
-    for (const auto &row : cp_param_temp)
+    for (const auto &row : cal_param_temp)
     {
         if (row.size() != 5)
         {
@@ -103,19 +103,19 @@ int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cp_param)[4][5], std::string 
     {
         for (int j = 0; j < 5; j++)
         {
-            ref_cp_param[i][j] = cp_param_temp[i][j];
+            ref_cal_param[i][j] = cal_param_temp[i][j];
         }
     }
 
     // Retrieve homography matrix
     std::vector<std::vector<float>> H_temp;
-    pugi::xml_node HNode = doc.child("config").child("H");
-    for (pugi::xml_node rowNode = HNode.child("Row"); rowNode; rowNode = rowNode.next_sibling("Row"))
+    pugi::xml_node H_node = doc.child("config").child("H");
+    for (pugi::xml_node row_node = H_node.child("Row"); row_node; row_node = row_node.next_sibling("Row"))
     {
         std::vector<float> row;
-        for (pugi::xml_node cellNode = rowNode.child("Cell"); cellNode; cellNode = cellNode.next_sibling("Cell"))
+        for (pugi::xml_node cell_node = row_node.child("Cell"); cell_node; cell_node = cell_node.next_sibling("Cell"))
         {
-            float value = std::stof(cellNode.child_value());
+            float value = std::stof(cell_node.child_value());
             row.push_back(value);
         }
         H_temp.push_back(row);
@@ -158,7 +158,7 @@ int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cp_param)[4][5], std::string 
         {
             std::ostringstream oss;
             oss << "LOAD XML: Control Point Array:\n";
-            for (const auto &row : cp_param_temp)
+            for (const auto &row : cal_param_temp)
             {
                 for (const auto &value : row)
                 {
@@ -188,7 +188,7 @@ int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cp_param)[4][5], std::string 
     return 0;
 }
 
-void saveCoordinatesXML(cv::Mat H, float cp_param[4][5], std::string full_path)
+void saveCoordinatesXML(cv::Mat H, float cal_param[4][5], std::string full_path)
 {
     // Create an XML document object
     pugi::xml_document doc;
@@ -197,12 +197,12 @@ void saveCoordinatesXML(cv::Mat H, float cp_param[4][5], std::string full_path)
     pugi::xml_node root = doc.append_child("config");
 
     // Create a child node for storing control point positions
-    pugi::xml_node arrayNode = root.append_child("cp_param");
+    pugi::xml_node arrayNode = root.append_child("cal_param");
 
-    // Iterate over the rows of the 2D array 'cp_param'
+    // Iterate over the rows of the 2D array 'cal_param'
     for (int i = 0; i < 4; ++i)
     {
-        // Create a row element under "cp_param"
+        // Create a row element under "cal_param"
         pugi::xml_node rowNode = arrayNode.append_child("Row");
 
         // Iterate over the elements in the row
@@ -210,7 +210,7 @@ void saveCoordinatesXML(cv::Mat H, float cp_param[4][5], std::string full_path)
         {
             // Create a cell element under the row
             pugi::xml_node cellNode = rowNode.append_child("Cell");
-            cellNode.append_child(pugi::node_pcdata).set_value(std::to_string(cp_param[i][j]).c_str());
+            cellNode.append_child(pugi::node_pcdata).set_value(std::to_string(cal_param[i][j]).c_str());
         }
     }
 
@@ -401,12 +401,12 @@ ILuint mergeImages(ILuint img1, ILuint img2)
     return mergedImg;
 }
 
-float calculateInterpolatedValue(float cp_param[4][5], int cp_param_ind, int grid_ind_i, int grid_ind_j, int GRID_SIZE)
+float calculateInterpolatedValue(float cal_param[4][5], int cal_param_ind, int grid_ind_i, int grid_ind_j, int GRID_SIZE)
 {
     // Get the 3 corner values
-    float corner1 = cp_param[0][cp_param_ind];
-    float corner3 = cp_param[2][cp_param_ind];
-    float corner4 = cp_param[3][cp_param_ind];
+    float corner1 = cal_param[0][cal_param_ind];
+    float corner3 = cal_param[2][cal_param_ind];
+    float corner4 = cal_param[3][cal_param_ind];
 
     // Normalize the indices by dividing by (GRID_SIZE - 1)
     float normalized_i = static_cast<float>(grid_ind_i) / (GRID_SIZE - 1);
@@ -466,14 +466,14 @@ std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f> rect_ve
     return rect_vertices_vec;
 }
 
-void computeHomography(cv::Mat &ref_H, float cp_param[4][5])
+void computeHomography(cv::Mat &ref_H, float cal_param[4][5])
 {
     // Get the corner/vertex values for each of the control points
     std::vector<cv::Point2f> cp_vertices;
-    cp_vertices.push_back(cv::Point2f(cp_param[0][0], cp_param[0][1])); // top-left
-    cp_vertices.push_back(cv::Point2f(cp_param[1][0], cp_param[1][1])); // top-right
-    cp_vertices.push_back(cv::Point2f(cp_param[2][0], cp_param[2][1])); // bottom-right
-    cp_vertices.push_back(cv::Point2f(cp_param[3][0], cp_param[3][1])); // bottom-left
+    cp_vertices.push_back(cv::Point2f(cal_param[0][0], cal_param[0][1])); // top-left
+    cp_vertices.push_back(cv::Point2f(cal_param[1][0], cal_param[1][1])); // top-right
+    cp_vertices.push_back(cv::Point2f(cal_param[2][0], cal_param[2][1])); // bottom-right
+    cp_vertices.push_back(cv::Point2f(cal_param[3][0], cal_param[3][1])); // bottom-left
 
     // Get the corner/vertex values for each of the wall images
     std::vector<cv::Point2f> img_vertices;
@@ -483,31 +483,31 @@ void computeHomography(cv::Mat &ref_H, float cp_param[4][5])
     ref_H = findHomography(img_vertices, cp_vertices);
 }
 
-void resetParamCP(float (&ref_cp_param)[4][5], int cal_ind)
+void updateParamCP(float (&ref_cal_param)[4][5], int cal_ind)
 {
     // Copy the default array to the dynamic one
     for (int i = 0; i < 4; ++i)
     {
         for (int j = 0; j < 5; ++j)
         {
-            ref_cp_param[i][j] = CP_PARAM[i][j];
+            ref_cal_param[i][j] = CAL_PARAM_DEFAULT[i][j];
         }
     }
 
     // Add an offset when calibrating left or right wall images
-    float horz_offset = 0.05f;
+    float horz_offset = 0.015f;
     if (cal_ind == 0) // left wall
     {
-        ref_cp_param[0][0] -= horz_offset; // top-left
-        ref_cp_param[1][0] -= horz_offset; // top-right
-        ref_cp_param[2][0] -= horz_offset; // bottom-right
-        ref_cp_param[3][0] -= horz_offset; // bottom-left
+        ref_cal_param[0][0] -= horz_offset; // top-left
+        ref_cal_param[1][0] -= horz_offset; // top-right
+        ref_cal_param[2][0] -= horz_offset; // bottom-right
+        ref_cal_param[3][0] -= horz_offset; // bottom-left
     }
     else if (cal_ind == 2) // right wall
     {
-        ref_cp_param[0][0] += horz_offset; // top-left
-        ref_cp_param[1][0] += horz_offset; // top-right
-        ref_cp_param[2][0] += horz_offset; // bottom-right
-        ref_cp_param[3][0] += horz_offset; // bottom-left
+        ref_cal_param[0][0] += horz_offset; // top-left
+        ref_cal_param[1][0] += horz_offset; // top-right
+        ref_cal_param[2][0] += horz_offset; // bottom-right
+        ref_cal_param[3][0] += horz_offset; // bottom-left
     }
 }

@@ -21,7 +21,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     if (action == GLFW_RELEASE)
     {
 
-        // ---------- Monitor handling [F, M] ----------
+        // ---------- Monitor handling [F] ----------
 
         // Set/unset Fullscreen
         if (key == GLFW_KEY_F)
@@ -81,7 +81,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         else if (key == GLFW_KEY_R)
         {
-            resetParamCP(calParam, calModeInd);
+            updateParamCP(calParam, calModeInd);
         }
 
         // ---------- Target selector keys [F1-F4] ----------
@@ -138,9 +138,9 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     else if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {
 
-        // ---------- Calibration mode [ALT + [LEFT, RIGHT]] ----------
+        // ---------- Calibration mode [CTRL + [LEFT, RIGHT]] ----------
 
-        if (mods & GLFW_MOD_ALT)
+        if (mods & GLFW_MOD_CONTROL)
         {
             // Listen for arrow key input to switch through calibration modes
             if (key == GLFW_KEY_LEFT)
@@ -151,16 +151,16 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             {
                 calModeInd = (calModeInd < nCalModes - 1) ? calModeInd + 1 : 0;
             }
-            // Reset control point parameters when switching calibration modes
+            // Reset a subset of control point parameters when switching calibration modes
             if (key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT)
             {
-                resetParamCP(calParam, calModeInd);
+                updateParamCP(calParam, calModeInd);
             }
         }
 
         // ---------- Image change [ALT + [LEFT, RIGHT]] ----------
 
-        else if (mods & GLFW_MOD_CONTROL)
+        else if (mods & GLFW_MOD_ALT)
         {
             // Listen for arrow key input to switch through images
             if (key == GLFW_KEY_LEFT)
@@ -245,13 +245,13 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         }
     }
 
-    // ---------- Recompute homography matrix ----------
+    // _______________ Update _______________
 
     // Recompute homography matrix
     computeHomography(H, calParam);
 
     // Update the window monitor and mode
-    updateWindowMonMode(p_windowID, p_monitorIDVec, winMonInd, isFullScreen);
+    updateWindowMonMode(p_windowID, pp_monitorIDVec, winMonInd, isFullScreen);
 }
 
 void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
@@ -324,7 +324,7 @@ void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
 
 void drawWalls(
     cv::Mat &ref_H,
-    float cp_param[4][5],
+    float cal_param[4][5],
     GLuint fbo_texture_id,
     ILuint img_base_id,
     ILuint img_mon_id,
@@ -355,9 +355,9 @@ void drawWalls(
             }
 
             // Calculate width, height and shear for the current wall
-            float width_val = calculateInterpolatedValue(cp_param, 2, i_wall, j_wall, MAZE_SIZE);
-            float height_val = calculateInterpolatedValue(cp_param, 3, i_wall, j_wall, MAZE_SIZE);
-            float shear_val = calculateInterpolatedValue(cp_param, 4, i_wall, j_wall, MAZE_SIZE);
+            float width_val = calculateInterpolatedValue(cal_param, 2, i_wall, j_wall, MAZE_SIZE);
+            float height_val = calculateInterpolatedValue(cal_param, 3, i_wall, j_wall, MAZE_SIZE);
+            float shear_val = calculateInterpolatedValue(cal_param, 4, i_wall, j_wall, MAZE_SIZE);
 
             // Create wall vertices
             std::vector<cv::Point2f> rect_vertices_vec = computeRectVertices(0.0f, 0.0f, width_val, height_val, shear_val);
@@ -445,7 +445,7 @@ int main(int argc, char **argv)
     ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
 
     // Initialize control point parameters
-    resetParamCP(calParam, calModeInd);
+    updateParamCP(calParam, calModeInd);
 
     // Do initial computations of homography matrix
     computeHomography(H, calParam);
@@ -461,7 +461,7 @@ int main(int argc, char **argv)
     }
 
     // Get the list of available monitors and their count
-    p_monitorIDVec = glfwGetMonitors(&nMonitors);
+    pp_monitorIDVec = glfwGetMonitors(&nMonitors);
     ROS_INFO("GLFW: Found %d monitors", nMonitors);
 
     // Create GLFW window
@@ -499,7 +499,7 @@ int main(int argc, char **argv)
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Update the window monitor and mode
-    updateWindowMonMode(p_windowID, p_monitorIDVec, winMonInd, isFullScreen);
+    updateWindowMonMode(p_windowID, pp_monitorIDVec, winMonInd, isFullScreen);
 
     // --------------- DevIL SETUP ---------------
 
@@ -511,12 +511,6 @@ int main(int argc, char **argv)
     loadImgTextures(imgMonIDVec, imgMonPathVec);
     loadImgTextures(imgParamIDVec, imgParamPathVec);
     loadImgTextures(imgCalIDVec, imgCalPathVec);
-
-    // // TEMP
-    // glClear(GL_COLOR_BUFFER_BIT);
-    // drawWalls(H, cpParam, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
-    // glfwSwapBuffers(p_windowID);
-    // ros::Duration(5.0).sleep(); // Sleeps for 1 second
 
     // _______________ MAIN LOOP _______________
 

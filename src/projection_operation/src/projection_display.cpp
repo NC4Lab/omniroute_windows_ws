@@ -12,25 +12,54 @@
 
 void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
-
-    // Set the current OpenGL context to the window
-    glfwMakeContextCurrent(window);
+    bool do_window_update = false;
 
     // _______________ ANY KEY RELEASE ACTION _______________
 
     if (action == GLFW_RELEASE)
     {
+
+        // ---------- Monitor handling [F, M] ----------
+
+        // Set/unset all windows to fullscreen [F]
+        if (key == GLFW_KEY_F)
+        {
+            isFullScreen = !isFullScreen;
+            do_window_update = true;
+        }
+
+        // Move window between projector and default monitor [M]
+        if (key == GLFW_KEY_M)
+        {
+            isWinOnProj = !isWinOnProj;
+            do_window_update = true;
+        }
     }
 
     // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
     else if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {
     }
+
+    // _______________ Update _______________
+
+    // Update all windows
+    if (do_window_update)
+    {
+        for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
+        {
+            int mon_ind = isWinOnProj ? projMonIndArr[proj_i] : winMonIndDefault; // Show image on default or projector monitor
+            updateWindowMonMode(p_windowIDVec[proj_i], proj_i, pp_monitorIDVec, mon_ind, isFullScreen);
+        }
+    }
 }
 
 void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
+
+    // Check for GL errors
+    checkErrorGL(__LINE__, __FILE__);
 }
 
 static void callbackErrorGLFW(int error, const char *description)
@@ -38,13 +67,13 @@ static void callbackErrorGLFW(int error, const char *description)
     ROS_ERROR("[GLFW] Error Flagged: %s", description);
 }
 
-void checkErrorGL(std::string msg_str)
+void checkErrorGL(int line, const char *file_str)
 {
     GLenum err;
     while ((err = glGetError()) != GL_NO_ERROR)
     {
         // Log or print the error code
-        ROS_INFO("[OpenGL] Error Flagged [%s]: Error Number[%s]: ", msg_str, err);
+        ROS_INFO("[OpenGL] Error Flagged: Line[%d] File[%s] Error Number[%s]: ", line, file_str, err);
     }
 }
 
@@ -97,8 +126,8 @@ int setupProjGLFW(
     // Unbind the FBO
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // Tet window to wondowed mode
-    if (updateWindowMonMode(pp_window_id[win_ind], pp_ref_monitor_id, mon_ind, true) != 0)
+    // Set window to wondowed mode on the second monitor    
+    if (updateWindowMonMode(pp_window_id[win_ind], win_ind, pp_ref_monitor_id, mon_ind, isFullScreen) != 0)
     {
         ROS_ERROR("GLFW: Failed to Update Window[%d] Monitor[%d] Mode", win_ind, mon_ind);
         return -1;
@@ -108,8 +137,8 @@ int setupProjGLFW(
         ROS_INFO("GLFW: Setup Window[%d] On Monitor[%d]", win_ind, mon_ind);
     }
 
-    // Check for errors
-    checkErrorGL("setupProjGLFW");
+    // Check for GL errors
+    checkErrorGL(__LINE__, __FILE__);
 
     return 0;
 }
@@ -144,11 +173,14 @@ void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
 
     // End drawing
     glEnd();
+
+    // Check for GL errors
+    checkErrorGL(__LINE__, __FILE__);
 }
 
 int drawWalls(
     cv::Mat &ref_H,
-    float cp_param[4][5],
+    float cal_param_arr[4][5],
     int proj_i,
     GLFWwindow *p_window_id,
     GLuint fbo_texture_id,
@@ -161,7 +193,7 @@ int drawWalls(
     for (int cal_i = 0; cal_i < 3; cal_i++)
     {
         // Load the image transform coordinates from the XML file
-        std::string file_path = formatCoordinatesFilePathXML(indProjMonCalArr[proj_i], cal_i, CONFIG_DIR_PATH);
+        std::string file_path = formatCoordinatesFilePathXML(projMonIndArr[proj_i], cal_i, CONFIG_DIR_PATH);
         if (loadCoordinatesXML(H, calParam, file_path, 0) != 0)
         {
             ROS_ERROR("XML: Missing XML File[%s]", file_path.c_str());
@@ -183,8 +215,8 @@ int drawWalls(
                 ilBindImage(ref_image_ids_vec[img_ind]); // show test pattern
 
                 // Calculate shear and height for the current wall
-                float height_val = calculateInterpolatedValue(cp_param, 3, wall_i, wall_j, MAZE_SIZE);
-                float shear_val = calculateInterpolatedValue(cp_param, 4, wall_i, wall_j, MAZE_SIZE);
+                float height_val = calculateInterpolatedValue(cal_param_arr, 3, wall_i, wall_j, MAZE_SIZE);
+                float shear_val = calculateInterpolatedValue(cal_param_arr, 4, wall_i, wall_j, MAZE_SIZE);
 
                 // Create wall vertices
                 std::vector<cv::Point2f> rect_vertices_vec = computeRectVertices(0.0f, 0.0f, wall_width_ndc, height_val, shear_val);
@@ -216,11 +248,19 @@ int drawWalls(
     // Disable OpenGL texture mapping
     glDisable(GL_TEXTURE_2D);
 
+    // Check for GL errors
+    checkErrorGL(__LINE__, __FILE__);
+
     return 0;
 }
 
-int updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_id, int mon_ind, bool do_fullscreen)
+int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_ref_monitor_id, int mon_ind, bool is_fullscreen)
 {
+    int x_pos, y_pos;
+
+    // Set the current OpenGL context to the window
+    glfwMakeContextCurrent(p_window_id);
+
     // Get GLFWmonitor for active monitor
     GLFWmonitor *p_monitor_id = pp_ref_monitor_id[mon_ind];
 
@@ -231,27 +271,31 @@ int updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_i
         const GLFWvidmode *mode = glfwGetVideoMode(p_monitor_id);
 
         // Set the window to full-screen mode on the current monitor
-        glfwSetWindowMonitor(p_window_id, p_monitor_id, 0, 0, mode->width, mode->height, mode->refreshRate);
+        x_pos = 0;
+        y_pos = 0;
+        glfwSetWindowMonitor(p_window_id, p_monitor_id, x_pos, y_pos, mode->width, mode->height, mode->refreshRate);
 
-        if (!do_fullscreen)
+        if (!is_fullscreen)
         {
             // Get the position of the current monitor
             int monitor_x, monitor_y;
             glfwGetMonitorPos(p_monitor_id, &monitor_x, &monitor_y);
 
             // Specify offset from the top-left corner of the monitor
-            int x_offset = 500 * (mon_ind);
-            int y_offset = 500 * (mon_ind);
+            x_pos = monitor_x + (int)(500.0f * ((float)win_ind + 0.1f));
+            y_pos = monitor_y + (int)(500.0f * ((float)win_ind + 0.1f));
 
             // Set the window to windowed mode and position it on the current monitor
-            glfwSetWindowMonitor(p_window_id, NULL, monitor_x + x_offset, monitor_y + y_offset, (int)(500.0f * PROJ_WIN_ASPECT_RATIO), 500, 0);
+            glfwSetWindowMonitor(p_window_id, NULL, x_pos, y_pos, (int)(500.0f * PROJ_WIN_ASPECT_RATIO), 500, 0);
         }
+        ROS_INFO("RAN: Update Window: Monitor[%d] Format[%s] X[%d] Y[%d]", mon_ind, is_fullscreen ? "fullscreen" : "windowed", x_pos, y_pos);
     }
     else
     {
         ROS_ERROR("GLFW: Monitor[%d] Not Found", mon_ind);
         return -1;
     }
+
     return 0;
 }
 
@@ -269,10 +313,9 @@ int main(int argc, char **argv)
     ROS_INFO("SETTINGS: Config XML Path: %s", CONFIG_DIR_PATH.c_str());
     ROS_INFO("SETTINGS: Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
     ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", wall_width_ndc, WALL_SPACE);
-    ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", (int)(wall_width_ndc * (float)PROJ_WIN_WIDTH_PXL), (int)(WALL_SPACE * (float)PROJ_WIN_WIDTH_PXL));
 
     // Initialize control point parameters
-    resetParamCP(calParam, 0);
+    updateParamCP(calParam, 0);
 
     // Do initial computations of homography matrix
     computeHomography(H, calParam);
@@ -288,8 +331,8 @@ int main(int argc, char **argv)
     }
 
     // Get the list of available monitors and their count
-    p_monitorIDVec = glfwGetMonitors(&nMonitors);
-    ROS_INFO("GLFW: Found %d monitors", nMonitors);
+    pp_monitorIDVec = glfwGetMonitors(&nMonitors);
+    ROS_INFO("GLFW: Monitors Found [%d] Projectors Sepcified[%d]", nMonitors, nProjectors);
 
     // Make sure nProj is not greater than the total number of monitors found
     if (nProjectors > nMonitors)
@@ -299,17 +342,20 @@ int main(int argc, char **argv)
     }
 
     // Copy the monitor ind associated with each projector
-    for (int i = 0; i < nProjectors; ++i)
+    for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
     {
-        p_projectorIDVec[i] = p_monitorIDVec[indProjMonCalArr[i]];
+        p_projectorIDVec[proj_i] = pp_monitorIDVec[projMonIndArr[proj_i]];
     }
 
     // Create GLFW window
-    for (int i = 0; i < nProjectors; ++i)
+    for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
     {
-        if (setupProjGLFW(p_windowIDVec, i, p_monitorIDVec, indProjMonCalArr[i], windowNameVec[i], fboIDVec[i], fboTextureIDVec[i]) != 0)
+        int mon_ind = winMonIndDefault; // Show image on default monitor
+        // int mon_ind =  projMonIndArr[proj_i]; // Show image on projector monitor
+
+        if (setupProjGLFW(p_windowIDVec, proj_i, pp_monitorIDVec, mon_ind, windowNameVec[proj_i], fboIDVec[proj_i], fboTextureIDVec[proj_i]) != 0)
         {
-            ROS_ERROR("GLFW: Setup Failed for Window[%d]", i);
+            ROS_ERROR("GLFW: Setup Failed for Window[%d]", proj_i);
             return -1;
         };
     }
@@ -355,7 +401,11 @@ int main(int argc, char **argv)
                 glClear(GL_COLOR_BUFFER_BIT);
 
                 // Draw the walls
-                drawWalls(H, calParam, proj_i, p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec);
+                if (drawWalls(H, calParam, proj_i, p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec) != 0)
+                {
+                    ROS_ERROR("Failed to Draw Walls for Window[%d]", proj_i);
+                    return -1;
+                }
 
                 // Unbind the texture
                 glBindTexture(GL_TEXTURE_2D, 0);
@@ -365,6 +415,9 @@ int main(int argc, char **argv)
 
                 // Swap buffers
                 glfwSwapBuffers(p_window_id);
+
+                // Check for GL errors
+                checkErrorGL(__LINE__, __FILE__);
             }
 
             // Exit condition
@@ -378,8 +431,8 @@ int main(int argc, char **argv)
         // Poll and process events for all windows
         glfwPollEvents();
 
-        // Check for errors
-        checkErrorGL("Main Loop");
+        // Check for GL errors
+        checkErrorGL(__LINE__, __FILE__);
     }
 
     // _______________ CLEANUP _______________

@@ -49,11 +49,16 @@ std::vector<std::string> windowNameVec = {
 // Monitor and projector variables
 int nMonitors;             // Number of monitors (autopopulated)
 const int nProjectors = 2; // Number of projectors  (autopopulated)
-int indProjMonCalArr[nProjectors] = {
-    // Index of the monitor for each projector (hardcoded)
+int projMonIndArr[nProjectors] = {
+    // Index of the monitor associeted to each projector (hardcoded)
     1,
     2,
 };
+bool isFullScreen = false; // Flag to indicate if the window is in full screen mode
+bool isWinOnProj = false;  // Flag to indicate if the window is on the projector
+
+// Default monitor index for all windows
+int winMonIndDefault = 1; // Default monitor index for the window
 
 // Window for OpenGL
 GLFWwindow *p_windowIDVec[nProjectors];
@@ -64,7 +69,7 @@ std::vector<GLuint> fboTextureIDVec(nProjectors);
 
 // Monitor variable for OpenGL
 GLFWmonitor *p_monitorID = NULL;
-GLFWmonitor **p_monitorIDVec;
+GLFWmonitor **pp_monitorIDVec;
 
 // Projector variable for OpenGL
 GLFWmonitor *p_projectorID;
@@ -114,9 +119,10 @@ static void callbackErrorGLFW(int, const char *);
 /**
  * @brief Check and print OpenGL errors.
  *
- * @param msg_str String to include in the message.
+ * @param line The line number from where the function is called.
+ * @param file_str The file name from where the function is called.
  */
-void checkErrorGL(std::string);
+void checkErrorGL(int, const char *);
 
 /**
  * @brief Set up a GLFW window and its associated Framebuffer Object (FBO) and texture.
@@ -151,7 +157,7 @@ void drawRectImage(std::vector<cv::Point2f>);
  * draw the corresponding image.
  *
  * @param ref_H Reference to the Homography Matrix.
- * @param cp_param Array containing control point parameters.
+ * @param cal_param_arr Array containing control point parameters.
  * @param proj_i Index of the projector being used.
  * @param p_window_id Pointer to the GLFW window.
  * @param fbo_texture_id Framebuffer Object's texture ID.
@@ -159,8 +165,7 @@ void drawRectImage(std::vector<cv::Point2f>);
  *
  * @return Returns 0 on success, -1 otherwise.
  */
-int drawWalls(cv::Mat&, float[4][5], int, GLFWwindow*, GLuint, std::vector<ILuint>&);
-
+int drawWalls(cv::Mat &, float[4][5], int, GLFWwindow *, GLuint, std::vector<ILuint> &);
 
 /**
  * @brief Changes the display mode and monitor of the application window.
@@ -177,13 +182,14 @@ int drawWalls(cv::Mat&, float[4][5], int, GLFWwindow*, GLuint, std::vector<ILuin
  *       Will only exicute if monotor parameters have changed.
  *
  * @param p_window_id Pointer to the GLFWwindow pointer that will be updated.
+ * @param win_ind Index of the window for which the setup is to be done.
  * @param pp_ref_monitor_id Reference to the GLFWmonitor pointer array.
  * @param mon_ind Index of the monitor to move the window to.
- * @param do_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
+ * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
  *
  * @return 0 on successful execution, -1 on failure.
  */
-int updateWindowMonMode(GLFWwindow *, GLFWmonitor **&, int, bool);
+int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
 
 /**
  * @brief  Entry point for the projection_display ROS node.
