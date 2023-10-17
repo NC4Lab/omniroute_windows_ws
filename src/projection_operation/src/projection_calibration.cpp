@@ -544,6 +544,7 @@ int main(int argc, char **argv)
     }
 
     // _______________ CLEANUP _______________
+    ROS_INFO("SHUTDOWN: Running Shutdown");
 
     // Destroy GLFW window and DevIL images
     glfwDestroyWindow(p_windowID);

@@ -48,8 +48,8 @@ std::vector<std::string> windowNameVec = {
 
 // Monitor and projector variables
 int nMonitors;             // Number of monitors (autopopulated)
-const int nProjectors = 2; // Number of projectors  (autopopulated)
-int projMonIndArr[nProjectors] = {
+const int nProjectors = 1; // Number of projectors  (autopopulated)
+std::vector<int> projMonIndArr = {
     // Index of the monitor associeted to each projector (hardcoded)
     1,
     2,
@@ -58,7 +58,7 @@ bool isFullScreen = false; // Flag to indicate if the window is in full screen m
 bool isWinOnProj = false;  // Flag to indicate if the window is on the projector
 
 // Default monitor index for all windows
-int winMonIndDefault = 1; // Default monitor index for the window
+int winMonIndDefault = 2; // Default monitor index for the window
 
 // Window for OpenGL
 GLFWwindow *p_windowIDVec[nProjectors];

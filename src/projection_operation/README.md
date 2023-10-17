@@ -3,6 +3,7 @@
 ### ==================== TODO ====================
 
 1. Add description of how #include are being handled in package.
+2. Modify code to make sure image is always displaying
 
 ### ==================== PROJECTION CALIBRATION UI KEYBINDINGS ====================
 

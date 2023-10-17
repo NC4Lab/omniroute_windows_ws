@@ -176,12 +176,13 @@ extern const int WALL_HEIGHT_PXL = 540;
 // Wall image size and spacingOpenGL's Normalized Device Coordinates (NDC) [-1, 1]
 /// @todo: Figure out how these values are used and what units they are in
 const float wall_width_ndc = 0.015f;
-const float wall_height_ndc = wall_width_ndc * PROJ_WIN_ASPECT_RATIO;
+const float wall_height_ndc = 0.015f;
 extern const float WALL_SPACE = 2.0f * wall_width_ndc;
 
 // Variables related to control point parameters
 extern const float CP_RADIUS_NDC = 0.005f;
-const float cal_xy_lim = 0.15f; // Offset from center of screen for control points
+const float cal_x_lim = 0.15f; // X offset from center of screen for control points
+const float cal_y_lim = 0.3f; // X offset from center of screen for control points
 
 // Calibration parameter array
 /**
@@ -207,10 +208,10 @@ const float cal_xy_lim = 0.15f; // Offset from center of screen for control poin
  */
 extern const float CAL_PARAM_DEFAULT[4][5] = {
     // Default control point parameters
-    {-cal_xy_lim, cal_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
-    {cal_xy_lim, cal_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f},  // top-right control point
-    {cal_xy_lim, -cal_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f}, // bottom-right control point
-    {-cal_xy_lim, -cal_xy_lim, wall_width_ndc, wall_height_ndc, 0.0f} // bottom-left control point
+    {-cal_x_lim, cal_y_lim, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
+    {cal_x_lim, cal_y_lim, wall_width_ndc, wall_height_ndc, 0.0f},  // top-right control point
+    {cal_x_lim, -cal_y_lim, wall_width_ndc, wall_height_ndc, 0.0f}, // bottom-right control point
+    {-cal_x_lim, -cal_y_lim, wall_width_ndc, wall_height_ndc, 0.0f} // bottom-left control point
 };
 
 // ================================================== FUNCTIONS ==================================================
