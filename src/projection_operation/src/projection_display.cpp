@@ -215,11 +215,12 @@ int drawWalls(
                 ilBindImage(ref_image_ids_vec[img_ind]); // show test pattern
 
                 // Calculate shear and height for the current wall
+                float width_val = calculateInterpolatedValue(cal_param_arr, 2, wall_i, wall_j, MAZE_SIZE);
                 float height_val = calculateInterpolatedValue(cal_param_arr, 3, wall_i, wall_j, MAZE_SIZE);
                 float shear_val = calculateInterpolatedValue(cal_param_arr, 4, wall_i, wall_j, MAZE_SIZE);
 
                 // Create wall vertices
-                std::vector<cv::Point2f> rect_vertices_vec = computeRectVertices(0.0f, 0.0f, wall_width_ndc, height_val, shear_val);
+                std::vector<cv::Point2f> rect_vertices_vec = computeRectVertices(0.0f, 0.0f, width_val, height_val, shear_val);
 
                 // Apply perspective warping to vertices
                 float x_offset = wall_i * WALL_SPACE;
@@ -436,6 +437,7 @@ int main(int argc, char **argv)
     }
 
     // _______________ CLEANUP _______________
+     ROS_INFO("SHUTDOWN: Started");
 
     // Destroy GL objects
     for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
@@ -447,18 +449,22 @@ int main(int argc, char **argv)
         glDeleteFramebuffers(1, &fboIDVec[proj_i]);
         glDeleteTextures(1, &fboTextureIDVec[proj_i]);
     }
+    ROS_INFO("SHUTDOWN: Detroyd GLFW window and DevIL images");
 
     // Destroy DevIL images
     for (ILuint image_id : imgWallIDVec)
     {
         ilDeleteImages(1, &image_id);
     }
+    ROS_INFO("SHUTDOWN: Deleted DevIL images");
 
     // Shutdown DevIL
     ilShutDown();
+    ROS_INFO("SHUTDOWN: Shutdown DevIL");
 
     // Terminate GLFW
     glfwTerminate();
+    ROS_INFO("SHUTDOWN: Terminated GLFW");
 
     return 0;
 }

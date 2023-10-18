@@ -324,7 +324,7 @@ void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
 
 void drawWalls(
     cv::Mat &ref_H,
-    float cal_param[4][5],
+    float cal_param_arr[4][5],
     GLuint fbo_texture_id,
     ILuint img_base_id,
     ILuint img_mon_id,
@@ -335,13 +335,13 @@ void drawWalls(
     glEnable(GL_TEXTURE_2D);
 
     // Iterate through the maze grid
-    for (float i_wall = 0; i_wall < MAZE_SIZE; i_wall++)
+    for (float wall_i = 0; wall_i < MAZE_SIZE; wall_i++)
     {
         // Iterate through each cell in the maze row
-        for (float j_wall = 0; j_wall < MAZE_SIZE; j_wall++)
+        for (float wall_j = 0; wall_j < MAZE_SIZE; wall_j++)
         {
             // Bind image
-            if (i_wall == 1 && j_wall == 1)
+            if (wall_i == 1 && wall_j == 1)
             {
                 // Merge images
                 ILuint merge_images_1 = mergeImages(img_base_id, img_mon_id);      // merge test pattern and active monitor image
@@ -355,16 +355,16 @@ void drawWalls(
             }
 
             // Calculate width, height and shear for the current wall
-            float width_val = calculateInterpolatedValue(cal_param, 2, i_wall, j_wall, MAZE_SIZE);
-            float height_val = calculateInterpolatedValue(cal_param, 3, i_wall, j_wall, MAZE_SIZE);
-            float shear_val = calculateInterpolatedValue(cal_param, 4, i_wall, j_wall, MAZE_SIZE);
+            float width_val = calculateInterpolatedValue(cal_param_arr, 2, wall_i, wall_j, MAZE_SIZE);
+            float height_val = calculateInterpolatedValue(cal_param_arr, 3, wall_i, wall_j, MAZE_SIZE);
+            float shear_val = calculateInterpolatedValue(cal_param_arr, 4, wall_i, wall_j, MAZE_SIZE);
 
             // Create wall vertices
             std::vector<cv::Point2f> rect_vertices_vec = computeRectVertices(0.0f, 0.0f, width_val, height_val, shear_val);
 
             // Apply perspective warping to vertices
-            float x_offset = i_wall * WALL_SPACE;
-            float y_offset = j_wall * WALL_SPACE;
+            float x_offset = wall_i * WALL_SPACE;
+            float y_offset = wall_j * WALL_SPACE;
             std::vector<cv::Point2f> rect_vertices_warped = computePerspectiveWarp(rect_vertices_vec, ref_H, x_offset, y_offset);
 
             // Set texture image
@@ -440,9 +440,9 @@ int main(int argc, char **argv)
     ROS_INFO("RUNNING MAIN");
 
     // Log paths for debugging
-    ROS_INFO("SETTINGS: Config XML Path: %s", CONFIG_DIR_PATH.c_str());
-    ROS_INFO("SETTINGS: Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
-    ROS_INFO("SETTINGS: Wall (Pxl): Width=%d Space=%d", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
+    ROS_INFO("SETUP: Config XML Path: %s", CONFIG_DIR_PATH.c_str());
+    ROS_INFO("SETUP: Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
+    ROS_INFO("SETUP: Wall (Pxl): Width=%d Space=%d", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
 
     // Initialize control point parameters
     updateParamCP(calParam, calModeInd);
@@ -544,7 +544,7 @@ int main(int argc, char **argv)
     }
 
     // _______________ CLEANUP _______________
-    ROS_INFO("SHUTDOWN: Running Shutdown");
+    ROS_INFO("SHUTDOWN: Started");
 
     // Destroy GLFW window and DevIL images
     glfwDestroyWindow(p_windowID);
@@ -552,12 +552,15 @@ int main(int argc, char **argv)
     {
         ilDeleteImages(1, &image_id);
     }
+    ROS_INFO("SHUTDOWN: Detroyd GLFW window and DevIL images");
 
     // Shutdown DevIL
     ilShutDown();
+    ROS_INFO("SHUTDOWN: Shutdown DevIL");
 
     // Terminate GLFW
     glfwTerminate();
+    ROS_INFO("SHUTDOWN: Terminated GLFW");
 
     return 0;
 }
