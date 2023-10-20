@@ -56,7 +56,7 @@ std::string formatCoordinatesFilePathXML(int mon_ind, int cal_ind, std::string c
     return file_path;
 }
 
-int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cal_param)[4][5], std::string full_path, int verbose_level)
+int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cal_param_arr)[4][5], std::string full_path, int verbose_level)
 {
     // Get file name from path
     std::string file_name = full_path.substr(full_path.find_last_of('/') + 1);
@@ -103,7 +103,7 @@ int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cal_param)[4][5], std::string
     {
         for (int j = 0; j < 5; j++)
         {
-            ref_cal_param[i][j] = cal_param_temp[i][j];
+            ref_cal_param_arr[i][j] = cal_param_temp[i][j];
         }
     }
 
@@ -188,7 +188,7 @@ int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cal_param)[4][5], std::string
     return 0;
 }
 
-void saveCoordinatesXML(cv::Mat H, float cal_param[4][5], std::string full_path)
+void saveCoordinatesXML(cv::Mat H, float cal_param_arr[4][5], std::string full_path)
 {
     // Create an XML document object
     pugi::xml_document doc;
@@ -199,10 +199,10 @@ void saveCoordinatesXML(cv::Mat H, float cal_param[4][5], std::string full_path)
     // Create a child node for storing control point positions
     pugi::xml_node arrayNode = root.append_child("cal_param");
 
-    // Iterate over the rows of the 2D array 'cal_param'
+    // Iterate over the rows of the 2D array 'cal_param_arr'
     for (int i = 0; i < 4; ++i)
     {
-        // Create a row element under "cal_param"
+        // Create a row element under "cal_param_arr"
         pugi::xml_node rowNode = arrayNode.append_child("Row");
 
         // Iterate over the elements in the row
@@ -210,7 +210,7 @@ void saveCoordinatesXML(cv::Mat H, float cal_param[4][5], std::string full_path)
         {
             // Create a cell element under the row
             pugi::xml_node cellNode = rowNode.append_child("Cell");
-            cellNode.append_child(pugi::node_pcdata).set_value(std::to_string(cal_param[i][j]).c_str());
+            cellNode.append_child(pugi::node_pcdata).set_value(std::to_string(cal_param_arr[i][j]).c_str());
         }
     }
 
@@ -401,16 +401,16 @@ ILuint mergeImages(ILuint img1, ILuint img2)
     return mergedImg;
 }
 
-float calculateInterpolatedValue(float cal_param[4][5], int cal_param_ind, int grid_ind_i, int grid_ind_j, int GRID_SIZE)
+float calculateInterpolatedValue(float cal_param_arr[4][5], int cal_param_ind, int grid_ind_i, int grid_ind_j, int grid_size)
 {
     // Get the 3 corner values
-    float corner1 = cal_param[0][cal_param_ind];
-    float corner3 = cal_param[2][cal_param_ind];
-    float corner4 = cal_param[3][cal_param_ind];
+    float corner1 = cal_param_arr[0][cal_param_ind];
+    float corner3 = cal_param_arr[2][cal_param_ind];
+    float corner4 = cal_param_arr[3][cal_param_ind];
 
-    // Normalize the indices by dividing by (GRID_SIZE - 1)
-    float normalized_i = static_cast<float>(grid_ind_i) / (GRID_SIZE - 1);
-    float normalized_j = static_cast<float>(grid_ind_j) / (GRID_SIZE - 1);
+    // Normalize the indices by dividing by (grid_size - 1)
+    float normalized_i = static_cast<float>(grid_ind_i) / (grid_size - 1);
+    float normalized_j = static_cast<float>(grid_ind_j) / (grid_size - 1);
 
     // Linearly interpolate values between corners 3 and 4 based on grid_i_ind
     float interp_val_i = normalized_i * (corner3 - corner4);
@@ -466,18 +466,26 @@ std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f> rect_ve
     return rect_vertices_vec;
 }
 
-void computeHomography(cv::Mat &ref_H, float cal_param[4][5])
+void computeHomography(cv::Mat &ref_H, float cal_param_arr[4][5])
 {
     // Get the corner/vertex values for each of the control points
     std::vector<cv::Point2f> cp_vertices;
-    cp_vertices.push_back(cv::Point2f(cal_param[0][0], cal_param[0][1])); // top-left
-    cp_vertices.push_back(cv::Point2f(cal_param[1][0], cal_param[1][1])); // top-right
-    cp_vertices.push_back(cv::Point2f(cal_param[2][0], cal_param[2][1])); // bottom-right
-    cp_vertices.push_back(cv::Point2f(cal_param[3][0], cal_param[3][1])); // bottom-left
+    cp_vertices.push_back(cv::Point2f(cal_param_arr[0][0], cal_param_arr[0][1])); // top-left
+    cp_vertices.push_back(cv::Point2f(cal_param_arr[1][0], cal_param_arr[1][1])); // top-right
+    cp_vertices.push_back(cv::Point2f(cal_param_arr[2][0], cal_param_arr[2][1])); // bottom-right
+    cp_vertices.push_back(cv::Point2f(cal_param_arr[3][0], cal_param_arr[3][1])); // bottom-left
+
+    // // Calculate the width and height of the overal projected image based on the control point positions
+    // float width = fabs(cal_param_arr[1][0] - cal_param_arr[0][0]);
+    // float height = fabs(cal_param_arr[0][1] - cal_param_arr[3][1]);
+
+    // TEMP
+    float width = (float(MAZE_SIZE) - 1) * WALL_SPACE;
+    float height = (float(MAZE_SIZE) - 1) * WALL_SPACE;
 
     // Get the corner/vertex values for each of the wall images
     std::vector<cv::Point2f> img_vertices;
-    img_vertices = computeRectVertices(0.0f, 0.0f, (float(MAZE_SIZE) - 1) * WALL_SPACE, (float(MAZE_SIZE) - 1) * WALL_SPACE, 0);
+    img_vertices = computeRectVertices(0.0f, 0.0f, width, height, 0);
 
     // Compute the homography matrix
     ref_H = findHomography(img_vertices, cp_vertices);

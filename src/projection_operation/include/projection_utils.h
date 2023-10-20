@@ -235,12 +235,12 @@ std::string formatCoordinatesFilePathXML(int, int, std::string);
  * @brief Loads control points and homography matrix from an XML file.
  *
  * This is the primary function containing the implementation. It reads an XML file
- * to populate the `ref_H` and `ref_cal_param` matrices.
+ * to populate the `ref_H` and `ref_cal_param_arr` matrices.
  *
  * @note Uses pugiXML for XML parsing.
  *
  * @param ref_H Homography matrix to populate.
- * @param ref_cal_param 2D array for control points in normalized coordinates [-1, 1].
+ * @param ref_cal_param_arr 2D array for control points in normalized coordinates [-1, 1].
  * @param full_path Path to the XML file.
  * @param verbose_level Level of verbosity for printing loaded data (0:nothing, 1:file name, 2:control points, 3:homography matrix).
  *
@@ -278,7 +278,7 @@ int loadCoordinatesXML(cv::Mat &, float (&)[4][5], std::string, int = 0);
  * </config>
  * @endcode
  *
- * @param cal_param 2D array of control point positions.
+ * @param cal_param_arr 2D array of control point positions.
  * @param full_path Path to the XML file.
  */
 void saveCoordinatesXML(cv::Mat, float[4][5], std::string);
@@ -318,11 +318,11 @@ ILuint mergeImages(ILuint, ILuint);
  * This function performs bilinear interpolation based on the position of a point
  * within a 2D grid (grid_ind_i, grid_ind_j) and predefined values at the grid corners.
  *
- * @param cal_param The array of control point parameters.
+ * @param cal_param_arr The array of control point parameters.
  * @param cal_param_ind The index of the control point parameter (3:height, 4:sheer).
  * @param grid_ind_i The index of the point along the first axis within the grid.
  * @param grid_ind_j The index of the point along the second axis within the grid.
- * @param GRID_SIZE The size of the 2D grid.
+ * @param grid_size The size of the 2D grid.
  *
  * @return float The calculated interpolated value.
  */
@@ -370,7 +370,7 @@ std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f>, cv::Ma
  * @note This function uses the OpenCV library to compute the homography matrix.
  *
  * @param ref_H The homography matrix used to warp perspective.
- * @param cal_param The array of control point parameters.
+ * @param cal_param_arr The array of control point parameters.
  */
 void computeHomography(cv::Mat &, float[4][5]);
 
