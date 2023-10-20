@@ -257,11 +257,14 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
+
+    // Check for GL errors
+    checkErrorGL(__LINE__, __FILE__);
 }
 
 static void callbackErrorGLFW(int error, const char *description)
 {
-    ROS_ERROR("[GLFW] Error Flagged: %s", description);
+    ROS_ERROR("[GLFW] Error Flagged: Error[%d] Description[%s]", error, description);
 }
 
 void checkErrorGL(int line, const char *file_str)
@@ -281,11 +284,11 @@ void drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec
     // Begin drawing a filled circle
     glBegin(GL_TRIANGLE_FAN);
 
-    // // Set the color to green
-    // glColor3f(rgb_vec[0], rgb_vec[1], rgb_vec[2]);
+    // Set the color to green
+    glColor3f(rgb_vec[0], rgb_vec[1], rgb_vec[2]);
 
-    // TEMP
-    glColor3f(0.5f, 0.5f, 0.5f);
+    // // TEMP
+    // glColor3f(0.5f, 0.5f, 0.5f);
 
     // Center of the circle
     glVertex2f(x, y);
@@ -336,6 +339,9 @@ void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
 
     // End drawing
     glEnd();
+
+    // Check for GL errors
+    checkErrorGL(__LINE__, __FILE__);
 }
 
 void drawWalls(
@@ -351,15 +357,18 @@ void drawWalls(
     glEnable(GL_TEXTURE_2D);
 
     // // TEMP
+    // computeHomography(ref_H, cal_param_arr);
     // ROS_INFO("------------------------------------------------");
 
-    // // Calculate the width and height of the overal projected image based on the control point positions
-    // float img_width = fabs(cal_param_arr[1][0] - cal_param_arr[0][0]);
-    // float img_height = fabs(cal_param_arr[0][1] - cal_param_arr[3][1]);
+    // // Old version
+    // float wall_space_x = WALL_SPACE;
+    // float wall_space_y = WALL_SPACE;
 
-    // // Base offset adjustment
-    // float base_x_offset = cal_param_arr[1][0] * img_width;  // Top-right control point x-coordinate
-    // float base_y_offset = cal_param_arr[1][1] * img_height; // Top-right control point y-coordinate
+    // Calculate the wall spacing
+    float wall_space_x = (fabs(cal_param_arr[0][0]) + cal_param_arr[1][0]) / (float(MAZE_SIZE) - 1); // (top-left x + top-right x) / 2
+    float wall_space_y = (cal_param_arr[0][1] + fabs(cal_param_arr[1][0])) / (float(MAZE_SIZE) - 1); // (top-left y + bottom-left y) / 2
+
+    // ROS_INFO("wall_space_x[%0.2f] wall_space_y[%0.2f]", wall_space_x, wall_space_y);
 
     // Iterate through the maze grid
     for (float wall_i = 0; wall_i < MAZE_SIZE; wall_i++)
@@ -367,22 +376,19 @@ void drawWalls(
         // Iterate through each cell in the maze row
         for (float wall_j = 0; wall_j < MAZE_SIZE; wall_j++)
         {
-            // // Bind image
-            // if (wall_i == 1 && wall_j == 1)
-            // {
-            //     // Merge images
-            //     ILuint merge_images_1 = mergeImages(img_base_id, img_mon_id);      // merge test pattern and active monitor image
-            //     ILuint merge_images_2 = mergeImages(merge_images_1, img_param_id); // merge previous image and active cp parameter image
-            //     ILuint merge_images_3 = mergeImages(merge_images_2, img_cal_id);   // merge previous image and active calibration image
-            //     ilBindImage(merge_images_3);
-            // }
-            // else
-            // {
-            //     ilBindImage(img_base_id); // show test pattern
-            // }
-
-            // TEMP
-            ilBindImage(img_base_id); // show test pattern
+            // Bind image
+            if (wall_i == 1 && wall_j == 1)
+            {
+                // Merge images
+                ILuint merge_images_1 = mergeImages(img_base_id, img_mon_id);      // merge test pattern and active monitor image
+                ILuint merge_images_2 = mergeImages(merge_images_1, img_param_id); // merge previous image and active cp parameter image
+                ILuint merge_images_3 = mergeImages(merge_images_2, img_cal_id);   // merge previous image and active calibration image
+                ilBindImage(merge_images_3);
+            }
+            else
+            {
+                ilBindImage(img_base_id); // show test pattern
+            }
 
             // Calculate width, height and shear for the current wall
             float width_val = calculateInterpolatedValue(cal_param_arr, 2, wall_i, wall_j, MAZE_SIZE);
@@ -392,23 +398,15 @@ void drawWalls(
             // Create wall vertices
             std::vector<cv::Point2f> rect_vertices_vec = computeRectVertices(0.0f, 0.0f, width_val, height_val, shear_val);
 
-            // // Calculate interpolated values for x and y offsets
-            // float x_offset = calculateInterpolatedValue(cal_param_arr, 0, wall_i, wall_j, MAZE_SIZE);
-            // float y_offset = calculateInterpolatedValue(cal_param_arr, 1, wall_i, wall_j, MAZE_SIZE);
-
-            // // Calculate interpolated values for x and y offsets
-            // float x_offset = calculateInterpolatedValue(cal_param_arr, 0, wall_i, wall_j, MAZE_SIZE) * img_width + base_x_offset;
-            // float y_offset = calculateInterpolatedValue(cal_param_arr, 1, wall_i, wall_j, MAZE_SIZE) * img_height + base_y_offset;
-
-            // Old version
-            float x_offset = wall_i * WALL_SPACE;
-            float y_offset = wall_j * WALL_SPACE;
-
-            // // TEMP
-            // ROS_INFO("wall_i[%0.0f] wall_j[%0.0f] x_offset[%0.2f], y_offset[%0.2f]", wall_i, wall_j, x_offset, y_offset);
+            // Calculate the wall offset
+            float x_offset = wall_i * wall_space_x;
+            float y_offset = wall_j * wall_space_y;
 
             // Apply perspective warping to vertices
             std::vector<cv::Point2f> rect_vertices_warped = computePerspectiveWarp(rect_vertices_vec, ref_H, x_offset, y_offset);
+
+            // // TEMP
+            // ROS_INFO("wall_i[%0.0f] wall_j[%0.0f] x_offset[%0.2f], y_offset[%0.2f]", wall_i, wall_j, x_offset, y_offset);
 
             // Set texture image
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
@@ -428,6 +426,9 @@ void drawWalls(
 
     // Disable OpenGL texture mapping
     glDisable(GL_TEXTURE_2D);
+
+    // Check for GL errors
+    checkErrorGL(__LINE__, __FILE__);
 }
 
 void updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_id, int mon_ind, bool is_fullscreen)
@@ -543,6 +544,9 @@ int main(int argc, char **argv)
     // Attach the texture to the FBO
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture_id, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    // Check for GL errors
+    checkErrorGL(__LINE__, __FILE__);
 
     // Update the window monitor and mode
     updateWindowMonMode(p_windowID, pp_monitorIDVec, winMonInd, isFullScreen);

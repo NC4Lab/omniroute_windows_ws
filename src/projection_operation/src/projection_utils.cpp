@@ -475,21 +475,22 @@ void computeHomography(cv::Mat &ref_H, float cal_param_arr[4][5])
     cp_vertices.push_back(cv::Point2f(cal_param_arr[2][0], cal_param_arr[2][1])); // bottom-right
     cp_vertices.push_back(cv::Point2f(cal_param_arr[3][0], cal_param_arr[3][1])); // bottom-left
 
-    // // Calculate the control point bounding region width and height
-    // float width = fabs(cal_param_arr[1][0] - cal_param_arr[0][0]);
-    // float height = fabs(cal_param_arr[0][1] - cal_param_arr[3][1]);
-    
-    // // Calculate the control point bounding region width and height
-    // float width = fabs(cal_param_arr[0][0]) + cal_param_arr[1][0]; // top-left x + top-right x
-    // float height = cal_param_arr[0][1] + fabs(cal_param_arr[1][0]); // top-left y + bottom-left y
+    // // Old version
+    // float cp_bound_width = (float(MAZE_SIZE) - 1) * WALL_SPACE;
+    // float cp_bound_height = (float(MAZE_SIZE) - 1) * WALL_SPACE;
 
-    // TEMP
-    float width = (float(MAZE_SIZE) - 1) * WALL_SPACE;
-    float height = (float(MAZE_SIZE) - 1) * WALL_SPACE;
+    // Calculate the width and height of the control point boundary
+    float cp_bound_width = fabs(cal_param_arr[0][0]) + cal_param_arr[1][0]; // top-left x + top-right x
+    float cp_bound_height = cal_param_arr[0][1] + fabs(cal_param_arr[1][0]); // top-left y + bottom-left y
+
+    //  // TEMP
+    // ROS_INFO("------------------------------------------------");
+    // ROS_INFO("cp_bound_width[%0.2f] wall_space_y[%0.2f]", cp_bound_width, cp_bound_height);
+    // ROS_INFO("------------------------------------------------");
 
     // Get the corner/vertex values for each of the wall images
     std::vector<cv::Point2f> img_vertices;
-    img_vertices = computeRectVertices(0.0f, 0.0f, width, height, 0);
+    img_vertices = computeRectVertices(0.0f, 0.0f, cp_bound_width, cp_bound_height, 0);
 
     // Compute the homography matrix
     ref_H = findHomography(img_vertices, cp_vertices);

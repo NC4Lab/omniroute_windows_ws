@@ -173,16 +173,29 @@ extern const int MAZE_SIZE = 3;
 extern const int WALL_WIDTH_PXL = 300;
 extern const int WALL_HEIGHT_PXL = 540;
 
+// // Wall image size and spacingOpenGL's Normalized Device Coordinates (NDC) [-1, 1]
+// /// @todo: Figure out how these values are used and what units they are in
+// const float wall_width_ndc = 0.015f;
+// const float wall_height_ndc = 0.015f;
+// extern const float WALL_SPACE = 2.0f * wall_width_ndc;
+
+// // Variables related to control point parameters
+// extern const float CP_RADIUS_NDC = 0.005f;
+// const float cal_offset_x = 0.15f; // X offset from center of screen for control points
+// const float cal_offset_y = 0.3f; // X offset from center of screen for control points
+
+// Defualt offset of control points from the center of the screen
+const float cal_offset_x = 0.15f; // X offset from center of screen for control points
+const float cal_offset_y = 0.3f; // X offset from center of screen for control points
+
+// Control point image radius
+extern const float CP_RADIUS_NDC = 0.005f;
+
 // Wall image size and spacingOpenGL's Normalized Device Coordinates (NDC) [-1, 1]
 /// @todo: Figure out how these values are used and what units they are in
-const float wall_width_ndc = 0.015f;
-const float wall_height_ndc = 0.015f;
+const float wall_width_ndc = ((cal_offset_x *2) / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));
+const float wall_height_ndc = ((cal_offset_y*2) / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));
 extern const float WALL_SPACE = 2.0f * wall_width_ndc;
-
-// Variables related to control point parameters
-extern const float CP_RADIUS_NDC = 0.005f;
-const float cal_x_lim = 0.15f; // X offset from center of screen for control points
-const float cal_y_lim = 0.3f; // X offset from center of screen for control points
 
 // Calibration parameter array
 /**
@@ -208,10 +221,10 @@ const float cal_y_lim = 0.3f; // X offset from center of screen for control poin
  */
 extern const float CAL_PARAM_DEFAULT[4][5] = {
     // Default control point parameters
-    {-cal_x_lim, cal_y_lim, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
-    {cal_x_lim, cal_y_lim, wall_width_ndc, wall_height_ndc, 0.0f},  // top-right control point
-    {cal_x_lim, -cal_y_lim, wall_width_ndc, wall_height_ndc, 0.0f}, // bottom-right control point
-    {-cal_x_lim, -cal_y_lim, wall_width_ndc, wall_height_ndc, 0.0f} // bottom-left control point
+    {-cal_offset_x, cal_offset_y, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
+    {cal_offset_x, cal_offset_y, wall_width_ndc, wall_height_ndc, 0.0f},  // top-right control point
+    {cal_offset_x, -cal_offset_y, wall_width_ndc, wall_height_ndc, 0.0f}, // bottom-right control point
+    {-cal_offset_x, -cal_offset_y, wall_width_ndc, wall_height_ndc, 0.0f} // bottom-left control point
 };
 
 // ================================================== FUNCTIONS ==================================================

@@ -64,7 +64,7 @@ void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
 
 static void callbackErrorGLFW(int error, const char *description)
 {
-    ROS_ERROR("[GLFW] Error Flagged: %s", description);
+    ROS_ERROR("[GLFW] Error Flagged: Error[%d] Description[%s]", error, description);
 }
 
 void checkErrorGL(int line, const char *file_str)
