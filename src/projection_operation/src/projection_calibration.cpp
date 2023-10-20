@@ -382,8 +382,16 @@ void drawWalls(
     calculateCornerSpacing(cal_param_arr, corner_spacings_x, corner_spacings_y, MAZE_SIZE);
 
     // TEMP
-    ROS_INFO("corner_spacings_x[0][0][%0.2f] corner_spacings_x[0][1][%0.2f] corner_spacings_x[1][0][%0.2f] corner_spacings_x[1][1][%0.2f]",
-             corner_spacings_x[0][0], corner_spacings_x[0][1], corner_spacings_x[1][0], corner_spacings_x[1][1]);
+    ROS_INFO("cs_x[0][0][%0.2f] cs_x[0][1][%0.2f] cs_x[1][0][%0.2f] cs_x[1][1][%0.2f]    cs_y[0][0][% 0.2f] cs_y[0][1][% 0.2f] cs_y[1][0][% 0.2f] cs_y[1][1][% 0.2f]",
+             corner_spacings_x[0][0], corner_spacings_x[0][1], corner_spacings_x[1][0], corner_spacings_x[1][1],
+             corner_spacings_y[0][0], corner_spacings_y[0][1], corner_spacings_y[1][0], corner_spacings_y[1][1]);
+
+    static bool is_first_loop_test3b = true;
+    if (is_first_loop_test3b)
+    {
+        ROS_INFO("!!!!!!!! TEST3b !!!!!!!!");
+        is_first_loop_test3b = false;
+    }
 
     // Iterate through the maze grid
     for (float wall_i = 0; wall_i < MAZE_SIZE; wall_i++)
@@ -394,15 +402,53 @@ void drawWalls(
             // Bind image
             if (wall_i == 1 && wall_j == 1)
             {
+                static bool is_first_loop_test3ba = true;
+                if (is_first_loop_test3ba)
+                {
+                    ROS_INFO("!!!!!!!! TEST3ba !!!!!!!!");
+                    is_first_loop_test3ba = false;
+                }
+
                 // Merge images
-                ILuint merge_images_1 = mergeImages(img_base_id, img_mon_id);      // merge test pattern and active monitor image
+                ILuint merge_images_1 = mergeImages(img_base_id, img_mon_id); // merge test pattern and active monitor image
+                static bool is_first_loop_test3bb = true;
+                if (is_first_loop_test3bb)
+                {
+                    ROS_INFO("!!!!!!!! TEST3bb !!!!!!!!");
+                    is_first_loop_test3bb = false;
+                }
                 ILuint merge_images_2 = mergeImages(merge_images_1, img_param_id); // merge previous image and active cp parameter image
-                ILuint merge_images_3 = mergeImages(merge_images_2, img_cal_id);   // merge previous image and active calibration image
+                static bool is_first_loop_test3bc = true;
+                if (is_first_loop_test3bc)
+                {
+                    ROS_INFO("!!!!!!!! TEST3bc !!!!!!!!");
+                    is_first_loop_test3bc = false;
+                }
+                ILuint merge_images_3 = mergeImages(merge_images_2, img_cal_id); // merge previous image and active calibration image
+                static bool is_first_loop_test3bd = true;
+                if (is_first_loop_test3bd)
+                {
+                    ROS_INFO("!!!!!!!! TEST3bd !!!!!!!!");
+                    is_first_loop_test3bd = false;
+                }
                 ilBindImage(merge_images_3);
+                static bool is_first_loop_test3be = true;
+                if (is_first_loop_test3be)
+                {
+                    ROS_INFO("!!!!!!!! TEST3be !!!!!!!!");
+                    is_first_loop_test3be = false;
+                }
             }
             else
             {
                 ilBindImage(img_base_id); // show test pattern
+            }
+
+            static bool is_first_loop_test3c = true;
+            if (is_first_loop_test3c)
+            {
+                ROS_INFO("!!!!!!!! TEST3c !!!!!!!!");
+                is_first_loop_test3c = false;
             }
 
             // Calculate width, height and shear for the current wall
@@ -417,12 +463,26 @@ void drawWalls(
             float wall_space_x = calculateInterpolatedWallSpacing(corner_spacings_x, wall_i, wall_j, MAZE_SIZE);
             float wall_space_y = calculateInterpolatedWallSpacing(corner_spacings_y, wall_i, wall_j, MAZE_SIZE);
 
+            static bool is_first_loop_test3d = true;
+            if (is_first_loop_test3d)
+            {
+                ROS_INFO("!!!!!!!! TEST3d !!!!!!!!");
+                is_first_loop_test3d = false;
+            }
+
             // Calculate the wall offset
             float x_offset = wall_i * wall_space_x;
             float y_offset = wall_j * wall_space_y;
 
             // Apply perspective warping to vertices
             std::vector<cv::Point2f> rect_vertices_warped = computePerspectiveWarp(rect_vertices_vec, ref_H, x_offset, y_offset);
+
+            static bool is_first_loop_test3e = true;
+            if (is_first_loop_test3e)
+            {
+                ROS_INFO("!!!!!!!! TEST3e !!!!!!!!");
+                is_first_loop_test3e = false;
+            }
 
             // // TEMP
             // ROS_INFO("wall_i[%0.0f] wall_j[%0.0f] x_offset[%0.2f], y_offset[%0.2f]", wall_i, wall_j, x_offset, y_offset);
@@ -432,8 +492,22 @@ void drawWalls(
                          ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
                          GL_UNSIGNED_BYTE, ilGetData());
 
+            static bool is_first_loop_test3f = true;
+            if (is_first_loop_test3f)
+            {
+                ROS_INFO("!!!!!!!! TEST3f !!!!!!!!");
+                is_first_loop_test3f = false;
+            }
+
             // Bind texture to framebuffer object
             glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
+
+            static bool is_first_loop_test3g = true;
+            if (is_first_loop_test3g)
+            {
+                ROS_INFO("!!!!!!!! TEST3g !!!!!!!!");
+                is_first_loop_test3g = false;
+            }
 
             // Draw the wall
             drawRectImage(rect_vertices_warped);
@@ -446,8 +520,22 @@ void drawWalls(
     // Disable OpenGL texture mapping
     glDisable(GL_TEXTURE_2D);
 
+    static bool is_first_loop_test3h = true;
+    if (is_first_loop_test3h)
+    {
+        ROS_INFO("!!!!!!!! TEST3h !!!!!!!!");
+        is_first_loop_test3h = false;
+    }
+
     // Check for GL errors
     checkErrorGL(__LINE__, __FILE__);
+
+    static bool is_first_loop_test3i = true;
+    if (is_first_loop_test3i)
+    {
+        ROS_INFO("!!!!!!!! TEST3i !!!!!!!!");
+        is_first_loop_test3i = false;
+    }
 }
 
 void updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_id, int mon_ind, bool is_fullscreen)

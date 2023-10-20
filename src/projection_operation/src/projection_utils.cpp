@@ -316,6 +316,14 @@ void loadImgTextures(std::vector<ILuint> &ref_image_ids_vec, std::vector<std::st
 
 ILuint mergeImages(ILuint img1, ILuint img2)
 {
+
+    static bool is_first_loop_test3baa = true;
+    if (is_first_loop_test3baa)
+    {
+        ROS_INFO("!!!!!!!! TEST3baa !!!!!!!!");
+        is_first_loop_test3baa = false;
+    }
+
     // Bind and get dimensions of img1 (baseline image)
     ilBindImage(img1);
     int width1 = ilGetInteger(IL_IMAGE_WIDTH);
@@ -328,6 +336,13 @@ ILuint mergeImages(ILuint img1, ILuint img2)
         return 0;
     }
 
+    static bool is_first_loop_test3bab = true;
+    if (is_first_loop_test3bab)
+    {
+        ROS_INFO("!!!!!!!! TEST3bab !!!!!!!!");
+        is_first_loop_test3bab = false;
+    }
+
     // Bind and get dimensions of img2 (mask image)
     ilBindImage(img2);
     int width2 = ilGetInteger(IL_IMAGE_WIDTH);
@@ -338,6 +353,13 @@ ILuint mergeImages(ILuint img1, ILuint img2)
     {
         ROS_ERROR("Error binding img2: %s", iluErrorString(error));
         return 0;
+    }
+
+    static bool is_first_loop_test3bac = true;
+    if (is_first_loop_test3bac)
+    {
+        ROS_INFO("!!!!!!!! TEST3bac !!!!!!!!");
+        is_first_loop_test3bac = false;
     }
 
     // Check for dimension match
@@ -358,6 +380,13 @@ ILuint mergeImages(ILuint img1, ILuint img2)
     {
         ROS_ERROR("Error creating merged image: %s", iluErrorString(error));
         return 0;
+    }
+
+    static bool is_first_loop_test3bad = true;
+    if (is_first_loop_test3bad)
+    {
+        ROS_INFO("!!!!!!!! TEST3bad !!!!!!!!");
+        is_first_loop_test3bad = false;
     }
 
     // Initialize mergedData array
@@ -384,6 +413,13 @@ ILuint mergeImages(ILuint img1, ILuint img2)
         }
     }
 
+    static bool is_first_loop_test3bae = true;
+    if (is_first_loop_test3bae)
+    {
+        ROS_INFO("!!!!!!!! TEST3bae !!!!!!!!");
+        is_first_loop_test3bae = false;
+    }
+
     // Set mergedData to the new image
     ilBindImage(mergedImg);
     ilSetPixels(0, 0, 0, width1, height1, 1, IL_RGBA, IL_UNSIGNED_BYTE, mergedData);
@@ -393,6 +429,13 @@ ILuint mergeImages(ILuint img1, ILuint img2)
         ROS_ERROR("Error setting pixels for merged image: %s", iluErrorString(error));
         delete[] mergedData;
         return 0;
+    }
+
+    static bool is_first_loop_test3baf = true;
+    if (is_first_loop_test3baf)
+    {
+        ROS_INFO("!!!!!!!! TEST3baf !!!!!!!!");
+        is_first_loop_test3baf = false;
     }
 
     // Clean up
