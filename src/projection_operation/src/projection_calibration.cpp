@@ -356,6 +356,13 @@ void drawWalls(
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
 
+    static bool is_first_loop_test3a = true;
+    if (is_first_loop_test3a)
+    {
+        ROS_INFO("!!!!!!!! TEST3a !!!!!!!!");
+        is_first_loop_test3a = false;
+    }
+
     // // TEMP
     // computeHomography(ref_H, cal_param_arr);
     // ROS_INFO("------------------------------------------------");
@@ -364,11 +371,19 @@ void drawWalls(
     // float wall_space_x = WALL_SPACE;
     // float wall_space_y = WALL_SPACE;
 
-    // Calculate the wall spacing
-    float wall_space_x = (fabs(cal_param_arr[0][0]) + cal_param_arr[1][0]) / (float(MAZE_SIZE) - 1); // (top-left x + top-right x) / 2
-    float wall_space_y = (cal_param_arr[0][1] + fabs(cal_param_arr[1][0])) / (float(MAZE_SIZE) - 1); // (top-left y + bottom-left y) / 2
+    // // Calculate the wall spacing
+    // float wall_space_x = (fabs(cal_param_arr[0][0]) + cal_param_arr[1][0]) / (float(MAZE_SIZE) - 1); // (top-left x + top-right x) / 2
+    // float wall_space_y = (cal_param_arr[0][1] + fabs(cal_param_arr[1][0])) / (float(MAZE_SIZE) - 1); // (top-left y + bottom-left y) / 2
 
     // ROS_INFO("wall_space_x[%0.2f] wall_space_y[%0.2f]", wall_space_x, wall_space_y);
+
+    // Inside your drawWalls() function
+    float corner_spacings_x[2][2], corner_spacings_y[2][2];
+    calculateCornerSpacing(cal_param_arr, corner_spacings_x, corner_spacings_y, MAZE_SIZE);
+
+    // TEMP
+    ROS_INFO("corner_spacings_x[0][0][%0.2f] corner_spacings_x[0][1][%0.2f] corner_spacings_x[1][0][%0.2f] corner_spacings_x[1][1][%0.2f]",
+             corner_spacings_x[0][0], corner_spacings_x[0][1], corner_spacings_x[1][0], corner_spacings_x[1][1]);
 
     // Iterate through the maze grid
     for (float wall_i = 0; wall_i < MAZE_SIZE; wall_i++)
@@ -397,6 +412,10 @@ void drawWalls(
 
             // Create wall vertices
             std::vector<cv::Point2f> rect_vertices_vec = computeRectVertices(0.0f, 0.0f, width_val, height_val, shear_val);
+
+            // Calculate the interpolated wall spacings for this grid cell
+            float wall_space_x = calculateInterpolatedWallSpacing(corner_spacings_x, wall_i, wall_j, MAZE_SIZE);
+            float wall_space_y = calculateInterpolatedWallSpacing(corner_spacings_y, wall_i, wall_j, MAZE_SIZE);
 
             // Calculate the wall offset
             float x_offset = wall_i * wall_space_x;
@@ -562,15 +581,38 @@ int main(int argc, char **argv)
     loadImgTextures(imgParamIDVec, imgParamPathVec);
     loadImgTextures(imgCalIDVec, imgCalPathVec);
 
+    ROS_INFO("!!!!!!!! TEST1 !!!!!!!!");
+
     // _______________ MAIN LOOP _______________
 
     while (!glfwWindowShouldClose(p_windowID))
     {
+        static bool is_first_loop_test2 = true;
+        if (is_first_loop_test2)
+        {
+            ROS_INFO("!!!!!!!! TEST2 !!!!!!!!");
+            is_first_loop_test2 = false;
+        }
+
         // Clear back buffer for new frame
         glClear(GL_COLOR_BUFFER_BIT);
 
+        static bool is_first_loop_test3 = true;
+        if (is_first_loop_test3)
+        {
+            ROS_INFO("!!!!!!!! TEST3 !!!!!!!!");
+            is_first_loop_test3 = false;
+        }
+
         // Draw/update wall images
         drawWalls(H, calParam, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
+
+        static bool is_first_loop_test4 = true;
+        if (is_first_loop_test4)
+        {
+            ROS_INFO("!!!!!!!! TEST4 !!!!!!!!");
+            is_first_loop_test4 = false;
+        }
 
         // Draw/update control points
         for (int i = 0; i < 4; i++)
@@ -582,11 +624,25 @@ int main(int argc, char **argv)
 
             // Draw the control point
             drawControlPoint(calParam[i][0], calParam[i][1], CP_RADIUS_NDC, cp_col);
+
+            static bool is_first_loop_test5 = true;
+            if (is_first_loop_test5)
+            {
+                ROS_INFO("!!!!!!!! TEST5 !!!!!!!!");
+                is_first_loop_test5 = false;
+            }
         }
 
         // Swap buffers and poll events
         glfwSwapBuffers(p_windowID);
         glfwPollEvents();
+
+        static bool is_first_loop_test6 = true;
+        if (is_first_loop_test6)
+        {
+            ROS_INFO("!!!!!!!! TEST6 !!!!!!!!");
+            is_first_loop_test6 = false;
+        }
 
         // Exit condition
         if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_windowID))

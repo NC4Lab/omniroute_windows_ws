@@ -401,6 +401,45 @@ ILuint mergeImages(ILuint img1, ILuint img2)
     return mergedImg;
 }
 
+// Function to calculate corner spacings based on calibration parameters
+void calculateCornerSpacing(float cal_param_arr[4][5], float (&corner_spacings_x)[2][2], float (&corner_spacings_y)[2][2], int maze_size)
+{
+    // Iterate over each corner
+    for (int i = 0; i < 2; ++i)
+    {
+        for (int j = 0; j < 2; ++j)
+        {
+            // Top-left and Bottom-right use the same logic
+            if ((i == 0 && j == 0) || (i == 1 && j == 1))
+            {
+                corner_spacings_x[i][j] = (fabs(cal_param_arr[0][0]) + cal_param_arr[1][0]) / (float(maze_size) - 1);
+                corner_spacings_y[i][j] = (cal_param_arr[0][1] + fabs(cal_param_arr[3][1])) / (float(maze_size) - 1);
+            }
+            // Top-right and Bottom-left use the same logic
+            else
+            {
+                corner_spacings_x[i][j] = (fabs(cal_param_arr[0][0]) + cal_param_arr[1][0]) / (float(maze_size) - 1);
+                corner_spacings_y[i][j] = (cal_param_arr[0][1] + fabs(cal_param_arr[3][1])) / (float(maze_size) - 1);
+            }
+        }
+    }
+}
+
+// Function to calculate interpolated wall spacing for x or y
+float calculateInterpolatedWallSpacing(float corner_spacings[2][2], float wall_i, float wall_j, int maze_size)
+{
+    // Normalize indices
+    float normalized_i = wall_i / (float(maze_size) - 1);
+    float normalized_j = wall_j / (float(maze_size) - 1);
+
+    // Interpolate spacings
+    float interp_val_i = normalized_i * (corner_spacings[1][0] - corner_spacings[0][0]);
+    float interp_val_j = normalized_j * (corner_spacings[0][1] - corner_spacings[0][0]);
+
+    // Return interpolated spacing
+    return corner_spacings[0][0] + interp_val_i + interp_val_j;
+}
+
 float calculateInterpolatedValue(float cal_param_arr[4][5], int cal_param_ind, int grid_ind_i, int grid_ind_j, int grid_size)
 {
     // Get the 3 corner values
@@ -443,56 +482,83 @@ std::vector<cv::Point2f> computeRectVertices(float x0, float y0, float width, fl
 
 std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f> rect_vertices_vec, cv::Mat &ref_H, float x_offset, float y_offset)
 {
-    // Apply perspective warping to vertices
+    // Iterate through each vertex in the rectangle to apply perspective warping.
     for (auto &p : rect_vertices_vec)
     {
-        // Apply offset for vertex positions
+        // Step 1: Apply Offsets to Vertex Positions
+        // Add the x and y offsets to the current vertex coordinates.
+        // This essentially translates the vertex to a new position.
         p.x += x_offset;
         p.y += y_offset;
 
-        // Apply homography matrix to warp perspective
+        // Step 2: Prepare Homogeneous Coordinates
+        // Create a column matrix with the vertex's homogeneous coordinates [x, y, 1].
+        // Homogeneous coordinates are used in projective geometry and make the math
+        // work out when applying transformations like translation, rotation, and shearing.
         float data[] = {p.x, p.y, 1};
-        cv::Mat ptMat(3, 1, CV_32F, data);
-        ref_H.convertTo(ref_H, ptMat.type());
-        ptMat = ref_H * ptMat;
-        ptMat /= ptMat.at<float>(2);
+        cv::Mat ptMat(3, 1, CV_32F, data); // 3x1 matrix of type CV_32F (32-bit float)
 
-        // Update vertex coordinates
+        // Step 3: Homography Matrix Type Conversion
+        // Ensure the homography matrix (ref_H) and the point matrix (ptMat) are of the same type.
+        // This is necessary for the matrix multiplication operation that follows.
+        ref_H.convertTo(ref_H, ptMat.type());
+
+        // Step 4: Apply Homography Matrix to Warp Perspective
+        // Multiply the homography matrix with the point's homogeneous coordinates.
+        // This results in a new column matrix representing the point's warped coordinates.
+        ptMat = ref_H * ptMat;
+
+        // Step 5: Convert to Cartesian Coordinates
+        // Divide the first two elements by the third element to convert the point back to
+        // Cartesian coordinates from homogeneous coordinates.
+        ptMat /= ptMat.at<float>(2); // Divide by the third element (w)
+
+        // Step 6: Update Vertex Coordinates
+        // Update the vertex's x and y coordinates with the new warped values.
         p.x = ptMat.at<float>(0, 0);
         p.y = ptMat.at<float>(0, 1);
     }
 
-    // Return warped vertices
+    // Return the list of vertices with their perspectives warped.
     return rect_vertices_vec;
 }
 
 void computeHomography(cv::Mat &ref_H, float cal_param_arr[4][5])
 {
-    // Get the corner/vertex values for each of the control points
+    // Step 1: Extract Control Point Vertices
+    // Create a vector to store the vertices of the control points.
+    // Each control point's x and y coordinates are taken from the cal_param_arr.
     std::vector<cv::Point2f> cp_vertices;
     cp_vertices.push_back(cv::Point2f(cal_param_arr[0][0], cal_param_arr[0][1])); // top-left
     cp_vertices.push_back(cv::Point2f(cal_param_arr[1][0], cal_param_arr[1][1])); // top-right
     cp_vertices.push_back(cv::Point2f(cal_param_arr[2][0], cal_param_arr[2][1])); // bottom-right
     cp_vertices.push_back(cv::Point2f(cal_param_arr[3][0], cal_param_arr[3][1])); // bottom-left
 
-    // // Old version
+    // // TEMP Old version
     // float cp_bound_width = (float(MAZE_SIZE) - 1) * WALL_SPACE;
     // float cp_bound_height = (float(MAZE_SIZE) - 1) * WALL_SPACE;
 
-    // Calculate the width and height of the control point boundary
-    float cp_bound_width = fabs(cal_param_arr[0][0]) + cal_param_arr[1][0]; // top-left x + top-right x
-    float cp_bound_height = cal_param_arr[0][1] + fabs(cal_param_arr[1][0]); // top-left y + bottom-left y
+    // Step 2: Calculate Control Point Boundary Dimensions
+    // Compute the width and height of the rectangular region that contains all control points.
+    // The width is the sum of the absolute x-values of the top-left and top-right control points.
+    // The height is the sum of the absolute y-values of the top-left and bottom-left control points.
+    float cp_bound_width = fabs(cal_param_arr[0][0]) + cal_param_arr[1][0];
+    float cp_bound_height = cal_param_arr[0][1] + fabs(cal_param_arr[3][1]);
 
     //  // TEMP
     // ROS_INFO("------------------------------------------------");
     // ROS_INFO("cp_bound_width[%0.2f] wall_space_y[%0.2f]", cp_bound_width, cp_bound_height);
     // ROS_INFO("------------------------------------------------");
 
-    // Get the corner/vertex values for each of the wall images
+    // Step 3: Compute Image Vertices
+    // Calculate the vertices for the wall images based on the control point boundary dimensions.
+    // These vertices will be used as source points for computing the homography matrix.
     std::vector<cv::Point2f> img_vertices;
     img_vertices = computeRectVertices(0.0f, 0.0f, cp_bound_width, cp_bound_height, 0);
 
-    // Compute the homography matrix
+    // Step 4: Compute Homography Matrix
+    // Use OpenCV's findHomography function to compute the homography matrix.
+    // This matrix will map the coordinates from the image plane to the control point plane.
     ref_H = findHomography(img_vertices, cp_vertices);
 }
 

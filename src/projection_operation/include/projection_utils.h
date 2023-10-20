@@ -184,17 +184,17 @@ extern const int WALL_HEIGHT_PXL = 540;
 // const float cal_offset_x = 0.15f; // X offset from center of screen for control points
 // const float cal_offset_y = 0.3f; // X offset from center of screen for control points
 
-// Defualt offset of control points from the center of the screen
-const float cal_offset_x = 0.15f; // X offset from center of screen for control points
-const float cal_offset_y = 0.3f; // X offset from center of screen for control points
-
 // Control point image radius
 extern const float CP_RADIUS_NDC = 0.005f;
 
+// Defualt offset of control points from the center of the screen
+const float cal_offset_x = 0.15f; // X offset from center of screen for control points
+const float cal_offset_y = 0.3f;  // X offset from center of screen for control points
+
 // Wall image size and spacingOpenGL's Normalized Device Coordinates (NDC) [-1, 1]
 /// @todo: Figure out how these values are used and what units they are in
-const float wall_width_ndc = ((cal_offset_x *2) / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));
-const float wall_height_ndc = ((cal_offset_y*2) / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));
+const float wall_width_ndc = ((cal_offset_x * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));
+const float wall_height_ndc = ((cal_offset_y * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));
 extern const float WALL_SPACE = 2.0f * wall_width_ndc;
 
 // Calibration parameter array
@@ -202,7 +202,7 @@ extern const float WALL_SPACE = 2.0f * wall_width_ndc;
  * @brief Array to hold the position and transformation parameters for control points in normalized coordinates [-1, 1].
  *
  * @note The second control point (index 1) can only be used to adjust the wall position.
- * 
+ *
  * Each row corresponds to a specific control point on the screen, and each column holds a different attribute
  * of that control point.
  *
@@ -324,6 +324,33 @@ void loadImgTextures(std::vector<ILuint> &, std::vector<std::string>);
  * @warning The dimensions of img1 and img2 must match.
  */
 ILuint mergeImages(ILuint, ILuint);
+
+/**
+ * @brief Calculate corner spacings based on calibration parameters.
+ *
+ * This function computes the wall spacings at each of the four corners of the maze
+ * based on the given calibration parameters.
+ *
+ * @param [in] cal_param_arr 4x5 array of calibration parameters.
+ * @param [out] corner_spacings_x 2x2 array to store calculated corner spacings in x-direction.
+ * @param [out] corner_spacings_y 2x2 array to store calculated corner spacings in y-direction.
+ * @param [in] maze_size Number of cells in the maze along one dimension.
+ */
+void calculateCornerSpacing(float[4][5], float (&)[2][2], float (&)[2][2], int);
+
+/**
+ * @brief Calculate interpolated wall spacing for either x or y direction.
+ *
+ * This function uses the corner spacings and the wall's position within the grid
+ * to compute the interpolated wall spacing in either x or y direction.
+ *
+ * @param corner_spacings 2x2 array containing the spacings at each corner.
+ * @param wall_i The row index of the wall within the maze grid.
+ * @param wall_j The column index of the wall within the maze grid.
+ * @param maze_size The size of the maze grid.
+ * @return The interpolated wall spacing.
+ */
+float calculateInterpolatedWallSpacing(float[2][2], float, float, int);
 
 /**
  * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
