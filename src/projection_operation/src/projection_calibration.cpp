@@ -264,6 +264,16 @@ static void callbackErrorGLFW(int error, const char *description)
     ROS_ERROR("[GLFW] Error Flagged: %s", description);
 }
 
+void checkErrorGL(int line, const char *file_str)
+{
+    GLenum err;
+    while ((err = glGetError()) != GL_NO_ERROR)
+    {
+        // Log or print the error code
+        ROS_INFO("[OpenGL] Error Flagged: Line[%d] File[%s] Error Number[%s]: ", line, file_str, err);
+    }
+}
+
 void drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec)
 {
     int segments = 100; // Number of segments to approximate a circle
@@ -271,8 +281,11 @@ void drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec
     // Begin drawing a filled circle
     glBegin(GL_TRIANGLE_FAN);
 
-    // Set the color to green
-    glColor3f(rgb_vec[0], rgb_vec[1], rgb_vec[2]);
+    // // Set the color to green
+    // glColor3f(rgb_vec[0], rgb_vec[1], rgb_vec[2]);
+
+    // TEMP
+    glColor3f(0.5f, 0.5f, 0.5f);
 
     // Center of the circle
     glVertex2f(x, y);
@@ -288,6 +301,9 @@ void drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec
 
     // End drawing
     glEnd();
+
+    // Check for GL errors
+    checkErrorGL(__LINE__, __FILE__);
 }
 
 void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
@@ -334,16 +350,16 @@ void drawWalls(
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
 
-    // TEMP
-    ROS_INFO("------------------------------------------------");
+    // // TEMP
+    // ROS_INFO("------------------------------------------------");
 
-    // Calculate the width and height of the overal projected image based on the control point positions
-    float img_width = fabs(cal_param_arr[1][0] - cal_param_arr[0][0]);
-    float img_height = fabs(cal_param_arr[0][1] - cal_param_arr[3][1]);
+    // // Calculate the width and height of the overal projected image based on the control point positions
+    // float img_width = fabs(cal_param_arr[1][0] - cal_param_arr[0][0]);
+    // float img_height = fabs(cal_param_arr[0][1] - cal_param_arr[3][1]);
 
-    // Base offset adjustment
-    float base_x_offset = cal_param_arr[1][0] * img_width;  // Top-right control point x-coordinate
-    float base_y_offset = cal_param_arr[1][1] * img_height; // Top-right control point y-coordinate
+    // // Base offset adjustment
+    // float base_x_offset = cal_param_arr[1][0] * img_width;  // Top-right control point x-coordinate
+    // float base_y_offset = cal_param_arr[1][1] * img_height; // Top-right control point y-coordinate
 
     // Iterate through the maze grid
     for (float wall_i = 0; wall_i < MAZE_SIZE; wall_i++)
@@ -351,19 +367,22 @@ void drawWalls(
         // Iterate through each cell in the maze row
         for (float wall_j = 0; wall_j < MAZE_SIZE; wall_j++)
         {
-            // Bind image
-            if (wall_i == 1 && wall_j == 1)
-            {
-                // Merge images
-                ILuint merge_images_1 = mergeImages(img_base_id, img_mon_id);      // merge test pattern and active monitor image
-                ILuint merge_images_2 = mergeImages(merge_images_1, img_param_id); // merge previous image and active cp parameter image
-                ILuint merge_images_3 = mergeImages(merge_images_2, img_cal_id);   // merge previous image and active calibration image
-                ilBindImage(merge_images_3);
-            }
-            else
-            {
-                ilBindImage(img_base_id); // show test pattern
-            }
+            // // Bind image
+            // if (wall_i == 1 && wall_j == 1)
+            // {
+            //     // Merge images
+            //     ILuint merge_images_1 = mergeImages(img_base_id, img_mon_id);      // merge test pattern and active monitor image
+            //     ILuint merge_images_2 = mergeImages(merge_images_1, img_param_id); // merge previous image and active cp parameter image
+            //     ILuint merge_images_3 = mergeImages(merge_images_2, img_cal_id);   // merge previous image and active calibration image
+            //     ilBindImage(merge_images_3);
+            // }
+            // else
+            // {
+            //     ilBindImage(img_base_id); // show test pattern
+            // }
+
+            // TEMP
+            ilBindImage(img_base_id); // show test pattern
 
             // Calculate width, height and shear for the current wall
             float width_val = calculateInterpolatedValue(cal_param_arr, 2, wall_i, wall_j, MAZE_SIZE);
@@ -377,17 +396,16 @@ void drawWalls(
             // float x_offset = calculateInterpolatedValue(cal_param_arr, 0, wall_i, wall_j, MAZE_SIZE);
             // float y_offset = calculateInterpolatedValue(cal_param_arr, 1, wall_i, wall_j, MAZE_SIZE);
 
-            // Calculate interpolated values for x and y offsets
-            float x_offset = calculateInterpolatedValue(cal_param_arr, 0, wall_i, wall_j, MAZE_SIZE) * img_width + base_x_offset;
-            float y_offset = calculateInterpolatedValue(cal_param_arr, 1, wall_i, wall_j, MAZE_SIZE) * img_height + base_y_offset;
+            // // Calculate interpolated values for x and y offsets
+            // float x_offset = calculateInterpolatedValue(cal_param_arr, 0, wall_i, wall_j, MAZE_SIZE) * img_width + base_x_offset;
+            // float y_offset = calculateInterpolatedValue(cal_param_arr, 1, wall_i, wall_j, MAZE_SIZE) * img_height + base_y_offset;
 
+            // Old version
+            float x_offset = wall_i * WALL_SPACE;
+            float y_offset = wall_j * WALL_SPACE;
 
-            // // Old version
-            // float x_offset = wall_i * WALL_SPACE;
-            // float y_offset = wall_j * WALL_SPACE;
-
-            // TEMP
-            ROS_INFO("wall_i[%0.0f] wall_j[%0.0f] x_offset[%0.2f], y_offset[%0.2f]", wall_i, wall_j, x_offset, y_offset);
+            // // TEMP
+            // ROS_INFO("wall_i[%0.0f] wall_j[%0.0f] x_offset[%0.2f], y_offset[%0.2f]", wall_i, wall_j, x_offset, y_offset);
 
             // Apply perspective warping to vertices
             std::vector<cv::Point2f> rect_vertices_warped = computePerspectiveWarp(rect_vertices_vec, ref_H, x_offset, y_offset);
@@ -405,8 +423,8 @@ void drawWalls(
         }
     }
 
-    // TEMP
-    ROS_INFO("------------------------------------------------");
+    // // TEMP
+    // ROS_INFO("------------------------------------------------");
 
     // Disable OpenGL texture mapping
     glDisable(GL_TEXTURE_2D);

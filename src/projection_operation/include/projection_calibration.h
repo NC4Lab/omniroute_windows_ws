@@ -25,7 +25,7 @@ std::string calParamMode = "position"; // Parmeter being modified [position, dim
 int cpSelected = 0;
 std::vector<float> cpActiveRGBVec = {0.0f, 1.0f, 0.0f};   // Active control point marker color (green)
 std::vector<float> cpInactiveRGBVec = {1.0f, 0.0f, 0.0f}; // Inactive control point marker color (red)
-std::vector<float> cpDisabledRGBVec = {0.5f, 0.5f, 0.5f}; // Inactive control point marker color (red)
+std::vector<float> cpDisabledRGBVec = {0.5f, 0.5f, 0.5f}; // Inactive control point marker color (gray)
 
 // The 3x3 homography matrix of 32-bit floating-point numbers used to warp perspective.
 cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
@@ -129,6 +129,14 @@ void callbackFrameBufferSizeGLFW(GLFWwindow *, int, int);
  * @param description The error description.
  */
 static void callbackErrorGLFW(int, const char *);
+
+/**
+ * @brief Check and print OpenGL errors.
+ *
+ * @param line The line number from where the function is called.
+ * @param file_str The file name from where the function is called.
+ */
+void checkErrorGL(int, const char *);
 
 /**
  * @brief Draws a control point as a quadrilateral using OpenGL.

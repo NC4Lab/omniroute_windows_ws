@@ -475,9 +475,13 @@ void computeHomography(cv::Mat &ref_H, float cal_param_arr[4][5])
     cp_vertices.push_back(cv::Point2f(cal_param_arr[2][0], cal_param_arr[2][1])); // bottom-right
     cp_vertices.push_back(cv::Point2f(cal_param_arr[3][0], cal_param_arr[3][1])); // bottom-left
 
-    // // Calculate the width and height of the overal projected image based on the control point positions
+    // // Calculate the control point bounding region width and height
     // float width = fabs(cal_param_arr[1][0] - cal_param_arr[0][0]);
     // float height = fabs(cal_param_arr[0][1] - cal_param_arr[3][1]);
+    
+    // // Calculate the control point bounding region width and height
+    // float width = fabs(cal_param_arr[0][0]) + cal_param_arr[1][0]; // top-left x + top-right x
+    // float height = cal_param_arr[0][1] + fabs(cal_param_arr[1][0]); // top-left y + bottom-left y
 
     // TEMP
     float width = (float(MAZE_SIZE) - 1) * WALL_SPACE;
