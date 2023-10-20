@@ -39,8 +39,9 @@ std::vector<ILuint> imgWallIDVec; // Container to hold the loaded images
 std::vector<std::string> imgWallPathVec = {
     // List of image file paths
     image_wall_dir_path + "/1_test_pattern.bmp",
-    image_wall_dir_path + "/2_manu_pirate.bmp",
-    image_wall_dir_path + "/3_earthlings.bmp",
+    image_wall_dir_path + "/2_all_white.bmp",
+    image_wall_dir_path + "/3_manu_pirate.bmp",
+    image_wall_dir_path + "/4_earthlings.bmp",
 };
 int imgWallInd = 0;                      // Index of the image to be loaded
 size_t nWallImg = imgWallPathVec.size(); // Number of test images
