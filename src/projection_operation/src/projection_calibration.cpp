@@ -598,6 +598,15 @@ int main(int argc, char **argv)
     // Update the window monitor and mode
     updateWindowMonMode(p_windowID, pp_monitorIDVec, winMonInd, isFullScreen);
 
+    // Get OpenGL version
+    const GLubyte *opengl_version = glGetString(GL_VERSION);
+    ROS_INFO("[OpenGL] Intitalized: Version [%s]", opengl_version);
+
+    // Get GLFW version
+    int glfw_major, glfw_minor, glfw_rev;
+    glfwGetVersion(&glfw_major, &glfw_minor, &glfw_rev);
+    ROS_INFO("[GLFW] Intitalized: Version: %d.%d.%d", glfw_major, glfw_minor, glfw_rev);
+
     // --------------- DevIL SETUP ---------------
 
     // Initialize DevIL library
@@ -605,7 +614,7 @@ int main(int argc, char **argv)
     if (checkErrorDevIL(__LINE__, __FILE__) != 0)
         return -1;
     ILint version = ilGetInteger(IL_VERSION_NUM);
-    ROS_ERROR("[DevIL] Intitalized: Version[%d]", version);
+    ROS_INFO("[DevIL] Intitalized: Version[%d]", version);
 
     // Load images
     if (loadImgTextures(imgWallIDVec, imgWallPathVec) != 0)
@@ -628,6 +637,11 @@ int main(int argc, char **argv)
         ROS_ERROR("[DevIL] Failed to load calibration images");
         return -1;
     }
+
+    // TEMP
+    // [ INFO] [1697878240.815840600]: [OpenGL] Intitalized: Version [4.6.0 NVIDIA 528.89]
+    // [ INFO] [1697878240.815899700]: [GLFW] Intitalized: Version: 3.3.8
+    // [ERROR] [1697878240.815962000]: [DevIL] Intitalized: Version[180]
 
     // _______________ MAIN LOOP _______________
 
