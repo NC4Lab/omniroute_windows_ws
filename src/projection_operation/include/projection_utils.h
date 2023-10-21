@@ -318,9 +318,18 @@ void saveCoordinatesXML(cv::Mat, float[4][5], std::string);
  * @param ref_image_ids_vec A reference to a vector of ILuint where the IDs of the loaded images will be stored.
  * @param img_paths_vec A vector of file paths to the images to be loaded.
  *
- * @note Utilizes the DevIL image library for image loading operations.
+ * @return DevIL status: 0 on successful execution, -1 on failure.
  */
-void loadImgTextures(std::vector<ILuint> &, std::vector<std::string>);
+int loadImgTextures(std::vector<ILuint> &, std::vector<std::string>);
+
+/**
+ * @brief Deletes DevIL images from a given vector of image IDs.
+ *
+ * @param ref_image_ids_vec Vector containing DevIL image IDs.
+ * 
+  * @return DevIL status: 0 on successful execution, -1 on failure.
+ */
+int deleteImgTextures(std::vector<ILuint>&);
 
 /**
  * @brief Merges two images by overlaying non-white pixels from the second image onto the first.
@@ -331,11 +340,13 @@ void loadImgTextures(std::vector<ILuint> &, std::vector<std::string>);
  *
  * @param img1 The ILuint ID of the baseline image.
  * @param img2 The ILuint ID of the mask image.
- * @return ILuint ID of the merged image. Returns 0 if an error occurs.
+ * @param[out] ref_img_merge_id Reference to an ILuint where the ID of the merged image will be stored.
+ * 
+ * @return DevIL status: 0 on successful execution, -1 on failure.
  *
  * @warning The dimensions of img1 and img2 must match.
  */
-ILuint mergeImages(ILuint, ILuint);
+int mergeImages(ILuint, ILuint, ILuint &);
 
 /**
  * @brief Calculate corner spacings based on calibration parameters.
@@ -343,10 +354,10 @@ ILuint mergeImages(ILuint, ILuint);
  * This function computes the wall spacings at each of the four corners of the maze
  * based on the given calibration parameters.
  *
- * @param [in] cal_param_arr 4x5 array of calibration parameters.
+ * @param cal_param_arr 4x5 array of calibration parameters.
  * @param [out] corner_spacings_x 2x2 array to store calculated corner spacings in x-direction.
  * @param [out] corner_spacings_y 2x2 array to store calculated corner spacings in y-direction.
- * @param [in] maze_size Number of cells in the maze along one dimension.
+ * @param maze_size Number of cells in the maze along one dimension.
  */
 void calculateCornerSpacing(float[4][5], float (&)[2][2], float (&)[2][2], int);
 
@@ -429,9 +440,9 @@ void computeHomography(cv::Mat &, float[4][5]);
 /**
  * @brief Used to reset control point parameter list.
  *
- * @param ref_cal_param Reference to 2D array for control points.
+ * @param ref_cal_param Reference to 2D calibration parameter array.
  * @param cal_ind Index of the active calibration mode.
  */
-void updateParamCP(float (&)[4][5], int);
+void updateCalParams(float (&)[4][5], int);
 
 #endif

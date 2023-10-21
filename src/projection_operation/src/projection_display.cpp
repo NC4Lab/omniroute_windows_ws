@@ -314,7 +314,7 @@ int main(int argc, char **argv)
     ROS_INFO("[SETUP] Wall (Norm): Width=%0.2f Space=%0.2f", wall_width_ndc, WALL_SPACE);
 
     // Initialize control point parameters
-    updateParamCP(calParam, 0);
+    updateCalParams(calParam, 0);
 
     // Do initial computations of homography matrix
     computeHomography(H, calParam);

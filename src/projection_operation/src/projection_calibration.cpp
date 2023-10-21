@@ -81,7 +81,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         else if (key == GLFW_KEY_R)
         {
-            updateParamCP(calParam, calModeInd);
+            updateCalParams(calParam, calModeInd);
         }
 
         // ---------- Target selector keys [F1-F4] ----------
@@ -154,7 +154,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Reset a subset of control point parameters when switching calibration modes
             if (key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT)
             {
-                updateParamCP(calParam, calModeInd);
+                updateCalParams(calParam, calModeInd);
             }
         }
 
@@ -265,30 +265,36 @@ static void callbackErrorGLFW(int error, const char *description)
     ROS_ERROR("[GLFW] Error Callback: Error[%d] Description[%s]", error, description);
 }
 
-int checkErrorGL(int line, const char *file_str)
+int checkErrorGL(int line, const char *file_str, const char *msg_str)
 {
-    GLenum err;
-    while ((err = glGetError()) != GL_NO_ERROR)
+    GLenum gl_err;
+    while ((gl_err = glGetError()) != GL_NO_ERROR)
     {
-        ROS_INFO("[OpenGL] Error Flagged: Error Number[%u] File[%s] Line[%d]", err, file_str, line);
+        if (msg_str)
+            ROS_INFO("[OpenGL] Error Flagged: Message[%s] Error Number[%u] File[%s] Line[%d]", msg_str, gl_err, file_str, line);
+        else
+            ROS_INFO("[OpenGL] Error Flagged: Error Number[%u] File[%s] Line[%d]", gl_err, file_str, line);
         return -1;
     }
     return 0;
 }
 
-int checkErrorGLFW(int line, const char *file_str)
+int checkErrorGLFW(int line, const char *file_str, const char *msg_str)
 {
     const char *description;
-    int glfwErr = glfwGetError(&description);
-    if (glfwErr != GLFW_NO_ERROR)
+    int glfw_err = glfwGetError(&description);
+    if (glfw_err != GLFW_NO_ERROR)
     {
-        ROS_ERROR("[GLFW] Error Flagged: Description[%s] File[%s] Line[%d]", description, file_str, line);
+        if (msg_str)
+            ROS_ERROR("[GLFW] Error Flagged: Message[%s] Description[%s] File[%s] Line[%d]", msg_str, description, file_str, line);
+        else
+            ROS_ERROR("[GLFW] Error Flagged: Description[%s] File[%s] Line[%d]", description, file_str, line);
         return -1;
     }
     return 0;
 }
 
-void drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec)
+int drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec)
 {
     const int segments = 100; // Number of segments to approximate a circle
 
@@ -315,10 +321,12 @@ void drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec
 
     // End drawing
     glEnd();
-    checkErrorGL(__LINE__, __FILE__);
+
+    // Return GL status
+    return checkErrorGL(__LINE__, __FILE__);
 }
 
-void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
+int drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
 {
 
     // Start drawing a quadrilateral
@@ -348,10 +356,12 @@ void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
 
     // End drawing
     glEnd();
-    checkErrorGL(__LINE__, __FILE__);
+
+    // Check and return GL status
+    return checkErrorGL(__LINE__, __FILE__);
 }
 
-void drawWalls(
+int drawWalls(
     cv::Mat &ref_H,
     float cal_param_arr[4][5],
     GLuint fbo_texture_id,
@@ -362,20 +372,6 @@ void drawWalls(
 {
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
-
-    // // TEMP
-    // computeHomography(ref_H, cal_param_arr);
-    // ROS_INFO("------------------------------------------------");
-
-    // // Old version
-    // float wall_space_x = WALL_SPACE;
-    // float wall_space_y = WALL_SPACE;
-
-    // // Calculate the wall spacing
-    // float wall_space_x = (fabs(cal_param_arr[0][0]) + cal_param_arr[1][0]) / (float(MAZE_SIZE) - 1); // (top-left x + top-right x) / 2
-    // float wall_space_y = (cal_param_arr[0][1] + fabs(cal_param_arr[1][0])) / (float(MAZE_SIZE) - 1); // (top-left y + bottom-left y) / 2
-
-    // ROS_INFO("wall_space_x[%0.2f] wall_space_y[%0.2f]", wall_space_x, wall_space_y);
 
     // Inside your drawWalls() function
     float corner_spacings_x[2][2], corner_spacings_y[2][2];
@@ -395,18 +391,31 @@ void drawWalls(
             // Bind image
             if (wall_i == 1 && wall_j == 1)
             {
+                // Create merged image for center wall to show status information
+                ILuint merge_images_1;
+                ILuint merge_images_2;
+                ILuint merge_images_3;
 
-                // Merge images
-                ILuint merge_images_1 = mergeImages(img_base_id, img_mon_id);      // merge test pattern and active monitor image
-                ILuint merge_images_2 = mergeImages(merge_images_1, img_param_id); // merge previous image and active cp parameter image
-                ILuint merge_images_3 = mergeImages(merge_images_2, img_cal_id);   // merge previous image and active calibration image
+                // Merge test pattern and active monitor image
+                if (mergeImages(img_base_id, img_mon_id, merge_images_1) != 0) 
+                    return -1;
+
+                // Merge previous image and active cp parameter image
+                if (mergeImages(merge_images_1, img_param_id, merge_images_2) != 0) 
+                    return -1;
+
+                 // Merge previous image and active calibration image
+                if (mergeImages(merge_images_2, img_cal_id, merge_images_3) != 0)
+                    return -1;
+
                 ilBindImage(merge_images_3);
             }
             else
             {
                 ilBindImage(img_base_id); // show test pattern
             }
-            checkErrorDevIL(__LINE__, __FILE__);
+            if (checkErrorDevIL(__LINE__, __FILE__) != 0)
+                return -1;
 
             // Calculate width, height and shear for the current wall
             float width_val = calculateInterpolatedValue(cal_param_arr, 2, wall_i, wall_j, MAZE_SIZE);
@@ -427,9 +436,6 @@ void drawWalls(
             // Apply perspective warping to vertices
             std::vector<cv::Point2f> rect_vertices_warped = computePerspectiveWarp(rect_vertices_vec, ref_H, x_offset, y_offset);
 
-            // // TEMP
-            // ROS_INFO("wall_i[%0.0f] wall_j[%0.0f] x_offset[%0.2f], y_offset[%0.2f]", wall_i, wall_j, x_offset, y_offset);
-
             // Set texture image
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
                          ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
@@ -439,21 +445,19 @@ void drawWalls(
             glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
 
             // Draw the wall
-            drawRectImage(rect_vertices_warped);
+            if (drawRectImage(rect_vertices_warped) != 0)
+                return -1;
         }
     }
-
-    // // TEMP
-    // ROS_INFO("------------------------------------------------");
 
     // Disable OpenGL texture mapping
     glDisable(GL_TEXTURE_2D);
 
-    // Check for GL errors
-    checkErrorGL(__LINE__, __FILE__);
+    // Return GL status
+    return checkErrorGL(__LINE__, __FILE__);
 }
 
-void updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_id, int mon_ind, bool is_fullscreen)
+int updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_id, int mon_ind, bool is_fullscreen)
 {
     static int imp_mon_ind_last = mon_ind;
     static bool is_fullscreen_last = !is_fullscreen;
@@ -461,7 +465,7 @@ void updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_
     // Check if monitor or fullscreen mode has changed
     if (imp_mon_ind_last == mon_ind && is_fullscreen_last == is_fullscreen)
     {
-        return;
+        return 0;
     }
 
     // Get GLFWmonitor for active monitor
@@ -472,15 +476,32 @@ void updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_
     {
         // Get the video mode of the selected monitor
         const GLFWvidmode *mode = glfwGetVideoMode(p_monitor_id);
+        if (!mode)
+        {
+            ROS_ERROR("[WIN MODE] Failed to Get Video Mode: Monitor[%d]", mon_ind);
+            return -1;
+        }
 
         // Set the window to full-screen mode on the current monitor
         glfwSetWindowMonitor(p_window_id, p_monitor_id, 0, 0, mode->width, mode->height, mode->refreshRate);
+        if (!p_monitor_id)
+        {
+            ROS_ERROR("[WIN MODE] Invalid Monitor Pointer: Monitor[%d]", mon_ind);
+            return -1;
+        }
 
         if (!is_fullscreen)
         {
             // Get the position of the current monitor
             int monitor_x, monitor_y;
             glfwGetMonitorPos(p_monitor_id, &monitor_x, &monitor_y);
+
+            // Validate monitor position (optional)
+            if (monitor_x < 0 || monitor_y < 0)
+            {
+                ROS_WARN("[WIN MODE] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_ind, monitor_x, monitor_y);
+                return 0;
+            }
 
             // Set the window to windowed mode and position it on the current monitor
             glfwSetWindowMonitor(p_window_id, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * PROJ_WIN_ASPECT_RATIO), 500, 0);
@@ -490,12 +511,14 @@ void updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_
     else
     {
         ROS_WARN("[WIN MODE] Failed Move Window: Monitor[%d] Format[%s]", mon_ind, is_fullscreen ? "fullscreen" : "windowed");
-        return;
+        return 0;
     }
 
     // Update last monitor and fullscreen mode
     imp_mon_ind_last = mon_ind;
     is_fullscreen_last = is_fullscreen;
+
+    return 0;
 }
 
 int main(int argc, char **argv)
@@ -514,7 +537,7 @@ int main(int argc, char **argv)
     ROS_INFO("[SETUP] Wall (Pxl): Width=%d Space=%d", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
 
     // Initialize control point parameters
-    updateParamCP(calParam, calModeInd);
+    updateCalParams(calParam, calModeInd);
 
     // Do initial computations of homography matrix
     computeHomography(H, calParam);
@@ -582,10 +605,26 @@ int main(int argc, char **argv)
     checkErrorDevIL(__LINE__, __FILE__);
 
     // Load images
-    loadImgTextures(imgWallIDVec, imgWallPathVec);
-    loadImgTextures(imgMonIDVec, imgMonPathVec);
-    loadImgTextures(imgParamIDVec, imgParamPathVec);
-    loadImgTextures(imgCalIDVec, imgCalPathVec);
+    if (loadImgTextures(imgWallIDVec, imgWallPathVec) != 0)
+    {
+        ROS_ERROR("[DevIL] Failed to load wall images");
+        return -1;
+    }
+    if (loadImgTextures(imgMonIDVec, imgMonPathVec) != 0)
+    {
+        ROS_ERROR("[DevIL] Failed to load monitor images");
+        return -1;
+    }
+    if (loadImgTextures(imgParamIDVec, imgParamPathVec) != 0)
+    {
+        ROS_ERROR("[DevIL] Failed to load parameter images");
+        return -1;
+    }
+    if (loadImgTextures(imgCalIDVec, imgCalPathVec) != 0)
+    {
+        ROS_ERROR("[DevIL] Failed to load calibration images");
+        return -1;
+    }
 
     // _______________ MAIN LOOP _______________
 
@@ -594,11 +633,13 @@ int main(int argc, char **argv)
 
         // Clear back buffer for new frame
         glClear(GL_COLOR_BUFFER_BIT);
-        checkErrorGL(__LINE__, __FILE__);
+        if (checkErrorGL(__LINE__, __FILE__))
+            break;
 
         // Draw/update wall images
         drawWalls(H, calParam, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
-        checkErrorGL(__LINE__, __FILE__);
+        if (checkErrorGL(__LINE__, __FILE__))
+            break;
 
         // Draw/update control points
         for (int i = 0; i < 4; i++)
@@ -610,12 +651,15 @@ int main(int argc, char **argv)
 
             // Draw the control point
             drawControlPoint(calParam[i][0], calParam[i][1], CP_RADIUS_NDC, cp_col);
+            if (checkErrorGL(__LINE__, __FILE__))
+                break;
         }
 
         // Swap buffers and poll events
         glfwSwapBuffers(p_windowID);
         checkErrorGLFW(__LINE__, __FILE__);
-        checkErrorGL(__LINE__, __FILE__);
+        if (checkErrorGL(__LINE__, __FILE__))
+            break;
 
         // Poll events
         glfwPollEvents();
@@ -649,11 +693,10 @@ int main(int argc, char **argv)
     ROS_INFO("[SHUTDOWN] Detroyd GLFW windows");
 
     // Delete DevIL images
-    for (ILuint image_id : imgWallIDVec)
-    {
-        ilDeleteImages(1, &image_id);
-        checkErrorDevIL(__LINE__, __FILE__);
-    }
+    deleteImgTextures(imgWallIDVec);
+    deleteImgTextures(imgMonIDVec);
+    deleteImgTextures(imgParamIDVec);
+    deleteImgTextures(imgCalIDVec);
     ROS_INFO("[SHUTDOWN] Deleted DevIL images");
 
     // Delete FBO and textures
@@ -675,6 +718,6 @@ int main(int argc, char **argv)
     checkErrorGLFW(__LINE__, __FILE__);
     ROS_INFO("[SHUTDOWN] Terminated GLFW");
 
-// Return success
+    // Return success
     return 0;
 }

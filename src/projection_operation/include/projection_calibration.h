@@ -138,10 +138,11 @@ static void callbackErrorGLFW(int, const char *);
  *
  * @param[in] int Line number where the function is called.
  * @param[in] const char* File name where the function is called.
- * 
+ * @param[in] const char* Optional message to provide additional context (default to nullptr).
+ *
  * @return 0 if no errors, -1 if error.
  */
-int checkErrorGL(int, const char *);
+int checkErrorGL(int, const char *, const char * = nullptr);
 
 /**
  * @brief Checks for GLFW errors and logs them.
@@ -151,10 +152,11 @@ int checkErrorGL(int, const char *);
  *
  * @param[in] int Line number where the function is called.
  * @param[in] const char* File name where the function is called.
- * 
+ * @param[in] const char* Optional message to provide additional context (default to nullptr).
+ *
  * @return 0 if no errors, -1 if error.
  */
-int checkErrorGLFW(int, const char *);
+int checkErrorGLFW(int, const char *, const char * = nullptr);
 
 /**
  * @brief Draws a control point as a quadrilateral using OpenGL.
@@ -166,15 +168,19 @@ int checkErrorGLFW(int, const char *);
  * @param y The y-coordinate of the bottom-left corner of the control point.
  * @param radius The radius of the control point.
  * @param rgb_vec Vector of rgb values to color the marker.
+ * 
+ * @return 0 if no errors, -1 if error.
  */
-void drawControlPoint(float, float, float, std::vector<float>);
+int drawControlPoint(float, float, float, std::vector<float>);
 
 /**
  * @brief Draws a textured rectangle using OpenGL.
  *
  * @param rect_vertices_vec Vector of vertex/corner points for a rectangular image.
+ *
+ * @return 0 if no errors, -1 if error.
  */
-void drawRectImage(std::vector<cv::Point2f>);
+int drawRectImage(std::vector<cv::Point2f>);
 
 /**
  * @brief Draws all walls in the maze grid with texture mapping and perspective warping.
@@ -190,8 +196,10 @@ void drawRectImage(std::vector<cv::Point2f>);
  * @param img_mon_id The DevIL image ID of the monitor image.
  * @param img_param_id The DevIL image ID of the parameter image.
  * @param img_cal_id The DevIL image ID of the calibration image.
+ *
+ * @return 0 if no errors, -1 if error.
  */
-void drawWalls(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint);
+int drawWalls(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint);
 
 /**
  * @brief Changes the display mode and monitor of the application window.
@@ -211,8 +219,10 @@ void drawWalls(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint);
  * @param pp_ref_monitor_id Reference to the GLFWmonitor pointer array.
  * @param mon_ind Index of the monitor to move the window to.
  * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
+ *
+ * @return 0 if no errors, -1 if error.
  */
-void updateWindowMonMode(GLFWwindow *, GLFWmonitor **&, int, bool);
+int updateWindowMonMode(GLFWwindow *, GLFWmonitor **&, int, bool);
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.
