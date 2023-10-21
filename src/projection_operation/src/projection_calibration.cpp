@@ -397,14 +397,14 @@ int drawWalls(
                 ILuint merge_images_3;
 
                 // Merge test pattern and active monitor image
-                if (mergeImages(img_base_id, img_mon_id, merge_images_1) != 0) 
+                if (mergeImages(img_base_id, img_mon_id, merge_images_1) != 0)
                     return -1;
 
                 // Merge previous image and active cp parameter image
-                if (mergeImages(merge_images_1, img_param_id, merge_images_2) != 0) 
+                if (mergeImages(merge_images_1, img_param_id, merge_images_2) != 0)
                     return -1;
 
-                 // Merge previous image and active calibration image
+                // Merge previous image and active calibration image
                 if (mergeImages(merge_images_2, img_cal_id, merge_images_3) != 0)
                     return -1;
 
@@ -602,7 +602,10 @@ int main(int argc, char **argv)
 
     // Initialize DevIL library
     ilInit();
-    checkErrorDevIL(__LINE__, __FILE__);
+    if (checkErrorDevIL(__LINE__, __FILE__) != 0)
+        return -1;
+    ILint version = ilGetInteger(IL_VERSION_NUM);
+    ROS_ERROR("[DevIL] Intitalized: Version[%d]", version);
 
     // Load images
     if (loadImgTextures(imgWallIDVec, imgWallPathVec) != 0)
