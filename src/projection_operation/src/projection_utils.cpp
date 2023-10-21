@@ -10,42 +10,23 @@
 
 // ================================================== FUNCTIONS ==================================================
 
-// void initializeGL(GLFWwindow*& window, int win_width_pxl, int win_height_pxl, std::string window_name, GLuint &fboTexture)
-// {
-//     // Initialize GLFW
-//     //glfwSetErrorCallback(callbackErrorGLFW);
-//     if (!glfwInit())
-//     {
-//         ROS_ERROR("GLFW: Initialization Failed");
-//         exit(-1);
-//     }
-
-//     // Create GLFW window
-//     window = glfwCreateWindow(win_width_pxl, win_height_pxl, window_name.c_str(), NULL, NULL);
-//     if (!window)
-//     {
-//         glfwTerminate();
-//         ROS_ERROR("GLFW: Create Window Failed");
-//         exit(-1);
-//     }
-
-//     // Set OpenGL context and callbacks
-//     glfwMakeContextCurrent(window);
-//     gladLoadGL();
-//     //glfwSetFramebufferSizeCallback(window, callbackFrameBufferSizeGLFW);
-
-//     // Initialize FBO and attach texture to it
-//     GLuint fbo;
-//     glGenFramebuffers(1, &fbo);
-//     glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-//     glGenTextures(1, &fboTexture);
-//     glBindTexture(GL_TEXTURE_2D, fboTexture);
-//     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, win_width_pxl, win_height_pxl, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-//     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
-//     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-// }
+int checkErrorDevIL(int line, const char *file_str, const char *msg_str)
+{
+    ILenum ilErr = ilGetError();
+    if (ilErr != IL_NO_ERROR)
+    {
+        if (msg_str)
+        {
+            ROS_ERROR("[DevIL] Error Flagged: Message[%s] Description[%s] File[%s] Line[%d]", msg_str, iluErrorString(ilErr), file_str, line);
+        }
+        else
+        {
+            ROS_ERROR("[DevIL] Error Flagged: Description[%s] File[%s] Line[%d]", iluErrorString(ilErr), file_str, line);
+        }
+        return -1;
+    }
+    return 0;
+}
 
 std::string formatCoordinatesFilePathXML(int mon_ind, int cal_ind, std::string config_dir_path)
 {
@@ -65,7 +46,7 @@ int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cal_param_arr)[4][5], std::st
     pugi::xml_document doc;
     if (!doc.load_file(full_path.c_str()))
     {
-        ROS_ERROR("LOAD XML: Could Not Load XML: File[%s]", file_name.c_str());
+        ROS_ERROR("[LOAD XML] Could Not Load XML: File[%s]", file_name.c_str());
         return -1;
     }
 
@@ -86,14 +67,14 @@ int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cal_param_arr)[4][5], std::st
     // Check the dimensions of control pount array
     if (cal_param_temp.size() != 4)
     {
-        ROS_ERROR("LOAD XML: Control Point Array from XML has Wrong Number of Rows[%zu]", cal_param_temp.size());
+        ROS_ERROR("[LOAD XML] Control Point Array from XML has Wrong Number of Rows[%zu]", cal_param_temp.size());
         return -1;
     }
     for (const auto &row : cal_param_temp)
     {
         if (row.size() != 5)
         {
-            ROS_ERROR("LOAD XML: Control Point Array from XML has Wrong Number of Columns[%zu]", row.size());
+            ROS_ERROR("[LOAD XML] Control Point Array from XML has Wrong Number of Columns[%zu]", row.size());
             return -1;
         }
     }
@@ -124,14 +105,14 @@ int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cal_param_arr)[4][5], std::st
     // Check the dimensions of homography matrix
     if (H_temp.size() != 3)
     {
-        ROS_ERROR("LOAD XML: Homography Matrix from XML has Wrong Number of Rows[%zu]", H_temp.size());
+        ROS_ERROR("[LOAD XML] Homography Matrix from XML has Wrong Number of Rows[%zu]", H_temp.size());
         return -1;
     }
     for (const auto &row : H_temp)
     {
         if (row.size() != 3)
         {
-            ROS_ERROR("LOAD XML: Homography Matrix from XML has Wrong Number of Columns[%zu]", row.size());
+            ROS_ERROR("[LOAD XML] Homography Matrix from XML has Wrong Number of Columns[%zu]", row.size());
             return -1;
         }
     }
@@ -151,13 +132,13 @@ int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cal_param_arr)[4][5], std::st
         // Print the file name
         if (verbose_level == 1)
         {
-            ROS_INFO("LOAD XML: Loaded XML: File[%s]", file_name.c_str());
+            ROS_INFO("[LOAD XML] Loaded XML: File[%s]", file_name.c_str());
         }
         // Print the control point array
         if (verbose_level == 2)
         {
             std::ostringstream oss;
-            oss << "LOAD XML: Control Point Array:\n";
+            oss << "[LOAD XML] Control Point Array:\n";
             for (const auto &row : cal_param_temp)
             {
                 for (const auto &value : row)
@@ -172,7 +153,7 @@ int loadCoordinatesXML(cv::Mat &ref_H, float (&ref_cal_param_arr)[4][5], std::st
         if (verbose_level == 3)
         {
             std::ostringstream oss;
-            oss << "LOAD XML: Homography Matrix:\n";
+            oss << "[LOAD XML] Homography Matrix:\n";
             for (const auto &row : H_temp)
             {
                 for (const auto &value : row)
@@ -250,11 +231,11 @@ void saveCoordinatesXML(cv::Mat H, float cal_param_arr[4][5], std::string full_p
     // Save the XML document to a file specified by 'configPath'
     if (doc.save_file(full_path.c_str()))
     {
-        ROS_INFO("SAVE XML: File Saved Successfully: File[%s]", file_name.c_str());
+        ROS_INFO("[SAVE XML] File Saved Successfully: File[%s]", file_name.c_str());
     }
     else
     {
-        ROS_ERROR("SAVE XML: Failed to Save XML: File[%s]", file_name.c_str());
+        ROS_ERROR("[SAVE XML] Failed to Save XML: File[%s]", file_name.c_str());
     }
 }
 
@@ -282,24 +263,15 @@ void loadImgTextures(std::vector<ILuint> &ref_image_ids_vec, std::vector<std::st
             // Check if width and height are equal to WALL_WIDTH_PXL and WALL_HEIGHT_PXL
             if (width != WALL_WIDTH_PXL || height != WALL_HEIGHT_PXL)
             {
-                ROS_ERROR("DevIL: Image is Wrong Size: File[%s] Size Actual[%d,%d] Size Expected[%d,%d]",
+                ROS_ERROR("[DevIL] Image is Wrong Size: File[%s] Size Actual[%d,%d] Size Expected[%d,%d]",
                           file_name.c_str(), width, height, WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
                 ilDeleteImages(1, &img_id);
                 continue;
             }
 
-            // // // Check if image is IL_BGR (Blue, Green, Red)
-            // ILenum format = ilGetInteger(IL_IMAGE_FORMAT);
-            // if (format != IL_BGR)
-            // {
-            //     ROS_ERROR("DevIL: Image is Not IL_BGR: File[%s]", file_name.c_str());
-            //     ilDeleteImages(1, &img_id);
-            //     continue;
-            // }
-
             // Add image ID to vector
             ref_image_ids_vec.push_back(img_id);
-            ROS_INFO("DevIL: Loaded Image[%d]: File[%s] Size[%d,%d]",
+            ROS_INFO("[DevIL] Loaded Image[%d]: File[%s] Size[%d,%d]",
                      img_i, file_name.c_str(), width, height);
             ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
         }
@@ -307,7 +279,7 @@ void loadImgTextures(std::vector<ILuint> &ref_image_ids_vec, std::vector<std::st
         {
             ILenum error = ilGetError();
             ilDeleteImages(1, &img_id);
-            ROS_ERROR("DevIL: Failed to Load Image[%d]: Error[%s] PATH[%s]",
+            ROS_ERROR("[DevIL] Failed to Load Image[%d]: Error[%s] PATH[%s]",
                       img_i, iluErrorString(error), img_path.c_str());
         }
         img_i++;
@@ -316,132 +288,145 @@ void loadImgTextures(std::vector<ILuint> &ref_image_ids_vec, std::vector<std::st
 
 ILuint mergeImages(ILuint img1, ILuint img2)
 {
-
-    static bool is_first_loop_test3baa = true;
-    if (is_first_loop_test3baa)
-    {
-        ROS_INFO("!!!!!!!! TEST3baa !!!!!!!!");
-        is_first_loop_test3baa = false;
-    }
-
     // Bind and get dimensions of img1 (baseline image)
     ilBindImage(img1);
+    if (checkErrorDevIL(__LINE__, __FILE__, "Binding Image1") != 0)
+    {
+        ROS_ERROR("[MERGE IMAGE] Error Binding Image1: ID[%u]", img1);
+        return 0;
+    }
     int width1 = ilGetInteger(IL_IMAGE_WIDTH);
     int height1 = ilGetInteger(IL_IMAGE_HEIGHT);
     ILubyte *data1 = ilGetData();
-    ILenum error = ilGetError();
-    if (error != IL_NO_ERROR)
-    {
-        ROS_ERROR("Error binding img1: %s", iluErrorString(error));
-        return 0;
-    }
 
-    static bool is_first_loop_test3bab = true;
-    if (is_first_loop_test3bab)
+    static bool is_first_loop_testa = true;
+    if (is_first_loop_testa)
     {
-        ROS_INFO("!!!!!!!! TEST3bab !!!!!!!!");
-        is_first_loop_test3bab = false;
+        ROS_INFO("!!!!!!!! TESTa !!!!!!!!");
+        is_first_loop_testa = false;
     }
 
     // Bind and get dimensions of img2 (mask image)
     ilBindImage(img2);
+    if (checkErrorDevIL(__LINE__, __FILE__, "Binding Image2") != 0)
+    {
+        ROS_ERROR("[MERGE IMAGE] Error Binding Image2: ID[%u]", img2);
+        return 0;
+    }
     int width2 = ilGetInteger(IL_IMAGE_WIDTH);
     int height2 = ilGetInteger(IL_IMAGE_HEIGHT);
     ILubyte *data2 = ilGetData();
-    error = ilGetError();
-    if (error != IL_NO_ERROR)
-    {
-        ROS_ERROR("Error binding img2: %s", iluErrorString(error));
-        return 0;
-    }
 
-    static bool is_first_loop_test3bac = true;
-    if (is_first_loop_test3bac)
+    static bool is_first_loop_testb = true;
+    if (is_first_loop_testb)
     {
-        ROS_INFO("!!!!!!!! TEST3bac !!!!!!!!");
-        is_first_loop_test3bac = false;
+        ROS_INFO("!!!!!!!! TESTb !!!!!!!!");
+        is_first_loop_testb = false;
     }
 
     // Check for dimension match
     if (width1 != width2 || height1 != height2)
     {
-        ROS_ERROR("Dimensions do not match: img1(%d, %d), img2(%d, %d)",
-                  width1, height1, width2, height2);
+        ROS_ERROR("[MERGE IMAGE] Dimensions Do Not Match: Image1: ID[%u] W/H(%d, %d); Image2: ID[%u] W/H(%d, %d)",
+                  img1, width1, height1, img2, width2, height2);
         return 0;
+    }
+
+    static bool is_first_loop_testc = true;
+    if (is_first_loop_testc)
+    {
+        ROS_INFO("!!!!!!!! TESTc !!!!!!!!");
+        is_first_loop_testc = false;
     }
 
     // Create merged image
-    ILuint mergedImg;
-    ilGenImages(1, &mergedImg);
-    ilBindImage(mergedImg);
+    ILuint merged_img_id;
+    ilGenImages(1, &merged_img_id);
+    ilBindImage(merged_img_id);
     ilTexImage(width1, height1, 1, 4, IL_RGBA, IL_UNSIGNED_BYTE, NULL);
-    error = ilGetError();
-    if (error != IL_NO_ERROR)
+    if (checkErrorDevIL(__LINE__, __FILE__, "Creating Merged Image") != 0)
     {
-        ROS_ERROR("Error creating merged image: %s", iluErrorString(error));
+        ROS_ERROR("[MERGE IMAGE] Error Creating Merged Image: ID[%u]", merged_img_id);
         return 0;
     }
 
-    static bool is_first_loop_test3bad = true;
-    if (is_first_loop_test3bad)
-    {
-        ROS_INFO("!!!!!!!! TEST3bad !!!!!!!!");
-        is_first_loop_test3bad = false;
-    }
+    // Specify number of pixels x color channels in the image
+    int n_pxl_rbga = width1 * height1 * 4;
+
 
     // Initialize mergedData array
-    ILubyte *mergedData = new ILubyte[width1 * height1 * 4];
+    ILubyte *merged_img_data = new ILubyte[n_pxl_rbga];
+
+    static bool is_first_loop_testd = true;
+    if (is_first_loop_testd)
+    {
+        ROS_INFO("!!!!!!!! TESTd !!!!!!!!");
+        is_first_loop_testd = false;
+    }
+
+    // Check for null pointers
+    if (!data1 || !data2 || !merged_img_data)
+    {
+        ROS_ERROR("[MERGE IMAGE] Null data pointer detected.");
+        if (!data1)
+            ROS_ERROR("[MERGE IMAGE] data1 is null.");
+        if (!data2)
+            ROS_ERROR("[MERGE IMAGE] data2 is null.");
+        if (!merged_img_data)
+            ROS_ERROR("[MERGE IMAGE] merged_img_data is null.");
+        return 0; // Exiting function
+    }
 
     // Loop to overlay non-white pixels from img2 onto img1
-    for (int i = 0; i < width1 * height1 * 4; i += 4)
+    for (int i = 0; i < n_pxl_rbga; i += 4)
     {
-        if (data2[i] != 255 || data2[i + 1] != 255 || data2[i + 2] != 255)
+        // Bounds checks
+        if (i + 3 >= n_pxl_rbga)
         {
-            // If the pixel is not white in img2, use it in the merged image
-            for (int j = 0; j < 4; ++j)
-            {
-                mergedData[i + j] = data2[i + j];
-            }
+            ROS_ERROR("[MERGE IMAGE] Pixel Index Out of Bounds");
+            return 0; // Exiting function
         }
-        else
-        {
-            // Otherwise, use the pixel from img1
+        if (data2[i] != 255 || data2[i + 1] != 255 || data2[i + 2] != 255)
+        { // If the pixel is not white in img2, use it in the merged image
+
             for (int j = 0; j < 4; ++j)
-            {
-                mergedData[i + j] = data1[i + j];
-            }
+                merged_img_data[i + j] = data2[i + j];
+        }
+        else // Otherwise, use the pixel from img1
+        {
+            for (int j = 0; j < 4; ++j)
+                merged_img_data[i + j] = data1[i + j];
         }
     }
 
-    static bool is_first_loop_test3bae = true;
-    if (is_first_loop_test3bae)
+    static bool is_first_loop_teste = true;
+    if (is_first_loop_teste)
     {
-        ROS_INFO("!!!!!!!! TEST3bae !!!!!!!!");
-        is_first_loop_test3bae = false;
+        ROS_INFO("!!!!!!!! TESTe !!!!!!!!");
+        is_first_loop_teste = false;
     }
 
     // Set mergedData to the new image
-    ilBindImage(mergedImg);
-    ilSetPixels(0, 0, 0, width1, height1, 1, IL_RGBA, IL_UNSIGNED_BYTE, mergedData);
-    error = ilGetError();
-    if (error != IL_NO_ERROR)
+    ilBindImage(merged_img_id);
+    ilSetPixels(0, 0, 0, width1, height1, 1, IL_RGBA, IL_UNSIGNED_BYTE, merged_img_data);
+    if (checkErrorDevIL(__LINE__, __FILE__, "Setting Pixels for Merged Image") != 0)
     {
-        ROS_ERROR("Error setting pixels for merged image: %s", iluErrorString(error));
-        delete[] mergedData;
+        ROS_ERROR("[MERGE IMAGE] Error Setting Pixels for Merged Image: ID[%u]", merged_img_id);
+        delete[] merged_img_data; // Clean up
         return 0;
     }
 
-    static bool is_first_loop_test3baf = true;
-    if (is_first_loop_test3baf)
+    static bool is_first_loop_testf = true;
+    if (is_first_loop_testf)
     {
-        ROS_INFO("!!!!!!!! TEST3baf !!!!!!!!");
-        is_first_loop_test3baf = false;
+        ROS_INFO("!!!!!!!! TESTf !!!!!!!!");
+        is_first_loop_testf = false;
     }
 
     // Clean up
-    delete[] mergedData;
+    delete[] merged_img_data;
 
-    return mergedImg;
+    return merged_img_id;
 }
 
 // Function to calculate corner spacings based on calibration parameters

@@ -1,11 +1,11 @@
 # projection_operation
 
-### ==================== TODO ====================
+## TODO
 
 1. Add description of how #include are being handled in package.
 2. Modify code to make sure image is always displaying
 
-### ==================== PROJECTION CALIBRATION UI KEYBINDINGS ====================
+## PROJECTION CALIBRATION UI KEYBINDINGS
 
 The following keyboard shortcuts are available for interacting with the application. The actions are grouped by the type of key event they are associated with: **Key Release Actions** and **Key Press or Repeat Actions**.
 
@@ -51,7 +51,7 @@ The following keyboard shortcuts are available for interacting with the applicat
     - In **Shear Adjustment Mode (`S`)**:
       - `Left/Right`: Skew the wall to the left or right.
 
-### ==================== INSTALL GLAD LIBRARY ====================
+## INSTALL GLAD LIBRARY 
 
 1. **Download GLAD**
     - Visit the [GLAD Generator](https://glad.dav1d.de/) website.
@@ -82,7 +82,7 @@ The following keyboard shortcuts are available for interacting with the applicat
     ```
 
 
-### ==================== INSTALL GLFW LIBRARY ====================
+## INSTALL GLFW LIBRARY 
 
 1. **Download GLFW**
     - Visit the [GLFW Download Page](https://www.glfw.org/download.html).
@@ -110,7 +110,7 @@ The following keyboard shortcuts are available for interacting with the applicat
     echo %GLFW_DIR%
     ```
 
-### ==================== INSTALL DevIL LIBRARY ====================
+## INSTALL DevIL LIBRARY 
 
 1. **Download DevIL**
     - Visit the [DevIL GitHub Repository](https://github.com/DentonW/DevIL) or the [official website](http://openil.sourceforge.net/).
@@ -139,7 +139,7 @@ The following keyboard shortcuts are available for interacting with the applicat
     ```
 
 
-### ==================== SETUP ROS NOETIC ENVIRONMENT VARIABLE ====================
+## SETUP ROS NOETIC ENVIRONMENT VARIABLE 
 
 > **Note**: The Pugixml and library is already included in the ROS Noetic distribution. The following steps are to ensure that the library is correctly linked in the project's CMakeLists.txt file without hardcoding any paths, making the workspace portable.
 
@@ -163,7 +163,7 @@ The following keyboard shortcuts are available for interacting with the applicat
     ```
 
 
-## ==================== DELETING AN ENVIRONMENT VARIABLE ON WINDOWS 10 ====================
+##  DELETING AN ENVIRONMENT VARIABLE ON WINDOWS 10 
 
 If you need to delete an environment variable that you've set earlier, you can do so using the Command Prompt to delete the system-wide variable. You'll need administrative privileges to delete it. Open a Command Prompt as an administrator and run:
     
@@ -174,8 +174,9 @@ If you need to delete an environment variable that you've set earlier, you can d
 After deleting the variable, you may need to restart any open Command Prompt windows or applications to update their environment.
 
 
-## ==================== REQUIRED LIBRARY FOLDER STRUCTURE ====================
+##  REQUIRED LIBRARY FOLDER STRUCTURE 
 
+```
 <external_lib_folder>/
 ├── glad/
 │   ├── include/
@@ -211,3 +212,4 @@ After deleting the variable, you may need to restart any open Command Prompt win
 │       └── pugixml.lib
 │   └── bin/
 │       └── pugixml.dll
+```

@@ -18,7 +18,7 @@
 std::string windowName = "Projection Calibration";
 
 // Dynamic control point parameter arrays
-float calParam[4][5]; // Updated based on external variable CP_PARAM 
+float calParam[4][5]; // Updated based on external variable CP_PARAM
 
 // Other variables related to control points
 std::string calParamMode = "position"; // Parmeter being modified [position, dimension, shear]
@@ -131,12 +131,30 @@ void callbackFrameBufferSizeGLFW(GLFWwindow *, int, int);
 static void callbackErrorGLFW(int, const char *);
 
 /**
- * @brief Check and print OpenGL errors.
+ * @brief Checks for OpenGL errors and logs them.
+ * Should be called after OpenGL API calls.
  *
- * @param line The line number from where the function is called.
- * @param file_str The file name from where the function is called.
+ * @example checkErrorGL(__LINE__, __FILE__);
+ *
+ * @param[in] int Line number where the function is called.
+ * @param[in] const char* File name where the function is called.
+ * 
+ * @return 0 if no errors, -1 if error.
  */
-void checkErrorGL(int, const char *);
+int checkErrorGL(int, const char *);
+
+/**
+ * @brief Checks for GLFW errors and logs them.
+ * Should be called after GLFW API calls.
+ *
+ * @example checkErrorGLFW(__LINE__, __FILE__);
+ *
+ * @param[in] int Line number where the function is called.
+ * @param[in] const char* File name where the function is called.
+ * 
+ * @return 0 if no errors, -1 if error.
+ */
+int checkErrorGLFW(int, const char *);
 
 /**
  * @brief Draws a control point as a quadrilateral using OpenGL.

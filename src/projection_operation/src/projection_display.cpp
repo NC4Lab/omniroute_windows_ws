@@ -57,8 +57,6 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
-
-    // Check for GL errors
     checkErrorGL(__LINE__, __FILE__);
 }
 
@@ -91,7 +89,7 @@ int setupProjGLFW(
     if (!pp_window_id[win_ind])
     {
         glfwTerminate();
-        ROS_ERROR("GLFW: Create Window Failed");
+        ROS_ERROR("[GLFW] Create Window Failed");
         return -1;
     }
 
@@ -119,7 +117,7 @@ int setupProjGLFW(
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
     if (status != GL_FRAMEBUFFER_COMPLETE)
     {
-        ROS_ERROR("GLFW: Framebuffer is Not Complete");
+        ROS_ERROR("[GLFW] Framebuffer is Not Complete");
         return -1;
     }
 
@@ -129,12 +127,12 @@ int setupProjGLFW(
     // Set window to wondowed mode on the second monitor    
     if (updateWindowMonMode(pp_window_id[win_ind], win_ind, pp_ref_monitor_id, mon_ind, isFullScreen) != 0)
     {
-        ROS_ERROR("GLFW: Failed to Update Window[%d] Monitor[%d] Mode", win_ind, mon_ind);
+        ROS_ERROR("[GLFW] Failed to Update Window[%d] Monitor[%d] Mode", win_ind, mon_ind);
         return -1;
     }
     else
     {
-        ROS_INFO("GLFW: Setup Window[%d] On Monitor[%d]", win_ind, mon_ind);
+        ROS_INFO("[GLFW] Setup Window[%d] On Monitor[%d]", win_ind, mon_ind);
     }
 
     // Check for GL errors
@@ -293,7 +291,7 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
     }
     else
     {
-        ROS_ERROR("GLFW: Monitor[%d] Not Found", mon_ind);
+        ROS_ERROR("[GLFW] Monitor[%d] Not Found", mon_ind);
         return -1;
     }
 
@@ -311,9 +309,9 @@ int main(int argc, char **argv)
     ROS_INFO("RUNNING MAIN");
 
     // Log paths for debugging
-    ROS_INFO("SETTINGS: Config XML Path: %s", CONFIG_DIR_PATH.c_str());
-    ROS_INFO("SETTINGS: Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
-    ROS_INFO("SETTINGS: Wall (Norm): Width=%0.2f Space=%0.2f", wall_width_ndc, WALL_SPACE);
+    ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
+    ROS_INFO("[SETUP] Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
+    ROS_INFO("[SETUP] Wall (Norm): Width=%0.2f Space=%0.2f", wall_width_ndc, WALL_SPACE);
 
     // Initialize control point parameters
     updateParamCP(calParam, 0);
@@ -327,18 +325,18 @@ int main(int argc, char **argv)
     glfwSetErrorCallback(callbackErrorGLFW);
     if (!glfwInit())
     {
-        ROS_ERROR("GLFW: Initialization Failed");
+        ROS_ERROR("[GLFW] Initialization Failed");
         return -1;
     }
 
     // Get the list of available monitors and their count
     pp_monitorIDVec = glfwGetMonitors(&nMonitors);
-    ROS_INFO("GLFW: Monitors Found [%d] Projectors Sepcified[%d]", nMonitors, nProjectors);
+    ROS_INFO("[GLFW] Monitors Found [%d] Projectors Sepcified[%d]", nMonitors, nProjectors);
 
     // Make sure nProj is not greater than the total number of monitors found
     if (nProjectors > nMonitors)
     {
-        ROS_ERROR("GLFW: Error Fewer Monitors[%d] Found than Expected Projectors[%d]", nMonitors, nProjectors);
+        ROS_ERROR("[GLFW] Error Fewer Monitors[%d] Found than Expected Projectors[%d]", nMonitors, nProjectors);
         return -1;
     }
 
@@ -356,7 +354,7 @@ int main(int argc, char **argv)
 
         if (setupProjGLFW(p_windowIDVec, proj_i, pp_monitorIDVec, mon_ind, windowNameVec[proj_i], fboIDVec[proj_i], fboTextureIDVec[proj_i]) != 0)
         {
-            ROS_ERROR("GLFW: Setup Failed for Window[%d]", proj_i);
+            ROS_ERROR("[GLFW] Setup Failed for Window[%d]", proj_i);
             return -1;
         };
     }
@@ -394,7 +392,7 @@ int main(int argc, char **argv)
                 glfwMakeContextCurrent(p_window_id);
                 if (glfwGetCurrentContext() != p_window_id)
                 {
-                    ROS_ERROR("Failed to Set GLFW Context for Window[%d]", proj_i);
+                    ROS_ERROR("[MAIN] Failed to Set GLFW Context for Window[%d]", proj_i);
                     return -1;
                 }
 
@@ -404,7 +402,7 @@ int main(int argc, char **argv)
                 // Draw the walls
                 if (drawWalls(H, calParam, proj_i, p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec) != 0)
                 {
-                    ROS_ERROR("Failed to Draw Walls for Window[%d]", proj_i);
+                    ROS_ERROR("[MAIN] Failed to Draw Walls for Window[%d]", proj_i);
                     return -1;
                 }
 
@@ -437,7 +435,7 @@ int main(int argc, char **argv)
     }
 
     // _______________ CLEANUP _______________
-     ROS_INFO("SHUTDOWN: Started");
+     ROS_INFO("[SHUTDOWN] Started");
 
     // Destroy GL objects
     for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
@@ -449,22 +447,22 @@ int main(int argc, char **argv)
         glDeleteFramebuffers(1, &fboIDVec[proj_i]);
         glDeleteTextures(1, &fboTextureIDVec[proj_i]);
     }
-    ROS_INFO("SHUTDOWN: Detroyd GLFW window and DevIL images");
+    ROS_INFO("[SHUTDOWN] Detroyd GLFW window and DevIL images");
 
     // Destroy DevIL images
     for (ILuint image_id : imgWallIDVec)
     {
         ilDeleteImages(1, &image_id);
     }
-    ROS_INFO("SHUTDOWN: Deleted DevIL images");
+    ROS_INFO("[SHUTDOWN] Deleted DevIL images");
 
     // Shutdown DevIL
     ilShutDown();
-    ROS_INFO("SHUTDOWN: Shutdown DevIL");
+    ROS_INFO("[SHUTDOWN] Shutdown DevIL");
 
     // Terminate GLFW
     glfwTerminate();
-    ROS_INFO("SHUTDOWN: Terminated GLFW");
+    ROS_INFO("[SHUTDOWN] Terminated GLFW");
 
     return 0;
 }

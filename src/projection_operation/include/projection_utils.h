@@ -229,7 +229,19 @@ extern const float CAL_PARAM_DEFAULT[4][5] = {
 
 // ================================================== FUNCTIONS ==================================================
 
-// void initializeGL(GLFWwindow *&, int, int, std::string, GLuint &);
+/**
+ * @brief Checks for DevIL errors and logs them.
+ * Should be called after DevIL API calls.
+ *
+ * @example checkErrorDevIL(__LINE__, __FILE__);
+ *
+ * @param[in] int Line number where the function is called.
+ * @param[in] const char* File name where the function is called.
+ * @param[in] const char* Optional message to provide additional context (default to nullptr).
+ *
+ * @return 0 if no errors, -1 if error.
+ */
+int checkErrorDevIL(int, const char *, const char * = nullptr);
 
 /**
  * @brief Formats the file name for the XML file based on the active calibration mode and monitor.

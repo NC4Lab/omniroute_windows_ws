@@ -257,29 +257,40 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
-
-    // Check for GL errors
     checkErrorGL(__LINE__, __FILE__);
 }
 
 static void callbackErrorGLFW(int error, const char *description)
 {
-    ROS_ERROR("[GLFW] Error Flagged: Error[%d] Description[%s]", error, description);
+    ROS_ERROR("[GLFW] Error Callback: Error[%d] Description[%s]", error, description);
 }
 
-void checkErrorGL(int line, const char *file_str)
+int checkErrorGL(int line, const char *file_str)
 {
     GLenum err;
     while ((err = glGetError()) != GL_NO_ERROR)
     {
-        // Log or print the error code
-        ROS_INFO("[OpenGL] Error Flagged: Line[%d] File[%s] Error Number[%s]: ", line, file_str, err);
+        ROS_INFO("[OpenGL] Error Flagged: Error Number[%u] File[%s] Line[%d]", err, file_str, line);
+        return -1;
     }
+    return 0;
+}
+
+int checkErrorGLFW(int line, const char *file_str)
+{
+    const char *description;
+    int glfwErr = glfwGetError(&description);
+    if (glfwErr != GLFW_NO_ERROR)
+    {
+        ROS_ERROR("[GLFW] Error Flagged: Description[%s] File[%s] Line[%d]", description, file_str, line);
+        return -1;
+    }
+    return 0;
 }
 
 void drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec)
 {
-    int segments = 100; // Number of segments to approximate a circle
+    const int segments = 100; // Number of segments to approximate a circle
 
     // Begin drawing a filled circle
     glBegin(GL_TRIANGLE_FAN);
@@ -304,8 +315,6 @@ void drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec
 
     // End drawing
     glEnd();
-
-    // Check for GL errors
     checkErrorGL(__LINE__, __FILE__);
 }
 
@@ -339,8 +348,6 @@ void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
 
     // End drawing
     glEnd();
-
-    // Check for GL errors
     checkErrorGL(__LINE__, __FILE__);
 }
 
@@ -355,13 +362,6 @@ void drawWalls(
 {
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
-
-    static bool is_first_loop_test3a = true;
-    if (is_first_loop_test3a)
-    {
-        ROS_INFO("!!!!!!!! TEST3a !!!!!!!!");
-        is_first_loop_test3a = false;
-    }
 
     // // TEMP
     // computeHomography(ref_H, cal_param_arr);
@@ -381,17 +381,10 @@ void drawWalls(
     float corner_spacings_x[2][2], corner_spacings_y[2][2];
     calculateCornerSpacing(cal_param_arr, corner_spacings_x, corner_spacings_y, MAZE_SIZE);
 
-    // TEMP
-    ROS_INFO("cs_x[0][0][%0.2f] cs_x[0][1][%0.2f] cs_x[1][0][%0.2f] cs_x[1][1][%0.2f]    cs_y[0][0][% 0.2f] cs_y[0][1][% 0.2f] cs_y[1][0][% 0.2f] cs_y[1][1][% 0.2f]",
-             corner_spacings_x[0][0], corner_spacings_x[0][1], corner_spacings_x[1][0], corner_spacings_x[1][1],
-             corner_spacings_y[0][0], corner_spacings_y[0][1], corner_spacings_y[1][0], corner_spacings_y[1][1]);
-
-    static bool is_first_loop_test3b = true;
-    if (is_first_loop_test3b)
-    {
-        ROS_INFO("!!!!!!!! TEST3b !!!!!!!!");
-        is_first_loop_test3b = false;
-    }
+    // // TEMP
+    // ROS_INFO("cs_x[0][0][%0.2f] cs_x[0][1][%0.2f] cs_x[1][0][%0.2f] cs_x[1][1][%0.2f]    cs_y[0][0][% 0.2f] cs_y[0][1][% 0.2f] cs_y[1][0][% 0.2f] cs_y[1][1][% 0.2f]",
+    //          corner_spacings_x[0][0], corner_spacings_x[0][1], corner_spacings_x[1][0], corner_spacings_x[1][1],
+    //          corner_spacings_y[0][0], corner_spacings_y[0][1], corner_spacings_y[1][0], corner_spacings_y[1][1]);
 
     // Iterate through the maze grid
     for (float wall_i = 0; wall_i < MAZE_SIZE; wall_i++)
@@ -402,54 +395,18 @@ void drawWalls(
             // Bind image
             if (wall_i == 1 && wall_j == 1)
             {
-                static bool is_first_loop_test3ba = true;
-                if (is_first_loop_test3ba)
-                {
-                    ROS_INFO("!!!!!!!! TEST3ba !!!!!!!!");
-                    is_first_loop_test3ba = false;
-                }
 
                 // Merge images
-                ILuint merge_images_1 = mergeImages(img_base_id, img_mon_id); // merge test pattern and active monitor image
-                static bool is_first_loop_test3bb = true;
-                if (is_first_loop_test3bb)
-                {
-                    ROS_INFO("!!!!!!!! TEST3bb !!!!!!!!");
-                    is_first_loop_test3bb = false;
-                }
+                ILuint merge_images_1 = mergeImages(img_base_id, img_mon_id);      // merge test pattern and active monitor image
                 ILuint merge_images_2 = mergeImages(merge_images_1, img_param_id); // merge previous image and active cp parameter image
-                static bool is_first_loop_test3bc = true;
-                if (is_first_loop_test3bc)
-                {
-                    ROS_INFO("!!!!!!!! TEST3bc !!!!!!!!");
-                    is_first_loop_test3bc = false;
-                }
-                ILuint merge_images_3 = mergeImages(merge_images_2, img_cal_id); // merge previous image and active calibration image
-                static bool is_first_loop_test3bd = true;
-                if (is_first_loop_test3bd)
-                {
-                    ROS_INFO("!!!!!!!! TEST3bd !!!!!!!!");
-                    is_first_loop_test3bd = false;
-                }
+                ILuint merge_images_3 = mergeImages(merge_images_2, img_cal_id);   // merge previous image and active calibration image
                 ilBindImage(merge_images_3);
-                static bool is_first_loop_test3be = true;
-                if (is_first_loop_test3be)
-                {
-                    ROS_INFO("!!!!!!!! TEST3be !!!!!!!!");
-                    is_first_loop_test3be = false;
-                }
             }
             else
             {
                 ilBindImage(img_base_id); // show test pattern
             }
-
-            static bool is_first_loop_test3c = true;
-            if (is_first_loop_test3c)
-            {
-                ROS_INFO("!!!!!!!! TEST3c !!!!!!!!");
-                is_first_loop_test3c = false;
-            }
+            checkErrorDevIL(__LINE__, __FILE__);
 
             // Calculate width, height and shear for the current wall
             float width_val = calculateInterpolatedValue(cal_param_arr, 2, wall_i, wall_j, MAZE_SIZE);
@@ -463,26 +420,12 @@ void drawWalls(
             float wall_space_x = calculateInterpolatedWallSpacing(corner_spacings_x, wall_i, wall_j, MAZE_SIZE);
             float wall_space_y = calculateInterpolatedWallSpacing(corner_spacings_y, wall_i, wall_j, MAZE_SIZE);
 
-            static bool is_first_loop_test3d = true;
-            if (is_first_loop_test3d)
-            {
-                ROS_INFO("!!!!!!!! TEST3d !!!!!!!!");
-                is_first_loop_test3d = false;
-            }
-
             // Calculate the wall offset
             float x_offset = wall_i * wall_space_x;
             float y_offset = wall_j * wall_space_y;
 
             // Apply perspective warping to vertices
             std::vector<cv::Point2f> rect_vertices_warped = computePerspectiveWarp(rect_vertices_vec, ref_H, x_offset, y_offset);
-
-            static bool is_first_loop_test3e = true;
-            if (is_first_loop_test3e)
-            {
-                ROS_INFO("!!!!!!!! TEST3e !!!!!!!!");
-                is_first_loop_test3e = false;
-            }
 
             // // TEMP
             // ROS_INFO("wall_i[%0.0f] wall_j[%0.0f] x_offset[%0.2f], y_offset[%0.2f]", wall_i, wall_j, x_offset, y_offset);
@@ -492,22 +435,8 @@ void drawWalls(
                          ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
                          GL_UNSIGNED_BYTE, ilGetData());
 
-            static bool is_first_loop_test3f = true;
-            if (is_first_loop_test3f)
-            {
-                ROS_INFO("!!!!!!!! TEST3f !!!!!!!!");
-                is_first_loop_test3f = false;
-            }
-
             // Bind texture to framebuffer object
             glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
-
-            static bool is_first_loop_test3g = true;
-            if (is_first_loop_test3g)
-            {
-                ROS_INFO("!!!!!!!! TEST3g !!!!!!!!");
-                is_first_loop_test3g = false;
-            }
 
             // Draw the wall
             drawRectImage(rect_vertices_warped);
@@ -520,22 +449,8 @@ void drawWalls(
     // Disable OpenGL texture mapping
     glDisable(GL_TEXTURE_2D);
 
-    static bool is_first_loop_test3h = true;
-    if (is_first_loop_test3h)
-    {
-        ROS_INFO("!!!!!!!! TEST3h !!!!!!!!");
-        is_first_loop_test3h = false;
-    }
-
     // Check for GL errors
     checkErrorGL(__LINE__, __FILE__);
-
-    static bool is_first_loop_test3i = true;
-    if (is_first_loop_test3i)
-    {
-        ROS_INFO("!!!!!!!! TEST3i !!!!!!!!");
-        is_first_loop_test3i = false;
-    }
 }
 
 void updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_id, int mon_ind, bool is_fullscreen)
@@ -570,11 +485,11 @@ void updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_
             // Set the window to windowed mode and position it on the current monitor
             glfwSetWindowMonitor(p_window_id, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * PROJ_WIN_ASPECT_RATIO), 500, 0);
         }
-        ROS_INFO("RAN: Move window to monitor %d and set to %s", mon_ind, is_fullscreen ? "fullscreen" : "windowed");
+        ROS_INFO("[WIN MODE] Move Window: Monitor[%d] Format[%s]", mon_ind, is_fullscreen ? "fullscreen" : "windowed");
     }
     else
     {
-        ROS_WARN("FAILED: Move window to monitor %d and set to %s", mon_ind, is_fullscreen ? "fullscreen" : "windowed");
+        ROS_WARN("[WIN MODE] Failed Move Window: Monitor[%d] Format[%s]", mon_ind, is_fullscreen ? "fullscreen" : "windowed");
         return;
     }
 
@@ -594,9 +509,9 @@ int main(int argc, char **argv)
     ROS_INFO("RUNNING MAIN");
 
     // Log paths for debugging
-    ROS_INFO("SETUP: Config XML Path: %s", CONFIG_DIR_PATH.c_str());
-    ROS_INFO("SETUP: Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
-    ROS_INFO("SETUP: Wall (Pxl): Width=%d Space=%d", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
+    ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
+    ROS_INFO("[SETUP] Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
+    ROS_INFO("[SETUP] Wall (Pxl): Width=%d Space=%d", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
 
     // Initialize control point parameters
     updateParamCP(calParam, calModeInd);
@@ -610,20 +525,22 @@ int main(int argc, char **argv)
     glfwSetErrorCallback(callbackErrorGLFW);
     if (!glfwInit())
     {
-        ROS_ERROR("GLFW: Initialization Failed");
+        checkErrorGLFW(__LINE__, __FILE__);
+        ROS_ERROR("[GLFW] Initialization Failed");
         return -1;
     }
 
     // Get the list of available monitors and their count
     pp_monitorIDVec = glfwGetMonitors(&nMonitors);
-    ROS_INFO("GLFW: Found %d monitors", nMonitors);
+    ROS_INFO("[GLFW] Found %d monitors", nMonitors);
 
     // Create GLFW window
     p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, windowName.c_str(), NULL, NULL);
+    checkErrorGLFW(__LINE__, __FILE__);
     if (!p_windowID)
     {
         glfwTerminate();
-        ROS_ERROR("GLFW: Create Window Failed");
+        ROS_ERROR("[GLFW] Create Window Failed");
         return -1;
     }
 
@@ -640,6 +557,7 @@ int main(int argc, char **argv)
     // Generate and set up the FBO
     glGenFramebuffers(1, &fbo_id);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
+    checkErrorGL(__LINE__, __FILE__);
 
     // Generate and set up the texture
     glGenTextures(1, &fbo_texture_id);
@@ -647,12 +565,11 @@ int main(int argc, char **argv)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    checkErrorGL(__LINE__, __FILE__);
 
     // Attach the texture to the FBO
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture_id, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-    // Check for GL errors
     checkErrorGL(__LINE__, __FILE__);
 
     // Update the window monitor and mode
@@ -662,6 +579,7 @@ int main(int argc, char **argv)
 
     // Initialize DevIL library
     ilInit();
+    checkErrorDevIL(__LINE__, __FILE__);
 
     // Load images
     loadImgTextures(imgWallIDVec, imgWallPathVec);
@@ -669,38 +587,18 @@ int main(int argc, char **argv)
     loadImgTextures(imgParamIDVec, imgParamPathVec);
     loadImgTextures(imgCalIDVec, imgCalPathVec);
 
-    ROS_INFO("!!!!!!!! TEST1 !!!!!!!!");
-
     // _______________ MAIN LOOP _______________
 
-    while (!glfwWindowShouldClose(p_windowID))
+    while (!glfwWindowShouldClose(p_windowID) && ros::ok())
     {
-        static bool is_first_loop_test2 = true;
-        if (is_first_loop_test2)
-        {
-            ROS_INFO("!!!!!!!! TEST2 !!!!!!!!");
-            is_first_loop_test2 = false;
-        }
 
         // Clear back buffer for new frame
         glClear(GL_COLOR_BUFFER_BIT);
-
-        static bool is_first_loop_test3 = true;
-        if (is_first_loop_test3)
-        {
-            ROS_INFO("!!!!!!!! TEST3 !!!!!!!!");
-            is_first_loop_test3 = false;
-        }
+        checkErrorGL(__LINE__, __FILE__);
 
         // Draw/update wall images
         drawWalls(H, calParam, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
-
-        static bool is_first_loop_test4 = true;
-        if (is_first_loop_test4)
-        {
-            ROS_INFO("!!!!!!!! TEST4 !!!!!!!!");
-            is_first_loop_test4 = false;
-        }
+        checkErrorGL(__LINE__, __FILE__);
 
         // Draw/update control points
         for (int i = 0; i < 4; i++)
@@ -712,25 +610,16 @@ int main(int argc, char **argv)
 
             // Draw the control point
             drawControlPoint(calParam[i][0], calParam[i][1], CP_RADIUS_NDC, cp_col);
-
-            static bool is_first_loop_test5 = true;
-            if (is_first_loop_test5)
-            {
-                ROS_INFO("!!!!!!!! TEST5 !!!!!!!!");
-                is_first_loop_test5 = false;
-            }
         }
 
         // Swap buffers and poll events
         glfwSwapBuffers(p_windowID);
-        glfwPollEvents();
+        checkErrorGLFW(__LINE__, __FILE__);
+        checkErrorGL(__LINE__, __FILE__);
 
-        static bool is_first_loop_test6 = true;
-        if (is_first_loop_test6)
-        {
-            ROS_INFO("!!!!!!!! TEST6 !!!!!!!!");
-            is_first_loop_test6 = false;
-        }
+        // Poll events
+        glfwPollEvents();
+        checkErrorGLFW(__LINE__, __FILE__);
 
         // Exit condition
         if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_windowID))
@@ -738,23 +627,54 @@ int main(int argc, char **argv)
     }
 
     // _______________ CLEANUP _______________
-    ROS_INFO("SHUTDOWN: Started");
+    ROS_INFO("SHUTTING DOWN");
+
+    // Check which condition caused the loop to exit
+    if (!ros::ok())
+    {
+        ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
+    }
+    else if (glfwWindowShouldClose(p_windowID))
+    {
+        ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
+    }
+    else if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    {
+        ROS_INFO("[LOOP TERMINATION] Escape Key was Pressed");
+    }
 
     // Destroy GLFW window and DevIL images
     glfwDestroyWindow(p_windowID);
+    checkErrorGLFW(__LINE__, __FILE__);
+    ROS_INFO("[SHUTDOWN] Detroyd GLFW windows");
+
+    // Delete DevIL images
     for (ILuint image_id : imgWallIDVec)
     {
         ilDeleteImages(1, &image_id);
+        checkErrorDevIL(__LINE__, __FILE__);
     }
-    ROS_INFO("SHUTDOWN: Detroyd GLFW window and DevIL images");
+    ROS_INFO("[SHUTDOWN] Deleted DevIL images");
+
+    // Delete FBO and textures
+    glDeleteFramebuffers(1, &fbo_id);
+    checkErrorGL(__LINE__, __FILE__);
+
+    // Delete FBO and textures
+    glDeleteTextures(1, &fbo_texture_id);
+    checkErrorGL(__LINE__, __FILE__);
+    ROS_INFO("[SHUTDOWN] Deleted FBO and textures");
 
     // Shutdown DevIL
     ilShutDown();
-    ROS_INFO("SHUTDOWN: Shutdown DevIL");
+    checkErrorDevIL(__LINE__, __FILE__);
+    ROS_INFO("[SHUTDOWN] Shutdown DevIL");
 
     // Terminate GLFW
     glfwTerminate();
-    ROS_INFO("SHUTDOWN: Terminated GLFW");
+    checkErrorGLFW(__LINE__, __FILE__);
+    ROS_INFO("[SHUTDOWN] Terminated GLFW");
 
+// Return success
     return 0;
 }
