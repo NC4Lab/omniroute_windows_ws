@@ -48,8 +48,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     {
         for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
         {
-            int mon_ind = isWinOnProj ? projMonIndArr[proj_i] : winMonIndDefault; // Show image on default or projector monitor
-            updateWindowMonMode(p_windowIDVec[proj_i], proj_i, pp_monitorIDVec, mon_ind, isFullScreen);
+            int mon_id_ind = isWinOnProj ? projMonIndArr[proj_i] : winMonIndDefault; // Show image on default or projector monitor
+            updateWindowMonMode(p_windowIDVec[proj_i], proj_i, pp_monitorIDVec, mon_id_ind, isFullScreen);
         }
     }
 }
@@ -78,14 +78,14 @@ void checkErrorGL(int line, const char *file_str)
 int setupProjGLFW(
     GLFWwindow **pp_window_id,
     int win_ind,
-    GLFWmonitor **&pp_ref_monitor_id,
-    int mon_ind,
-    const std::string &ref_window_name,
-    GLuint &ref_fbo_id,
-    GLuint &ref_fbo_texture_id)
+    GLFWmonitor **&pp_r_monitor_id,
+    int mon_id_ind,
+    const std::string &r_window_name,
+    GLuint &r_fbo_id,
+    GLuint &r_fbo_texture_id)
 {
     // Create GLFW window
-    pp_window_id[win_ind] = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, ref_window_name.c_str(), NULL, NULL);
+    pp_window_id[win_ind] = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, r_window_name.c_str(), NULL, NULL);
     if (!pp_window_id[win_ind])
     {
         glfwTerminate();
@@ -100,18 +100,18 @@ int setupProjGLFW(
     glfwSetFramebufferSizeCallback(pp_window_id[win_ind], callbackFrameBufferSizeGLFW);
 
     // Generate and set up the FBO
-    glGenFramebuffers(1, &ref_fbo_id);
-    glBindFramebuffer(GL_FRAMEBUFFER, ref_fbo_id);
+    glGenFramebuffers(1, &r_fbo_id);
+    glBindFramebuffer(GL_FRAMEBUFFER, r_fbo_id);
 
     // Generate and set up the texture
-    glGenTextures(1, &ref_fbo_texture_id);
-    glBindTexture(GL_TEXTURE_2D, ref_fbo_texture_id);
+    glGenTextures(1, &r_fbo_texture_id);
+    glBindTexture(GL_TEXTURE_2D, r_fbo_texture_id);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
     // Attach the texture to the FBO
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, ref_fbo_texture_id, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r_fbo_texture_id, 0);
 
     // Check for FBO completeness
     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -125,14 +125,14 @@ int setupProjGLFW(
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Set window to wondowed mode on the second monitor
-    if (updateWindowMonMode(pp_window_id[win_ind], win_ind, pp_ref_monitor_id, mon_ind, isFullScreen) != 0)
+    if (updateWindowMonMode(pp_window_id[win_ind], win_ind, pp_r_monitor_id, mon_id_ind, isFullScreen) != 0)
     {
-        ROS_ERROR("[GLFW] Failed to Update Window[%d] Monitor[%d] Mode", win_ind, mon_ind);
+        ROS_ERROR("[GLFW] Failed to Update Window[%d] Monitor[%d] Mode", win_ind, mon_id_ind);
         return -1;
     }
     else
     {
-        ROS_INFO("[GLFW] Setup Window[%d] On Monitor[%d]", win_ind, mon_ind);
+        ROS_INFO("[GLFW] Setup Window[%d] On Monitor[%d]", win_ind, mon_id_ind);
     }
 
     // Check for GL errors
@@ -177,12 +177,12 @@ void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
 }
 
 int drawWalls(
-    cv::Mat &ref_H,
-    float cal_param_arr[4][5],
+    cv::Mat &r_hom_mat,
+    float cont_point_params[4][5],
     int proj_i,
     GLFWwindow *p_window_id,
     GLuint fbo_texture_id,
-    std::vector<ILuint> &ref_image_ids_vec)
+    std::vector<ILuint> &r_image_id_vec)
 {
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
@@ -192,7 +192,7 @@ int drawWalls(
     {
         // Load the image transform coordinates from the XML file
         std::string file_path = formatCoordinatesFilePathXML(projMonIndArr[proj_i], cal_i, CONFIG_DIR_PATH);
-        if (loadCoordinatesXML(H, calParam, file_path, 0) != 0)
+        if (loadCoordinatesXML(homMat, contPointParams, file_path, 0) != 0)
         {
             ROS_ERROR("XML: Missing XML File[%s]", file_path.c_str());
             return -1;
@@ -210,12 +210,12 @@ int drawWalls(
                 int img_ind = IMG_PROJ_MAP[proj_i][wall_row][wall_col][cal_i];
 
                 // Bind image
-                ilBindImage(ref_image_ids_vec[img_ind]); // show test pattern
+                ilBindImage(r_image_id_vec[img_ind]); // show test pattern
 
                 // Calculate shear and height for the current wall
-                float width_val = calculateInterpolatedValue(cal_param_arr, 2, wall_i, wall_j, MAZE_SIZE);
-                float height_val = calculateInterpolatedValue(cal_param_arr, 3, wall_i, wall_j, MAZE_SIZE);
-                float shear_val = calculateInterpolatedValue(cal_param_arr, 4, wall_i, wall_j, MAZE_SIZE);
+                float width_val = calculateInterpolatedValue(cont_point_params, 2, wall_i, wall_j, MAZE_SIZE);
+                float height_val = calculateInterpolatedValue(cont_point_params, 3, wall_i, wall_j, MAZE_SIZE);
+                float shear_val = calculateInterpolatedValue(cont_point_params, 4, wall_i, wall_j, MAZE_SIZE);
 
                 // Create wall vertices
                 std::vector<cv::Point2f> rect_vertices_vec = computeRectVertices(0.0f, 0.0f, width_val, height_val, shear_val);
@@ -223,7 +223,7 @@ int drawWalls(
                 // Apply perspective warping to vertices
                 float x_offset = wall_i * WALL_SPACE;
                 float y_offset = wall_j * WALL_SPACE;
-                std::vector<cv::Point2f> rect_vertices_warped = computePerspectiveWarp(rect_vertices_vec, ref_H, x_offset, y_offset);
+                std::vector<cv::Point2f> rect_vertices_warped = computePerspectiveWarp(rect_vertices_vec, r_hom_mat, x_offset, y_offset);
 
                 // Set texture image
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
@@ -253,7 +253,7 @@ int drawWalls(
     return 0;
 }
 
-int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_ref_monitor_id, int mon_ind, bool is_fullscreen)
+int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_r_monitor_id, int mon_id_ind, bool is_fullscreen)
 {
     int x_pos, y_pos;
 
@@ -261,7 +261,7 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
     glfwMakeContextCurrent(p_window_id);
 
     // Get GLFWmonitor for active monitor
-    GLFWmonitor *p_monitor_id = pp_ref_monitor_id[mon_ind];
+    GLFWmonitor *p_monitor_id = pp_r_monitor_id[mon_id_ind];
 
     // Update window size and position
     if (p_monitor_id)
@@ -270,7 +270,7 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
         const GLFWvidmode *mode = glfwGetVideoMode(p_monitor_id);
         if (!mode)
         {
-            ROS_ERROR("[WIN MODE] Failed to Get Video Mode: Monitor[%d]", mon_ind);
+            ROS_ERROR("[WIN MODE] Failed to Get Video Mode: Monitor[%d]", mon_id_ind);
             return -1;
         }
 
@@ -280,7 +280,7 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
         glfwSetWindowMonitor(p_window_id, p_monitor_id, x_pos, y_pos, mode->width, mode->height, mode->refreshRate);
         if (!p_monitor_id)
         {
-            ROS_ERROR("[WIN MODE] Invalid Monitor Pointer: Monitor[%d]", mon_ind);
+            ROS_ERROR("[WIN MODE] Invalid Monitor Pointer: Monitor[%d]", mon_id_ind);
             return -1;
         }
 
@@ -293,7 +293,7 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
             // Validate monitor position
             if (monitor_x < 0 || monitor_y < 0)
             {
-                ROS_WARN("[WIN MODE] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_ind, monitor_x, monitor_y);
+                ROS_WARN("[WIN MODE] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_id_ind, monitor_x, monitor_y);
                 return 0;
             }
 
@@ -306,14 +306,14 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
         }
 
         // Update window title
-        std::string new_title = "Window[" + std::to_string(win_ind) + "] Monitor[" + std::to_string(mon_ind) + "]";
+        std::string new_title = "Window[" + std::to_string(win_ind) + "] Monitor[" + std::to_string(mon_id_ind) + "]";
         glfwSetWindowTitle(p_window_id, new_title.c_str());
 
-        ROS_INFO("RAN: Update Window: Monitor[%d] Format[%s] X[%d] Y[%d]", mon_ind, is_fullscreen ? "fullscreen" : "windowed", x_pos, y_pos);
+        ROS_INFO("RAN: Update Window: Monitor[%d] Format[%s] X[%d] Y[%d]", mon_id_ind, is_fullscreen ? "fullscreen" : "windowed", x_pos, y_pos);
     }
     else
     {
-        ROS_ERROR("[GLFW] Monitor[%d] Not Found", mon_ind);
+        ROS_ERROR("[GLFW] Monitor[%d] Not Found", mon_id_ind);
         return -1;
     }
 
@@ -336,10 +336,10 @@ int main(int argc, char **argv)
     ROS_INFO("[SETUP] Wall (Norm): Width=%0.2f Space=%0.2f", wall_width_ndc, WALL_SPACE);
 
     // Initialize control point parameters
-    updateCalParams(calParam, 0);
+    updateCalParams(contPointParams, 0);
 
     // Do initial computations of homography matrix
-    computeHomography(H, calParam);
+    computeHomography(homMat, contPointParams);
 
     // --------------- OpenGL SETUP V2 ---------------
 
@@ -371,10 +371,10 @@ int main(int argc, char **argv)
     // Create GLFW window
     for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
     {
-        int mon_ind = winMonIndDefault; // Show image on default monitor
-        // int mon_ind =  projMonIndArr[proj_i]; // Show image on projector monitor
+        int mon_id_ind = winMonIndDefault; // Show image on default monitor
+        // int mon_id_ind =  projMonIndArr[proj_i]; // Show image on projector monitor
 
-        if (setupProjGLFW(p_windowIDVec, proj_i, pp_monitorIDVec, mon_ind, windowNameVec[proj_i], fboIDVec[proj_i], fboTextureIDVec[proj_i]) != 0)
+        if (setupProjGLFW(p_windowIDVec, proj_i, pp_monitorIDVec, mon_id_ind, windowNameVec[proj_i], fboIDVec[proj_i], fboTextureIDVec[proj_i]) != 0)
         {
             ROS_ERROR("[GLFW] Setup Failed for Window[%d]", proj_i);
             return -1;
@@ -387,7 +387,7 @@ int main(int argc, char **argv)
     ilInit();
 
     // Load images
-    loadImgTextures(imgWallIDVec, imgWallPathVec);
+    loadImgTextures(imgWallPathVec, imgWallIDVec);
 
     // _______________ MAIN LOOP _______________
 
@@ -422,7 +422,7 @@ int main(int argc, char **argv)
                 glClear(GL_COLOR_BUFFER_BIT);
 
                 // Draw the walls
-                if (drawWalls(H, calParam, proj_i, p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec) != 0)
+                if (drawWalls(homMat, contPointParams, proj_i, p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec) != 0)
                 {
                     ROS_ERROR("[MAIN] Failed to Draw Walls for Window[%d]", proj_i);
                     return -1;

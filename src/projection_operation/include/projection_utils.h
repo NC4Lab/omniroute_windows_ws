@@ -173,17 +173,6 @@ extern const int MAZE_SIZE = 3;
 extern const int WALL_WIDTH_PXL = 300;
 extern const int WALL_HEIGHT_PXL = 540;
 
-// // Wall image size and spacingOpenGL's Normalized Device Coordinates (NDC) [-1, 1]
-// /// @todo: Figure out how these values are used and what units they are in
-// const float wall_width_ndc = 0.015f;
-// const float wall_height_ndc = 0.015f;
-// extern const float WALL_SPACE = 2.0f * wall_width_ndc;
-
-// // Variables related to control point parameters
-// extern const float CP_RADIUS_NDC = 0.005f;
-// const float cal_offset_x = 0.15f; // X offset from center of screen for control points
-// const float cal_offset_y = 0.3f; // X offset from center of screen for control points
-
 // Control point image radius
 extern const float CP_RADIUS_NDC = 0.005f;
 
@@ -191,15 +180,14 @@ extern const float CP_RADIUS_NDC = 0.005f;
 const float cal_offset_x = 0.15f; // X offset from center of screen for control points
 const float cal_offset_y = 0.3f;  // X offset from center of screen for control points
 
-// Wall image size and spacingOpenGL's Normalized Device Coordinates (NDC) [-1, 1]
-/// @todo: Figure out how these values are used and what units they are in
+// Wall image size and spacing in OpenGL's Normalized Device Coordinates (NDC) [-1, 1]
 const float wall_width_ndc = ((cal_offset_x * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));
 const float wall_height_ndc = ((cal_offset_y * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));
 extern const float WALL_SPACE = 2.0f * wall_width_ndc;
 
-// Calibration parameter array
+// Conrol point calibration parameter array
 /**
- * @brief Array to hold the position and transformation parameters for control points in normalized coordinates [-1, 1].
+ * @brief Array to hold the position and transformation parameters for control points in Normalized Device Coordinates (NDC) [-1, 1].
  *
  * @note The second control point (index 1) can only be used to adjust the wall position.
  *
@@ -219,85 +207,12 @@ extern const float WALL_SPACE = 2.0f * wall_width_ndc;
  *   - [3]: Wall height parameter [-1,1]
  *   - [4]: Shearing factor
  */
-extern const float CAL_PARAM_DEFAULT[4][5] = {
+extern const float CONT_POINT_PARAMS[4][5] = {
     // Default control point parameters
     {-cal_offset_x, cal_offset_y, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
     {cal_offset_x, cal_offset_y, wall_width_ndc, wall_height_ndc, 0.0f},  // top-right control point
     {cal_offset_x, -cal_offset_y, wall_width_ndc, wall_height_ndc, 0.0f}, // bottom-right control point
     {-cal_offset_x, -cal_offset_y, wall_width_ndc, wall_height_ndc, 0.0f} // bottom-left control point
-};
-
-// ================================================== CLASSES ==================================================
-
-/**
- * @class GLFWWrapper
- * @brief A wrapper class for managing GLFW resources.
- *
- * This class encapsulates the GLFWwindow and GLFWmonitor pointers,
- * and provides utility methods for creating windows, getting monitors,
- * and cleaning up resources. It adheres to the RAII principles.
- */
-class GLFWWrapper {
-private:
-    GLFWwindow *p_windowID;         ///< Pointer to GLFW window.
-    GLFWmonitor **pp_monitorIDVec;  ///< Pointer to array of GLFW monitors.
-
-    /**
-     * @brief Cleans up the GLFW resources.
-     * 
-     * Destroys the GLFW window and terminates GLFW.
-     */
-    void cleanUp();
-
-public:
-    int nMonitors;               ///< Number of monitors.
-    bool initStatus;             ///< Status of GLFW initialization.
-    
-    /**
-     * @brief Constructor that initializes GLFW.
-     */
-    GLFWWrapper();
-
-    /**
-     * @brief Destructor that releases GLFW resources.
-     */
-    ~GLFWWrapper();
-
-    /**
-     * @brief Deleted copy constructor.
-     */
-    GLFWWrapper(const GLFWWrapper&) = delete;
-
-    /**
-     * @brief Deleted copy assignment operator.
-     */
-    GLFWWrapper& operator=(const GLFWWrapper&) = delete;
-
-    /**
-     * @brief Get the window ID.
-     * 
-     * @return Pointer to GLFW window.
-     */
-    GLFWwindow* getWindowID() const;
-
-    /**
-     * @brief Get the monitor ID vector.
-     * 
-     * @return Pointer to array of GLFW monitors.
-     */
-    GLFWmonitor** getMonitorIDVec() const;
-
-    /**
-     * @brief Creates a GLFW window.
-     * 
-     * @param width Width of the window.
-     * @param height Height of the window.
-     * @param title Title of the window.
-     * @param monitor Monitor to use.
-     * @param share Window whose context to share.
-     * @return True if window creation is successful, false otherwise.
-     */
-    bool createWindow(int width, int height, const char* title, GLFWmonitor* monitor = nullptr, GLFWwindow* share = nullptr);
 };
 
 // ================================================== FUNCTIONS ==================================================
@@ -308,9 +223,9 @@ public:
  *
  * @example checkErrorDevIL(__LINE__, __FILE__);
  *
- * @param[in] int Line number where the function is called.
- * @param[in] const char* File name where the function is called.
- * @param[in] const char* Optional message to provide additional context (default to nullptr).
+ * @param line Line number where the function is called.
+ * @param file_str File name where the function is called.
+ * @param msg_str Optional message to provide additional context (default to nullptr).
  *
  * @return 0 if no errors, -1 if error.
  */
@@ -322,61 +237,62 @@ int checkErrorDevIL(int, const char *, const char * = nullptr);
  * Format:
  * - `cfg_m<number>_c<number>.xml`
  *
- * @param mon_ind Index of the active or desired monitor.
- * @param cal_ind Index of the active or desired calibration mode.
+ * @param mon_id_ind Index of the active or desired monitor.
+ * @param cal_mode_ind Index of the active or desired calibration mode.
  * @param config_dir_path Path to the directory where the XML file will be loaded/saved.
  *
  */
 std::string formatCoordinatesFilePathXML(int, int, std::string);
 
 /**
- * @brief Loads control points and homography matrix from an XML file.
+ * @brief Loads calibration parameters and homography matrix from an XML file.
  *
  * This is the primary function containing the implementation. It reads an XML file
- * to populate the `ref_H` and `ref_cal_param_arr` matrices.
+ * to populate the `r_hom_mat` and `r_cont_point_params` matrices.
  *
  * @note Uses pugiXML for XML parsing.
  *
- * @param ref_H Homography matrix to populate.
- * @param ref_cal_param_arr 2D array for control points in normalized coordinates [-1, 1].
+ * @param[out] r_hom_mat Reference to the homography matrix to populate.
+ * @param[out] r_cont_point_params Reference to the 4x5 array of calibration parameters.
  * @param full_path Path to the XML file.
- * @param verbose_level Level of verbosity for printing loaded data (0:nothing, 1:file name, 2:control points, 3:homography matrix).
+ * @param verbose_level Level of verbosity for printing loaded data (0:nothing, 1:file name, 2:calibration parameters, 3:homography matrix).
  *
  * @return 0 on successful execution, -1 on failure.
  */
 int loadCoordinatesXML(cv::Mat &, float (&)[4][5], std::string, int = 0);
 
 /**
- * @brief Saves the control point positions and homography matrix to an XML file.
+ * @brief Saves the calibration parameter coordinates and homography matrix to an XML file.
  *
  * This function uses the pugixml library to create an XML document and populate it with
- * the control point positions and homography matrix. The control point positions are stored in a 2D array
- * and the homography matrix is stored in a cv::Mat object. Both are saved under their respective
- * XML nodes.
+ * the calibration parameter coordinates and homography matrix. The calibration parameter are stored 
+ * in a 2D array and the homography matrix is stored in a cv::Mat object. Both are saved under their 
+ * respective XML nodes.
  *
  * @note The XML file is saved to the path specified by the global variable 'configPath'.
  *
  * Example XML structure:
  * @code
  * <config>
- *   <calParam>
- *     <Row>
- *       <Cell>value</Cell>
+ *   <cont_point_params>
+ *     <row>
+ *       <cell>value</cell>
  *       ...
- *     </Row>
+ *     </row>
  *     ...
- *   </calParam>
- *   <H>
- *     <Row>
- *       <Cell>value</Cell>
+ *   </cont_point_params>
+ *   <hom_mat>
+ *     <row>
+ *       <cell>value</cell>
  *       ...
- *     </Row>
+ *     </row>
  *     ...
- *   </H>
+ *   </hom_mat>
  * </config>
  * @endcode
  *
- * @param cal_param_arr 2D array of control point positions.
+ * @param hom_mat The homography matrix used to warp perspective.
+ * @param cont_point_params The 4x5 array of calibration parameters.
  * @param full_path Path to the XML file.
  */
 void saveCoordinatesXML(cv::Mat, float[4][5], std::string);
@@ -388,21 +304,21 @@ void saveCoordinatesXML(cv::Mat, float[4][5], std::string);
  * using the DevIL library. The function then stores the ILuint IDs of successfully loaded images
  * in a reference vector.
  *
- * @param ref_image_ids_vec A reference to a vector of ILuint where the IDs of the loaded images will be stored.
  * @param img_paths_vec A vector of file paths to the images to be loaded.
+ * @param[out] r_image_id_vec A reference to a vector of ILuint where the IDs of the loaded images will be stored.
  *
  * @return DevIL status: 0 on successful execution, -1 on failure.
  */
-int loadImgTextures(std::vector<ILuint> &, std::vector<std::string>);
+int loadImgTextures(std::vector<std::string>, std::vector<ILuint> &);
 
 /**
  * @brief Deletes DevIL images from a given vector of image IDs.
  *
- * @param ref_image_ids_vec Vector containing DevIL image IDs.
- * 
-  * @return DevIL status: 0 on successful execution, -1 on failure.
+ * @param r_image_id_vec Vector containing DevIL image IDs.
+ *
+ * @return DevIL status: 0 on successful execution, -1 on failure.
  */
-int deleteImgTextures(std::vector<ILuint>&);
+int deleteImgTextures(std::vector<ILuint> &);
 
 /**
  * @brief Merges two images by overlaying non-white pixels from the second image onto the first.
@@ -411,10 +327,10 @@ int deleteImgTextures(std::vector<ILuint>&);
  * replacing pixels in img1 with corresponding non-white pixels from img2. The resulting merged image is
  * returned as a new ILuint ID.
  *
- * @param img1 The ILuint ID of the baseline image.
- * @param img2 The ILuint ID of the mask image.
- * @param[out] ref_img_merge_id Reference to an ILuint where the ID of the merged image will be stored.
- * 
+ * @param img1_id The ILuint ID of the baseline image.
+ * @param img2_id The ILuint ID of the mask image.
+ * @param[out] r_img_merge_id Reference to an ILuint where the ID of the merged image will be stored.
+ *
  * @return DevIL status: 0 on successful execution, -1 on failure.
  *
  * @warning The dimensions of img1 and img2 must match.
@@ -425,14 +341,14 @@ int mergeImages(ILuint, ILuint, ILuint &);
  * @brief Calculate corner spacings based on calibration parameters.
  *
  * This function computes the wall spacings at each of the four corners of the maze
- * based on the given calibration parameters.
+ * based on the given calibration parameters. The spacings are normalized by the maze size,
+ * so that they represent the spacing per cell along the x and y directions.
  *
- * @param cal_param_arr 4x5 array of calibration parameters.
- * @param [out] corner_spacings_x 2x2 array to store calculated corner spacings in x-direction.
- * @param [out] corner_spacings_y 2x2 array to store calculated corner spacings in y-direction.
- * @param maze_size Number of cells in the maze along one dimension.
+ * @param cont_point_params The 4x5 array of calibration parameters.
+ * @param [out] r_corner_space_arr_x 2x2 array to store calculated normalized corner spacings in x-direction.
+ * @param [out] r_corner_space_arr_y 2x2 array to store calculated normalized corner spacings in y-direction.
  */
-void calculateCornerSpacing(float[4][5], float (&)[2][2], float (&)[2][2], int);
+void calculateCornerSpacing(float[4][5], float (&)[2][2], float (&)[2][2]);
 
 /**
  * @brief Calculate interpolated wall spacing for either x or y direction.
@@ -440,13 +356,13 @@ void calculateCornerSpacing(float[4][5], float (&)[2][2], float (&)[2][2], int);
  * This function uses the corner spacings and the wall's position within the grid
  * to compute the interpolated wall spacing in either x or y direction.
  *
- * @param corner_spacings 2x2 array containing the spacings at each corner.
+ * @param corner_space_arr 2x2 array containing the spacings at each corner.
  * @param wall_i The row index of the wall within the maze grid.
  * @param wall_j The column index of the wall within the maze grid.
- * @param maze_size The size of the maze grid.
+ * 
  * @return The interpolated wall spacing.
  */
-float calculateInterpolatedWallSpacing(float[2][2], float, float, int);
+float calculateInterpolatedWallSpacing(float[2][2], float, float);
 
 /**
  * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
@@ -454,8 +370,8 @@ float calculateInterpolatedWallSpacing(float[2][2], float, float, int);
  * This function performs bilinear interpolation based on the position of a point
  * within a 2D grid (grid_ind_i, grid_ind_j) and predefined values at the grid corners.
  *
- * @param cal_param_arr The array of control point parameters.
- * @param cal_param_ind The index of the control point parameter (3:height, 4:sheer).
+ * @param cont_point_params The 4x5 array of calibration parameters.
+ * @param cont_point_params_ind The index of the calibration parameters (3:height, 4:sheer).
  * @param grid_ind_i The index of the point along the first axis within the grid.
  * @param grid_ind_j The index of the point along the second axis within the grid.
  * @param grid_size The size of the 2D grid.
@@ -486,7 +402,7 @@ std::vector<cv::Point2f> computeRectVertices(float, float, float, float, float);
  * @brief Computes the perspective warp for a given set of points.
  *
  * @param rect_vertices_vec The vector of points representing the rectangle.
- * @param ref_H The homography matrix used to warp perspective.
+ * @param r_hom_mat The homography matrix used to warp perspective.
  * @param x_offset The x-offset to apply to the vertices.
  * @param y_offset The y-offset to apply to the vertices.
  *
@@ -495,26 +411,26 @@ std::vector<cv::Point2f> computeRectVertices(float, float, float, float, float);
 std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f>, cv::Mat &, float, float);
 
 /**
- * @brief Computes the homography matrix based on control points and wall image vertices.
+ * @brief Computes the homography matrix based on calibration parameterss and wall image vertices.
  *
  * This function calculates the homography matrix that maps points from the source image (wall images)
- * to the destination image (control points). The homography matrix is stored in the global variable H.
+ * to the destination image (control points). The homography matrix is stored in the global variable homMat.
  *
  * Control points are specified in normalized coordinates based on the calibration paramiters array.
  * Wall image vertices are calculated based on the dimensions and spacing of the maze walls.
  *
  * @note This function uses the OpenCV library to compute the homography matrix.
  *
- * @param ref_H The homography matrix used to warp perspective.
- * @param cal_param_arr The array of control point parameters.
+ * @param r_hom_mat The homography matrix used to warp perspective.
+ * @param cont_point_params The 4x5 array of calibration parameters.
  */
 void computeHomography(cv::Mat &, float[4][5]);
 
 /**
  * @brief Used to reset control point parameter list.
  *
- * @param ref_cal_param Reference to 2D calibration parameter array.
- * @param cal_ind Index of the active calibration mode.
+ * @param r_cont_point_params Reference to the 4x5 array of calibration parameters.
+ * @param cal_mode_ind Index of the active calibration mode.
  */
 void updateCalParams(float (&)[4][5], int);
 

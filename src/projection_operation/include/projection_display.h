@@ -15,10 +15,10 @@
 // ================================================== VARIABLES ==================================================
 
 // Control point parameter array
-float calParam[4][5];
+float contPointParams[4][5];
 
 // The homography matrix used to warp perspective.
-cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
+cv::Mat homMat = cv::Mat::eye(3, 3, CV_32F);
 
 // Directory paths
 std::string image_wall_dir_path = IMAGE_TOP_DIR_PATH + "/runtime_images/shapes";
@@ -132,11 +132,11 @@ void checkErrorGL(int, const char *);
  *
  * @param pp_window_id GLFWwindow pointer array, where each pointer corresponds to a projector window.
  * @param win_ind Index of the window for which the setup is to be done.
- * @param pp_ref_monitor_id Reference to the GLFWmonitor pointer array.
- * @param mon_ind Index of the monitor to move the window to.
- * @param ref_window_name Reference to the name to be assigned to the GLFW window.
- * @param ref_fbo_id Reference to the GLuint variable where the generated FBO ID will be stored.
- * @param ref_fbo_texture_id Reference to the GLuint variable where the generated FBO texture ID will be stored.
+ * @param pp_r_monitor_id Reference to the GLFWmonitor pointer array.
+ * @param mon_id_ind Index of the monitor to move the window to.
+ * @param r_window_name Reference to the name to be assigned to the GLFW window.
+ * @param r_fbo_id Reference to the GLuint variable where the generated FBO ID will be stored.
+ * @param r_fbo_texture_id Reference to the GLuint variable where the generated FBO texture ID will be stored.
  *
  * @return 0 on successful execution, -1 on failure.
  */
@@ -156,12 +156,12 @@ void drawRectImage(std::vector<cv::Point2f>);
  * It iterates through each calibration mode and each wall in the maze to
  * draw the corresponding image.
  *
- * @param ref_H Reference to the Homography Matrix.
- * @param cal_param_arr Array containing control point parameters.
+ * @param r_hom_mat Reference to the Homography Matrix.
+ * @param cont_point_params Array containing control point parameters.
  * @param proj_i Index of the projector being used.
  * @param p_window_id Pointer to the GLFW window.
  * @param fbo_texture_id Framebuffer Object's texture ID.
- * @param ref_image_ids_vec Reference to the vector containing image IDs.
+ * @param r_image_id_vec Reference to the vector containing image IDs.
  *
  * @return Returns 0 on success, -1 otherwise.
  */
@@ -183,8 +183,8 @@ int drawWalls(cv::Mat &, float[4][5], int, GLFWwindow *, GLuint, std::vector<ILu
  *
  * @param p_window_id Pointer to the GLFWwindow pointer that will be updated.
  * @param win_ind Index of the window for which the setup is to be done.
- * @param pp_ref_monitor_id Reference to the GLFWmonitor pointer array.
- * @param mon_ind Index of the monitor to move the window to.
+ * @param pp_r_monitor_id Reference to the GLFWmonitor pointer array.
+ * @param mon_id_ind Index of the monitor to move the window to.
  * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
  *
  * @return 0 on successful execution, -1 on failure.

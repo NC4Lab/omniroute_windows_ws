@@ -18,17 +18,17 @@
 std::string windowName = "Projection Calibration";
 
 // Dynamic control point parameter arrays
-float calParam[4][5]; // Updated based on external variable CP_PARAM
+float contPointParams[4][5]; 
 
 // Other variables related to control points
-std::string calParamMode = "position"; // Parmeter being modified [position, dimension, shear]
 int cpSelectedInd = 0;
-std::vector<float> cpActiveRGBVec = {0.0f, 1.0f, 0.0f};   // Active control point marker color (green)
+std::vector<float> cpActiveRGBVec = {0.0f, 1.0f, 0.0f}; // Active control point marker color (green)
 std::vector<float> cpInactiveRGBVec = {1.0f, 0.0f, 0.0f}; // Inactive control point marker color (red)
 std::vector<float> cpDisabledRGBVec = {0.5f, 0.5f, 0.5f}; // Inactive control point marker color (gray)
+std::string calModeStr = "position"; // Parmeter being modified [position, dimension, shear]
 
 // The 3x3 homography matrix of 32-bit floating-point numbers used to warp perspective.
-cv::Mat H = cv::Mat::eye(3, 3, CV_32F);
+cv::Mat homMat = cv::Mat::eye(3, 3, CV_32F);
 
 // Directory paths
 std::string image_wall_dir_path = IMAGE_TOP_DIR_PATH + "/calibration_images";
@@ -58,6 +58,7 @@ std::vector<std::string> imgMonPathVec = {
     image_state_dir_path + "/m5.bmp",
 };
 int winMonInd = 0;         // Index of the image to be loaded
+int nMonitors;             // Number of monitors connected to the system
 bool isFullScreen = false; // Flag to indicate if the window is in full screen mode
 
 // Control point parameter image variables for ui
@@ -84,7 +85,8 @@ int calModeInd = 1;                      // Index of the image to be loaded
 size_t nCalModes = imgCalPathVec.size(); // Number of calibration modes
 
 // Variables related to window and OpenGL
-GLFWWrapper glfwWrapper;
+GLFWwindow *p_windowID = nullptr;
+GLFWmonitor **pp_monitorIDVec = nullptr;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -134,9 +136,9 @@ static void callbackErrorGLFW(int, const char *);
  *
  * @example checkErrorGL(__LINE__, __FILE__);
  *
- * @param[in] int Line number where the function is called.
- * @param[in] const char* File name where the function is called.
- * @param[in] const char* Optional message to provide additional context (default to nullptr).
+ * @param line Line number where the function is called.
+ * @param file_str File name where the function is called.
+ * @param msg_str Optional message to provide additional context (default to nullptr).
  *
  * @return 0 if no errors, -1 if error.
  */
@@ -148,9 +150,9 @@ int checkErrorGL(int, const char *, const char * = nullptr);
  *
  * @example checkErrorGLFW(__LINE__, __FILE__);
  *
- * @param[in] int Line number where the function is called.
- * @param[in] const char* File name where the function is called.
- * @param[in] const char* Optional message to provide additional context (default to nullptr).
+ * @param line Line number where the function is called.
+ * @param file_str File name where the function is called.
+ * @param msg_str Optional message to provide additional context (default to nullptr).
  *
  * @return 0 if no errors, -1 if error.
  */
@@ -187,8 +189,8 @@ int drawRectImage(std::vector<cv::Point2f>);
  * to handle image loading and OpenGL for rendering. The function also performs perspective
  * warping based on the homography matrix and shear and height values extracted from control points.
  *
- * @param ref_H The homography matrix used to warp perspective.
- * @param cal_param_arr The array of control point parameters.
+ * @param r_hom_mat The homography matrix used to warp perspective.
+ * @param cont_point_params The array of control point parameters.
  * @param fbo_texture The OpenGL texture ID of the framebuffer object.
  * @param img_base_id The DevIL image ID of the base image.
  * @param img_mon_id The DevIL image ID of the monitor image.
@@ -215,13 +217,13 @@ int drawWalls(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint);
  *
  * @param p_window_id Pointer to the GLFWwindow pointer that will be updated.
  * @param win_ind Index of the window for which the setup is to be done.
- * @param pp_ref_monitor_id Reference to the GLFWmonitor pointer array.
- * @param mon_ind Index of the monitor to move the window to.
+ * @param pp_r_monitor_id Reference to the GLFWmonitor pointer array.
+ * @param mon_id_ind Index of the monitor to move the window to.
  * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
  *
  * @return 0 if no errors, -1 if error.
  */
-int updateWindowMonMode(GLFWWrapper &, int, int, bool);
+int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.

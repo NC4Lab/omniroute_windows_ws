@@ -34,23 +34,23 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         {
             winMonInd = 0;
         }
-        else if (key == GLFW_KEY_1 && glfwWrapper.nMonitors > 1)
+        else if (key == GLFW_KEY_1 && nMonitors > 1)
         {
             winMonInd = 1;
         }
-        else if (key == GLFW_KEY_2 && glfwWrapper.nMonitors > 2)
+        else if (key == GLFW_KEY_2 && nMonitors > 2)
         {
             winMonInd = 2;
         }
-        else if (key == GLFW_KEY_3 && glfwWrapper.nMonitors > 3)
+        else if (key == GLFW_KEY_3 && nMonitors > 3)
         {
             winMonInd = 3;
         }
-        else if (key == GLFW_KEY_4 && glfwWrapper.nMonitors > 4)
+        else if (key == GLFW_KEY_4 && nMonitors > 4)
         {
             winMonInd = 4;
         }
-        else if (key == GLFW_KEY_5 && glfwWrapper.nMonitors > 5)
+        else if (key == GLFW_KEY_5 && nMonitors > 5)
         {
             winMonInd = 5;
         }
@@ -64,7 +64,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
 
             // Save the coordinates to the XML file
-            saveCoordinatesXML(H, calParam, file_path);
+            saveCoordinatesXML(homMat, contPointParams, file_path);
         }
 
         // Load coordinates from XML
@@ -74,14 +74,14 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
 
             // Load the coordinates from the XML file
-            loadCoordinatesXML(H, calParam, file_path);
+            loadCoordinatesXML(homMat, contPointParams, file_path);
         }
 
         // ---------- Control Point Reset [R] ----------
 
         else if (key == GLFW_KEY_R)
         {
-            updateCalParams(calParam, calModeInd);
+            updateCalParams(contPointParams, calModeInd);
         }
 
         // ---------- Target selector keys [F1-F4] ----------
@@ -115,21 +115,21 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // Control point position
         else if (key == GLFW_KEY_A)
         {
-            calParamMode = "position";
+            calModeStr = "position";
             imgParamInd = 0;
         }
 
         // Wall dimension calibration
         else if (key == GLFW_KEY_D)
         {
-            calParamMode = "dimension";
+            calModeStr = "dimension";
             imgParamInd = 1;
         }
 
         // Wall shear calibration
         else if (key == GLFW_KEY_S)
         {
-            calParamMode = "shear";
+            calModeStr = "shear";
             imgParamInd = 2;
         }
     }
@@ -154,7 +154,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Reset a subset of control point parameters when switching calibration modes
             if (key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT)
             {
-                updateCalParams(calParam, calModeInd);
+                updateCalParams(contPointParams, calModeInd);
             }
         }
 
@@ -177,7 +177,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         else
         {
             // ---------- Control point position change [LEFT, RIGHT, UP, DOWN] ----------
-            if (calParamMode == "position")
+            if (calModeStr == "position")
             {
                 // Set the position increment based on whether the shift key is pressed
                 float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.0005f;
@@ -185,24 +185,24 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 // Listen for arrow key input to move selected control point
                 if (key == GLFW_KEY_LEFT)
                 {
-                    calParam[cpSelectedInd][0] -= pos_inc; // Move left
+                    contPointParams[cpSelectedInd][0] -= pos_inc; // Move left
                 }
                 else if (key == GLFW_KEY_RIGHT)
                 {
-                    calParam[cpSelectedInd][0] += pos_inc; // Move right
+                    contPointParams[cpSelectedInd][0] += pos_inc; // Move right
                 }
                 else if (key == GLFW_KEY_UP)
                 {
-                    calParam[cpSelectedInd][1] += pos_inc; // Move up
+                    contPointParams[cpSelectedInd][1] += pos_inc; // Move up
                 }
                 else if (key == GLFW_KEY_DOWN)
                 {
-                    calParam[cpSelectedInd][1] -= pos_inc; // Move down
+                    contPointParams[cpSelectedInd][1] -= pos_inc; // Move down
                 }
             }
 
             // ---------- Wall dimension calibration change [LEFT, RIGHT, UP, DOWN] ----------
-            if (calParamMode == "dimension")
+            if (calModeStr == "dimension")
             {
                 // Set the width and height dimension increment based on whether the shift key is pressed
                 float wd_inc = (mods & GLFW_MOD_SHIFT) ? 0.001f : 0.0001f;
@@ -211,24 +211,24 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 // Listen for arrow key input to adjust dimension/height
                 if (key == GLFW_KEY_LEFT)
                 {
-                    calParam[cpSelectedInd][2] -= wd_inc; // Decrease width
+                    contPointParams[cpSelectedInd][2] -= wd_inc; // Decrease width
                 }
                 else if (key == GLFW_KEY_RIGHT)
                 {
-                    calParam[cpSelectedInd][2] += wd_inc; // Increase width
+                    contPointParams[cpSelectedInd][2] += wd_inc; // Increase width
                 }
                 else if (key == GLFW_KEY_UP)
                 {
-                    calParam[cpSelectedInd][3] += ht_inc; // Increase height
+                    contPointParams[cpSelectedInd][3] += ht_inc; // Increase height
                 }
                 else if (key == GLFW_KEY_DOWN)
                 {
-                    calParam[cpSelectedInd][3] -= ht_inc; // Decrease height
+                    contPointParams[cpSelectedInd][3] -= ht_inc; // Decrease height
                 }
             }
 
             // ---------- Wall shear calibration change [LEFT, RIGHT] ----------
-            if (calParamMode == "shear")
+            if (calModeStr == "shear")
             {
                 // Set the shear increment based on whether the shift key is pressed
                 float shr_inc = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.001f;
@@ -236,11 +236,11 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 // Listen for arrow key input to adjust shear
                 if (key == GLFW_KEY_LEFT)
                 {
-                    calParam[cpSelectedInd][4] -= shr_inc; // Skew left
+                    contPointParams[cpSelectedInd][4] -= shr_inc; // Skew left
                 }
                 else if (key == GLFW_KEY_RIGHT)
                 {
-                    calParam[cpSelectedInd][4] += shr_inc; // Skew right
+                    contPointParams[cpSelectedInd][4] += shr_inc; // Skew right
                 }
             }
         }
@@ -249,10 +249,10 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     // _______________ Update _______________
 
     // Recompute homography matrix
-    computeHomography(H, calParam);
+    computeHomography(homMat, contPointParams);
 
     // Update the window monitor and mode
-    updateWindowMonMode(glfwWrapper, 0, winMonInd, isFullScreen);
+    updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
 }
 
 void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
@@ -363,8 +363,8 @@ int drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
 }
 
 int drawWalls(
-    cv::Mat &ref_H,
-    float cal_param_arr[4][5],
+    cv::Mat &r_hom_mat,
+    float cont_point_params[4][5],
     GLuint fbo_texture_id,
     ILuint img_base_id,
     ILuint img_mon_id,
@@ -374,14 +374,14 @@ int drawWalls(
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
 
-    // Inside your drawWalls() function
-    float corner_spacings_x[2][2], corner_spacings_y[2][2];
-    calculateCornerSpacing(cal_param_arr, corner_spacings_x, corner_spacings_y, MAZE_SIZE);
+    // Get a 2x2 array of interpolated corner spacings
+    float corner_space_arr_x[2][2], corner_space_arr_y[2][2];
+    calculateCornerSpacing(cont_point_params, corner_space_arr_x, corner_space_arr_y);
 
     // // TEMP
     // ROS_INFO("cs_x[0][0][%0.2f] cs_x[0][1][%0.2f] cs_x[1][0][%0.2f] cs_x[1][1][%0.2f]    cs_y[0][0][% 0.2f] cs_y[0][1][% 0.2f] cs_y[1][0][% 0.2f] cs_y[1][1][% 0.2f]",
-    //          corner_spacings_x[0][0], corner_spacings_x[0][1], corner_spacings_x[1][0], corner_spacings_x[1][1],
-    //          corner_spacings_y[0][0], corner_spacings_y[0][1], corner_spacings_y[1][0], corner_spacings_y[1][1]);
+    //          corner_space_arr_x[0][0], corner_space_arr_x[0][1], corner_space_arr_x[1][0], corner_space_arr_x[1][1],
+    //          corner_space_arr_y[0][0], corner_space_arr_y[0][1], corner_space_arr_y[1][0], corner_space_arr_y[1][1]);
 
     // Iterate through the maze grid rows
     for (float wall_i = 0; wall_i < MAZE_SIZE; wall_i++)
@@ -422,23 +422,23 @@ int drawWalls(
                 return -1;
 
             // Calculate width, height and shear for the current wall
-            float width_val = calculateInterpolatedValue(cal_param_arr, 2, wall_i, wall_j, MAZE_SIZE);
-            float height_val = calculateInterpolatedValue(cal_param_arr, 3, wall_i, wall_j, MAZE_SIZE);
-            float shear_val = calculateInterpolatedValue(cal_param_arr, 4, wall_i, wall_j, MAZE_SIZE);
+            float width_val = calculateInterpolatedValue(cont_point_params, 2, wall_i, wall_j, MAZE_SIZE);
+            float height_val = calculateInterpolatedValue(cont_point_params, 3, wall_i, wall_j, MAZE_SIZE);
+            float shear_val = calculateInterpolatedValue(cont_point_params, 4, wall_i, wall_j, MAZE_SIZE);
 
             // Create wall vertices
             std::vector<cv::Point2f> rect_vertices_vec = computeRectVertices(0.0f, 0.0f, width_val, height_val, shear_val);
 
             // Calculate the interpolated wall spacings for this grid cell
-            float wall_space_x = calculateInterpolatedWallSpacing(corner_spacings_x, wall_i, wall_j, MAZE_SIZE);
-            float wall_space_y = calculateInterpolatedWallSpacing(corner_spacings_y, wall_i, wall_j, MAZE_SIZE);
+            float wall_space_x = calculateInterpolatedWallSpacing(corner_space_arr_x, wall_i, wall_j);
+            float wall_space_y = calculateInterpolatedWallSpacing(corner_space_arr_y, wall_i, wall_j);
 
             // Calculate the wall offset
             float x_offset = wall_i * wall_space_x;
             float y_offset = wall_j * wall_space_y;
 
             // Apply perspective warping to vertices
-            std::vector<cv::Point2f> rect_vertices_warped = computePerspectiveWarp(rect_vertices_vec, ref_H, x_offset, y_offset);
+            std::vector<cv::Point2f> rect_vertices_warped = computePerspectiveWarp(rect_vertices_vec, r_hom_mat, x_offset, y_offset);
 
             // Set texture image
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
@@ -461,23 +461,19 @@ int drawWalls(
     return checkErrorGL(__LINE__, __FILE__);
 }
 
-int updateWindowMonMode(GLFWWrapper &glfw_wrapper, int win_ind, int mon_ind, bool is_fullscreen)
+int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_r_monitor_id, int mon_id_ind, bool is_fullscreen)
 {
-    static int imp_mon_ind_last = mon_ind;
+    static int imp_mon_id_ind_last = mon_id_ind;
     static bool is_fullscreen_last = !is_fullscreen;
 
     // Check if monitor or fullscreen mode has changed
-    if (imp_mon_ind_last == mon_ind && is_fullscreen_last == is_fullscreen)
+    if (imp_mon_id_ind_last == mon_id_ind && is_fullscreen_last == is_fullscreen)
     {
         return 0;
     }
 
-    // Get pointers to the GLFWwindow and GLFWmonitor
-    GLFWwindow *p_window_id = glfwWrapper.getWindowID();
-    GLFWmonitor **pp_ref_monitor_id = glfw_wrapper.getMonitorIDVec();
-
     // Get GLFWmonitor for active monitor
-    GLFWmonitor *p_monitor_id = pp_ref_monitor_id[mon_ind];
+    GLFWmonitor *p_monitor_id = pp_r_monitor_id[mon_id_ind];
 
     // Update window size and position
     if (p_monitor_id)
@@ -486,7 +482,7 @@ int updateWindowMonMode(GLFWWrapper &glfw_wrapper, int win_ind, int mon_ind, boo
         const GLFWvidmode *mode = glfwGetVideoMode(p_monitor_id);
         if (!mode)
         {
-            ROS_ERROR("[WIN MODE] Failed to Get Video Mode: Monitor[%d]", mon_ind);
+            ROS_ERROR("[WIN MODE] Failed to Get Video Mode: Monitor[%d]", mon_id_ind);
             return -1;
         }
 
@@ -494,7 +490,7 @@ int updateWindowMonMode(GLFWWrapper &glfw_wrapper, int win_ind, int mon_ind, boo
         glfwSetWindowMonitor(p_window_id, p_monitor_id, 0, 0, mode->width, mode->height, mode->refreshRate);
         if (!p_monitor_id)
         {
-            ROS_ERROR("[WIN MODE] Invalid Monitor Pointer: Monitor[%d]", mon_ind);
+            ROS_ERROR("[WIN MODE] Invalid Monitor Pointer: Monitor[%d]", mon_id_ind);
             return -1;
         }
 
@@ -507,7 +503,7 @@ int updateWindowMonMode(GLFWWrapper &glfw_wrapper, int win_ind, int mon_ind, boo
             // Validate monitor position
             if (monitor_x < 0 || monitor_y < 0)
             {
-                ROS_WARN("[WIN MODE] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_ind, monitor_x, monitor_y);
+                ROS_WARN("[WIN MODE] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_id_ind, monitor_x, monitor_y);
                 return 0;
             }
 
@@ -516,19 +512,19 @@ int updateWindowMonMode(GLFWWrapper &glfw_wrapper, int win_ind, int mon_ind, boo
         }
 
         // Update window title
-        std::string new_title = "Window[" + std::to_string(win_ind) + "] Monitor[" + std::to_string(mon_ind) + "]";
+        std::string new_title = "Window[" + std::to_string(win_ind) + "] Monitor[" + std::to_string(mon_id_ind) + "]";
         glfwSetWindowTitle(p_window_id, new_title.c_str());
 
-        ROS_INFO("[WIN MODE] Move Window: Monitor[%d] Format[%s]", mon_ind, is_fullscreen ? "fullscreen" : "windowed");
+        ROS_INFO("[WIN MODE] Move Window: Monitor[%d] Format[%s]", mon_id_ind, is_fullscreen ? "fullscreen" : "windowed");
     }
     else
     {
-        ROS_WARN("[WIN MODE] Failed Move Window: Monitor[%d] Format[%s]", mon_ind, is_fullscreen ? "fullscreen" : "windowed");
+        ROS_WARN("[WIN MODE] Failed Move Window: Monitor[%d] Format[%s]", mon_id_ind, is_fullscreen ? "fullscreen" : "windowed");
         return 0;
     }
 
     // Update last monitor and fullscreen mode
-    imp_mon_ind_last = mon_ind;
+    imp_mon_id_ind_last = mon_id_ind;
     is_fullscreen_last = is_fullscreen;
 
     return 0;
@@ -550,42 +546,41 @@ int main(int argc, char **argv)
     ROS_INFO("[SETUP] Wall (Pxl): Width=%d Space=%d", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
 
     // Initialize control point parameters
-    updateCalParams(calParam, calModeInd);
+    updateCalParams(contPointParams, calModeInd);
 
     // Do initial computations of homography matrix
-    computeHomography(H, calParam);
+    computeHomography(homMat, contPointParams);
 
     // --------------- OpenGL SETUP ---------------
 
-    // Check GLFW initialization
-    if (!glfwWrapper.initStatus)
+    // Initialize GLFW
+    glfwSetErrorCallback(callbackErrorGLFW);
+    if (!glfwInit())
     {
         checkErrorGLFW(__LINE__, __FILE__);
         ROS_ERROR("[GLFW] Initialization Failed");
         return -1;
     }
 
-    // Setup callback
-    glfwSetErrorCallback(callbackErrorGLFW);
+    // Get the list of available monitors and their count
+    pp_monitorIDVec = glfwGetMonitors(&nMonitors);
+    ROS_INFO("[GLFW] Found %d monitors", nMonitors);
 
-    // Create window
-    if (!glfwWrapper.createWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL))
+    // Create GLFW window
+    p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
+    checkErrorGLFW(__LINE__, __FILE__);
+    if (!p_windowID)
     {
         glfwTerminate();
         ROS_ERROR("[GLFW] Create Window Failed");
         return -1;
     }
 
-    // Get pointers to the GLFWwindow and GLFWmonitor
-    GLFWwindow *p_window_id = glfwWrapper.getWindowID();
-    GLFWmonitor **pp_monitorIDVec = glfwWrapper.getMonitorIDVec();
-    ROS_INFO("[GLFW] Found %d monitors", glfwWrapper.nMonitors);
-
     // Set OpenGL context and callbacks
-    glfwMakeContextCurrent(p_window_id);
+    glfwMakeContextCurrent(p_windowID);
     gladLoadGL();
-    glfwSetKeyCallback(p_window_id, callbackKeyBinding);
-    glfwSetFramebufferSizeCallback(p_window_id, callbackFrameBufferSizeGLFW);
+    glfwSetKeyCallback(p_windowID, callbackKeyBinding);
+    glfwSetFramebufferSizeCallback(p_windowID, callbackFrameBufferSizeGLFW);
 
     // Initialize FBO and texture
     GLuint fbo_id;
@@ -610,7 +605,7 @@ int main(int argc, char **argv)
     checkErrorGL(__LINE__, __FILE__);
 
     // Update the window monitor and mode
-    updateWindowMonMode(glfwWrapper, 0, winMonInd, isFullScreen);
+    updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
 
     // Get OpenGL version
     const GLubyte *opengl_version = glGetString(GL_VERSION);
@@ -631,22 +626,22 @@ int main(int argc, char **argv)
     ROS_INFO("[DevIL] Intitalized: Version[%d]", version);
 
     // Load images
-    if (loadImgTextures(imgWallIDVec, imgWallPathVec) != 0)
+    if (loadImgTextures(imgWallPathVec, imgWallIDVec) != 0)
     {
         ROS_ERROR("[DevIL] Failed to load wall images");
         return -1;
     }
-    if (loadImgTextures(imgMonIDVec, imgMonPathVec) != 0)
+    if (loadImgTextures(imgMonPathVec, imgMonIDVec) != 0)
     {
         ROS_ERROR("[DevIL] Failed to load monitor images");
         return -1;
     }
-    if (loadImgTextures(imgParamIDVec, imgParamPathVec) != 0)
+    if (loadImgTextures(imgParamPathVec, imgParamIDVec) != 0)
     {
         ROS_ERROR("[DevIL] Failed to load parameter images");
         return -1;
     }
-    if (loadImgTextures(imgCalIDVec, imgCalPathVec) != 0)
+    if (loadImgTextures(imgCalPathVec, imgCalIDVec) != 0)
     {
         ROS_ERROR("[DevIL] Failed to load calibration images");
         return -1;
@@ -654,7 +649,7 @@ int main(int argc, char **argv)
 
     // _______________ MAIN LOOP _______________
 
-    while (!glfwWindowShouldClose(p_window_id) && ros::ok())
+    while (!glfwWindowShouldClose(p_windowID) && ros::ok())
     {
 
         // Clear back buffer for new frame
@@ -663,7 +658,7 @@ int main(int argc, char **argv)
             break;
 
         // Draw/update wall images
-        drawWalls(H, calParam, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
+        drawWalls(homMat, contPointParams, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
         if (checkErrorGL(__LINE__, __FILE__))
             break;
 
@@ -672,17 +667,17 @@ int main(int argc, char **argv)
         {
             // Get control point color based on cp selection and mode
             std::vector<float> cp_col =
-                (cpSelectedInd != i) ? cpInactiveRGBVec : (cpSelectedInd == 1 && (calParamMode != "position")) ? cpDisabledRGBVec
+                (cpSelectedInd != i) ? cpInactiveRGBVec : (cpSelectedInd == 1 && (calModeStr != "position")) ? cpDisabledRGBVec
                                                                                                                : cpActiveRGBVec;
 
             // Draw the control point
-            drawControlPoint(calParam[i][0], calParam[i][1], CP_RADIUS_NDC, cp_col);
+            drawControlPoint(contPointParams[i][0], contPointParams[i][1], CP_RADIUS_NDC, cp_col);
             if (checkErrorGL(__LINE__, __FILE__))
                 break;
         }
 
         // Swap buffers and poll events
-        glfwSwapBuffers(p_window_id);
+        glfwSwapBuffers(p_windowID);
         checkErrorGLFW(__LINE__, __FILE__);
         if (checkErrorGL(__LINE__, __FILE__))
             break;
@@ -692,7 +687,7 @@ int main(int argc, char **argv)
         checkErrorGLFW(__LINE__, __FILE__);
 
         // Exit condition
-        if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_window_id))
+        if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_windowID))
             break;
     }
 
@@ -704,14 +699,23 @@ int main(int argc, char **argv)
     {
         ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
     }
-    else if (glfwWindowShouldClose(p_window_id))
+    else if (glfwWindowShouldClose(p_windowID))
     {
         ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
     }
-    else if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    else if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         ROS_INFO("[LOOP TERMINATION] Escape Key was Pressed");
     }
+
+    // Destroy GLFW window and DevIL images
+    if (p_windowID)
+    {
+        glfwDestroyWindow(p_windowID);
+        p_windowID = nullptr;
+    }
+    checkErrorGLFW(__LINE__, __FILE__);
+    ROS_INFO("[SHUTDOWN] Detroyd GLFW windows");
 
     // Delete DevIL images
     deleteImgTextures(imgWallIDVec);
