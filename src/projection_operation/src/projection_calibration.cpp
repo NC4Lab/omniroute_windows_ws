@@ -89,25 +89,25 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // Top-left control point
         else if (key == GLFW_KEY_F1)
         {
-            cpSelected = 0;
+            cpSelectedInd = 0;
         }
 
         // Top-right control point
         else if (key == GLFW_KEY_F2)
         {
-            cpSelected = 1;
+            cpSelectedInd = 1;
         }
 
         // Bottom-right control point
         else if (key == GLFW_KEY_F3)
         {
-            cpSelected = 2;
+            cpSelectedInd = 2;
         }
 
         // Bottom-left control point
         else if (key == GLFW_KEY_F4)
         {
-            cpSelected = 3;
+            cpSelectedInd = 3;
         }
 
         // ---------- Change calibration point parameter keys [A, D, S] ----------
@@ -185,19 +185,19 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 // Listen for arrow key input to move selected control point
                 if (key == GLFW_KEY_LEFT)
                 {
-                    calParam[cpSelected][0] -= pos_inc; // Move left
+                    calParam[cpSelectedInd][0] -= pos_inc; // Move left
                 }
                 else if (key == GLFW_KEY_RIGHT)
                 {
-                    calParam[cpSelected][0] += pos_inc; // Move right
+                    calParam[cpSelectedInd][0] += pos_inc; // Move right
                 }
                 else if (key == GLFW_KEY_UP)
                 {
-                    calParam[cpSelected][1] += pos_inc; // Move up
+                    calParam[cpSelectedInd][1] += pos_inc; // Move up
                 }
                 else if (key == GLFW_KEY_DOWN)
                 {
-                    calParam[cpSelected][1] -= pos_inc; // Move down
+                    calParam[cpSelectedInd][1] -= pos_inc; // Move down
                 }
             }
 
@@ -211,19 +211,19 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 // Listen for arrow key input to adjust dimension/height
                 if (key == GLFW_KEY_LEFT)
                 {
-                    calParam[cpSelected][2] -= wd_inc; // Decrease width
+                    calParam[cpSelectedInd][2] -= wd_inc; // Decrease width
                 }
                 else if (key == GLFW_KEY_RIGHT)
                 {
-                    calParam[cpSelected][2] += wd_inc; // Increase width
+                    calParam[cpSelectedInd][2] += wd_inc; // Increase width
                 }
                 else if (key == GLFW_KEY_UP)
                 {
-                    calParam[cpSelected][3] += ht_inc; // Increase height
+                    calParam[cpSelectedInd][3] += ht_inc; // Increase height
                 }
                 else if (key == GLFW_KEY_DOWN)
                 {
-                    calParam[cpSelected][3] -= ht_inc; // Decrease height
+                    calParam[cpSelectedInd][3] -= ht_inc; // Decrease height
                 }
             }
 
@@ -236,11 +236,11 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 // Listen for arrow key input to adjust shear
                 if (key == GLFW_KEY_LEFT)
                 {
-                    calParam[cpSelected][4] -= shr_inc; // Skew left
+                    calParam[cpSelectedInd][4] -= shr_inc; // Skew left
                 }
                 else if (key == GLFW_KEY_RIGHT)
                 {
-                    calParam[cpSelected][4] += shr_inc; // Skew right
+                    calParam[cpSelectedInd][4] += shr_inc; // Skew right
                 }
             }
         }
@@ -383,16 +383,19 @@ int drawWalls(
     //          corner_spacings_x[0][0], corner_spacings_x[0][1], corner_spacings_x[1][0], corner_spacings_x[1][1],
     //          corner_spacings_y[0][0], corner_spacings_y[0][1], corner_spacings_y[1][0], corner_spacings_y[1][1]);
 
-    // Iterate through the maze grid
+    // Iterate through the maze grid rows
     for (float wall_i = 0; wall_i < MAZE_SIZE; wall_i++)
     {
-        // Iterate through each cell in the maze row
+        // Iterate through each cell/column in the maze row
         for (float wall_j = 0; wall_j < MAZE_SIZE; wall_j++)
         {
-            // Bind image
-            if (wall_i == 1 && wall_j == 1)
+            // Create merged image for active control point wall
+            if (
+                (cpSelectedInd == 0 && wall_i == 0 && wall_j == MAZE_SIZE - 1) ||
+                (cpSelectedInd == 1 && wall_i == MAZE_SIZE - 1 && wall_j == MAZE_SIZE - 1) ||
+                (cpSelectedInd == 2 && wall_i == MAZE_SIZE - 1 && wall_j == 0) ||
+                (cpSelectedInd == 3 && wall_i == 0 && wall_j == 0))
             {
-                // Create merged image for center wall to show status information
                 ILuint merge_images_1;
                 ILuint merge_images_2;
                 ILuint merge_images_3;
@@ -664,8 +667,8 @@ int main(int argc, char **argv)
         {
             // Get control point color based on cp selection and mode
             std::vector<float> cp_col =
-                (cpSelected != i) ? cpInactiveRGBVec : (cpSelected == 1 && (calParamMode != "position")) ? cpDisabledRGBVec
-                                                                                                         : cpActiveRGBVec;
+                (cpSelectedInd != i) ? cpInactiveRGBVec : (cpSelectedInd == 1 && (calParamMode != "position")) ? cpDisabledRGBVec
+                                                                                                               : cpActiveRGBVec;
 
             // Draw the control point
             drawControlPoint(calParam[i][0], calParam[i][1], CP_RADIUS_NDC, cp_col);
@@ -706,7 +709,11 @@ int main(int argc, char **argv)
     }
 
     // Destroy GLFW window and DevIL images
-    glfwDestroyWindow(p_windowID);
+    if (p_windowID)
+    {
+        glfwDestroyWindow(p_windowID);
+        p_windowID = nullptr;
+    }
     checkErrorGLFW(__LINE__, __FILE__);
     ROS_INFO("[SHUTDOWN] Detroyd GLFW windows");
 

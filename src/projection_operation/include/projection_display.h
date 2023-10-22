@@ -68,12 +68,12 @@ std::vector<GLuint> fboIDVec(nProjectors);
 std::vector<GLuint> fboTextureIDVec(nProjectors);
 
 // Monitor variable for OpenGL
-GLFWmonitor *p_monitorID = NULL;
-GLFWmonitor **pp_monitorIDVec;
+GLFWmonitor *p_monitorID = nullptr;
+GLFWmonitor **pp_monitorIDVec = nullptr;
 
 // Projector variable for OpenGL
-GLFWmonitor *p_projectorID;
-GLFWmonitor *p_projectorIDVec[nProjectors];
+GLFWmonitor *p_projectorID = nullptr;
+GLFWmonitor *p_projectorIDVec[nProjectors] = {nullptr};
 
 // ================================================== FUNCTIONS ==================================================
 

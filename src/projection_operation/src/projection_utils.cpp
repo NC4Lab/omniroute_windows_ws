@@ -437,7 +437,6 @@ int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &ref_img_merge_id)
     return 0;
 }
 
-// Function to calculate corner spacings based on calibration parameters
 void calculateCornerSpacing(float cal_param_arr[4][5], float (&corner_spacings_x)[2][2], float (&corner_spacings_y)[2][2], int maze_size)
 {
     // Iterate over each corner
@@ -461,7 +460,6 @@ void calculateCornerSpacing(float cal_param_arr[4][5], float (&corner_spacings_x
     }
 }
 
-// Function to calculate interpolated wall spacing for x or y
 float calculateInterpolatedWallSpacing(float corner_spacings[2][2], float wall_i, float wall_j, int maze_size)
 {
     // Normalize indices

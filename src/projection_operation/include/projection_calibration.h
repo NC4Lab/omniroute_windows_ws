@@ -22,7 +22,7 @@ float calParam[4][5]; // Updated based on external variable CP_PARAM
 
 // Other variables related to control points
 std::string calParamMode = "position"; // Parmeter being modified [position, dimension, shear]
-int cpSelected = 0;
+int cpSelectedInd = 0;
 std::vector<float> cpActiveRGBVec = {0.0f, 1.0f, 0.0f};   // Active control point marker color (green)
 std::vector<float> cpInactiveRGBVec = {1.0f, 0.0f, 0.0f}; // Inactive control point marker color (red)
 std::vector<float> cpDisabledRGBVec = {0.5f, 0.5f, 0.5f}; // Inactive control point marker color (gray)
@@ -85,8 +85,8 @@ int calModeInd = 1;                      // Index of the image to be loaded
 size_t nCalModes = imgCalPathVec.size(); // Number of calibration modes
 
 // Variables related to window and OpenGL
-GLFWwindow *p_windowID;
-GLFWmonitor **pp_monitorIDVec;
+GLFWwindow *p_windowID = nullptr;
+GLFWmonitor **pp_monitorIDVec = nullptr;
 
 // ================================================== FUNCTIONS ==================================================
 
