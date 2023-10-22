@@ -68,8 +68,8 @@
  *
  * The array dimensions are as follows:
  * - Projector: 0 to 3
- * - Chamber Row: 0 to 2
- * - Chamber Column: 0 to 2
+ * - Maze Chamber Row: 0 to 2
+ * - Maze Chamber Column: 0 to 2
  * - Calibration Mode: 0 to 2 (represents l_wall, m_wall, r_wall)
  *
  * Format: array[4][3][3][3] = array[Projector][Chamber Row][Chamber Column][Calibration Mode{Left, Center, Right}]
@@ -185,7 +185,7 @@ const float wall_width_ndc = ((cal_offset_x * 2) / (float(MAZE_SIZE) - 1)) / (1 
 const float wall_height_ndc = ((cal_offset_y * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));
 extern const float WALL_SPACE = 2.0f * wall_width_ndc;
 
-// Conrol point calibration parameter array
+// Control point calibration parameter array
 /**
  * @brief Array to hold the position and transformation parameters for control points in Normalized Device Coordinates (NDC) [-1, 1].
  *
@@ -195,10 +195,10 @@ extern const float WALL_SPACE = 2.0f * wall_width_ndc;
  * of that control point.
  *
  * - Rows:
- *   - [0]: Top-left control point
- *   - [1]: Top-right control point
- *   - [2]: Bottom-right control point
- *   - [3]: Bottom-left control point
+ *   - [0]: Top-left control point (grid point [0][0])
+ *   - [1]: Top-right control point (grid point [0][1])
+ *   - [2]: Bottom-right control point (grid point [1][0])
+ *   - [3]: Bottom-left control point (grid point [1][1])
  *
  * - Columns:
  *   - [0]: X-distance from center [-1,1]
@@ -216,6 +216,8 @@ extern const float CONT_POINT_PARAMS[4][5] = {
 };
 
 // ================================================== FUNCTIONS ==================================================
+
+void interpOffsetTEMP(float cont_point_params[4][5], float &x_offset, float &y_offset, float wall_row_i, float wall_col_i);
 
 /**
  * @brief Checks for DevIL errors and logs them.
@@ -238,7 +240,7 @@ int checkErrorDevIL(int, const char *, const char * = nullptr);
  * - `cfg_m<number>_c<number>.xml`
  *
  * @param mon_id_ind Index of the active or desired monitor.
- * @param cal_mode_ind Index of the active or desired calibration mode.
+ * @param mode_cal_ind Index of the active or desired calibration mode.
  * @param config_dir_path Path to the directory where the XML file will be loaded/saved.
  *
  */
@@ -265,8 +267,8 @@ int loadCoordinatesXML(cv::Mat &, float (&)[4][5], std::string, int = 0);
  * @brief Saves the calibration parameter coordinates and homography matrix to an XML file.
  *
  * This function uses the pugixml library to create an XML document and populate it with
- * the calibration parameter coordinates and homography matrix. The calibration parameter are stored 
- * in a 2D array and the homography matrix is stored in a cv::Mat object. Both are saved under their 
+ * the calibration parameter coordinates and homography matrix. The calibration parameter are stored
+ * in a 2D array and the homography matrix is stored in a cv::Mat object. Both are saved under their
  * respective XML nodes.
  *
  * @note The XML file is saved to the path specified by the global variable 'configPath'.
@@ -337,71 +339,55 @@ int deleteImgTextures(std::vector<ILuint> &);
  */
 int mergeImages(ILuint, ILuint, ILuint &);
 
-/**
- * @brief Calculate corner spacings based on calibration parameters.
- *
- * This function computes the wall spacings at each of the four corners of the maze
- * based on the given calibration parameters. The spacings are normalized by the maze size,
- * so that they represent the spacing per cell along the x and y directions.
- *
- * @param cont_point_params The 4x5 array of calibration parameters.
- * @param [out] r_corner_space_arr_x 2x2 array to store calculated normalized corner spacings in x-direction.
- * @param [out] r_corner_space_arr_y 2x2 array to store calculated normalized corner spacings in y-direction.
- */
-void calculateCornerSpacing(float[4][5], float (&)[2][2], float (&)[2][2]);
+
+std::vector<float> getArrColumn(float [4][5], int);
 
 /**
- * @brief Calculate interpolated wall spacing for either x or y direction.
+ * @brief Calculate control point distance based on control point coordinates.
  *
- * This function uses the corner spacings and the wall's position within the grid
- * to compute the interpolated wall spacing in either x or y direction.
- *
- * @param corner_space_arr 2x2 array containing the spacings at each corner.
- * @param wall_i The row index of the wall within the maze grid.
- * @param wall_j The column index of the wall within the maze grid.
- * 
- * @return The interpolated wall spacing.
+ * @param cont_point_params The 4x5 array of calibration parameters.
+ * @param [out] r_control_point_distances 4x2 array to store calculated distances spacings in x and y direction.
  */
-float calculateInterpolatedWallSpacing(float[2][2], float, float);
+void calculateControlPointDistances(float[4][5], float (&)[4][5]);
 
 /**
  * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
  *
  * This function performs bilinear interpolation based on the position of a point
- * within a 2D grid (grid_ind_i, grid_ind_j) and predefined values at the grid corners.
+ * within a 2D grid (grid_row_i, grid_col_i) and predefined values at the grid corners.
  *
  * @param cont_point_params The 4x5 array of calibration parameters.
  * @param cont_point_params_ind The index of the calibration parameters (3:height, 4:sheer).
- * @param grid_ind_i The index of the point along the first axis within the grid.
- * @param grid_ind_j The index of the point along the second axis within the grid.
+ * @param grid_row_i The index of the point along the first axis within the grid.
+ * @param grid_col_i The index of the point along the second axis within the grid.
  * @param grid_size The size of the 2D grid.
  *
  * @return float The calculated interpolated value.
  */
-float calculateInterpolatedValue(float[4][5], int, int, int, int);
+float interpolateWallParam(float[4][5], int, int, int, int, bool);
 
 /**
- * @brief Creates a vector of points representing a rectangle with shear for each wall.
+ * @brief Creates a vector of points representing a quadrilateral with shear.
  *
- * This function generates a rectangle's corner points starting from the top-left corner
- * and going clockwise. The rectangle is defined by its top-left corner (x0, y0),
+ * This function generates a quadrilateral's corner points starting from the top-left corner
+ * and going clockwise. The quadrilateral is defined by its top-left corner (x0, y0),
  * width, height, and a shear amount. The units for x0, y0, width, and height are in
  * OpenGL's Normalized Device Coordinates (NDC) [-1, 1].
  *
- * @param x0 The x-coordinate of the top-left corner of the rectangle in NDC.
- * @param y0 The y-coordinate of the top-left corner of the rectangle in NDC.
- * @param width The width of the rectangle in NDC.
- * @param height The height of the rectangle in NDC.
- * @param shear_amount The amount of shear to apply to the rectangle.
+ * @param x0 The x-coordinate of the top-left corner of the quadrilateral in NDC.
+ * @param y0 The y-coordinate of the top-left corner of the quadrilateral in NDC.
+ * @param width The width of the quadrilateral in NDC.
+ * @param height The height of the quadrilateral in NDC.
+ * @param shear_amount The amount of shear to apply to the quadrilateral.
  *
  * @return std::vector<cv::Point2f> A vector of 4 points representing the corners of the rectangle, in NDC.
  */
-std::vector<cv::Point2f> computeRectVertices(float, float, float, float, float);
+std::vector<cv::Point2f> computeQuadVertices(float, float, float, float, float);
 
 /**
  * @brief Computes the perspective warp for a given set of points.
  *
- * @param rect_vertices_vec The vector of points representing the rectangle.
+ * @param quad_vertices_vec The vector of points representing the rectangle.
  * @param r_hom_mat The homography matrix used to warp perspective.
  * @param x_offset The x-offset to apply to the vertices.
  * @param y_offset The y-offset to apply to the vertices.
@@ -430,7 +416,7 @@ void computeHomography(cv::Mat &, float[4][5]);
  * @brief Used to reset control point parameter list.
  *
  * @param r_cont_point_params Reference to the 4x5 array of calibration parameters.
- * @param cal_mode_ind Index of the active calibration mode.
+ * @param mode_cal_ind Index of the active calibration mode.
  */
 void updateCalParams(float (&)[4][5], int);
 

@@ -141,7 +141,7 @@ int setupProjGLFW(
     return 0;
 }
 
-void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
+void drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
 {
 
     // Start drawing a quadrilateral
@@ -155,19 +155,19 @@ void drawRectImage(std::vector<cv::Point2f> rect_vertices_vec)
 
     // Bottom-left corner
     glTexCoord2f(0.0f, 1.0f);
-    glVertex2f(rect_vertices_vec[0].x, rect_vertices_vec[0].y);
+    glVertex2f(quad_vertices_vec[0].x, quad_vertices_vec[0].y);
 
     // Bottom-right corner
     glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(rect_vertices_vec[1].x, rect_vertices_vec[1].y);
+    glVertex2f(quad_vertices_vec[1].x, quad_vertices_vec[1].y);
 
     // Top-right corner
     glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(rect_vertices_vec[2].x, rect_vertices_vec[2].y);
+    glVertex2f(quad_vertices_vec[2].x, quad_vertices_vec[2].y);
 
     // Top-left corner
     glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(rect_vertices_vec[3].x, rect_vertices_vec[3].y);
+    glVertex2f(quad_vertices_vec[3].x, quad_vertices_vec[3].y);
 
     // End drawing
     glEnd();
@@ -199,31 +199,31 @@ int drawWalls(
         }
 
         // Iterate through the maze grid
-        for (float wall_i = 0; wall_i < MAZE_SIZE; wall_i++)
+        for (float wall_row_i = 0; wall_row_i < MAZE_SIZE; wall_row_i++)
         {
             // Iterate through each cell in the maze row
-            for (float wall_j = 0; wall_j < MAZE_SIZE; wall_j++)
+            for (float wall_col_i = 0; wall_col_i < MAZE_SIZE; wall_col_i++)
             {
                 // Get the image index for the current wall
-                int wall_row = MAZE_SIZE - 1 - (int)wall_j;
-                int wall_col = (int)wall_i;
+                int wall_row = MAZE_SIZE - 1 - (int)wall_col_i;
+                int wall_col = (int)wall_row_i;
                 int img_ind = IMG_PROJ_MAP[proj_i][wall_row][wall_col][cal_i];
 
                 // Bind image
                 ilBindImage(r_image_id_vec[img_ind]); // show test pattern
 
                 // Calculate shear and height for the current wall
-                float width_val = calculateInterpolatedValue(cont_point_params, 2, wall_i, wall_j, MAZE_SIZE);
-                float height_val = calculateInterpolatedValue(cont_point_params, 3, wall_i, wall_j, MAZE_SIZE);
-                float shear_val = calculateInterpolatedValue(cont_point_params, 4, wall_i, wall_j, MAZE_SIZE);
+                float width_val = interpolateWallParam(cont_point_params, 2, wall_row_i, wall_col_i, MAZE_SIZE);
+                float height_val = interpolateWallParam(cont_point_params, 3, wall_row_i, wall_col_i, MAZE_SIZE);
+                float shear_val = interpolateWallParam(cont_point_params, 4, wall_row_i, wall_col_i, MAZE_SIZE);
 
                 // Create wall vertices
-                std::vector<cv::Point2f> rect_vertices_vec = computeRectVertices(0.0f, 0.0f, width_val, height_val, shear_val);
+                std::vector<cv::Point2f> quad_vertices_vec = computeQuadVertices(0.0f, 0.0f, width_val, height_val, shear_val);
 
                 // Apply perspective warping to vertices
-                float x_offset = wall_i * WALL_SPACE;
-                float y_offset = wall_j * WALL_SPACE;
-                std::vector<cv::Point2f> rect_vertices_warped = computePerspectiveWarp(rect_vertices_vec, r_hom_mat, x_offset, y_offset);
+                float x_offset = wall_row_i * WALL_SPACE;
+                float y_offset = wall_col_i * WALL_SPACE;
+                std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_vec, r_hom_mat, x_offset, y_offset);
 
                 // Set texture image
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
@@ -239,7 +239,7 @@ int drawWalls(
                 }
 
                 // Draw the wall
-                drawRectImage(rect_vertices_warped);
+                drawQuadImage(quad_vertices_warped);
             }
         }
     }

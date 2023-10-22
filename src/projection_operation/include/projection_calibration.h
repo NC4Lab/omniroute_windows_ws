@@ -44,7 +44,6 @@ std::vector<std::string> imgWallPathVec = {
     image_wall_dir_path + "/4_earthlings.bmp",
 };
 int imgWallInd = 0;                      // Index of the image to be loaded
-size_t nWallImg = imgWallPathVec.size(); // Number of test images
 
 // Monitor variables
 std::vector<ILuint> imgMonIDVec; // Container to hold the loaded images for ui
@@ -162,10 +161,10 @@ int checkErrorGLFW(int, const char *, const char * = nullptr);
  * @brief Draws a control point as a quadrilateral using OpenGL.
  *
  * This function uses OpenGL to draw a quadrilateral that represents a control point.
- * The control point is drawn in a clockwise direction, starting from the bottom-left corner.
+ * The control point is drawn as a colored circle.
  *
- * @param x The x-coordinate of the bottom-left corner of the control point.
- * @param y The y-coordinate of the bottom-left corner of the control point.
+ * @param x The control point x-coordinate.
+ * @param y The control point y-coordinate.
  * @param radius The radius of the control point.
  * @param rgb_vec Vector of rgb values to color the marker.
  *
@@ -176,11 +175,11 @@ int drawControlPoint(float, float, float, std::vector<float>);
 /**
  * @brief Draws a textured rectangle using OpenGL.
  *
- * @param rect_vertices_vec Vector of vertex/corner points for a rectangular image.
+ * @param quad_vertices_vec Vector of vertex/corner points for a rectangular image.
  *
  * @return 0 if no errors, -1 if error.
  */
-int drawRectImage(std::vector<cv::Point2f>);
+int drawQuadImage(std::vector<cv::Point2f>);
 
 /**
  * @brief Draws all walls in the maze grid with texture mapping and perspective warping.
@@ -192,10 +191,10 @@ int drawRectImage(std::vector<cv::Point2f>);
  * @param r_hom_mat The homography matrix used to warp perspective.
  * @param cont_point_params The array of control point parameters.
  * @param fbo_texture The OpenGL texture ID of the framebuffer object.
- * @param img_base_id The DevIL image ID of the base image.
- * @param img_mon_id The DevIL image ID of the monitor image.
- * @param img_param_id The DevIL image ID of the parameter image.
- * @param img_cal_id The DevIL image ID of the calibration image.
+ * @param img_wall_id The DevIL image ID of the main wall image.
+ * @param img_mode_mon_id The DevIL image ID of the monitor image.
+ * @param img_mode_param_id The DevIL image ID of the parameter image.
+ * @param img_mode_cal_id The DevIL image ID of the calibration image.
  *
  * @return 0 if no errors, -1 if error.
  */

@@ -10,6 +10,45 @@
 
 // ================================================== FUNCTIONS ==================================================
 
+void interpOffsetTEMP(float cont_point_params[4][5], float &x_offset, float &y_offset, float wall_row_i, float wall_col_i)
+{
+    float corner_space_arr_x[2][2], corner_space_arr_y[2][2];
+
+    // Calculate normalized spacings for top-left corner
+    corner_space_arr_x[0][0] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
+    corner_space_arr_y[0][0] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
+
+    // Calculate normalized spacings for top-right corner
+    corner_space_arr_x[0][1] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
+    corner_space_arr_y[0][1] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
+
+    // Calculate normalized spacings for bottom-left corner
+    corner_space_arr_x[1][0] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
+    corner_space_arr_y[1][0] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
+
+    // Calculate normalized spacings for bottom-right corner
+    corner_space_arr_x[1][1] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
+    corner_space_arr_y[1][1] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
+
+    // Normalize indices
+    float normalized_i = wall_row_i / (float(MAZE_SIZE) - 1);
+    float normalized_j = wall_col_i / (float(MAZE_SIZE) - 1);
+
+    // Interpolate spacings
+    float interp_val_i_x = normalized_i * (corner_space_arr_x[1][0] - corner_space_arr_x[0][0]);
+    float interp_val_j_x = normalized_j * (corner_space_arr_x[0][1] - corner_space_arr_x[0][0]);
+
+    // Return interpolated spacing
+    x_offset = wall_row_i * (corner_space_arr_x[0][0] + interp_val_i_x + interp_val_j_x);
+
+    // Interpolate spacings
+    float interp_val_i_y = normalized_i * (corner_space_arr_y[1][0] - corner_space_arr_y[0][0]);
+    float interp_val_j_y = normalized_j * (corner_space_arr_y[0][1] - corner_space_arr_y[0][0]);
+
+    // Return interpolated spacing
+    y_offset = wall_col_i * (corner_space_arr_y[0][0] + interp_val_i_y + interp_val_j_y);
+}
+
 int checkErrorDevIL(int line, const char *file_str, const char *msg_str)
 {
     ILenum il_err = ilGetError();
@@ -24,11 +63,11 @@ int checkErrorDevIL(int line, const char *file_str, const char *msg_str)
     return 0;
 }
 
-std::string formatCoordinatesFilePathXML(int mon_id_ind, int cal_mode_ind, std::string config_dir_path)
+std::string formatCoordinatesFilePathXML(int mon_id_ind, int mode_cal_ind, std::string config_dir_path)
 {
     std::string file_path =
         config_dir_path + "/" +
-        "cfg_m" + std::to_string(mon_id_ind) + "_c" + std::to_string(cal_mode_ind) +
+        "cfg_m" + std::to_string(mon_id_ind) + "_c" + std::to_string(mode_cal_ind) +
         ".xml";
     return file_path;
 }
@@ -436,7 +475,7 @@ int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &r_img_merge_id)
     {
         t2 = false;
         ROS_INFO("TEST2");
-    }   
+    }
 
     // Set merge image data to the new image
     ilBindImage(r_img_merge_id);
@@ -451,95 +490,132 @@ int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &r_img_merge_id)
     return 0;
 }
 
-void calculateCornerSpacing(float cont_point_params[4][5], float (&r_corner_space_arr_x)[2][2], float (&r_corner_space_arr_y)[2][2])
+std::vector<float> getArrColumn(float cont_point_params[4][5], int cont_point_params_ind)
 {
-    // Calculate normalized spacings for top-left corner
-    r_corner_space_arr_x[0][0] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
-    r_corner_space_arr_y[0][0] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
-
-    // Calculate normalized spacings for top-right corner
-    r_corner_space_arr_x[0][1] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
-    r_corner_space_arr_y[0][1] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
-
-    // Calculate normalized spacings for bottom-left corner
-    r_corner_space_arr_x[1][0] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
-    r_corner_space_arr_y[1][0] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
-
-    // Calculate normalized spacings for bottom-right corner
-    r_corner_space_arr_x[1][1] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
-    r_corner_space_arr_y[1][1] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
+    std::vector<float> column_vector;
+    for (int i = 0; i < 4; ++i)
+    {
+        column_vector.push_back(cont_point_params[i][cont_point_params_ind]);
+    }
+    return column_vector;
 }
 
-float calculateInterpolatedWallSpacing(float corner_space_arr[2][2], float wall_i, float wall_j)
+// void calculateControlPointDistances(float cont_point_params[4][5], float (&r_control_point_distances)[4][5])
+// {
+//     // Calculate x and y distances between top-left and top-right control points
+//     r_control_point_distances[0][0] = fabs(cont_point_params[0][0] - cont_point_params[1][0]);
+//     r_control_point_distances[0][1] = fabs(cont_point_params[0][1] - cont_point_params[1][1]);
+
+//     // Calculate x and y distances between top-right and bottom-right control points
+//     r_control_point_distances[1][0] = fabs(cont_point_params[1][0] - cont_point_params[2][0]);
+//     r_control_point_distances[1][1] = fabs(cont_point_params[1][1] - cont_point_params[2][1]);
+
+//     // Calculate x and y distances between bottom-right and bottom-left control points
+//     r_control_point_distances[2][0] = fabs(cont_point_params[2][0] - cont_point_params[3][0]);
+//     r_control_point_distances[2][1] = fabs(cont_point_params[2][1] - cont_point_params[3][1]);
+
+//     // Calculate x and y distances between bottom-left and top-left control points
+//     r_control_point_distances[3][0] = fabs(cont_point_params[3][0] - cont_point_params[0][0]);
+//     r_control_point_distances[3][1] = fabs(cont_point_params[3][1] - cont_point_params[0][1]);
+// }
+
+void calculateControlPointDistances(float cont_point_params[4][5], float (&r_control_point_distances)[4][5])
 {
-    // Normalize indices
-    float normalized_i = wall_i / (float(MAZE_SIZE) - 1);
-    float normalized_j = wall_j / (float(MAZE_SIZE) - 1);
+    // Calculate x and y distances between top-left and top-right control points
+    r_control_point_distances[0][0] = fabs(cont_point_params[0][0]) + cont_point_params[1][0];
+    r_control_point_distances[0][1] = cont_point_params[0][1] + fabs(cont_point_params[3][1]);
 
-    // Interpolate spacings
-    float interp_val_i = normalized_i * (corner_space_arr[1][0] - corner_space_arr[0][0]);
-    float interp_val_j = normalized_j * (corner_space_arr[0][1] - corner_space_arr[0][0]);
+    // Calculate x and y distances between top-right and bottom-right control points
+    r_control_point_distances[1][0] = fabs(cont_point_params[0][0]) + cont_point_params[1][0];
+    r_control_point_distances[1][1] = fabs(cont_point_params[0][0]) + cont_point_params[1][0];
 
-    // Return interpolated spacing
-    return corner_space_arr[0][0] + interp_val_i + interp_val_j;
+    // Calculate x and y distances between bottom-right and bottom-left control points
+    r_control_point_distances[2][0] = fabs(cont_point_params[0][0]) + cont_point_params[1][0];
+    r_control_point_distances[2][1] = cont_point_params[0][1] + fabs(cont_point_params[3][1]);
+
+    // Calculate x and y distances between bottom-left and top-left control points
+    r_control_point_distances[3][0] = fabs(cont_point_params[0][0]) + cont_point_params[1][0];
+    r_control_point_distances[3][1] = cont_point_params[0][1] + fabs(cont_point_params[3][1]);
 }
 
-float calculateInterpolatedValue(float cont_point_params[4][5], int cont_point_params_ind, int grid_ind_i, int grid_ind_j, int grid_size)
+// void calculateCornerSpacing(float cont_point_params[4][5], float (&r_corner_space_arr_x)[2][2], float (&r_corner_space_arr_y)[2][2])
+// {
+//     // Calculate normalized spacings for top-left corner
+//     r_corner_space_arr_x[0][0] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
+//     r_corner_space_arr_y[0][0] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
+
+//     // Calculate normalized spacings for top-right corner
+//     r_corner_space_arr_x[0][1] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
+//     r_corner_space_arr_y[0][1] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
+
+//     // Calculate normalized spacings for bottom-left corner
+//     r_corner_space_arr_x[1][0] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
+//     r_corner_space_arr_y[1][0] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
+
+//     // Calculate normalized spacings for bottom-right corner
+//     r_corner_space_arr_x[1][1] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
+//     r_corner_space_arr_y[1][1] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
+// }
+
+float interpolateWallParam(float cont_point_params[4][5], int cont_point_params_ind, int grid_row_i, int grid_col_i, int grid_size, bool do_offset)
 {
-    // Get the 3 corner values
-    float corner1 = cont_point_params[0][cont_point_params_ind];
-    float corner3 = cont_point_params[2][cont_point_params_ind];
-    float corner4 = cont_point_params[3][cont_point_params_ind];
+    // Get 3 control point values used as grid points for interpolation 
+    float val_gp_0 = cont_point_params[0][cont_point_params_ind];
+    float val_gp_2 = cont_point_params[2][cont_point_params_ind];
+    float val_gp_3 = cont_point_params[3][cont_point_params_ind];
 
     // Normalize the indices by dividing by (grid_size - 1)
-    float normalized_i = static_cast<float>(grid_ind_i) / (grid_size - 1);
-    float normalized_j = static_cast<float>(grid_ind_j) / (grid_size - 1);
+    float norm_grid_row_i = static_cast<float>(grid_row_i) / (grid_size - 1);
+    float norm_grid_col_i = static_cast<float>(grid_col_i) / (grid_size - 1);
 
-    // Linearly interpolate values between corners 3 and 4 based on grid_i_ind
-    float interp_val_i = normalized_i * (corner3 - corner4);
+    // Linearly interpolate values between top-left and top-right grid/control point
+    float interp_1d_row = norm_grid_row_i * (val_gp_2 - val_gp_3);
 
-    // Linearly interpolate values between corners 1 and 4 based on grid_j_ind
-    float interp_val_j = normalized_j * (corner1 - corner4);
+    // Linearly interpolate values between top-left and bottom-right grid/control point
+    float interp_1d_col = norm_grid_col_i * (val_gp_0 - val_gp_3);
 
-    // Sum the interpolated values along grid_i_ind and grid_j_ind with the base corner values (corner4)
-    return corner4 + interp_val_i + interp_val_j;
+    // Sum the interpolated values along the current grid row and column
+    float interp_2d = interp_1d_row + interp_1d_col;
+
+    // Add offset to interpolated value
+    interp_2d += do_offset ? val_gp_3 : 0.0;
 }
 
-std::vector<cv::Point2f> computeRectVertices(float x0, float y0, float width, float height, float shear_amount)
+std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, float height, float shear_amount)
 {
-    std::vector<cv::Point2f> rect_vertices_vec;
+    std::vector<cv::Point2f> quad_vertices_vec;
 
-    // Top-left corner after applying shear
-    rect_vertices_vec.push_back(cv::Point2f(x0 + height * shear_amount, y0 + height));
+    // Top-left vertex after applying shear
+    quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_amount, y0 + height));
 
-    // Top-right corner after applying shear
-    rect_vertices_vec.push_back(cv::Point2f(x0 + height * shear_amount + width, y0 + height));
+    // Top-right vertex after applying shear
+    quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_amount + width, y0 + height));
 
-    // Bottom-right corner
-    rect_vertices_vec.push_back(cv::Point2f(x0 + width, y0));
+    // Bottom-right vertex
+    quad_vertices_vec.push_back(cv::Point2f(x0 + width, y0));
 
-    // Bottom-left corner
-    rect_vertices_vec.push_back(cv::Point2f(x0, y0));
+    // Bottom-left vertex
+    quad_vertices_vec.push_back(cv::Point2f(x0, y0));
 
-    return rect_vertices_vec;
+    return quad_vertices_vec;
 }
 
-std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f> rect_vertices_vec, cv::Mat &r_hom_mat, float x_offset, float y_offset)
+std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f> quad_vertices_vec, cv::Mat &r_hom_mat, float x_offset, float y_offset)
 {
     // Iterate through each vertex in the rectangle to apply perspective warping.
-    for (auto &p : rect_vertices_vec)
+    for (auto &vert : quad_vertices_vec)
     {
         // Step 1: Apply Offsets to Vertex Positions
         // Add the x and y offsets to the current vertex coordinates.
         // This essentially translates the vertex to a new position.
-        p.x += x_offset;
-        p.y += y_offset;
+        vert.x += x_offset;
+        vert.y += y_offset;
 
         // Step 2: Prepare Homogeneous Coordinates
         // Create a column matrix with the vertex's homogeneous coordinates [x, y, 1].
         // Homogeneous coordinates are used in projective geometry and make the math
         // work out when applying transformations like translation, rotation, and shearing.
-        float data[] = {p.x, p.y, 1};
+        float data[] = {vert.x, vert.y, 1};
         cv::Mat ptMat(3, 1, CV_32F, data); // 3x1 matrix of type CV_32F (32-bit float)
 
         // Step 3: Homography Matrix Type Conversion
@@ -559,12 +635,12 @@ std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f> rect_ve
 
         // Step 6: Update Vertex Coordinates
         // Update the vertex's x and y coordinates with the new warped values.
-        p.x = ptMat.at<float>(0, 0);
-        p.y = ptMat.at<float>(0, 1);
+        vert.x = ptMat.at<float>(0, 0);
+        vert.y = ptMat.at<float>(0, 1);
     }
 
     // Return the list of vertices with their perspectives warped.
-    return rect_vertices_vec;
+    return quad_vertices_vec;
 }
 
 void computeHomography(cv::Mat &r_hom_mat, float cont_point_params[4][5])
@@ -572,32 +648,32 @@ void computeHomography(cv::Mat &r_hom_mat, float cont_point_params[4][5])
     // Step 1: Extract Control Point Vertices
     // Create a vector to store the vertices of the control points.
     // Each control point's x and y coordinates are taken from the cont_point_params.
-    std::vector<cv::Point2f> cp_vertices;
-    cp_vertices.push_back(cv::Point2f(cont_point_params[0][0], cont_point_params[0][1])); // top-left
-    cp_vertices.push_back(cv::Point2f(cont_point_params[1][0], cont_point_params[1][1])); // top-right
-    cp_vertices.push_back(cv::Point2f(cont_point_params[2][0], cont_point_params[2][1])); // bottom-right
-    cp_vertices.push_back(cv::Point2f(cont_point_params[3][0], cont_point_params[3][1])); // bottom-left
+    std::vector<cv::Point2f> cont_point_vertices;
+    cont_point_vertices.push_back(cv::Point2f(cont_point_params[0][0], cont_point_params[0][1])); // top-left
+    cont_point_vertices.push_back(cv::Point2f(cont_point_params[1][0], cont_point_params[1][1])); // top-right
+    cont_point_vertices.push_back(cv::Point2f(cont_point_params[2][0], cont_point_params[2][1])); // bottom-right
+    cont_point_vertices.push_back(cv::Point2f(cont_point_params[3][0], cont_point_params[3][1])); // bottom-left
 
     // Step 2: Calculate Control Point Boundary Dimensions
     // Compute the width and height of the rectangular region that contains all control points.
     // The width is the sum of the absolute x-values of the top-left and top-right control points.
     // The height is the sum of the absolute y-values of the top-left and bottom-left control points.
-    float cp_bound_width = fabs(cont_point_params[0][0]) + cont_point_params[1][0];
-    float cp_bound_height = cont_point_params[0][1] + fabs(cont_point_params[3][1]);
+    float cont_point_boundary_width = fabs(cont_point_params[0][0]) + cont_point_params[1][0];
+    float cont_point_boundary_height = cont_point_params[0][1] + fabs(cont_point_params[3][1]);
 
     // Step 3: Compute Image Vertices
     // Calculate the vertices for the wall images based on the control point boundary dimensions.
     // These vertices will be used as source points for computing the homography matrix.
     std::vector<cv::Point2f> img_vertices;
-    img_vertices = computeRectVertices(0.0f, 0.0f, cp_bound_width, cp_bound_height, 0);
+    img_vertices = computeQuadVertices(0.0f, 0.0f, cont_point_boundary_width, cont_point_boundary_height, 0);
 
     // Step 4: Compute Homography Matrix
     // Use OpenCV's findHomography function to compute the homography matrix.
-    // This matrix will map the coordinates of the image (origin) plane the control point (target) plane.
-    r_hom_mat = findHomography(img_vertices, cp_vertices);
+    // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
+    r_hom_mat = findHomography(img_vertices, cont_point_vertices);
 }
 
-void updateCalParams(float (&r_cont_point_params)[4][5], int cal_mode_ind)
+void updateCalParams(float (&r_cont_point_params)[4][5], int mode_cal_ind)
 {
     // Copy the default array to the dynamic one
     for (int i = 0; i < 4; ++i)
@@ -610,14 +686,14 @@ void updateCalParams(float (&r_cont_point_params)[4][5], int cal_mode_ind)
 
     // Add an offset when calibrating left or right wall images
     float horz_offset = 0.05f;
-    if (cal_mode_ind == 0) // left wall
+    if (mode_cal_ind == 0) // left wall
     {
         r_cont_point_params[0][0] -= horz_offset; // top-left
         r_cont_point_params[1][0] -= horz_offset; // top-right
         r_cont_point_params[2][0] -= horz_offset; // bottom-right
         r_cont_point_params[3][0] -= horz_offset; // bottom-left
     }
-    else if (cal_mode_ind == 2) // right wall
+    else if (mode_cal_ind == 2) // right wall
     {
         r_cont_point_params[0][0] += horz_offset; // top-left
         r_cont_point_params[1][0] += horz_offset; // top-right

@@ -145,9 +145,9 @@ int setupProjGLFW(GLFWwindow **, int, GLFWmonitor **&, int, const std::string &,
 /**
  * @brief Draws a textured rectangle using OpenGL.
  *
- * @param rect_vertices_vec Vector of vertex/corner points for a rectangular image.
+ * @param quad_vertices_vec Vector of vertex/corner points for a rectangular image.
  */
-void drawRectImage(std::vector<cv::Point2f>);
+void drawQuadImage(std::vector<cv::Point2f>);
 
 /**
  * @brief Draws walls on the OpenGL window.
