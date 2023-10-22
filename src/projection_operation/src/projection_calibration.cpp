@@ -34,23 +34,23 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         {
             winMonInd = 0;
         }
-        else if (key == GLFW_KEY_1 && nMonitors > 1)
+        else if (key == GLFW_KEY_1 && glfwWrapper.nMonitors > 1)
         {
             winMonInd = 1;
         }
-        else if (key == GLFW_KEY_2 && nMonitors > 2)
+        else if (key == GLFW_KEY_2 && glfwWrapper.nMonitors > 2)
         {
             winMonInd = 2;
         }
-        else if (key == GLFW_KEY_3 && nMonitors > 3)
+        else if (key == GLFW_KEY_3 && glfwWrapper.nMonitors > 3)
         {
             winMonInd = 3;
         }
-        else if (key == GLFW_KEY_4 && nMonitors > 4)
+        else if (key == GLFW_KEY_4 && glfwWrapper.nMonitors > 4)
         {
             winMonInd = 4;
         }
-        else if (key == GLFW_KEY_5 && nMonitors > 5)
+        else if (key == GLFW_KEY_5 && glfwWrapper.nMonitors > 5)
         {
             winMonInd = 5;
         }
@@ -252,7 +252,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     computeHomography(H, calParam);
 
     // Update the window monitor and mode
-    updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
+    updateWindowMonMode(glfwWrapper, 0, winMonInd, isFullScreen);
 }
 
 void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
@@ -461,7 +461,7 @@ int drawWalls(
     return checkErrorGL(__LINE__, __FILE__);
 }
 
-int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_ref_monitor_id, int mon_ind, bool is_fullscreen)
+int updateWindowMonMode(GLFWWrapper &glfw_wrapper, int win_ind, int mon_ind, bool is_fullscreen)
 {
     static int imp_mon_ind_last = mon_ind;
     static bool is_fullscreen_last = !is_fullscreen;
@@ -471,6 +471,10 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
     {
         return 0;
     }
+
+    // Get pointers to the GLFWwindow and GLFWmonitor
+    GLFWwindow *p_window_id = glfwWrapper.getWindowID();
+    GLFWmonitor **pp_ref_monitor_id = glfw_wrapper.getMonitorIDVec();
 
     // Get GLFWmonitor for active monitor
     GLFWmonitor *p_monitor_id = pp_ref_monitor_id[mon_ind];
@@ -553,34 +557,35 @@ int main(int argc, char **argv)
 
     // --------------- OpenGL SETUP ---------------
 
-    // Initialize GLFW
-    glfwSetErrorCallback(callbackErrorGLFW);
-    if (!glfwInit())
+    // Check GLFW initialization
+    if (!glfwWrapper.initStatus)
     {
         checkErrorGLFW(__LINE__, __FILE__);
         ROS_ERROR("[GLFW] Initialization Failed");
         return -1;
     }
 
-    // Get the list of available monitors and their count
-    pp_monitorIDVec = glfwGetMonitors(&nMonitors);
-    ROS_INFO("[GLFW] Found %d monitors", nMonitors);
+    // Setup callback
+    glfwSetErrorCallback(callbackErrorGLFW);
 
-    // Create GLFW window
-    p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
-    checkErrorGLFW(__LINE__, __FILE__);
-    if (!p_windowID)
+    // Create window
+    if (!glfwWrapper.createWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL))
     {
         glfwTerminate();
         ROS_ERROR("[GLFW] Create Window Failed");
         return -1;
     }
 
+    // Get pointers to the GLFWwindow and GLFWmonitor
+    GLFWwindow *p_window_id = glfwWrapper.getWindowID();
+    GLFWmonitor **pp_monitorIDVec = glfwWrapper.getMonitorIDVec();
+    ROS_INFO("[GLFW] Found %d monitors", glfwWrapper.nMonitors);
+
     // Set OpenGL context and callbacks
-    glfwMakeContextCurrent(p_windowID);
+    glfwMakeContextCurrent(p_window_id);
     gladLoadGL();
-    glfwSetKeyCallback(p_windowID, callbackKeyBinding);
-    glfwSetFramebufferSizeCallback(p_windowID, callbackFrameBufferSizeGLFW);
+    glfwSetKeyCallback(p_window_id, callbackKeyBinding);
+    glfwSetFramebufferSizeCallback(p_window_id, callbackFrameBufferSizeGLFW);
 
     // Initialize FBO and texture
     GLuint fbo_id;
@@ -605,7 +610,7 @@ int main(int argc, char **argv)
     checkErrorGL(__LINE__, __FILE__);
 
     // Update the window monitor and mode
-    updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
+    updateWindowMonMode(glfwWrapper, 0, winMonInd, isFullScreen);
 
     // Get OpenGL version
     const GLubyte *opengl_version = glGetString(GL_VERSION);
@@ -649,7 +654,7 @@ int main(int argc, char **argv)
 
     // _______________ MAIN LOOP _______________
 
-    while (!glfwWindowShouldClose(p_windowID) && ros::ok())
+    while (!glfwWindowShouldClose(p_window_id) && ros::ok())
     {
 
         // Clear back buffer for new frame
@@ -677,7 +682,7 @@ int main(int argc, char **argv)
         }
 
         // Swap buffers and poll events
-        glfwSwapBuffers(p_windowID);
+        glfwSwapBuffers(p_window_id);
         checkErrorGLFW(__LINE__, __FILE__);
         if (checkErrorGL(__LINE__, __FILE__))
             break;
@@ -687,7 +692,7 @@ int main(int argc, char **argv)
         checkErrorGLFW(__LINE__, __FILE__);
 
         // Exit condition
-        if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_windowID))
+        if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_window_id))
             break;
     }
 
@@ -699,23 +704,14 @@ int main(int argc, char **argv)
     {
         ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
     }
-    else if (glfwWindowShouldClose(p_windowID))
+    else if (glfwWindowShouldClose(p_window_id))
     {
         ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
     }
-    else if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    else if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         ROS_INFO("[LOOP TERMINATION] Escape Key was Pressed");
     }
-
-    // Destroy GLFW window and DevIL images
-    if (p_windowID)
-    {
-        glfwDestroyWindow(p_windowID);
-        p_windowID = nullptr;
-    }
-    checkErrorGLFW(__LINE__, __FILE__);
-    ROS_INFO("[SHUTDOWN] Detroyd GLFW windows");
 
     // Delete DevIL images
     deleteImgTextures(imgWallIDVec);

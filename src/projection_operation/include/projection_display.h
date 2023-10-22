@@ -73,7 +73,7 @@ GLFWmonitor **pp_monitorIDVec = nullptr;
 
 // Projector variable for OpenGL
 GLFWmonitor *p_projectorID = nullptr;
-GLFWmonitor *p_projectorIDVec[nProjectors] = {nullptr};
+GLFWmonitor *p_projectorIDVec[nProjectors]= {nullptr};
 
 // ================================================== FUNCTIONS ==================================================
 

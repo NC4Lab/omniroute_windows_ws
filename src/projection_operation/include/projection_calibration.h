@@ -58,7 +58,6 @@ std::vector<std::string> imgMonPathVec = {
     image_state_dir_path + "/m5.bmp",
 };
 int winMonInd = 0;         // Index of the image to be loaded
-int nMonitors;             // Number of monitors connected to the system
 bool isFullScreen = false; // Flag to indicate if the window is in full screen mode
 
 // Control point parameter image variables for ui
@@ -85,8 +84,7 @@ int calModeInd = 1;                      // Index of the image to be loaded
 size_t nCalModes = imgCalPathVec.size(); // Number of calibration modes
 
 // Variables related to window and OpenGL
-GLFWwindow *p_windowID = nullptr;
-GLFWmonitor **pp_monitorIDVec = nullptr;
+GLFWWrapper glfwWrapper;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -223,7 +221,7 @@ int drawWalls(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint);
  *
  * @return 0 if no errors, -1 if error.
  */
-int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
+int updateWindowMonMode(GLFWWrapper &, int, int, bool);
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.

@@ -8,6 +8,79 @@
 
 #include "projection_utils.h"
 
+// ================================================== CLASSES ==================================================
+
+// ... (include the header file and other necessary includes) ...
+
+/**
+ * @brief Constructor that initializes GLFW.
+ */
+GLFWWrapper::GLFWWrapper()
+    : initStatus(glfwInit()), p_windowID(nullptr), pp_monitorIDVec(nullptr)
+{
+    if (initStatus) {
+        pp_monitorIDVec = glfwGetMonitors(&nMonitors);
+    }
+}
+
+/**
+ * @brief Destructor that releases GLFW resources.
+ */
+GLFWWrapper::~GLFWWrapper() {
+    cleanUp();
+}
+
+/**
+ * @brief Cleans up the GLFW resources.
+ */
+void GLFWWrapper::cleanUp() {
+    if (p_windowID) {
+        glfwDestroyWindow(p_windowID);
+        p_windowID = nullptr;
+    }
+    // Note: GLFW monitors do not need to be destroyed manually
+    // glfwTerminate() will handle it
+    glfwTerminate();
+}
+
+/**
+ * @brief Creates a GLFW window.
+ * 
+ * @param width Width of the window.
+ * @param height Height of the window.
+ * @param title Title of the window.
+ * @param monitor Monitor to use.
+ * @param share Window whose context to share.
+ * @return True if window creation is successful, false otherwise.
+ */
+bool GLFWWrapper::createWindow(int width, int height, const char* title, GLFWmonitor* monitor, GLFWwindow* share) {
+    // Clean up existing resources if any
+    cleanUp();  
+   
+    // Create a window
+    p_windowID = glfwCreateWindow(width, height, title, monitor, share);
+    return p_windowID != nullptr;
+}
+
+/**
+ * @brief Get the window ID.
+ * 
+ * @return Pointer to GLFW window.
+ */
+GLFWwindow* GLFWWrapper::getWindowID() const {
+    return p_windowID;
+}
+
+/**
+ * @brief Get the monitor ID vector.
+ * 
+ * @return Pointer to array of GLFW monitors.
+ */
+GLFWmonitor** GLFWWrapper::getMonitorIDVec() const {
+    return pp_monitorIDVec;
+}
+
+
 // ================================================== FUNCTIONS ==================================================
 
 int checkErrorDevIL(int line, const char *file_str, const char *msg_str)

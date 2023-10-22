@@ -227,6 +227,79 @@ extern const float CAL_PARAM_DEFAULT[4][5] = {
     {-cal_offset_x, -cal_offset_y, wall_width_ndc, wall_height_ndc, 0.0f} // bottom-left control point
 };
 
+// ================================================== CLASSES ==================================================
+
+/**
+ * @class GLFWWrapper
+ * @brief A wrapper class for managing GLFW resources.
+ *
+ * This class encapsulates the GLFWwindow and GLFWmonitor pointers,
+ * and provides utility methods for creating windows, getting monitors,
+ * and cleaning up resources. It adheres to the RAII principles.
+ */
+class GLFWWrapper {
+private:
+    GLFWwindow *p_windowID;         ///< Pointer to GLFW window.
+    GLFWmonitor **pp_monitorIDVec;  ///< Pointer to array of GLFW monitors.
+
+    /**
+     * @brief Cleans up the GLFW resources.
+     * 
+     * Destroys the GLFW window and terminates GLFW.
+     */
+    void cleanUp();
+
+public:
+    int nMonitors;               ///< Number of monitors.
+    bool initStatus;             ///< Status of GLFW initialization.
+    
+    /**
+     * @brief Constructor that initializes GLFW.
+     */
+    GLFWWrapper();
+
+    /**
+     * @brief Destructor that releases GLFW resources.
+     */
+    ~GLFWWrapper();
+
+    /**
+     * @brief Deleted copy constructor.
+     */
+    GLFWWrapper(const GLFWWrapper&) = delete;
+
+    /**
+     * @brief Deleted copy assignment operator.
+     */
+    GLFWWrapper& operator=(const GLFWWrapper&) = delete;
+
+    /**
+     * @brief Get the window ID.
+     * 
+     * @return Pointer to GLFW window.
+     */
+    GLFWwindow* getWindowID() const;
+
+    /**
+     * @brief Get the monitor ID vector.
+     * 
+     * @return Pointer to array of GLFW monitors.
+     */
+    GLFWmonitor** getMonitorIDVec() const;
+
+    /**
+     * @brief Creates a GLFW window.
+     * 
+     * @param width Width of the window.
+     * @param height Height of the window.
+     * @param title Title of the window.
+     * @param monitor Monitor to use.
+     * @param share Window whose context to share.
+     * @return True if window creation is successful, false otherwise.
+     */
+    bool createWindow(int width, int height, const char* title, GLFWmonitor* monitor = nullptr, GLFWwindow* share = nullptr);
+};
+
 // ================================================== FUNCTIONS ==================================================
 
 /**
