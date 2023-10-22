@@ -251,7 +251,7 @@ int loadImgTextures(std::vector<ILuint> &ref_image_ids_vec, std::vector<std::str
 
         // Generate image ID
         ilGenImages(1, &img_id);
-        snprintf(msg_str, sizeof(msg_str), "Failed to Generate Image: Ind[%d/%d] ID[%u] File[%s]", img_i, n_img-1, img_id, file_name.c_str());
+        snprintf(msg_str, sizeof(msg_str), "Failed to Generate Image: Ind[%d/%d] ID[%u] File[%s]", img_i, n_img - 1, img_id, file_name.c_str());
         if (checkErrorDevIL(__LINE__, __FILE__, msg_str) != 0)
         {
             return -1;
@@ -259,7 +259,7 @@ int loadImgTextures(std::vector<ILuint> &ref_image_ids_vec, std::vector<std::str
 
         // Bind image ID
         ilBindImage(img_id);
-        snprintf(msg_str, sizeof(msg_str), "Failed to Bind Image: Ind[%d/%d] ID[%u] File[%s]", img_i, n_img-1, img_id, file_name.c_str());
+        snprintf(msg_str, sizeof(msg_str), "Failed to Bind Image: Ind[%d/%d] ID[%u] File[%s]", img_i, n_img - 1, img_id, file_name.c_str());
         if (checkErrorDevIL(__LINE__, __FILE__, msg_str) != 0)
         {
             return -1;
@@ -277,7 +277,7 @@ int loadImgTextures(std::vector<ILuint> &ref_image_ids_vec, std::vector<std::str
             if (width != WALL_WIDTH_PXL || height != WALL_HEIGHT_PXL)
             {
                 ROS_ERROR("[DevIL] Image is Wrong Size: Ind[%d/%d] ID[%u] File[%s] Size Actual[%d,%d] Size Expected[%d,%d]",
-                          img_i, n_img-1, img_id, file_name.c_str(), width, height, WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
+                          img_i, n_img - 1, img_id, file_name.c_str(), width, height, WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
                 ilDeleteImages(1, &img_id);
                 return -1;
             }
@@ -286,14 +286,14 @@ int loadImgTextures(std::vector<ILuint> &ref_image_ids_vec, std::vector<std::str
             ILenum format = ilGetInteger(IL_IMAGE_FORMAT);
             if (format != IL_BGR && format != IL_RGB)
             {
-                ROS_ERROR("[DevIL] Image is Not IL_BGR or IL_RGB: Ind[%d/%d] ID[%u] File[%s]", img_i, n_img-1, img_id, file_name.c_str());
+                ROS_ERROR("[DevIL] Image is Not IL_BGR or IL_RGB: Ind[%d/%d] ID[%u] File[%s]", img_i, n_img - 1, img_id, file_name.c_str());
                 ilDeleteImages(1, &img_id);
                 return -1;
             }
 
             // Convert image to IL_RGB
             ilConvertImage(IL_RGB, IL_UNSIGNED_BYTE);
-            snprintf(msg_str, sizeof(msg_str), "Failed to Convet Image to IL_RGB: Ind[%d/%d] ID[%u] File[%s]", img_i, n_img-1, img_id, file_name.c_str());
+            snprintf(msg_str, sizeof(msg_str), "Failed to Convet Image to IL_RGB: Ind[%d/%d] ID[%u] File[%s]", img_i, n_img - 1, img_id, file_name.c_str());
             if (checkErrorDevIL(__LINE__, __FILE__, msg_str) != 0)
             {
                 return -1;
@@ -302,11 +302,11 @@ int loadImgTextures(std::vector<ILuint> &ref_image_ids_vec, std::vector<std::str
             // Add image ID to vector
             ref_image_ids_vec.push_back(img_id);
             ROS_INFO("[DevIL] Loaded Image: Ind[%d/%d] ID[%u] File[%s] Size[%d,%d]",
-                     img_i, n_img-1, img_id, file_name.c_str(), width, height);
+                     img_i, n_img - 1, img_id, file_name.c_str(), width, height);
         }
         else
         {
-            snprintf(msg_str, sizeof(msg_str), "Failed to Load Image: Ind[%d/%d] ID[%u] File[%s]", img_i, n_img-1, img_id, file_name.c_str());
+            snprintf(msg_str, sizeof(msg_str), "Failed to Load Image: Ind[%d/%d] ID[%u] File[%s]", img_i, n_img - 1, img_id, file_name.c_str());
             if (checkErrorDevIL(__LINE__, __FILE__, msg_str) != 0)
             {
                 // Delete image
@@ -332,11 +332,11 @@ int deleteImgTextures(std::vector<ILuint> &ref_image_ids_vec)
     {
         // Delete image
         ilDeleteImages(1, &img_id);
-        snprintf(msg_str, sizeof(msg_str), "Failed to Delete Image: Ind[%d/%d] ID[%u]", img_i, n_img-1, img_id);
+        snprintf(msg_str, sizeof(msg_str), "Failed to Delete Image: Ind[%d/%d] ID[%u]", img_i, n_img - 1, img_id);
         if (checkErrorDevIL(__LINE__, __FILE__, msg_str) != 0)
             status = -1;
         else
-            ROS_INFO("[DevIL] Deleted Image: Ind[%d/%d] ID[%u]", img_i, n_img-1, img_id);
+            ROS_INFO("[DevIL] Deleted Image: Ind[%d/%d] ID[%u]", img_i, n_img - 1, img_id);
         img_i++;
     }
 
@@ -392,38 +392,32 @@ int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &ref_img_merge_id)
     // Specify number of pixels x color channels in the image
     int n_pxl_rbga = width1 * height1 * 4;
 
-    // Initialize merge image data array
-    ILubyte *merged_img_data = new ILubyte[n_pxl_rbga];
+    // Initialize merged_img_data vector
+    std::vector<ILubyte> merged_img_data;
+    merged_img_data.resize(n_pxl_rbga);
 
-    // Check for null pointers
-    if (!data1 || !data2 || !merged_img_data)
+    // Check for null pointers or zero dimensions
+    if (!data1 || !data2 || merged_img_data.empty())
     {
         ROS_ERROR("[MERGE IMAGE] Null data pointer detected.");
         if (!data1)
             ROS_ERROR("[MERGE IMAGE] data1 is null.");
         if (!data2)
             ROS_ERROR("[MERGE IMAGE] data2 is null.");
-        if (!merged_img_data)
-            ROS_ERROR("[MERGE IMAGE] merged_img_data is null.");
-        return -1; 
+        if (n_pxl_rbga == 0)
+            ROS_ERROR("[MERGE IMAGE] n_pxl_rbga is zero.");
+        return -1;
     }
 
     // Loop to overlay non-white pixels from img2 onto img1
     for (int i = 0; i < n_pxl_rbga; i += 4)
     {
-        // Bounds checks
-        if (i + 3 >= n_pxl_rbga)
-        {
-            ROS_ERROR("[MERGE IMAGE] Pixel Index Out of Bounds");
-            return 0; // Exiting function
-        }
         if (data2[i] != 255 || data2[i + 1] != 255 || data2[i + 2] != 255)
-        { // If the pixel is not white in img2, use it in the merged image
-
+        {
             for (int j = 0; j < 4; ++j)
                 merged_img_data[i + j] = data2[i + j];
         }
-        else // Otherwise, use the pixel from img1
+        else
         {
             for (int j = 0; j < 4; ++j)
                 merged_img_data[i + j] = data1[i + j];
@@ -432,18 +426,14 @@ int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &ref_img_merge_id)
 
     // Set merge image data to the new image
     ilBindImage(ref_img_merge_id);
-    ilSetPixels(0, 0, 0, width1, height1, 1, IL_RGBA, IL_UNSIGNED_BYTE, merged_img_data);
+    ilSetPixels(0, 0, 0, width1, height1, 1, IL_RGBA, IL_UNSIGNED_BYTE, merged_img_data.data());
     if (checkErrorDevIL(__LINE__, __FILE__, "Setting Pixels for Merged Image") != 0)
     {
         ROS_ERROR("[MERGE IMAGE] Error Setting Pixels for Merged Image: ID[%u]", ref_img_merge_id);
-        delete[] merged_img_data; // Clean up
         return -1;
     }
 
-    // Clean up
-    delete[] merged_img_data;
-
-    // Return success
+    // No need for manual delete[] here, as we used std::vector
     return 0;
 }
 
@@ -580,21 +570,12 @@ void computeHomography(cv::Mat &ref_H, float cal_param_arr[4][5])
     cp_vertices.push_back(cv::Point2f(cal_param_arr[2][0], cal_param_arr[2][1])); // bottom-right
     cp_vertices.push_back(cv::Point2f(cal_param_arr[3][0], cal_param_arr[3][1])); // bottom-left
 
-    // // TEMP Old version
-    // float cp_bound_width = (float(MAZE_SIZE) - 1) * WALL_SPACE;
-    // float cp_bound_height = (float(MAZE_SIZE) - 1) * WALL_SPACE;
-
     // Step 2: Calculate Control Point Boundary Dimensions
     // Compute the width and height of the rectangular region that contains all control points.
     // The width is the sum of the absolute x-values of the top-left and top-right control points.
     // The height is the sum of the absolute y-values of the top-left and bottom-left control points.
     float cp_bound_width = fabs(cal_param_arr[0][0]) + cal_param_arr[1][0];
     float cp_bound_height = cal_param_arr[0][1] + fabs(cal_param_arr[3][1]);
-
-    //  // TEMP
-    // ROS_INFO("------------------------------------------------");
-    // ROS_INFO("cp_bound_width[%0.2f] wall_space_y[%0.2f]", cp_bound_width, cp_bound_height);
-    // ROS_INFO("------------------------------------------------");
 
     // Step 3: Compute Image Vertices
     // Calculate the vertices for the wall images based on the control point boundary dimensions.

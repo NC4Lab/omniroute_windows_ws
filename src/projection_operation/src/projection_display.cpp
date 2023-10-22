@@ -124,7 +124,7 @@ int setupProjGLFW(
     // Unbind the FBO
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // Set window to wondowed mode on the second monitor    
+    // Set window to wondowed mode on the second monitor
     if (updateWindowMonMode(pp_window_id[win_ind], win_ind, pp_ref_monitor_id, mon_ind, isFullScreen) != 0)
     {
         ROS_ERROR("[GLFW] Failed to Update Window[%d] Monitor[%d] Mode", win_ind, mon_ind);
@@ -268,17 +268,34 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
     {
         // Get the video mode of the selected monitor
         const GLFWvidmode *mode = glfwGetVideoMode(p_monitor_id);
+        if (!mode)
+        {
+            ROS_ERROR("[WIN MODE] Failed to Get Video Mode: Monitor[%d]", mon_ind);
+            return -1;
+        }
 
         // Set the window to full-screen mode on the current monitor
         x_pos = 0;
         y_pos = 0;
         glfwSetWindowMonitor(p_window_id, p_monitor_id, x_pos, y_pos, mode->width, mode->height, mode->refreshRate);
+        if (!p_monitor_id)
+        {
+            ROS_ERROR("[WIN MODE] Invalid Monitor Pointer: Monitor[%d]", mon_ind);
+            return -1;
+        }
 
         if (!is_fullscreen)
         {
             // Get the position of the current monitor
             int monitor_x, monitor_y;
             glfwGetMonitorPos(p_monitor_id, &monitor_x, &monitor_y);
+
+            // Validate monitor position
+            if (monitor_x < 0 || monitor_y < 0)
+            {
+                ROS_WARN("[WIN MODE] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_ind, monitor_x, monitor_y);
+                return 0;
+            }
 
             // Specify offset from the top-left corner of the monitor
             x_pos = monitor_x + (int)(500.0f * ((float)win_ind + 0.1f));
@@ -287,6 +304,11 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
             // Set the window to windowed mode and position it on the current monitor
             glfwSetWindowMonitor(p_window_id, NULL, x_pos, y_pos, (int)(500.0f * PROJ_WIN_ASPECT_RATIO), 500, 0);
         }
+
+        // Update window title
+        std::string new_title = "Window[" + std::to_string(win_ind) + "] Monitor[" + std::to_string(mon_ind) + "]";
+        glfwSetWindowTitle(p_window_id, new_title.c_str());
+
         ROS_INFO("RAN: Update Window: Monitor[%d] Format[%s] X[%d] Y[%d]", mon_ind, is_fullscreen ? "fullscreen" : "windowed", x_pos, y_pos);
     }
     else
@@ -435,7 +457,7 @@ int main(int argc, char **argv)
     }
 
     // _______________ CLEANUP _______________
-     ROS_INFO("[SHUTDOWN] Started");
+    ROS_INFO("[SHUTDOWN] Started");
 
     // Destroy GL objects
     for (int proj_i = 0; proj_i < nProjectors; ++proj_i)

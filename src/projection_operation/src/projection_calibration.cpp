@@ -204,25 +204,26 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // ---------- Wall dimension calibration change [LEFT, RIGHT, UP, DOWN] ----------
             if (calParamMode == "dimension")
             {
-                // Set the dimension increment based on whether the shift key is pressed
-                float dim_inc = (mods & GLFW_MOD_SHIFT) ? 0.001f : 0.0001f;
+                // Set the width and height dimension increment based on whether the shift key is pressed
+                float wd_inc = (mods & GLFW_MOD_SHIFT) ? 0.001f : 0.0001f;
+                float ht_inc = (mods & GLFW_MOD_SHIFT) ? 0.05f : 0.005f;
 
                 // Listen for arrow key input to adjust dimension/height
                 if (key == GLFW_KEY_LEFT)
                 {
-                    calParam[cpSelected][2] -= dim_inc; // Decrease width
+                    calParam[cpSelected][2] -= wd_inc; // Decrease width
                 }
                 else if (key == GLFW_KEY_RIGHT)
                 {
-                    calParam[cpSelected][2] += dim_inc; // Increase width
+                    calParam[cpSelected][2] += wd_inc; // Increase width
                 }
                 else if (key == GLFW_KEY_UP)
                 {
-                    calParam[cpSelected][3] += dim_inc; // Increase height
+                    calParam[cpSelected][3] += ht_inc; // Increase height
                 }
                 else if (key == GLFW_KEY_DOWN)
                 {
-                    calParam[cpSelected][3] -= dim_inc; // Decrease height
+                    calParam[cpSelected][3] -= ht_inc; // Decrease height
                 }
             }
 
@@ -251,7 +252,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     computeHomography(H, calParam);
 
     // Update the window monitor and mode
-    updateWindowMonMode(p_windowID, pp_monitorIDVec, winMonInd, isFullScreen);
+    updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
 }
 
 void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
@@ -457,7 +458,7 @@ int drawWalls(
     return checkErrorGL(__LINE__, __FILE__);
 }
 
-int updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_id, int mon_ind, bool is_fullscreen)
+int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_ref_monitor_id, int mon_ind, bool is_fullscreen)
 {
     static int imp_mon_ind_last = mon_ind;
     static bool is_fullscreen_last = !is_fullscreen;
@@ -496,7 +497,7 @@ int updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_i
             int monitor_x, monitor_y;
             glfwGetMonitorPos(p_monitor_id, &monitor_x, &monitor_y);
 
-            // Validate monitor position (optional)
+            // Validate monitor position
             if (monitor_x < 0 || monitor_y < 0)
             {
                 ROS_WARN("[WIN MODE] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_ind, monitor_x, monitor_y);
@@ -506,6 +507,11 @@ int updateWindowMonMode(GLFWwindow *p_window_id, GLFWmonitor **&pp_ref_monitor_i
             // Set the window to windowed mode and position it on the current monitor
             glfwSetWindowMonitor(p_window_id, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * PROJ_WIN_ASPECT_RATIO), 500, 0);
         }
+
+        // Update window title
+        std::string new_title = "Window[" + std::to_string(win_ind) + "] Monitor[" + std::to_string(mon_ind) + "]";
+        glfwSetWindowTitle(p_window_id, new_title.c_str());
+
         ROS_INFO("[WIN MODE] Move Window: Monitor[%d] Format[%s]", mon_ind, is_fullscreen ? "fullscreen" : "windowed");
     }
     else
@@ -558,7 +564,7 @@ int main(int argc, char **argv)
     ROS_INFO("[GLFW] Found %d monitors", nMonitors);
 
     // Create GLFW window
-    p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, windowName.c_str(), NULL, NULL);
+    p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
     checkErrorGLFW(__LINE__, __FILE__);
     if (!p_windowID)
     {
@@ -596,7 +602,7 @@ int main(int argc, char **argv)
     checkErrorGL(__LINE__, __FILE__);
 
     // Update the window monitor and mode
-    updateWindowMonMode(p_windowID, pp_monitorIDVec, winMonInd, isFullScreen);
+    updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
 
     // Get OpenGL version
     const GLubyte *opengl_version = glGetString(GL_VERSION);
@@ -637,11 +643,6 @@ int main(int argc, char **argv)
         ROS_ERROR("[DevIL] Failed to load calibration images");
         return -1;
     }
-
-    // TEMP
-    // [ INFO] [1697878240.815840600]: [OpenGL] Intitalized: Version [4.6.0 NVIDIA 528.89]
-    // [ INFO] [1697878240.815899700]: [GLFW] Intitalized: Version: 3.3.8
-    // [ERROR] [1697878240.815962000]: [DevIL] Intitalized: Version[180]
 
     // _______________ MAIN LOOP _______________
 

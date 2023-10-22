@@ -168,7 +168,7 @@ int checkErrorGLFW(int, const char *, const char * = nullptr);
  * @param y The y-coordinate of the bottom-left corner of the control point.
  * @param radius The radius of the control point.
  * @param rgb_vec Vector of rgb values to color the marker.
- * 
+ *
  * @return 0 if no errors, -1 if error.
  */
 int drawControlPoint(float, float, float, std::vector<float>);
@@ -216,13 +216,14 @@ int drawWalls(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint);
  *       Will only exicute if monotor parameters have changed.
  *
  * @param p_window_id Pointer to the GLFWwindow pointer that will be updated.
+ * @param win_ind Index of the window for which the setup is to be done.
  * @param pp_ref_monitor_id Reference to the GLFWmonitor pointer array.
  * @param mon_ind Index of the monitor to move the window to.
  * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
  *
  * @return 0 if no errors, -1 if error.
  */
-int updateWindowMonMode(GLFWwindow *, GLFWmonitor **&, int, bool);
+int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.
