@@ -221,10 +221,10 @@ int drawQuadImage(std::vector<cv::Point2f>);
  * the correspondence between the displayed image, Normalized Device Coordinates (NDC), 
  * control points, and grid indices:
  * 
- * - Top-Left:      NDC (-1, 1),  Control Point [0],  Grid Index [0, last]
- * - Top-Right:     NDC (1, 1),   Control Point [1],  Grid Index [last, last]
- * - Bottom-Right:  NDC (1, -1),  Control Point [2],  Grid Index [last, 0]
- * - Bottom-Left:   NDC (-1, -1), Control Point [3],  Grid Index [0, 0]
+ * - Top-Left:      NDC (-1, 1),    Control Point [0],  Grid Index [0][s-1]
+ * - Top-Right:     NDC (1, 1),     Control Point [1],  Grid Index [s-1][s-1]
+ * - Bottom-Right:  NDC (1, -1),    Control Point [2],  Grid Index [s-1][0]
+ * - Bottom-Left:   NDC (-1, -1),   Control Point [3],  Grid Index [0][0]
  * 
  * @param r_hom_mat The 3x3 homography matrix used for perspective warping of the walls.
  * @param ctrl_point_params A 4x5 array containing control point parameters (x, y, width, height, shear).

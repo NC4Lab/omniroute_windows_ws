@@ -428,37 +428,13 @@ int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
     return checkErrorGL(__LINE__, __FILE__);
 }
 
-int drawWalls(
-    cv::Mat &r_hom_mat,
-    float ctrl_point_params[4][5],
-    GLuint fbo_texture_id,
-    ILuint img_wall_id,
-    ILuint img_mode_mon_id,
-    ILuint img_mode_param_id,
-    ILuint img_mode_cal_id)
+int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id)
 {
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
 
-    /**
-     * @note The correspondence between grid indeces and control points is as follows:
-     *
-     * 1: top-left:
-     *      control point: 0
-     *      grid index: [0, last]
-     * 2: top-right:
-     *      control point: 1
-     *      grid index: [0, 0]
-     * 3: bottom-right:
-     *      control point: 2
-     *      grid index: [last, 0]
-     * 4: bottom-left:
-     *      control point: 3
-     *      grid index: [last, last]
-     */
-
     // TEMP
-    printCtrlPointParams(ctrl_point_params);
+    //printCtrlPointParams(ctrl_point_params);
 
     // Iterate through the maze grid rows
     for (float wall_row_i = 0; wall_row_i < MAZE_SIZE; wall_row_i++)
@@ -506,14 +482,14 @@ int drawWalls(
             // Create wall vertices
             std::vector<cv::Point2f> quad_vertices_vec = computeQuadVertices(0.0f, 0.0f, width_interp, height_interp, shear_interp);
 
-            // // Calculate the interpolated wall spacings for this grid cell
-            // float x_interp = bilinearInterpolation(ctrl_point_params, 0, wall_row_i, wall_col_i, MAZE_SIZE, true);
-            // float y_interp = bilinearInterpolation(ctrl_point_params, 1, wall_row_i, wall_col_i, MAZE_SIZE, true);
+            // Calculate the interpolated wall spacings for this grid cell
+            float x_interp = bilinearInterpolation(ctrl_point_params, 0, wall_row_i, wall_col_i, MAZE_SIZE, true);
+            float y_interp = bilinearInterpolation(ctrl_point_params, 1, wall_row_i, wall_col_i, MAZE_SIZE, true);
 
-            // TEMP
-            float x_interp;
-            float y_interp;
-            bilinearInterpolationAbsDist_TEMP(ctrl_point_params, x_interp, y_interp, wall_row_i, wall_col_i, MAZE_SIZE);
+            // // TEMP
+            // float x_interp;
+            // float y_interp;
+            // bilinearInterpolationAbsDist_TEMP(ctrl_point_params, x_interp, y_interp, wall_row_i, wall_col_i, MAZE_SIZE);
 
             // // TEMP
             // ROS_INFO("Offset: i[%0.2f] j[%0.2f] x[%0.2f] y[%0.2f]", wall_row_i, wall_col_i, x_interp, y_interp);

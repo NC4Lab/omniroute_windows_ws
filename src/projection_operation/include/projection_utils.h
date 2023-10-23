@@ -44,6 +44,7 @@
 #include <cstdlib>
 #include <iostream>
 #include <algorithm>
+#include <limits>
 #include <vector>
 #include <string>
 
@@ -194,6 +195,7 @@ const float wall_height_ndc = ((cp_y * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::
  * Each row in the array corresponds to a specific control point on the screen, while each column represents a different attribute
  * of that control point.
  *
+ * @details
  * - Rows:
  *   - [0]: Top-left control point,     corresponding to grid point [0][0]
  *   - [1]: Top-right control point,    corresponding to grid point [0][last]
@@ -206,6 +208,15 @@ const float wall_height_ndc = ((cp_y * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::
  *   - [2]: Wall width in NDC
  *   - [3]: Wall height in NDC
  *   - [4]: Shearing factor
+ * 
+ *    Control Point Parameters:
+ *    CP  |  X-Dist  |  Y-Dist  |  W-Width  |  W-Height  |  Shear
+ *    ---------------------------------------------------------
+ *    [0] |   -0.15  |    0.30  |    0.06   |    0.12   |    0.00
+ *    [1] |    0.15  |    0.30  |    0.06   |    0.12   |    0.00
+ *    [2] |    0.15  |   -0.30  |    0.06   |    0.12   |    0.00
+ *    [3] |   -0.15  |   -0.30  |    0.06   |    0.12   |    0.00
+ *    ---------------------------------------------------------
  *
  * @section NDC Origin
  * In OpenGL's NDC, the origin (0,0) is located at the center of the screen. 
@@ -214,9 +225,9 @@ const float wall_height_ndc = ((cp_y * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::
  */
 extern const float CTRL_POINT_PARAMS[4][5] = {
     // Default control point parameters
-    {-cp_x, cp_y, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
-    {cp_x, cp_y, wall_width_ndc, wall_height_ndc, 0.0f},  // top-right control point
-    {cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f}, // bottom-right control point
+    {-cp_x, +cp_y, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
+    {+cp_x, +cp_y, wall_width_ndc, wall_height_ndc, 0.0f},  // top-right control point
+    {+cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f}, // bottom-right control point
     {-cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f} // bottom-left control point
 };
 
@@ -261,7 +272,7 @@ std::string formatCoordinatesFilePathXML(int, int, std::string);
  * @note Uses pugiXML for XML parsing.
  *
  * @param[out] r_hom_mat Reference to the homography matrix to populate.
- * @param[out] r_ctrl_point_params Reference to the 4x5 array of control point parameters.
+ * @param[out] r_ctrl_point_params Reference to a 4x5 array containing control point parameters (x, y, width, height, shear).
  * @param full_path Path to the XML file.
  * @param verbose_level Level of verbosity for printing loaded data (0:nothing, 1:file name, 2:control point parameters, 3:homography matrix).
  *
@@ -300,7 +311,7 @@ int loadCoordinatesXML(cv::Mat &, float (&)[4][5], std::string, int = 0);
  * @endcode
  *
  * @param hom_mat The homography matrix used to warp perspective.
- * @param ctrl_point_params The 4x5 array of control point parameters.
+ * @param ctrl_point_params A 4x5 array containing control point parameters (x, y, width, height, shear).
  * @param full_path Path to the XML file.
  */
 void saveCoordinatesXML(cv::Mat, float[4][5], std::string);
@@ -348,22 +359,59 @@ int mergeImages(ILuint, ILuint, ILuint &);
 /**
  * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
  *
- * Performs bilinear interpolation based on the position (grid_row_i, grid_col_i) within a 2D grid.
- * The grid corners are defined by the control point parameters.
+ * This function performs bilinear interpolation based on a point's position (grid_row_i, grid_col_i)
+ * within a 2D grid. The grid corners are defined by a set of 4x5 control point parameters.
  *
- * @param ctrl_point_params The 4x5 array of control point parameters.
- * @param ctrl_point_params_ind The index of the control point parameter (e.g., 3: height, 4: shear) to interpolate.
- * @param grid_row_i The index of the point along the first axis within the grid.
- * @param grid_col_i The index of the point along the second axis within the grid.
- * @param grid_size The size of the 2D grid.
- * @param do_offset Flag to indicate whether to offset the interpolated value by the control point parameter.
+ * @param ctrl_point_params A 4x5 array containing control point parameters (x, y, width, height, shear).
+ * @param ctrl_point_params_ind Index of the specific control point parameter to interpolate [0, 4].
+ * @param grid_row_i Index of the point along the first axis (rows) within the grid.
+ * @param grid_col_i Index of the point along the second axis (columns) within the grid.
+ * @param grid_size Number of cells along one axis in the grid.
+ * @param do_offset Flag to indicate whether to offset the interpolated value by the control point parameter at the origin.
  *
- * @return float Calculated interpolated value for the specified control point input parameters.
+ * @return float The interpolated value calculated based on the specified control point parameters and grid position.
  */
 float bilinearInterpolation(float[4][5], int, int, int, int, bool);
 
-// TEMP
-void bilinearInterpolationAbsDist_TEMP(float ctrl_point_params[4][5], float &x_translate, float &y_translate, float wall_row_i, float wall_col_i, int grid_size);
+/**
+ * @brief Calculates an interpolated value using true bilinear interpolation on a 2D grid.
+ *
+ * This updated function employs the true bilinear interpolation formula to use all four control points 
+ * when determining the interpolated value. This is in contrast to the original implementation, which 
+ * effectively performed linear interpolation between two adjacent control points.
+ *
+ * @param  ctrl_point_params A 4x5 array containing control point parameters (x, y, width, height, shear).
+ * @param  ctrl_point_params_ind Index of the control point parameter to interpolate.
+ * @param  grid_row_i  Index of the point along the first axis (rows) in the grid.
+ * @param  grid_col_i  Index of the point along the second axis (columns) in the grid.
+ * @param  grid_size   Number of cells along one axis in the grid.
+ * @param  do_offset   Whether to offset the interpolated value by the origin control point parameter.
+ * 
+ * @return The interpolated value calculated based on the true bilinear interpolation formula.
+ */
+float bilinearInterpolation(float[4][5], int, int, int, int, bool);
+
+/**
+ * @brief No longer in use
+ */
+void absDistInterp_TEMP(float ctrl_point_params[4][5], float &x_translate, float &y_translate, float wall_row_i, float wall_col_i, int grid_size);
+
+/**
+ * @brief Computes the maximum width and height to enclose all control points.
+ *
+ * This function takes an array of control point parameters and calculates the maximum
+ * width and height needed to enclose all of these points. The dimensions are returned
+ * as reference arguments.
+ *
+ * @param ctrl_point_params The 4x5 array of control point parameters. Each row
+ *                          represents a different control point, and the columns
+ *                          contain different attributes of that point.
+ * @param[out] r_max_width Reference to a float variable where the maximum width will be stored.
+ * @param[out] r_max_height Reference to a float variable where the maximum height will be stored.
+ *
+ * @note The units for the x and y coordinates are in OpenGL's Normalized Device Coordinates (NDC) [-1, 1].
+ */
+void computeMaxBoundaryDimensions(float [4][5], float &, float &);
 
 /**
  * @brief Creates a vector of points representing a quadrilateral with shear.
@@ -398,8 +446,7 @@ std::vector<cv::Point2f> computeQuadVertices(float, float, float, float, float);
  * @note This function utilizes the OpenCV library to compute the homography matrix.
  *
  * @param r_hom_mat Reference to the cv::Mat object where the computed homography matrix will be stored.
- * @param ctrl_point_params The 4x5 array of control point parameters, each row corresponding to a corner
- *                          of the destination/target plane.
+ * @param ctrl_point_params A 4x5 array containing control point parameters (x, y, width, height, shear).
  */
 void computeHomography(cv::Mat &, float[4][5]);
 

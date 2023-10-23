@@ -461,90 +461,128 @@ std::vector<float> getArrColumn(float ctrl_point_params[4][5], int ctrl_point_pa
     return column_vector;
 }
 
-/**
- * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
- *
- * This function performs bilinear interpolation based on a point's position (grid_row_i, grid_col_i)
- * within a 2D grid. The grid corners are defined by a set of 4x5 control point parameters.
- *
- * @param ctrl_point_params 4x5 array of control point parameters. Each row corresponds to one control point
- *                          and contains five parameters for that point (x, y, width, height, shear).
- * @param ctrl_point_params_ind Index of the specific control point parameter to interpolate [0, 4].
- * @param grid_row_i Index of the point along the first axis (rows) within the grid.
- * @param grid_col_i Index of the point along the second axis (columns) within the grid.
- * @param grid_size Number of cells along one axis in the grid.
- * @param do_offset Flag to indicate whether to offset the interpolated value by the control point parameter at the origin.
- *
- * @return float The interpolated value calculated based on the specified control point parameters and grid position.
- */
 float bilinearInterpolation(float ctrl_point_params[4][5], int ctrl_point_params_ind, int grid_row_i, int grid_col_i, int grid_size, bool do_offset)
 {
     // Get control point values that will be used as the reference corners for interpolation.
     // Note: Only 3 control points are used in this implimentation.
-    float val_gp_0 = ctrl_point_params[0][ctrl_point_params_ind];
-    float val_gp_2 = ctrl_point_params[2][ctrl_point_params_ind];
-    float val_gp_3 = ctrl_point_params[3][ctrl_point_params_ind];
+    float cp_val_0 = ctrl_point_params[0][ctrl_point_params_ind];
+    // float cp_val_1 = ctrl_point_params[1][ctrl_point_params_ind];
+    float cp_val_2 = ctrl_point_params[2][ctrl_point_params_ind];
+    float cp_val_3 = ctrl_point_params[3][ctrl_point_params_ind];
 
     // Calculate the relative position within the grid by dividing the current index by the maximum index (grid_size - 1).
     float norm_grid_row_i = static_cast<float>(grid_row_i) / (grid_size - 1);
     float norm_grid_col_i = static_cast<float>(grid_col_i) / (grid_size - 1);
 
     // Perform 1D linear interpolation along the row.
-    // The interpolation is between the third and fourth control points (val_gp_2 and val_gp_3).
-    float interp_1d_row = norm_grid_row_i * (val_gp_2 - val_gp_3);
+    // The interpolation is between the third and fourth control points (cp_val_2 and cp_val_3).
+    float interp_1d_row = norm_grid_row_i * (cp_val_2 - cp_val_3);
 
     // Perform 1D linear interpolation along the column.
-    // The interpolation is between the first and fourth control points (val_gp_0 and val_gp_3).
-    float interp_1d_col = norm_grid_col_i * (val_gp_0 - val_gp_3);
+    // The interpolation is between the first and fourth control points (cp_val_0 and cp_val_3).
+    float interp_1d_col = norm_grid_col_i * (cp_val_0 - cp_val_3);
 
     // Combine the 1D interpolated values to compute the final 2D interpolated value.
     float interp_2d = interp_1d_row + interp_1d_col;
 
-    // Optionally add an offset to the interpolated value. The offset is the parameter value of the control point at the origin (val_gp_3).
-    interp_2d += do_offset ? val_gp_3 : 0.0;
+    // Optionally add an offset to the interpolated value. The offset is the parameter value of the control point at the origin (cp_val_3).
+    interp_2d += do_offset ? cp_val_3 : 0.0;
 
     // Return the final interpolated value.
     return interp_2d;
 }
 
-void bilinearInterpolationAbsDist_TEMP(float ctrl_point_params[4][5], float &interp_2d_x, float &interp_2d_y, float grid_row_i, float grid_col_i, int grid_size)
+float bilinearInterpolationFull(
+    float ctrl_point_params[4][5], int ctrl_point_params_ind,
+    int grid_row_i, int grid_col_i, int grid_size, bool do_offset)
 {
-    // These store the absolute distance between the control points
-    float ctrl_point_distance_x[2][2], ctrl_point_distance_y[2][2];
+    // Extract control point values for each corner
+    float A = ctrl_point_params[0][ctrl_point_params_ind];
+    float B = ctrl_point_params[1][ctrl_point_params_ind];
+    float C = ctrl_point_params[3][ctrl_point_params_ind];
+    float D = ctrl_point_params[2][ctrl_point_params_ind];
 
-    // Calculate normalized spacings for top-left corner
-    ctrl_point_distance_x[0][0] = (fabs(ctrl_point_params[0][0]) + ctrl_point_params[1][0]) /static_cast<float>(grid_size - 1);
-    ctrl_point_distance_y[0][0] = (ctrl_point_params[0][1] + fabs(ctrl_point_params[3][1])) /static_cast<float>(grid_size - 1);
+    // Normalize the grid indices
+    float x = static_cast<float>(grid_row_i) / (grid_size - 1);
+    float y = static_cast<float>(grid_col_i) / (grid_size - 1);
 
-    // Calculate normalized spacings for top-right corner
-    ctrl_point_distance_x[0][1] = (fabs(ctrl_point_params[0][0]) + ctrl_point_params[1][0]) /static_cast<float>(grid_size - 1);
-    ctrl_point_distance_y[0][1] = (ctrl_point_params[0][1] + fabs(ctrl_point_params[3][1])) /static_cast<float>(grid_size - 1);
+    // Bilinear interpolation formula
+    float interpolated_val = A * (1 - x) * (1 - y) +
+                             B * x * (1 - y) +
+                             C * (1 - x) * y +
+                             D * x * y;
 
-    // Calculate normalized spacings for bottom-left corner
-    ctrl_point_distance_x[1][0] = (fabs(ctrl_point_params[0][0]) + ctrl_point_params[1][0]) /static_cast<float>(grid_size - 1);
-    ctrl_point_distance_y[1][0] = (ctrl_point_params[0][1] + fabs(ctrl_point_params[3][1])) /static_cast<float>(grid_size - 1);
+    // Optionally add an offset
+    if (do_offset)
+    {
+        float offset = ctrl_point_params[3][ctrl_point_params_ind];
+        interpolated_val += offset;
+    }
 
-    // Calculate normalized spacings for bottom-right corner
-    ctrl_point_distance_x[1][1] = (fabs(ctrl_point_params[0][0]) + ctrl_point_params[1][0]) /static_cast<float>(grid_size - 1);
-    ctrl_point_distance_y[1][1] = (ctrl_point_params[0][1] + fabs(ctrl_point_params[3][1])) /static_cast<float>(grid_size - 1);
+    return interpolated_val;
+}
 
-    // Normalize indices
+void absDistInterp_TEMP(float ctrl_point_params[4][5], float &interp_2d_x, float &interp_2d_y, float grid_row_i, float grid_col_i, int grid_size)
+{
+    int _xi_ = 0; // Index for x coordinate in ctrl_point_params
+    int _yi_ = 1; // Index for y coordinate in ctrl_point_params
+
+    // Calculate normalized spacings for each control point
+    float x_cp0 = (fabs(ctrl_point_params[0][_xi_]) + fabs(ctrl_point_params[1][_xi_])) / static_cast<float>(grid_size - 1); // x: cp[0] + cp[1]
+    float y_cp0 = (fabs(ctrl_point_params[0][_yi_]) + fabs(ctrl_point_params[3][_yi_])) / static_cast<float>(grid_size - 1); // y: cp[0] + cp[3]
+
+    float x_cp1 = (fabs(ctrl_point_params[0][_xi_]) + fabs(ctrl_point_params[1][_xi_])) / static_cast<float>(grid_size - 1); // x: cp[0] + cp[1]
+    float y_cp1 = (fabs(ctrl_point_params[0][_yi_]) + fabs(ctrl_point_params[3][_yi_])) / static_cast<float>(grid_size - 1); // y: cp[0] + cp[3]
+
+    float x_cp2 = (fabs(ctrl_point_params[0][_xi_]) + fabs(ctrl_point_params[1][_xi_])) / static_cast<float>(grid_size - 1); // x: cp[0] + cp[1]
+    float y_cp2 = (fabs(ctrl_point_params[0][_yi_]) + fabs(ctrl_point_params[3][_yi_])) / static_cast<float>(grid_size - 1); // y: cp[0] + cp[3]
+
+    float x_cp3 = (fabs(ctrl_point_params[0][_xi_]) + fabs(ctrl_point_params[1][_xi_])) / static_cast<float>(grid_size - 1); // x: cp[0] + cp[1]
+    float y_cp3 = (fabs(ctrl_point_params[0][_yi_]) + fabs(ctrl_point_params[3][_yi_])) / static_cast<float>(grid_size - 1); // y: cp[0] + cp[3]
+
+    // // Normalize indices
     float norm_grid_row_i = static_cast<float>(grid_row_i) / (grid_size - 1);
     float norm_grid_col_i = static_cast<float>(grid_col_i) / (grid_size - 1);
 
-    // Perform 1D linear interpolation along the row and column for the x axis.
-    float interp_1d_row_x = norm_grid_row_i * (ctrl_point_distance_x[1][0] - ctrl_point_distance_x[0][0]);
-    float interp_1d_col_x = norm_grid_col_i * (ctrl_point_distance_x[0][1] - ctrl_point_distance_x[0][0]);
+    // Perform 1D linear interpolation along the row and column for the x axis
+    float interp_1d_row_x = norm_grid_row_i * (x_cp2 - x_cp0);
+    float interp_1d_col_x = norm_grid_col_i * (x_cp1 - x_cp0);
 
-    // Combine the 1D interpolated values to compute the final 2D interpolated value for x.
-    interp_2d_x = grid_row_i * (ctrl_point_distance_x[0][0] + interp_1d_row_x + interp_1d_col_x);
+    // Combine the 1D interpolated values to compute the final 2D interpolated value for x
+    interp_2d_x = grid_row_i * (x_cp0 + interp_1d_row_x + interp_1d_col_x);
 
-    // Perform 1D linear interpolation along the row and column for the x axis.
-    float interp_1d_row_y = norm_grid_row_i * (ctrl_point_distance_y[1][0] - ctrl_point_distance_y[0][0]);
-    float interp_1d_col_y = norm_grid_col_i * (ctrl_point_distance_y[0][1] - ctrl_point_distance_y[0][0]);
+    // Perform 1D linear interpolation along the row and column for the y axis
+    float interp_1d_row_y = norm_grid_row_i * (y_cp2 - y_cp0);
+    float interp_1d_col_y = norm_grid_col_i * (y_cp1 - y_cp0);
 
-    // Combine the 1D interpolated values to compute the final 2D interpolated value for y.
-    interp_2d_y = grid_col_i * (ctrl_point_distance_y[0][0] + interp_1d_row_y + interp_1d_col_y);
+    // Combine the 1D interpolated values to compute the final 2D interpolated value for y
+    interp_2d_y = grid_col_i * (y_cp0 + interp_1d_row_y + interp_1d_col_y);
+}
+
+void computeMaxBoundaryDimensions(float ctrl_point_params[4][5], float &r_max_width, float &r_max_height)
+{
+
+    // Initialize variables to store the min and max coordinates
+    float min_x = std::numeric_limits<float>::max();
+    float max_x = std::numeric_limits<float>::min();
+    float min_y = std::numeric_limits<float>::max();
+    float max_y = std::numeric_limits<float>::min();
+
+    // Loop through all control points to find the min and max coordinates
+    for (int i = 0; i < 4; ++i)
+    {
+        float x = ctrl_point_params[i][0];
+        float y = ctrl_point_params[i][1];
+
+        min_x = std::min(min_x, x);
+        max_x = std::max(max_x, x);
+        min_y = std::min(min_y, y);
+        max_y = std::max(max_y, y);
+    }
+
+    // Calculate the maximum width and height
+    r_max_width = max_x - min_x;
+    r_max_height = max_y - min_y;
 }
 
 std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, float height, float shear_amount)
@@ -658,7 +696,7 @@ void printCtrlPointParams(float ctrl_point_params[4][5])
     ROS_INFO("---------------------------------------------------------");
     for (int i = 0; i < 4; ++i)
     {
-        ROS_INFO("CP%d |  %6.2f  |  %6.2f  |  %6.2f   |  %6.2f   |  %6.2f",
+        ROS_INFO("[%d] |  %6.2f  |  %6.2f  |  %6.2f   |  %6.2f   |  %6.2f",
                  i,
                  ctrl_point_params[i][0],
                  ctrl_point_params[i][1],
