@@ -15,7 +15,7 @@
 // ================================================== VARIABLES ==================================================
 
 // Control point parameter array
-float contPointParams[4][5];
+float ctrlPointParams[4][5];
 
 // The homography matrix used to warp perspective.
 cv::Mat homMat = cv::Mat::eye(3, 3, CV_32F);
@@ -157,7 +157,7 @@ void drawQuadImage(std::vector<cv::Point2f>);
  * draw the corresponding image.
  *
  * @param r_hom_mat Reference to the Homography Matrix.
- * @param cont_point_params Array containing control point parameters.
+ * @param ctrl_point_params Array containing control point parameters.
  * @param proj_i Index of the projector being used.
  * @param p_window_id Pointer to the GLFW window.
  * @param fbo_texture_id Framebuffer Object's texture ID.

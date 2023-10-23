@@ -178,7 +178,7 @@ void drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
 
 int drawWalls(
     cv::Mat &r_hom_mat,
-    float cont_point_params[4][5],
+    float ctrl_point_params[4][5],
     int proj_i,
     GLFWwindow *p_window_id,
     GLuint fbo_texture_id,
@@ -192,7 +192,7 @@ int drawWalls(
     {
         // Load the image transform coordinates from the XML file
         std::string file_path = formatCoordinatesFilePathXML(projMonIndArr[proj_i], cal_i, CONFIG_DIR_PATH);
-        if (loadCoordinatesXML(homMat, contPointParams, file_path, 0) != 0)
+        if (loadCoordinatesXML(homMat, ctrlPointParams, file_path, 0) != 0)
         {
             ROS_ERROR("XML: Missing XML File[%s]", file_path.c_str());
             return -1;
@@ -212,18 +212,20 @@ int drawWalls(
                 // Bind image
                 ilBindImage(r_image_id_vec[img_ind]); // show test pattern
 
-                // Calculate shear and height for the current wall
-                float width_val = interpolateWallParam(cont_point_params, 2, wall_row_i, wall_col_i, MAZE_SIZE);
-                float height_val = interpolateWallParam(cont_point_params, 3, wall_row_i, wall_col_i, MAZE_SIZE);
-                float shear_val = interpolateWallParam(cont_point_params, 4, wall_row_i, wall_col_i, MAZE_SIZE);
+                // Calculate width, height and shear for the current wall
+                float width_val = bilinearInterpolation(ctrl_point_params, 2, wall_row_i, wall_col_i, MAZE_SIZE, true);
+                float height_val = bilinearInterpolation(ctrl_point_params, 3, wall_row_i, wall_col_i, MAZE_SIZE, true);
+                float shear_val = bilinearInterpolation(ctrl_point_params, 4, wall_row_i, wall_col_i, MAZE_SIZE, true);
 
                 // Create wall vertices
                 std::vector<cv::Point2f> quad_vertices_vec = computeQuadVertices(0.0f, 0.0f, width_val, height_val, shear_val);
 
+                // Calculate the interpolated wall spacings for this grid cell
+                float x_translate = bilinearInterpolation(ctrl_point_params, 0, wall_row_i, wall_col_i, MAZE_SIZE, false);
+                float y_translate = bilinearInterpolation(ctrl_point_params, 1, wall_row_i, wall_col_i, MAZE_SIZE, false);
+
                 // Apply perspective warping to vertices
-                float x_offset = wall_row_i * WALL_SPACE;
-                float y_offset = wall_col_i * WALL_SPACE;
-                std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_vec, r_hom_mat, x_offset, y_offset);
+                std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_vec, r_hom_mat, x_translate, y_translate);
 
                 // Set texture image
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
@@ -336,10 +338,10 @@ int main(int argc, char **argv)
     ROS_INFO("[SETUP] Wall (Norm): Width=%0.2f Space=%0.2f", wall_width_ndc, WALL_SPACE);
 
     // Initialize control point parameters
-    updateCalParams(contPointParams, 0);
+    updateCalParams(ctrlPointParams, 0);
 
     // Do initial computations of homography matrix
-    computeHomography(homMat, contPointParams);
+    computeHomography(homMat, ctrlPointParams);
 
     // --------------- OpenGL SETUP V2 ---------------
 
@@ -422,7 +424,7 @@ int main(int argc, char **argv)
                 glClear(GL_COLOR_BUFFER_BIT);
 
                 // Draw the walls
-                if (drawWalls(homMat, contPointParams, proj_i, p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec) != 0)
+                if (drawWalls(homMat, ctrlPointParams, proj_i, p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec) != 0)
                 {
                     ROS_ERROR("[MAIN] Failed to Draw Walls for Window[%d]", proj_i);
                     return -1;

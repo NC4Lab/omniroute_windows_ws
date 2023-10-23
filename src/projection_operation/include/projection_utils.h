@@ -176,48 +176,54 @@ extern const int WALL_HEIGHT_PXL = 540;
 // Control point image radius
 extern const float CP_RADIUS_NDC = 0.005f;
 
-// Defualt offset of control points from the center of the screen
-const float cal_offset_x = 0.15f; // X offset from center of screen for control points
-const float cal_offset_y = 0.3f;  // X offset from center of screen for control points
+// Defualt control point parameter values
+const float cp_x = 0.15f;                                                                 // X-coordinate
+const float cp_y = 0.3f;                                                                  // X-coordinate
+const float wall_width_ndc = ((cp_x * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));  // Wall width in NDC
+const float wall_height_ndc = ((cp_y * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2)); // Wall height in NDC
 
-// Wall image size and spacing in OpenGL's Normalized Device Coordinates (NDC) [-1, 1]
-const float wall_width_ndc = ((cal_offset_x * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));
-const float wall_height_ndc = ((cal_offset_y * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));
-extern const float WALL_SPACE = 2.0f * wall_width_ndc;
-
-// Control point calibration parameter array
 /**
- * @brief Array to hold the position and transformation parameters for control points in Normalized Device Coordinates (NDC) [-1, 1].
+ * @brief Control Point Calibration Parameter Array
  *
- * @note The second control point (index 1) can only be used to adjust the wall position.
+ * This array stores the position and transformation parameters for each control point used in calibration.
+ * The units for the x, y, width, and height parameters are in OpenGL's Normalized Device Coordinates (NDC),
+ * which range from [-1, 1] with the origin at the center of the screen.
  *
- * Each row corresponds to a specific control point on the screen, and each column holds a different attribute
+ * @note Control point at index 1 only allows for positional adjustments and does not contribute to scaling or shearing.
+ *
+ * Each row in the array corresponds to a specific control point on the screen, while each column represents a different attribute
  * of that control point.
  *
  * - Rows:
- *   - [0]: Top-left control point (grid point [0][0])
- *   - [1]: Top-right control point (grid point [0][1])
- *   - [2]: Bottom-right control point (grid point [1][0])
- *   - [3]: Bottom-left control point (grid point [1][1])
+ *   - [0]: Top-left control point,     corresponding to grid point [0][0]
+ *   - [1]: Top-right control point,    corresponding to grid point [0][last]
+ *   - [2]: Bottom-right control point, corresponding to grid point [last][last]
+ *   - [3]: Bottom-left control point,  corresponding to grid point [last][0]
  *
  * - Columns:
- *   - [0]: X-distance from center [-1,1]
- *   - [1]: Y-distance from center [-1,1]
- *   - [2]: Wall width parameter [-1,1]
- *   - [3]: Wall height parameter [-1,1]
+ *   - [0]: X-coordinate in NDC
+ *   - [1]: Y-coordinate in NDC
+ *   - [2]: Wall width in NDC
+ *   - [3]: Wall height in NDC
  *   - [4]: Shearing factor
+ *
+ * @section NDC Origin
+ * In OpenGL's NDC, the origin (0,0) is located at the center of the screen. 
+ * The X-axis extends from -1 (left) to 1 (right).
+ * The Y-axis extends from -1 (bottom) to 1 (top).
  */
-extern const float CONT_POINT_PARAMS[4][5] = {
+extern const float CTRL_POINT_PARAMS[4][5] = {
     // Default control point parameters
-    {-cal_offset_x, cal_offset_y, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
-    {cal_offset_x, cal_offset_y, wall_width_ndc, wall_height_ndc, 0.0f},  // top-right control point
-    {cal_offset_x, -cal_offset_y, wall_width_ndc, wall_height_ndc, 0.0f}, // bottom-right control point
-    {-cal_offset_x, -cal_offset_y, wall_width_ndc, wall_height_ndc, 0.0f} // bottom-left control point
+    {-cp_x, cp_y, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
+    {cp_x, cp_y, wall_width_ndc, wall_height_ndc, 0.0f},  // top-right control point
+    {cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f}, // bottom-right control point
+    {-cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f} // bottom-left control point
 };
 
-// ================================================== FUNCTIONS ==================================================
+// TEMP (UNUSED)
+extern const float WALL_SPACE = 2.0f * wall_width_ndc;
 
-void interpOffsetTEMP(float cont_point_params[4][5], float &x_offset, float &y_offset, float wall_row_i, float wall_col_i);
+// ================================================== FUNCTIONS ==================================================
 
 /**
  * @brief Checks for DevIL errors and logs them.
@@ -247,17 +253,17 @@ int checkErrorDevIL(int, const char *, const char * = nullptr);
 std::string formatCoordinatesFilePathXML(int, int, std::string);
 
 /**
- * @brief Loads calibration parameters and homography matrix from an XML file.
+ * @brief Loads control point parameters and homography matrix from an XML file.
  *
  * This is the primary function containing the implementation. It reads an XML file
- * to populate the `r_hom_mat` and `r_cont_point_params` matrices.
+ * to populate the `r_hom_mat` and `r_ctrl_point_params` matrices.
  *
  * @note Uses pugiXML for XML parsing.
  *
  * @param[out] r_hom_mat Reference to the homography matrix to populate.
- * @param[out] r_cont_point_params Reference to the 4x5 array of calibration parameters.
+ * @param[out] r_ctrl_point_params Reference to the 4x5 array of control point parameters.
  * @param full_path Path to the XML file.
- * @param verbose_level Level of verbosity for printing loaded data (0:nothing, 1:file name, 2:calibration parameters, 3:homography matrix).
+ * @param verbose_level Level of verbosity for printing loaded data (0:nothing, 1:file name, 2:control point parameters, 3:homography matrix).
  *
  * @return 0 on successful execution, -1 on failure.
  */
@@ -276,13 +282,13 @@ int loadCoordinatesXML(cv::Mat &, float (&)[4][5], std::string, int = 0);
  * Example XML structure:
  * @code
  * <config>
- *   <cont_point_params>
+ *   <ctrl_point_params>
  *     <row>
  *       <cell>value</cell>
  *       ...
  *     </row>
  *     ...
- *   </cont_point_params>
+ *   </ctrl_point_params>
  *   <hom_mat>
  *     <row>
  *       <cell>value</cell>
@@ -294,7 +300,7 @@ int loadCoordinatesXML(cv::Mat &, float (&)[4][5], std::string, int = 0);
  * @endcode
  *
  * @param hom_mat The homography matrix used to warp perspective.
- * @param cont_point_params The 4x5 array of calibration parameters.
+ * @param ctrl_point_params The 4x5 array of control point parameters.
  * @param full_path Path to the XML file.
  */
 void saveCoordinatesXML(cv::Mat, float[4][5], std::string);
@@ -339,32 +345,25 @@ int deleteImgTextures(std::vector<ILuint> &);
  */
 int mergeImages(ILuint, ILuint, ILuint &);
 
-
-std::vector<float> getArrColumn(float [4][5], int);
-
-/**
- * @brief Calculate control point distance based on control point coordinates.
- *
- * @param cont_point_params The 4x5 array of calibration parameters.
- * @param [out] r_control_point_distances 4x2 array to store calculated distances spacings in x and y direction.
- */
-void calculateControlPointDistances(float[4][5], float (&)[4][5]);
-
 /**
  * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
  *
- * This function performs bilinear interpolation based on the position of a point
- * within a 2D grid (grid_row_i, grid_col_i) and predefined values at the grid corners.
+ * Performs bilinear interpolation based on the position (grid_row_i, grid_col_i) within a 2D grid.
+ * The grid corners are defined by the control point parameters.
  *
- * @param cont_point_params The 4x5 array of calibration parameters.
- * @param cont_point_params_ind The index of the calibration parameters (3:height, 4:sheer).
+ * @param ctrl_point_params The 4x5 array of control point parameters.
+ * @param ctrl_point_params_ind The index of the control point parameter (e.g., 3: height, 4: shear) to interpolate.
  * @param grid_row_i The index of the point along the first axis within the grid.
  * @param grid_col_i The index of the point along the second axis within the grid.
  * @param grid_size The size of the 2D grid.
+ * @param do_offset Flag to indicate whether to offset the interpolated value by the control point parameter.
  *
- * @return float The calculated interpolated value.
+ * @return float Calculated interpolated value for the specified control point input parameters.
  */
-float interpolateWallParam(float[4][5], int, int, int, int, bool);
+float bilinearInterpolation(float[4][5], int, int, int, int, bool);
+
+// TEMP
+void bilinearInterpolationAbsDist_TEMP(float ctrl_point_params[4][5], float &x_translate, float &y_translate, float wall_row_i, float wall_col_i, int grid_size);
 
 /**
  * @brief Creates a vector of points representing a quadrilateral with shear.
@@ -385,39 +384,79 @@ float interpolateWallParam(float[4][5], int, int, int, int, bool);
 std::vector<cv::Point2f> computeQuadVertices(float, float, float, float, float);
 
 /**
- * @brief Computes the perspective warp for a given set of points.
+ * @brief Computes the global homography matrix based on overall control point parameters.
  *
- * @param quad_vertices_vec The vector of points representing the rectangle.
- * @param r_hom_mat The homography matrix used to warp perspective.
- * @param x_offset The x-offset to apply to the vertices.
- * @param y_offset The y-offset to apply to the vertices.
+ * This function calculates the global homography matrix that maps points from the source plane
+ * (representing the entire projected image) to the destination plane (defined by control points).
+ * Unlike per-wall transformations, this matrix is intended for the complete image, providing a
+ * unified perspective warp.
  *
- * @return std::vector<cv::Point2f> The warped vertices.
- */
-std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f>, cv::Mat &, float, float);
-
-/**
- * @brief Computes the homography matrix based on calibration parameterss and wall image vertices.
+ * Control point x and y coordinates are specified in Normalized Device Coordinates (NDC) [-1, 1].
+ * The vertices for the entire projected image are calculated based on the dimensions that enclose
+ * all control points (i.e., boundary dimensions in the control point plane).
  *
- * This function calculates the homography matrix that maps points from the source image (wall images)
- * to the destination image (control points). The homography matrix is stored in the global variable homMat.
+ * @note This function utilizes the OpenCV library to compute the homography matrix.
  *
- * Control points are specified in normalized coordinates based on the calibration paramiters array.
- * Wall image vertices are calculated based on the dimensions and spacing of the maze walls.
- *
- * @note This function uses the OpenCV library to compute the homography matrix.
- *
- * @param r_hom_mat The homography matrix used to warp perspective.
- * @param cont_point_params The 4x5 array of calibration parameters.
+ * @param r_hom_mat Reference to the cv::Mat object where the computed homography matrix will be stored.
+ * @param ctrl_point_params The 4x5 array of control point parameters, each row corresponding to a corner
+ *                          of the destination/target plane.
  */
 void computeHomography(cv::Mat &, float[4][5]);
 
 /**
+ * @brief Computes the perspective warp of a given set of quadrilateral vertices using a homography matrix.
+ *
+ * This function takes a set of quadrilateral vertices and applies a projective transformation to each vertex.
+ * The transformation is governed by a given homography matrix. Before the warp, an optional translation is
+ * applied to each vertex.
+ *
+ * @param quad_vertices_vec A vector containing the original Cartesian coordinates of the quadrilateral's vertices.
+ *                          The vertices are processed in-place.
+ * 
+ * @param r_hom_mat Reference to the homography matrix. This 3x3 matrix is used to perform the projective
+ *                  transformation on each vertex.
+ * 
+ * @param x_translate Optional x-coordinate translation applied to each vertex before warping. Given in the
+ *                    same units as the vertices.
+ * 
+ * @param y_translate Optional y-coordinate translation applied to each vertex before warping. Given in the
+ *                    same units as the vertices.
+ *
+ * @details
+ * 1. Each vertex undergoes a translation operation defined by `x_translate` and `y_translate`.
+ * 
+ * 2. The function converts the translated vertices to homogeneous coordinates, which allows for a unified
+ *    representation that can undergo linear transformations including projective warps. 
+ * 
+ * 3. The homography matrix `r_hom_mat` is then applied to these homogeneous coordinates to produce the
+ *    new coordinates of each vertex in the warped perspective.
+ * 
+ * 4. Finally, the function converts these new homogeneous coordinates back to Cartesian coordinates.
+ * 
+ * @note: Homogeneous Coordinates: are a mathematical trick used to simplify 
+ *        complex transformations like translation, rotation, and shearing. 
+ *        Cartesian coordinates (x, y) are converted to [x, y, 1] for the 
+ *        transformation. The third value (ptMat.at<float>(2)) may change 
+ *        post-transformation so we divide the new x and y by this value 
+ *        (ptMat /= ptMat.at<float>(2)) to get back to cartisian x, y coordinates.
+ * 
+ * @return std::vector<cv::Point2f> A vector containing the new Cartesian coordinates of the warped vertices.
+ */
+std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f>, cv::Mat &, float, float);
+
+/**
  * @brief Used to reset control point parameter list.
  *
- * @param r_cont_point_params Reference to the 4x5 array of calibration parameters.
+ * @param r_ctrl_point_params Reference to the 4x5 array of control point parameters.
  * @param mode_cal_ind Index of the active calibration mode.
  */
 void updateCalParams(float (&)[4][5], int);
+
+/**
+ * @brief Prints the control point parameters to the ROS log.
+ *
+ * @param ctrl_point_params 4x5 array of control point parameters.
+ */
+void printCtrlPointParams(float ctrl_point_params[4][5]);
 
 #endif

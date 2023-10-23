@@ -10,45 +10,6 @@
 
 // ================================================== FUNCTIONS ==================================================
 
-void interpOffsetTEMP(float cont_point_params[4][5], float &x_offset, float &y_offset, float wall_row_i, float wall_col_i)
-{
-    float corner_space_arr_x[2][2], corner_space_arr_y[2][2];
-
-    // Calculate normalized spacings for top-left corner
-    corner_space_arr_x[0][0] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
-    corner_space_arr_y[0][0] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
-
-    // Calculate normalized spacings for top-right corner
-    corner_space_arr_x[0][1] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
-    corner_space_arr_y[0][1] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
-
-    // Calculate normalized spacings for bottom-left corner
-    corner_space_arr_x[1][0] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
-    corner_space_arr_y[1][0] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
-
-    // Calculate normalized spacings for bottom-right corner
-    corner_space_arr_x[1][1] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
-    corner_space_arr_y[1][1] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
-
-    // Normalize indices
-    float normalized_i = wall_row_i / (float(MAZE_SIZE) - 1);
-    float normalized_j = wall_col_i / (float(MAZE_SIZE) - 1);
-
-    // Interpolate spacings
-    float interp_val_i_x = normalized_i * (corner_space_arr_x[1][0] - corner_space_arr_x[0][0]);
-    float interp_val_j_x = normalized_j * (corner_space_arr_x[0][1] - corner_space_arr_x[0][0]);
-
-    // Return interpolated spacing
-    x_offset = wall_row_i * (corner_space_arr_x[0][0] + interp_val_i_x + interp_val_j_x);
-
-    // Interpolate spacings
-    float interp_val_i_y = normalized_i * (corner_space_arr_y[1][0] - corner_space_arr_y[0][0]);
-    float interp_val_j_y = normalized_j * (corner_space_arr_y[0][1] - corner_space_arr_y[0][0]);
-
-    // Return interpolated spacing
-    y_offset = wall_col_i * (corner_space_arr_y[0][0] + interp_val_i_y + interp_val_j_y);
-}
-
 int checkErrorDevIL(int line, const char *file_str, const char *msg_str)
 {
     ILenum il_err = ilGetError();
@@ -72,7 +33,7 @@ std::string formatCoordinatesFilePathXML(int mon_id_ind, int mode_cal_ind, std::
     return file_path;
 }
 
-int loadCoordinatesXML(cv::Mat &r_hom_mat, float (&r_cont_point_params)[4][5], std::string full_path, int verbose_level)
+int loadCoordinatesXML(cv::Mat &r_hom_mat, float (&r_ctrl_point_params)[4][5], std::string full_path, int verbose_level)
 {
     // Get file name from path
     std::string file_name = full_path.substr(full_path.find_last_of('/') + 1);
@@ -86,9 +47,9 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, float (&r_cont_point_params)[4][5], s
     }
 
     // Retrieve control point parameters
-    std::vector<std::vector<float>> cont_point_params_vec_temp;
-    pugi::xml_node cont_point_params_node = doc.child("config").child("cont_point_params");
-    for (pugi::xml_node row_node = cont_point_params_node.child("row"); row_node; row_node = row_node.next_sibling("row"))
+    std::vector<std::vector<float>> ctrl_point_params_vec_temp;
+    pugi::xml_node ctrl_point_params_node = doc.child("config").child("ctrl_point_params");
+    for (pugi::xml_node row_node = ctrl_point_params_node.child("row"); row_node; row_node = row_node.next_sibling("row"))
     {
         std::vector<float> row;
         for (pugi::xml_node cell_node = row_node.child("cell"); cell_node; cell_node = cell_node.next_sibling("cell"))
@@ -96,16 +57,16 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, float (&r_cont_point_params)[4][5], s
             float value = std::stof(cell_node.child_value());
             row.push_back(value);
         }
-        cont_point_params_vec_temp.push_back(row);
+        ctrl_point_params_vec_temp.push_back(row);
     }
 
     // Check the dimensions of control pount array
-    if (cont_point_params_vec_temp.size() != 4)
+    if (ctrl_point_params_vec_temp.size() != 4)
     {
-        ROS_ERROR("[LOAD XML] Control Point Array from XML has Wrong Number of Rows[%zu]", cont_point_params_vec_temp.size());
+        ROS_ERROR("[LOAD XML] Control Point Array from XML has Wrong Number of Rows[%zu]", ctrl_point_params_vec_temp.size());
         return -1;
     }
-    for (const auto &row : cont_point_params_vec_temp)
+    for (const auto &row : ctrl_point_params_vec_temp)
     {
         if (row.size() != 5)
         {
@@ -119,7 +80,7 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, float (&r_cont_point_params)[4][5], s
     {
         for (int j = 0; j < 5; j++)
         {
-            r_cont_point_params[i][j] = cont_point_params_vec_temp[i][j];
+            r_ctrl_point_params[i][j] = ctrl_point_params_vec_temp[i][j];
         }
     }
 
@@ -174,7 +135,7 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, float (&r_cont_point_params)[4][5], s
         {
             std::ostringstream oss;
             oss << "[LOAD XML] Control Point Array:\n";
-            for (const auto &row : cont_point_params_vec_temp)
+            for (const auto &row : ctrl_point_params_vec_temp)
             {
                 for (const auto &value : row)
                 {
@@ -204,7 +165,7 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, float (&r_cont_point_params)[4][5], s
     return 0;
 }
 
-void saveCoordinatesXML(cv::Mat hom_mat, float cont_point_params[4][5], std::string full_path)
+void saveCoordinatesXML(cv::Mat hom_mat, float ctrl_point_params[4][5], std::string full_path)
 {
     // Create an XML document object
     pugi::xml_document doc;
@@ -213,12 +174,12 @@ void saveCoordinatesXML(cv::Mat hom_mat, float cont_point_params[4][5], std::str
     pugi::xml_node root = doc.append_child("config");
 
     // Create a child node for storing control point positions
-    pugi::xml_node arrayNode = root.append_child("cont_point_params");
+    pugi::xml_node arrayNode = root.append_child("ctrl_point_params");
 
-    // Iterate over the rows of the 2D array 'cont_point_params'
+    // Iterate over the rows of the 2D array 'ctrl_point_params'
     for (int i = 0; i < 4; ++i)
     {
-        // Create a row element under "cont_point_params"
+        // Create a row element under "ctrl_point_params"
         pugi::xml_node rowNode = arrayNode.append_child("row");
 
         // Iterate over the elements in the row
@@ -226,7 +187,7 @@ void saveCoordinatesXML(cv::Mat hom_mat, float cont_point_params[4][5], std::str
         {
             // Create a cell element under the row
             pugi::xml_node cellNode = rowNode.append_child("cell");
-            cellNode.append_child(pugi::node_pcdata).set_value(std::to_string(cont_point_params[i][j]).c_str());
+            cellNode.append_child(pugi::node_pcdata).set_value(std::to_string(ctrl_point_params[i][j]).c_str());
         }
     }
 
@@ -490,95 +451,100 @@ int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &r_img_merge_id)
     return 0;
 }
 
-std::vector<float> getArrColumn(float cont_point_params[4][5], int cont_point_params_ind)
+std::vector<float> getArrColumn(float ctrl_point_params[4][5], int ctrl_point_params_ind)
 {
     std::vector<float> column_vector;
     for (int i = 0; i < 4; ++i)
     {
-        column_vector.push_back(cont_point_params[i][cont_point_params_ind]);
+        column_vector.push_back(ctrl_point_params[i][ctrl_point_params_ind]);
     }
     return column_vector;
 }
 
-// void calculateControlPointDistances(float cont_point_params[4][5], float (&r_control_point_distances)[4][5])
-// {
-//     // Calculate x and y distances between top-left and top-right control points
-//     r_control_point_distances[0][0] = fabs(cont_point_params[0][0] - cont_point_params[1][0]);
-//     r_control_point_distances[0][1] = fabs(cont_point_params[0][1] - cont_point_params[1][1]);
-
-//     // Calculate x and y distances between top-right and bottom-right control points
-//     r_control_point_distances[1][0] = fabs(cont_point_params[1][0] - cont_point_params[2][0]);
-//     r_control_point_distances[1][1] = fabs(cont_point_params[1][1] - cont_point_params[2][1]);
-
-//     // Calculate x and y distances between bottom-right and bottom-left control points
-//     r_control_point_distances[2][0] = fabs(cont_point_params[2][0] - cont_point_params[3][0]);
-//     r_control_point_distances[2][1] = fabs(cont_point_params[2][1] - cont_point_params[3][1]);
-
-//     // Calculate x and y distances between bottom-left and top-left control points
-//     r_control_point_distances[3][0] = fabs(cont_point_params[3][0] - cont_point_params[0][0]);
-//     r_control_point_distances[3][1] = fabs(cont_point_params[3][1] - cont_point_params[0][1]);
-// }
-
-void calculateControlPointDistances(float cont_point_params[4][5], float (&r_control_point_distances)[4][5])
+/**
+ * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
+ *
+ * This function performs bilinear interpolation based on a point's position (grid_row_i, grid_col_i)
+ * within a 2D grid. The grid corners are defined by a set of 4x5 control point parameters.
+ *
+ * @param ctrl_point_params 4x5 array of control point parameters. Each row corresponds to one control point
+ *                          and contains five parameters for that point (x, y, width, height, shear).
+ * @param ctrl_point_params_ind Index of the specific control point parameter to interpolate [0, 4].
+ * @param grid_row_i Index of the point along the first axis (rows) within the grid.
+ * @param grid_col_i Index of the point along the second axis (columns) within the grid.
+ * @param grid_size Number of cells along one axis in the grid.
+ * @param do_offset Flag to indicate whether to offset the interpolated value by the control point parameter at the origin.
+ *
+ * @return float The interpolated value calculated based on the specified control point parameters and grid position.
+ */
+float bilinearInterpolation(float ctrl_point_params[4][5], int ctrl_point_params_ind, int grid_row_i, int grid_col_i, int grid_size, bool do_offset)
 {
-    // Calculate x and y distances between top-left and top-right control points
-    r_control_point_distances[0][0] = fabs(cont_point_params[0][0]) + cont_point_params[1][0];
-    r_control_point_distances[0][1] = cont_point_params[0][1] + fabs(cont_point_params[3][1]);
+    // Get control point values that will be used as the reference corners for interpolation.
+    // Note: Only 3 control points are used in this implimentation.
+    float val_gp_0 = ctrl_point_params[0][ctrl_point_params_ind];
+    float val_gp_2 = ctrl_point_params[2][ctrl_point_params_ind];
+    float val_gp_3 = ctrl_point_params[3][ctrl_point_params_ind];
 
-    // Calculate x and y distances between top-right and bottom-right control points
-    r_control_point_distances[1][0] = fabs(cont_point_params[0][0]) + cont_point_params[1][0];
-    r_control_point_distances[1][1] = fabs(cont_point_params[0][0]) + cont_point_params[1][0];
-
-    // Calculate x and y distances between bottom-right and bottom-left control points
-    r_control_point_distances[2][0] = fabs(cont_point_params[0][0]) + cont_point_params[1][0];
-    r_control_point_distances[2][1] = cont_point_params[0][1] + fabs(cont_point_params[3][1]);
-
-    // Calculate x and y distances between bottom-left and top-left control points
-    r_control_point_distances[3][0] = fabs(cont_point_params[0][0]) + cont_point_params[1][0];
-    r_control_point_distances[3][1] = cont_point_params[0][1] + fabs(cont_point_params[3][1]);
-}
-
-// void calculateCornerSpacing(float cont_point_params[4][5], float (&r_corner_space_arr_x)[2][2], float (&r_corner_space_arr_y)[2][2])
-// {
-//     // Calculate normalized spacings for top-left corner
-//     r_corner_space_arr_x[0][0] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
-//     r_corner_space_arr_y[0][0] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
-
-//     // Calculate normalized spacings for top-right corner
-//     r_corner_space_arr_x[0][1] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
-//     r_corner_space_arr_y[0][1] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
-
-//     // Calculate normalized spacings for bottom-left corner
-//     r_corner_space_arr_x[1][0] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
-//     r_corner_space_arr_y[1][0] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
-
-//     // Calculate normalized spacings for bottom-right corner
-//     r_corner_space_arr_x[1][1] = (fabs(cont_point_params[0][0]) + cont_point_params[1][0]) / (float(MAZE_SIZE) - 1);
-//     r_corner_space_arr_y[1][1] = (cont_point_params[0][1] + fabs(cont_point_params[3][1])) / (float(MAZE_SIZE) - 1);
-// }
-
-float interpolateWallParam(float cont_point_params[4][5], int cont_point_params_ind, int grid_row_i, int grid_col_i, int grid_size, bool do_offset)
-{
-    // Get 3 control point values used as grid points for interpolation 
-    float val_gp_0 = cont_point_params[0][cont_point_params_ind];
-    float val_gp_2 = cont_point_params[2][cont_point_params_ind];
-    float val_gp_3 = cont_point_params[3][cont_point_params_ind];
-
-    // Normalize the indices by dividing by (grid_size - 1)
+    // Calculate the relative position within the grid by dividing the current index by the maximum index (grid_size - 1).
     float norm_grid_row_i = static_cast<float>(grid_row_i) / (grid_size - 1);
     float norm_grid_col_i = static_cast<float>(grid_col_i) / (grid_size - 1);
 
-    // Linearly interpolate values between top-left and top-right grid/control point
+    // Perform 1D linear interpolation along the row.
+    // The interpolation is between the third and fourth control points (val_gp_2 and val_gp_3).
     float interp_1d_row = norm_grid_row_i * (val_gp_2 - val_gp_3);
 
-    // Linearly interpolate values between top-left and bottom-right grid/control point
+    // Perform 1D linear interpolation along the column.
+    // The interpolation is between the first and fourth control points (val_gp_0 and val_gp_3).
     float interp_1d_col = norm_grid_col_i * (val_gp_0 - val_gp_3);
 
-    // Sum the interpolated values along the current grid row and column
+    // Combine the 1D interpolated values to compute the final 2D interpolated value.
     float interp_2d = interp_1d_row + interp_1d_col;
 
-    // Add offset to interpolated value
+    // Optionally add an offset to the interpolated value. The offset is the parameter value of the control point at the origin (val_gp_3).
     interp_2d += do_offset ? val_gp_3 : 0.0;
+
+    // Return the final interpolated value.
+    return interp_2d;
+}
+
+void bilinearInterpolationAbsDist_TEMP(float ctrl_point_params[4][5], float &interp_2d_x, float &interp_2d_y, float grid_row_i, float grid_col_i, int grid_size)
+{
+    // These store the absolute distance between the control points
+    float ctrl_point_distance_x[2][2], ctrl_point_distance_y[2][2];
+
+    // Calculate normalized spacings for top-left corner
+    ctrl_point_distance_x[0][0] = (fabs(ctrl_point_params[0][0]) + ctrl_point_params[1][0]) /static_cast<float>(grid_size - 1);
+    ctrl_point_distance_y[0][0] = (ctrl_point_params[0][1] + fabs(ctrl_point_params[3][1])) /static_cast<float>(grid_size - 1);
+
+    // Calculate normalized spacings for top-right corner
+    ctrl_point_distance_x[0][1] = (fabs(ctrl_point_params[0][0]) + ctrl_point_params[1][0]) /static_cast<float>(grid_size - 1);
+    ctrl_point_distance_y[0][1] = (ctrl_point_params[0][1] + fabs(ctrl_point_params[3][1])) /static_cast<float>(grid_size - 1);
+
+    // Calculate normalized spacings for bottom-left corner
+    ctrl_point_distance_x[1][0] = (fabs(ctrl_point_params[0][0]) + ctrl_point_params[1][0]) /static_cast<float>(grid_size - 1);
+    ctrl_point_distance_y[1][0] = (ctrl_point_params[0][1] + fabs(ctrl_point_params[3][1])) /static_cast<float>(grid_size - 1);
+
+    // Calculate normalized spacings for bottom-right corner
+    ctrl_point_distance_x[1][1] = (fabs(ctrl_point_params[0][0]) + ctrl_point_params[1][0]) /static_cast<float>(grid_size - 1);
+    ctrl_point_distance_y[1][1] = (ctrl_point_params[0][1] + fabs(ctrl_point_params[3][1])) /static_cast<float>(grid_size - 1);
+
+    // Normalize indices
+    float norm_grid_row_i = static_cast<float>(grid_row_i) / (grid_size - 1);
+    float norm_grid_col_i = static_cast<float>(grid_col_i) / (grid_size - 1);
+
+    // Perform 1D linear interpolation along the row and column for the x axis.
+    float interp_1d_row_x = norm_grid_row_i * (ctrl_point_distance_x[1][0] - ctrl_point_distance_x[0][0]);
+    float interp_1d_col_x = norm_grid_col_i * (ctrl_point_distance_x[0][1] - ctrl_point_distance_x[0][0]);
+
+    // Combine the 1D interpolated values to compute the final 2D interpolated value for x.
+    interp_2d_x = grid_row_i * (ctrl_point_distance_x[0][0] + interp_1d_row_x + interp_1d_col_x);
+
+    // Perform 1D linear interpolation along the row and column for the x axis.
+    float interp_1d_row_y = norm_grid_row_i * (ctrl_point_distance_y[1][0] - ctrl_point_distance_y[0][0]);
+    float interp_1d_col_y = norm_grid_col_i * (ctrl_point_distance_y[0][1] - ctrl_point_distance_y[0][0]);
+
+    // Combine the 1D interpolated values to compute the final 2D interpolated value for y.
+    interp_2d_y = grid_col_i * (ctrl_point_distance_y[0][0] + interp_1d_row_y + interp_1d_col_y);
 }
 
 std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, float height, float shear_amount)
@@ -600,87 +566,70 @@ std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, fl
     return quad_vertices_vec;
 }
 
-std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f> quad_vertices_vec, cv::Mat &r_hom_mat, float x_offset, float y_offset)
+void computeHomography(cv::Mat &r_hom_mat, float ctrl_point_params[4][5])
 {
-    // Iterate through each vertex in the rectangle to apply perspective warping.
+    // Compute the width and height of the rectangular region that contains all control points (e.g., Boundary Dimensions).
+    float target_plane_boundary_width = fabs(ctrl_point_params[0][0]) + ctrl_point_params[1][0];
+    float target_plane_boundary_height = ctrl_point_params[0][1] + fabs(ctrl_point_params[3][1]);
+
+    // Calculate the vertices for the control point boundary dimensions.
+    // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
+    std::vector<cv::Point2f> origin_plane_vertices;
+    origin_plane_vertices = computeQuadVertices(0.0f, 0.0f, target_plane_boundary_width, target_plane_boundary_height, 0);
+
+    // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
+    // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
+    std::vector<cv::Point2f> target_plane_vertices;
+    target_plane_vertices.push_back(cv::Point2f(ctrl_point_params[0][0], ctrl_point_params[0][1])); // top-left
+    target_plane_vertices.push_back(cv::Point2f(ctrl_point_params[1][0], ctrl_point_params[1][1])); // top-right
+    target_plane_vertices.push_back(cv::Point2f(ctrl_point_params[2][0], ctrl_point_params[2][1])); // bottom-right
+    target_plane_vertices.push_back(cv::Point2f(ctrl_point_params[3][0], ctrl_point_params[3][1])); // bottom-left
+
+    // Use OpenCV's findHomography function to compute the homography matrix.
+    // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
+    r_hom_mat = findHomography(origin_plane_vertices, target_plane_vertices);
+}
+
+std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f> quad_vertices_vec, cv::Mat &r_hom_mat, float x_translate, float y_translate)
+{
+    // Iterate through each vertex in the quadrilateral
     for (auto &vert : quad_vertices_vec)
     {
-        // Step 1: Apply Offsets to Vertex Positions
-        // Add the x and y offsets to the current vertex coordinates.
-        // This essentially translates the vertex to a new position.
-        vert.x += x_offset;
-        vert.y += y_offset;
+        // Translate the vertex to a new position
+        vert.x += x_translate;
+        vert.y += y_translate;
 
-        // Step 2: Prepare Homogeneous Coordinates
-        // Create a column matrix with the vertex's homogeneous coordinates [x, y, 1].
-        // Homogeneous coordinates are used in projective geometry and make the math
-        // work out when applying transformations like translation, rotation, and shearing.
-        float data[] = {vert.x, vert.y, 1};
-        cv::Mat ptMat(3, 1, CV_32F, data); // 3x1 matrix of type CV_32F (32-bit float)
+        // Convert to 3x1 homogeneous coordinate matrix
+        float data[] = {vert.x, vert.y, 1}; // Column matrix with the vertex's homogeneous coordinates [x, y, 1].
+        cv::Mat ptMat(3, 1, CV_32F, data);  // Point's homogeneous coordinates stored as a 3x1 matrix of type CV_32F (32-bit float)
 
-        // Step 3: Homography Matrix Type Conversion
-        // Ensure the homography matrix (r_hom_mat) and the point matrix (ptMat) are of the same type.
-        // This is necessary for the matrix multiplication operation that follows.
+        // Homography Matrix Type Conversion (for later matrix multiplication)
         r_hom_mat.convertTo(r_hom_mat, ptMat.type());
 
-        // Step 4: Apply Homography Matrix to Warp Perspective
+        // Apply Homography Matrix to Warp Perspective
         // Multiply the homography matrix with the point's homogeneous coordinates.
         // This results in a new column matrix representing the point's warped coordinates.
         ptMat = r_hom_mat * ptMat;
 
-        // Step 5: Convert to Cartesian Coordinates
-        // Divide the first two elements by the third element to convert the point back to
-        // Cartesian coordinates from homogeneous coordinates.
-        ptMat /= ptMat.at<float>(2); // Divide by the third element (w)
+        // Convert back to Cartesian Coordinates
+        ptMat /= ptMat.at<float>(2); // Divide first two elements by the third element (w)
 
-        // Step 6: Update Vertex Coordinates
-        // Update the vertex's x and y coordinates with the new warped values.
+        // Update/overwrite original certex coordinates with the warped coordinates
         vert.x = ptMat.at<float>(0, 0);
         vert.y = ptMat.at<float>(0, 1);
     }
 
-    // Return the list of vertices with their perspectives warped.
     return quad_vertices_vec;
 }
 
-void computeHomography(cv::Mat &r_hom_mat, float cont_point_params[4][5])
-{
-    // Step 1: Extract Control Point Vertices
-    // Create a vector to store the vertices of the control points.
-    // Each control point's x and y coordinates are taken from the cont_point_params.
-    std::vector<cv::Point2f> cont_point_vertices;
-    cont_point_vertices.push_back(cv::Point2f(cont_point_params[0][0], cont_point_params[0][1])); // top-left
-    cont_point_vertices.push_back(cv::Point2f(cont_point_params[1][0], cont_point_params[1][1])); // top-right
-    cont_point_vertices.push_back(cv::Point2f(cont_point_params[2][0], cont_point_params[2][1])); // bottom-right
-    cont_point_vertices.push_back(cv::Point2f(cont_point_params[3][0], cont_point_params[3][1])); // bottom-left
-
-    // Step 2: Calculate Control Point Boundary Dimensions
-    // Compute the width and height of the rectangular region that contains all control points.
-    // The width is the sum of the absolute x-values of the top-left and top-right control points.
-    // The height is the sum of the absolute y-values of the top-left and bottom-left control points.
-    float cont_point_boundary_width = fabs(cont_point_params[0][0]) + cont_point_params[1][0];
-    float cont_point_boundary_height = cont_point_params[0][1] + fabs(cont_point_params[3][1]);
-
-    // Step 3: Compute Image Vertices
-    // Calculate the vertices for the wall images based on the control point boundary dimensions.
-    // These vertices will be used as source points for computing the homography matrix.
-    std::vector<cv::Point2f> img_vertices;
-    img_vertices = computeQuadVertices(0.0f, 0.0f, cont_point_boundary_width, cont_point_boundary_height, 0);
-
-    // Step 4: Compute Homography Matrix
-    // Use OpenCV's findHomography function to compute the homography matrix.
-    // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
-    r_hom_mat = findHomography(img_vertices, cont_point_vertices);
-}
-
-void updateCalParams(float (&r_cont_point_params)[4][5], int mode_cal_ind)
+void updateCalParams(float (&r_ctrl_point_params)[4][5], int mode_cal_ind)
 {
     // Copy the default array to the dynamic one
     for (int i = 0; i < 4; ++i)
     {
         for (int j = 0; j < 5; ++j)
         {
-            r_cont_point_params[i][j] = CONT_POINT_PARAMS[i][j];
+            r_ctrl_point_params[i][j] = CTRL_POINT_PARAMS[i][j];
         }
     }
 
@@ -688,16 +637,34 @@ void updateCalParams(float (&r_cont_point_params)[4][5], int mode_cal_ind)
     float horz_offset = 0.05f;
     if (mode_cal_ind == 0) // left wall
     {
-        r_cont_point_params[0][0] -= horz_offset; // top-left
-        r_cont_point_params[1][0] -= horz_offset; // top-right
-        r_cont_point_params[2][0] -= horz_offset; // bottom-right
-        r_cont_point_params[3][0] -= horz_offset; // bottom-left
+        r_ctrl_point_params[0][0] -= horz_offset; // top-left
+        r_ctrl_point_params[1][0] -= horz_offset; // top-right
+        r_ctrl_point_params[2][0] -= horz_offset; // bottom-right
+        r_ctrl_point_params[3][0] -= horz_offset; // bottom-left
     }
     else if (mode_cal_ind == 2) // right wall
     {
-        r_cont_point_params[0][0] += horz_offset; // top-left
-        r_cont_point_params[1][0] += horz_offset; // top-right
-        r_cont_point_params[2][0] += horz_offset; // bottom-right
-        r_cont_point_params[3][0] += horz_offset; // bottom-left
+        r_ctrl_point_params[0][0] += horz_offset; // top-left
+        r_ctrl_point_params[1][0] += horz_offset; // top-right
+        r_ctrl_point_params[2][0] += horz_offset; // bottom-right
+        r_ctrl_point_params[3][0] += horz_offset; // bottom-left
     }
+}
+
+void printCtrlPointParams(float ctrl_point_params[4][5])
+{
+    ROS_INFO("Control Point Parameters");
+    ROS_INFO("CP  |  X-Dist  |  Y-Dist  |  W-Width  |  W-Height  |  Shear");
+    ROS_INFO("---------------------------------------------------------");
+    for (int i = 0; i < 4; ++i)
+    {
+        ROS_INFO("CP%d |  %6.2f  |  %6.2f  |  %6.2f   |  %6.2f   |  %6.2f",
+                 i,
+                 ctrl_point_params[i][0],
+                 ctrl_point_params[i][1],
+                 ctrl_point_params[i][2],
+                 ctrl_point_params[i][3],
+                 ctrl_point_params[i][4]);
+    }
+    ROS_INFO("---------------------------------------------------------");
 }

@@ -18,7 +18,7 @@
 std::string windowName = "Projection Calibration";
 
 // Dynamic control point parameter arrays
-float contPointParams[4][5]; 
+float ctrlPointParams[4][5]; 
 
 // Other variables related to control points
 int cpSelectedInd = 0;
@@ -158,6 +158,30 @@ int checkErrorGL(int, const char *, const char * = nullptr);
 int checkErrorGLFW(int, const char *, const char * = nullptr);
 
 /**
+ * @brief Changes the display mode and monitor of the application window.
+ *
+ * This function switches the application window between full-screen and windowed modes
+ * and moves it to the monitor specified by the global variable imgMonNumInd.
+ *
+ * In full-screen mode, the window is resized to match the dimensions of the selected monitor.
+ * In windowed mode, the window is resized to a default size and positioned near the top-left
+ * corner of the selected monitor.
+ *
+ * @note The global variables monitor, monitors, imgMonNumInd, window, and isFullScreen are
+ *       used to control the behavior of this function.
+ *       Will only exicute if monotor parameters have changed.
+ *
+ * @param p_window_id Pointer to the GLFWwindow pointer that will be updated.
+ * @param win_ind Index of the window for which the setup is to be done.
+ * @param pp_r_monitor_id Reference to the GLFWmonitor pointer array.
+ * @param mon_id_ind Index of the monitor to move the window to.
+ * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
+ *
+ * @return 0 if no errors, -1 if error.
+ */
+int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
+
+/**
  * @brief Draws a control point as a quadrilateral using OpenGL.
  *
  * This function uses OpenGL to draw a quadrilateral that represents a control point.
@@ -182,47 +206,37 @@ int drawControlPoint(float, float, float, std::vector<float>);
 int drawQuadImage(std::vector<cv::Point2f>);
 
 /**
- * @brief Draws all walls in the maze grid with texture mapping and perspective warping.
+ * @brief Renders a 2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
  *
- * This function iterates through the maze grid to draw each wall. It uses the DevIL library
- * to handle image loading and OpenGL for rendering. The function also performs perspective
- * warping based on the homography matrix and shear and height values extracted from control points.
+ * This function is a core part of the maze visualization pipeline. It utilizes the OpenGL graphics library for rendering,
+ * and the DevIL library for image handling. The function performs several key operations:
+ * 1. Texture mapping of the wall images.
+ * 2. Perspective warping based on a precomputed homography matrix.
+ * 3. Shear and height adjustments based on control point calibration.
+ * 4. Optional overlay of status images for cells corresponding to selected control points.
+ * 
+ * @section Control Point and Grid Correspondence
+ * 
+ * This function employs a set of control points for calibration. The table below describes 
+ * the correspondence between the displayed image, Normalized Device Coordinates (NDC), 
+ * control points, and grid indices:
+ * 
+ * - Top-Left:      NDC (-1, 1),  Control Point [0],  Grid Index [0, last]
+ * - Top-Right:     NDC (1, 1),   Control Point [1],  Grid Index [last, last]
+ * - Bottom-Right:  NDC (1, -1),  Control Point [2],  Grid Index [last, 0]
+ * - Bottom-Left:   NDC (-1, -1), Control Point [3],  Grid Index [0, 0]
+ * 
+ * @param r_hom_mat The 3x3 homography matrix used for perspective warping of the walls.
+ * @param ctrl_point_params A 4x5 array containing control point parameters (x, y, width, height, shear).
+ * @param fbo_texture_id OpenGL framebuffer object's texture ID.
+ * @param img_wall_id DevIL image ID for the base wall image.
+ * @param img_mode_mon_id DevIL image ID for the monitor mode image.
+ * @param img_mode_param_id DevIL image ID for the parameter visualization image.
+ * @param img_mode_cal_id DevIL image ID for the calibration image.
  *
- * @param r_hom_mat The homography matrix used to warp perspective.
- * @param cont_point_params The array of control point parameters.
- * @param fbo_texture The OpenGL texture ID of the framebuffer object.
- * @param img_wall_id The DevIL image ID of the main wall image.
- * @param img_mode_mon_id The DevIL image ID of the monitor image.
- * @param img_mode_param_id The DevIL image ID of the parameter image.
- * @param img_mode_cal_id The DevIL image ID of the calibration image.
- *
- * @return 0 if no errors, -1 if error.
+ * @return Integer status code: 0 if successful, -1 if an error occurred.
  */
 int drawWalls(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint);
-
-/**
- * @brief Changes the display mode and monitor of the application window.
- *
- * This function switches the application window between full-screen and windowed modes
- * and moves it to the monitor specified by the global variable imgMonNumInd.
- *
- * In full-screen mode, the window is resized to match the dimensions of the selected monitor.
- * In windowed mode, the window is resized to a default size and positioned near the top-left
- * corner of the selected monitor.
- *
- * @note The global variables monitor, monitors, imgMonNumInd, window, and isFullScreen are
- *       used to control the behavior of this function.
- *       Will only exicute if monotor parameters have changed.
- *
- * @param p_window_id Pointer to the GLFWwindow pointer that will be updated.
- * @param win_ind Index of the window for which the setup is to be done.
- * @param pp_r_monitor_id Reference to the GLFWmonitor pointer array.
- * @param mon_id_ind Index of the monitor to move the window to.
- * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
- *
- * @return 0 if no errors, -1 if error.
- */
-int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.

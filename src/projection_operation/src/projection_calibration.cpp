@@ -64,7 +64,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
 
             // Save the coordinates to the XML file
-            saveCoordinatesXML(homMat, contPointParams, file_path);
+            saveCoordinatesXML(homMat, ctrlPointParams, file_path);
         }
 
         // Load coordinates from XML
@@ -74,14 +74,14 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
 
             // Load the coordinates from the XML file
-            loadCoordinatesXML(homMat, contPointParams, file_path);
+            loadCoordinatesXML(homMat, ctrlPointParams, file_path);
         }
 
         // ---------- Control Point Reset [R] ----------
 
         else if (key == GLFW_KEY_R)
         {
-            updateCalParams(contPointParams, calModeInd);
+            updateCalParams(ctrlPointParams, calModeInd);
         }
 
         // ---------- Target selector keys [F1-F4] ----------
@@ -154,7 +154,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Reset a subset of control point parameters when switching calibration modes
             if (key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT)
             {
-                updateCalParams(contPointParams, calModeInd);
+                updateCalParams(ctrlPointParams, calModeInd);
             }
         }
 
@@ -185,19 +185,19 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 // Listen for arrow key input to move selected control point
                 if (key == GLFW_KEY_LEFT)
                 {
-                    contPointParams[cpSelectedInd][0] -= pos_inc; // Move left
+                    ctrlPointParams[cpSelectedInd][0] -= pos_inc; // Move left
                 }
                 else if (key == GLFW_KEY_RIGHT)
                 {
-                    contPointParams[cpSelectedInd][0] += pos_inc; // Move right
+                    ctrlPointParams[cpSelectedInd][0] += pos_inc; // Move right
                 }
                 else if (key == GLFW_KEY_UP)
                 {
-                    contPointParams[cpSelectedInd][1] += pos_inc; // Move up
+                    ctrlPointParams[cpSelectedInd][1] += pos_inc; // Move up
                 }
                 else if (key == GLFW_KEY_DOWN)
                 {
-                    contPointParams[cpSelectedInd][1] -= pos_inc; // Move down
+                    ctrlPointParams[cpSelectedInd][1] -= pos_inc; // Move down
                 }
             }
 
@@ -211,19 +211,19 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 // Listen for arrow key input to adjust dimension/height
                 if (key == GLFW_KEY_LEFT)
                 {
-                    contPointParams[cpSelectedInd][2] -= wd_inc; // Decrease width
+                    ctrlPointParams[cpSelectedInd][2] -= wd_inc; // Decrease width
                 }
                 else if (key == GLFW_KEY_RIGHT)
                 {
-                    contPointParams[cpSelectedInd][2] += wd_inc; // Increase width
+                    ctrlPointParams[cpSelectedInd][2] += wd_inc; // Increase width
                 }
                 else if (key == GLFW_KEY_UP)
                 {
-                    contPointParams[cpSelectedInd][3] += ht_inc; // Increase height
+                    ctrlPointParams[cpSelectedInd][3] += ht_inc; // Increase height
                 }
                 else if (key == GLFW_KEY_DOWN)
                 {
-                    contPointParams[cpSelectedInd][3] -= ht_inc; // Decrease height
+                    ctrlPointParams[cpSelectedInd][3] -= ht_inc; // Decrease height
                 }
             }
 
@@ -236,11 +236,11 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 // Listen for arrow key input to adjust shear
                 if (key == GLFW_KEY_LEFT)
                 {
-                    contPointParams[cpSelectedInd][4] -= shr_inc; // Skew left
+                    ctrlPointParams[cpSelectedInd][4] -= shr_inc; // Skew left
                 }
                 else if (key == GLFW_KEY_RIGHT)
                 {
-                    contPointParams[cpSelectedInd][4] += shr_inc; // Skew right
+                    ctrlPointParams[cpSelectedInd][4] += shr_inc; // Skew right
                 }
             }
         }
@@ -249,7 +249,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     // _______________ Update _______________
 
     // Recompute homography matrix
-    computeHomography(homMat, contPointParams);
+    computeHomography(homMat, ctrlPointParams);
 
     // Update the window monitor and mode
     updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
@@ -293,202 +293,6 @@ int checkErrorGLFW(int line, const char *file_str, const char *msg_str)
         return -1;
     }
     return 0;
-}
-
-int drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec)
-{
-    const int segments = 100; // Number of segments to approximate a circle
-
-    // Begin drawing a filled circle
-    glBegin(GL_TRIANGLE_FAN);
-
-    // Set the color to green
-    glColor3f(rgb_vec[0], rgb_vec[1], rgb_vec[2]);
-
-    // Center of the circle
-    glVertex2f(x, y);
-
-    // Calculate and draw the vertices of the circle
-    for (int i = 0; i <= segments; i++)
-    {
-        float theta = 2.0f * 3.1415926f * float(i) / float(segments);
-        float px = x + radius * cosf(theta);
-        float py = y + (radius * PROJ_WIN_ASPECT_RATIO) * sinf(theta);
-        glVertex2f(px, py);
-    }
-
-    // End drawing
-    glEnd();
-
-    // Return GL status
-    return checkErrorGL(__LINE__, __FILE__);
-}
-
-int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
-{
-
-    // Start drawing a quadrilateral
-    glBegin(GL_QUADS);
-
-    // Set the color to white (for texture mapping)
-    /// @note: this is nececary when drawing the control points
-    glColor3f(1.0f, 1.0f, 1.0f);
-
-    // Set texture and vertex coordinates for each corner
-
-    // Bottom-left corner
-    glTexCoord2f(0.0f, 1.0f);
-    glVertex2f(quad_vertices_vec[0].x, quad_vertices_vec[0].y);
-
-    // Bottom-right corner
-    glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(quad_vertices_vec[1].x, quad_vertices_vec[1].y);
-
-    // Top-right corner
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(quad_vertices_vec[2].x, quad_vertices_vec[2].y);
-
-    // Top-left corner
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(quad_vertices_vec[3].x, quad_vertices_vec[3].y);
-
-    // End drawing
-    glEnd();
-
-    // Check and return GL status
-    return checkErrorGL(__LINE__, __FILE__);
-}
-
-int drawWalls(
-    cv::Mat &r_hom_mat,
-    float cont_point_params[4][5],
-    GLuint fbo_texture_id,
-    ILuint img_wall_id,
-    ILuint img_mode_mon_id,
-    ILuint img_mode_param_id,
-    ILuint img_mode_cal_id)
-{
-    // Enable OpenGL texture mapping
-    glEnable(GL_TEXTURE_2D);
-
-    // Calculate the a 2x2 array of control point distances
-    float control_point_distances[4][5];
-    calculateControlPointDistances(cont_point_params, control_point_distances);
-
-    // // TEMP
-    // ROS_INFO("cs_x[0][0][%0.2f] cs_x[0][1][%0.2f] cs_x[1][0][%0.2f] cs_x[1][1][%0.2f]    cs_y[0][0][% 0.2f] cs_y[0][1][% 0.2f] cs_y[1][0][% 0.2f] cs_y[1][1][% 0.2f]",
-    //          corner_space_arr_x[0][0], corner_space_arr_x[0][1], corner_space_arr_x[1][0], corner_space_arr_x[1][1],
-    //          corner_space_arr_y[0][0], corner_space_arr_y[0][1], corner_space_arr_y[1][0], corner_space_arr_y[1][1]);
-
-    // TEMP
-    ROS_INFO("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
- 
-    /**
-     * @note The correspondence between grid indeces and control points is as follows:
-     * 
-     * 1: top-left:
-     *      control point: 0
-     *      grid index: [0, last]
-     * 2: top-right:
-     *      control point: 1
-     *      grid index: [0, 0]
-     * 3: bottom-right:
-     *      control point: 2
-     *      grid index: [last, 0]
-     * 4: bottom-left:
-     *      control point: 3
-     *      grid index: [last, last]
-     */ 
-
-    // Iterate through the maze grid rows
-    for (float wall_row_i = 0; wall_row_i < MAZE_SIZE; wall_row_i++)
-    {
-        // Iterate through each column in the maze row
-        for (float wall_col_i = 0; wall_col_i < MAZE_SIZE; wall_col_i++)
-        {
-            //  Create merged image for the wall corresponding to the selected control point
-            if (
-                (cpSelectedInd == 0 && wall_row_i == 0 && wall_col_i == MAZE_SIZE - 1) ||
-                (cpSelectedInd == 1 && wall_row_i == MAZE_SIZE - 1 && wall_col_i == MAZE_SIZE - 1) ||
-                (cpSelectedInd == 2 && wall_row_i == MAZE_SIZE - 1 && wall_col_i == 0) ||
-                (cpSelectedInd == 3 && wall_row_i == 0 && wall_col_i == 0))
-            {
-                // if (
-                //     (wall_row_i == 0 && wall_col_i == MAZE_SIZE - 1))
-                // {
-                ILuint img_merge1_id;
-                ILuint img_merge2_id;
-                ILuint img_merge3_id;
-
-                // Merge test pattern and active monitor image
-                if (mergeImages(img_wall_id, img_mode_mon_id, img_merge1_id) != 0)
-                    return -1;
-
-                // Merge previous image and active cp parameter image
-                if (mergeImages(img_merge1_id, img_mode_param_id, img_merge2_id) != 0)
-                    return -1;
-
-                // Merge previous image and active calibration image
-                if (mergeImages(img_merge2_id, img_mode_cal_id, img_merge3_id) != 0)
-                    return -1;
-
-                ilBindImage(img_merge3_id);
-            }
-            else
-            {
-                ilBindImage(img_wall_id); // show test pattern
-            }
-            if (checkErrorDevIL(__LINE__, __FILE__) != 0)
-                return -1;
-
-            // Calculate width, height and shear for the current wall
-            float width_val = interpolateWallParam(cont_point_params, 2, wall_row_i, wall_col_i, MAZE_SIZE, true);
-            float height_val = interpolateWallParam(cont_point_params, 3, wall_row_i, wall_col_i, MAZE_SIZE, true);
-            float shear_val = interpolateWallParam(cont_point_params, 4, wall_row_i, wall_col_i, MAZE_SIZE, true);
-
-            // Create wall vertices
-            std::vector<cv::Point2f> quad_vertices_vec = computeQuadVertices(0.0f, 0.0f, width_val, height_val, shear_val);
-
-            // // Calculate the interpolated wall spacings for this grid cell
-            // float x_offset = interpolateWallParam(control_point_distances, 0, wall_row_i, wall_col_i, MAZE_SIZE);
-            // float y_offset = interpolateWallParam(control_point_distances, 1, wall_row_i, wall_col_i, MAZE_SIZE);
-
-            // Calculate the interpolated wall spacings for this grid cell
-            float x_offset = interpolateWallParam(cont_point_params, 0, wall_row_i, wall_col_i, MAZE_SIZE, false);
-            float y_offset = interpolateWallParam(cont_point_params, 1, wall_row_i, wall_col_i, MAZE_SIZE, false);
-
-            // float x_offset;
-            // float y_offset;
-            // interpOffsetTEMP(cont_point_params, x_offset, y_offset, wall_row_i, wall_col_i);
-
-            // TEMP
-            ROS_INFO("Offset: i[%0.2f] j[%0.2f] x[%0.2f] y[%0.2f]", wall_row_i, wall_col_i, x_offset, y_offset);
-
-            // Apply perspective warping to vertices
-            std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_vec, r_hom_mat, x_offset, y_offset);
-
-            // Set texture image
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
-                         ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
-                         GL_UNSIGNED_BYTE, ilGetData());
-
-            // Bind texture to framebuffer object
-            glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
-
-            // Draw the wall
-            if (drawQuadImage(quad_vertices_warped) != 0)
-                return -1;
-        }
-    }
-
-    // TEMP
-    ROS_INFO("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++");
-
-    // Disable OpenGL texture mapping
-    glDisable(GL_TEXTURE_2D);
-
-    // Return GL status
-    return checkErrorGL(__LINE__, __FILE__);
 }
 
 int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_r_monitor_id, int mon_id_ind, bool is_fullscreen)
@@ -560,6 +364,184 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
     return 0;
 }
 
+int drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec)
+{
+    const int segments = 100; // Number of segments to approximate a circle
+
+    // Begin drawing a filled circle
+    glBegin(GL_TRIANGLE_FAN);
+
+    // Set the color to green
+    glColor3f(rgb_vec[0], rgb_vec[1], rgb_vec[2]);
+
+    // Center of the circle
+    glVertex2f(x, y);
+
+    // Calculate and draw the vertices of the circle
+    for (int i = 0; i <= segments; i++)
+    {
+        float theta = 2.0f * 3.1415926f * float(i) / float(segments);
+        float px = x + radius * cosf(theta);
+        float py = y + (radius * PROJ_WIN_ASPECT_RATIO) * sinf(theta);
+        glVertex2f(px, py);
+    }
+
+    // End drawing
+    glEnd();
+
+    // Return GL status
+    return checkErrorGL(__LINE__, __FILE__);
+}
+
+int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
+{
+
+    // Start drawing a quadrilateral
+    glBegin(GL_QUADS);
+
+    // Set the color to white (for texture mapping)
+    /// @note: this is nececary when drawing the control points
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    // Set texture and vertex coordinates for each corner
+
+    // Bottom-left corner
+    glTexCoord2f(0.0f, 1.0f);
+    glVertex2f(quad_vertices_vec[0].x, quad_vertices_vec[0].y);
+
+    // Bottom-right corner
+    glTexCoord2f(1.0f, 1.0f);
+    glVertex2f(quad_vertices_vec[1].x, quad_vertices_vec[1].y);
+
+    // Top-right corner
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex2f(quad_vertices_vec[2].x, quad_vertices_vec[2].y);
+
+    // Top-left corner
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex2f(quad_vertices_vec[3].x, quad_vertices_vec[3].y);
+
+    // End drawing
+    glEnd();
+
+    // Check and return GL status
+    return checkErrorGL(__LINE__, __FILE__);
+}
+
+int drawWalls(
+    cv::Mat &r_hom_mat,
+    float ctrl_point_params[4][5],
+    GLuint fbo_texture_id,
+    ILuint img_wall_id,
+    ILuint img_mode_mon_id,
+    ILuint img_mode_param_id,
+    ILuint img_mode_cal_id)
+{
+    // Enable OpenGL texture mapping
+    glEnable(GL_TEXTURE_2D);
+
+    /**
+     * @note The correspondence between grid indeces and control points is as follows:
+     *
+     * 1: top-left:
+     *      control point: 0
+     *      grid index: [0, last]
+     * 2: top-right:
+     *      control point: 1
+     *      grid index: [0, 0]
+     * 3: bottom-right:
+     *      control point: 2
+     *      grid index: [last, 0]
+     * 4: bottom-left:
+     *      control point: 3
+     *      grid index: [last, last]
+     */
+
+    // TEMP
+    printCtrlPointParams(ctrl_point_params);
+
+    // Iterate through the maze grid rows
+    for (float wall_row_i = 0; wall_row_i < MAZE_SIZE; wall_row_i++)
+    {
+        // Iterate through each column in the maze row
+        for (float wall_col_i = 0; wall_col_i < MAZE_SIZE; wall_col_i++)
+        {
+            //  Create merged image for the wall corresponding to the selected control point
+            if (
+                (cpSelectedInd == 0 && wall_row_i == 0 && wall_col_i == MAZE_SIZE - 1) ||
+                (cpSelectedInd == 1 && wall_row_i == MAZE_SIZE - 1 && wall_col_i == MAZE_SIZE - 1) ||
+                (cpSelectedInd == 2 && wall_row_i == MAZE_SIZE - 1 && wall_col_i == 0) ||
+                (cpSelectedInd == 3 && wall_row_i == 0 && wall_col_i == 0))
+            {
+                ILuint img_merge1_id;
+                ILuint img_merge2_id;
+                ILuint img_merge3_id;
+
+                // Merge test pattern and active monitor image
+                if (mergeImages(img_wall_id, img_mode_mon_id, img_merge1_id) != 0)
+                    return -1;
+
+                // Merge previous image and active cp parameter image
+                if (mergeImages(img_merge1_id, img_mode_param_id, img_merge2_id) != 0)
+                    return -1;
+
+                // Merge previous image and active calibration image
+                if (mergeImages(img_merge2_id, img_mode_cal_id, img_merge3_id) != 0)
+                    return -1;
+
+                ilBindImage(img_merge3_id);
+            }
+            else
+            {
+                ilBindImage(img_wall_id); // show test pattern
+            }
+            if (checkErrorDevIL(__LINE__, __FILE__) != 0)
+                return -1;
+
+            // Calculate width, height and shear for the current wall
+            float width_interp = bilinearInterpolation(ctrl_point_params, 2, wall_row_i, wall_col_i, MAZE_SIZE, true);
+            float height_interp = bilinearInterpolation(ctrl_point_params, 3, wall_row_i, wall_col_i, MAZE_SIZE, true);
+            float shear_interp = bilinearInterpolation(ctrl_point_params, 4, wall_row_i, wall_col_i, MAZE_SIZE, true);
+
+            // Create wall vertices
+            std::vector<cv::Point2f> quad_vertices_vec = computeQuadVertices(0.0f, 0.0f, width_interp, height_interp, shear_interp);
+
+            // // Calculate the interpolated wall spacings for this grid cell
+            // float x_interp = bilinearInterpolation(ctrl_point_params, 0, wall_row_i, wall_col_i, MAZE_SIZE, true);
+            // float y_interp = bilinearInterpolation(ctrl_point_params, 1, wall_row_i, wall_col_i, MAZE_SIZE, true);
+
+            // TEMP
+            float x_interp;
+            float y_interp;
+            bilinearInterpolationAbsDist_TEMP(ctrl_point_params, x_interp, y_interp, wall_row_i, wall_col_i, MAZE_SIZE);
+
+            // // TEMP
+            // ROS_INFO("Offset: i[%0.2f] j[%0.2f] x[%0.2f] y[%0.2f]", wall_row_i, wall_col_i, x_interp, y_interp);
+
+            // Apply perspective warping to vertices
+            std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_vec, r_hom_mat, x_interp, y_interp);
+
+            // Set texture image
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
+                         ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
+                         GL_UNSIGNED_BYTE, ilGetData());
+
+            // Bind texture to framebuffer object
+            glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
+
+            // Draw the wall
+            if (drawQuadImage(quad_vertices_warped) != 0)
+                return -1;
+        }
+    }
+
+    // Disable OpenGL texture mapping
+    glDisable(GL_TEXTURE_2D);
+
+    // Return GL status
+    return checkErrorGL(__LINE__, __FILE__);
+}
+
 int main(int argc, char **argv)
 {
     //  _______________ SETUP _______________
@@ -576,10 +558,10 @@ int main(int argc, char **argv)
     ROS_INFO("[SETUP] Wall (Pxl): Width=%d Space=%d", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
 
     // Initialize control point parameters
-    updateCalParams(contPointParams, calModeInd);
+    updateCalParams(ctrlPointParams, calModeInd);
 
     // Do initial computations of homography matrix
-    computeHomography(homMat, contPointParams);
+    computeHomography(homMat, ctrlPointParams);
 
     // --------------- OpenGL SETUP ---------------
 
@@ -688,7 +670,7 @@ int main(int argc, char **argv)
             break;
 
         // Draw/update wall images
-        drawWalls(homMat, contPointParams, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
+        drawWalls(homMat, ctrlPointParams, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
         if (checkErrorGL(__LINE__, __FILE__))
             break;
 
@@ -701,7 +683,7 @@ int main(int argc, char **argv)
                                                                                                              : cpActiveRGBVec;
 
             // Draw the control point
-            drawControlPoint(contPointParams[i][0], contPointParams[i][1], CP_RADIUS_NDC, cp_col);
+            drawControlPoint(ctrlPointParams[i][0], ctrlPointParams[i][1], CP_RADIUS_NDC, cp_col);
             if (checkErrorGL(__LINE__, __FILE__))
                 break;
         }
