@@ -433,8 +433,8 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
 
-    // TEMP
-    //printCtrlPointParams(ctrl_point_params);
+    // // TEMP
+    // printCtrlPointParams(ctrl_point_params);
 
     // Iterate through the maze grid rows
     for (float wall_row_i = 0; wall_row_i < MAZE_SIZE; wall_row_i++)
@@ -475,21 +475,21 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
                 return -1;
 
             // Calculate width, height and shear for the current wall
-            float width_interp = bilinearInterpolation(ctrl_point_params, 2, wall_row_i, wall_col_i, MAZE_SIZE, true);
-            float height_interp = bilinearInterpolation(ctrl_point_params, 3, wall_row_i, wall_col_i, MAZE_SIZE, true);
-            float shear_interp = bilinearInterpolation(ctrl_point_params, 4, wall_row_i, wall_col_i, MAZE_SIZE, true);
+            float width_interp = bilinearInterpolationFull(ctrl_point_params, 2, wall_row_i, wall_col_i, MAZE_SIZE, true);
+            float height_interp = bilinearInterpolationFull(ctrl_point_params, 3, wall_row_i, wall_col_i, MAZE_SIZE, true);
+            float shear_interp = bilinearInterpolationFull(ctrl_point_params, 4, wall_row_i, wall_col_i, MAZE_SIZE, true);
 
             // Create wall vertices
             std::vector<cv::Point2f> quad_vertices_vec = computeQuadVertices(0.0f, 0.0f, width_interp, height_interp, shear_interp);
 
-            // Calculate the interpolated wall spacings for this grid cell
-            float x_interp = bilinearInterpolation(ctrl_point_params, 0, wall_row_i, wall_col_i, MAZE_SIZE, true);
-            float y_interp = bilinearInterpolation(ctrl_point_params, 1, wall_row_i, wall_col_i, MAZE_SIZE, true);
+            // // // Calculate the interpolated wall spacings for this grid cell
+            // float x_interp = bilinearInterpolationFull(ctrl_point_params, 0, wall_row_i, wall_col_i, MAZE_SIZE, false);
+            // float y_interp = bilinearInterpolationFull(ctrl_point_params, 1, wall_row_i, wall_col_i, MAZE_SIZE, false);
 
-            // // TEMP
-            // float x_interp;
-            // float y_interp;
-            // bilinearInterpolationAbsDist_TEMP(ctrl_point_params, x_interp, y_interp, wall_row_i, wall_col_i, MAZE_SIZE);
+            // TEMP
+            float x_interp;
+            float y_interp;
+            absDistInterp_TEMP(ctrl_point_params, x_interp, y_interp, wall_row_i, wall_col_i, MAZE_SIZE);
 
             // // TEMP
             // ROS_INFO("Offset: i[%0.2f] j[%0.2f] x[%0.2f] y[%0.2f]", wall_row_i, wall_col_i, x_interp, y_interp);
@@ -653,10 +653,8 @@ int main(int argc, char **argv)
         // Draw/update control points
         for (int i = 0; i < 4; i++)
         {
-            // Get control point color based on cp selection and mode
-            std::vector<float> cp_col =
-                (cpSelectedInd != i) ? cpInactiveRGBVec : (cpSelectedInd == 1 && (calModeStr != "position")) ? cpDisabledRGBVec
-                                                                                                             : cpActiveRGBVec;
+            // Get control point color based on cp selection 
+            std::vector<float> cp_col = (cpSelectedInd != i) ? cpInactiveRGBVec : cpActiveRGBVec;
 
             // Draw the control point
             drawControlPoint(ctrlPointParams[i][0], ctrlPointParams[i][1], CP_RADIUS_NDC, cp_col);
@@ -713,6 +711,7 @@ int main(int argc, char **argv)
     ROS_INFO("[SHUTDOWN] Deleted DevIL images");
 
     // Delete FBO and textures
+    ///@todo figure out why errro thrown here
     glDeleteFramebuffers(1, &fbo_id);
     checkErrorGL(__LINE__, __FILE__);
 

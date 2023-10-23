@@ -197,10 +197,10 @@ const float wall_height_ndc = ((cp_y * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::
  *
  * @details
  * - Rows:
- *   - [0]: Top-left control point,     corresponding to grid point [0][0]
- *   - [1]: Top-right control point,    corresponding to grid point [0][last]
- *   - [2]: Bottom-right control point, corresponding to grid point [last][last]
- *   - [3]: Bottom-left control point,  corresponding to grid point [last][0]
+ *   - [0]: Top-left control point,     corresponding to grid point [0][s-1]
+ *   - [1]: Top-right control point,    corresponding to grid point [s-1][s-1]
+ *   - [2]: Bottom-right control point, corresponding to grid point [s-1][0]
+ *   - [3]: Bottom-left control point,  corresponding to grid point [0][0]
  *
  * - Columns:
  *   - [0]: X-coordinate in NDC
@@ -208,8 +208,9 @@ const float wall_height_ndc = ((cp_y * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::
  *   - [2]: Wall width in NDC
  *   - [3]: Wall height in NDC
  *   - [4]: Shearing factor
- * 
- *    Control Point Parameters:
+ *
+ * @note
+ * - Control Point Parameters:
  *    CP  |  X-Dist  |  Y-Dist  |  W-Width  |  W-Height  |  Shear
  *    ---------------------------------------------------------
  *    [0] |   -0.15  |    0.30  |    0.06   |    0.12   |    0.00
@@ -218,17 +219,29 @@ const float wall_height_ndc = ((cp_y * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::
  *    [3] |   -0.15  |   -0.30  |    0.06   |    0.12   |    0.00
  *    ---------------------------------------------------------
  *
+ * @note
+ * Control Point Indices to Grid Point Mapping
+ *
+ *         Ctrl Points    Grid Points
+ *        =============  =============
+ *        | -1  | +1  |  |  0  | s-1 |
+ *    =================  =================
+ *     +1 | [0] | [1] |  | [0] | [1] | s-1
+ *    -----------------  -----------------
+ *     -1 | [3] | [2] |  | [3] | [2] |  0
+ *    =================  =================
+ *
  * @section NDC Origin
- * In OpenGL's NDC, the origin (0,0) is located at the center of the screen. 
+ * In OpenGL's NDC, the origin (0,0) is located at the center of the screen.
  * The X-axis extends from -1 (left) to 1 (right).
  * The Y-axis extends from -1 (bottom) to 1 (top).
  */
 extern const float CTRL_POINT_PARAMS[4][5] = {
     // Default control point parameters
     {-cp_x, +cp_y, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
-    {+cp_x, +cp_y, wall_width_ndc, wall_height_ndc, 0.0f},  // top-right control point
+    {+cp_x, +cp_y, wall_width_ndc, wall_height_ndc, 0.0f}, // top-right control point
     {+cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f}, // bottom-right control point
-    {-cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f} // bottom-left control point
+    {-cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f}  // bottom-left control point
 };
 
 // TEMP (UNUSED)
@@ -374,22 +387,22 @@ int mergeImages(ILuint, ILuint, ILuint &);
 float bilinearInterpolation(float[4][5], int, int, int, int, bool);
 
 /**
- * @brief Calculates an interpolated value using true bilinear interpolation on a 2D grid.
+ * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
  *
- * This updated function employs the true bilinear interpolation formula to use all four control points 
- * when determining the interpolated value. This is in contrast to the original implementation, which 
- * effectively performed linear interpolation between two adjacent control points.
+ * This function performs bilinear interpolation based on a point's position (grid_row_i, grid_col_i)
+ * within a 2D grid. The grid corners are defined by a set of 4x5 control point parameters.
  *
- * @param  ctrl_point_params A 4x5 array containing control point parameters (x, y, width, height, shear).
- * @param  ctrl_point_params_ind Index of the control point parameter to interpolate.
- * @param  grid_row_i  Index of the point along the first axis (rows) in the grid.
- * @param  grid_col_i  Index of the point along the second axis (columns) in the grid.
- * @param  grid_size   Number of cells along one axis in the grid.
- * @param  do_offset   Whether to offset the interpolated value by the origin control point parameter.
- * 
- * @return The interpolated value calculated based on the true bilinear interpolation formula.
+ * @param ctrl_point_params 4x5 array of control point parameters. Each row corresponds to one control point
+ *                          and contains five parameters for that point (x, y, width, height, shear).
+ * @param ctrl_point_params_ind Index of the specific control point parameter to interpolate [0, 4].
+ * @param grid_row_i Index of the point along the first axis (rows) within the grid.
+ * @param grid_col_i Index of the point along the second axis (columns) within the grid.
+ * @param grid_size Number of cells along one axis in the grid.
+ * @param do_offset Flag to indicate whether to offset the interpolated value by the control point parameter at the origin.
+ *
+ * @return float The interpolated value calculated based on the specified control point parameters and grid position.
  */
-float bilinearInterpolation(float[4][5], int, int, int, int, bool);
+float bilinearInterpolationFull(float[4][5], int, int, int, int, bool);
 
 /**
  * @brief No longer in use
@@ -403,15 +416,30 @@ void absDistInterp_TEMP(float ctrl_point_params[4][5], float &x_translate, float
  * width and height needed to enclose all of these points. The dimensions are returned
  * as reference arguments.
  *
- * @param ctrl_point_params The 4x5 array of control point parameters. Each row
- *                          represents a different control point, and the columns
- *                          contain different attributes of that point.
+ * @param ctrl_point_params A 4x5 array containing control point parameters (x, y, width, height, shear).
  * @param[out] r_max_width Reference to a float variable where the maximum width will be stored.
  * @param[out] r_max_height Reference to a float variable where the maximum height will be stored.
  *
  * @note The units for the x and y coordinates are in OpenGL's Normalized Device Coordinates (NDC) [-1, 1].
  */
-void computeMaxBoundaryDimensions(float [4][5], float &, float &);
+void computeMaxBoundaryDimensions(float[4][5], float &, float &);
+
+/**
+ * @brief Computes the maximum dimension to enclose all control points along a specified axis.
+ *
+ * This function takes an array of control point parameters and calculates the maximum
+ * dimension (either width or height) needed to enclose all these points along the axis
+ * specified by ctrl_point_params_ind. The maximum dimension is returned as a float.
+ *
+ * @param ctrl_point_params A 4x5 array containing control point parameters (x, y, width, height, shear).
+ * @param ctrl_point_params_ind The index specifying which dimension to consider (0 for x-axis, 1 for y-axis, etc.).
+ *
+ *
+ * @return float The maximum dimension along the specified axis.
+ *
+ * @note The units for the dimensions are in OpenGL's Normalized Device Coordinates (NDC) [-1, 1].
+ */
+float computeMaxDimension(float[4][5], int);
 
 /**
  * @brief Creates a vector of points representing a quadrilateral with shear.
@@ -459,34 +487,34 @@ void computeHomography(cv::Mat &, float[4][5]);
  *
  * @param quad_vertices_vec A vector containing the original Cartesian coordinates of the quadrilateral's vertices.
  *                          The vertices are processed in-place.
- * 
+ *
  * @param r_hom_mat Reference to the homography matrix. This 3x3 matrix is used to perform the projective
  *                  transformation on each vertex.
- * 
+ *
  * @param x_translate Optional x-coordinate translation applied to each vertex before warping. Given in the
  *                    same units as the vertices.
- * 
+ *
  * @param y_translate Optional y-coordinate translation applied to each vertex before warping. Given in the
  *                    same units as the vertices.
  *
  * @details
  * 1. Each vertex undergoes a translation operation defined by `x_translate` and `y_translate`.
- * 
+ *
  * 2. The function converts the translated vertices to homogeneous coordinates, which allows for a unified
- *    representation that can undergo linear transformations including projective warps. 
- * 
+ *    representation that can undergo linear transformations including projective warps.
+ *
  * 3. The homography matrix `r_hom_mat` is then applied to these homogeneous coordinates to produce the
  *    new coordinates of each vertex in the warped perspective.
- * 
+ *
  * 4. Finally, the function converts these new homogeneous coordinates back to Cartesian coordinates.
- * 
- * @note: Homogeneous Coordinates: are a mathematical trick used to simplify 
- *        complex transformations like translation, rotation, and shearing. 
- *        Cartesian coordinates (x, y) are converted to [x, y, 1] for the 
- *        transformation. The third value (ptMat.at<float>(2)) may change 
- *        post-transformation so we divide the new x and y by this value 
+ *
+ * @note: Homogeneous Coordinates: are a mathematical trick used to simplify
+ *        complex transformations like translation, rotation, and shearing.
+ *        Cartesian coordinates (x, y) are converted to [x, y, 1] for the
+ *        transformation. The third value (ptMat.at<float>(2)) may change
+ *        post-transformation so we divide the new x and y by this value
  *        (ptMat /= ptMat.at<float>(2)) to get back to cartisian x, y coordinates.
- * 
+ *
  * @return std::vector<cv::Point2f> A vector containing the new Cartesian coordinates of the warped vertices.
  */
 std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f>, cv::Mat &, float, float);

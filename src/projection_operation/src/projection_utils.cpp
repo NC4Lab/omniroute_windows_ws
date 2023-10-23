@@ -492,34 +492,29 @@ float bilinearInterpolation(float ctrl_point_params[4][5], int ctrl_point_params
     return interp_2d;
 }
 
-float bilinearInterpolationFull(
-    float ctrl_point_params[4][5], int ctrl_point_params_ind,
-    int grid_row_i, int grid_col_i, int grid_size, bool do_offset)
+float bilinearInterpolationFull(float ctrl_point_params[4][5], int ctrl_point_params_ind, int grid_row_i, int grid_col_i, int grid_size, bool do_offset)
 {
-    // Extract control point values for each corner
-    float A = ctrl_point_params[0][ctrl_point_params_ind];
-    float B = ctrl_point_params[1][ctrl_point_params_ind];
-    float C = ctrl_point_params[3][ctrl_point_params_ind];
-    float D = ctrl_point_params[2][ctrl_point_params_ind];
+    // Adjust the control point values based on the new mapping.
+    float A = ctrl_point_params[3][ctrl_point_params_ind]; // Corresponds to grid point [0][0]
+    float B = ctrl_point_params[0][ctrl_point_params_ind]; // Corresponds to grid point [s-1][0]
+    float C = ctrl_point_params[2][ctrl_point_params_ind]; // Corresponds to grid point [0][s-1]
+    float D = ctrl_point_params[1][ctrl_point_params_ind]; // Corresponds to grid point [s-1][s-1]
 
-    // Normalize the grid indices
+    // Calculate the relative position within the grid.
     float x = static_cast<float>(grid_row_i) / (grid_size - 1);
     float y = static_cast<float>(grid_col_i) / (grid_size - 1);
 
-    // Bilinear interpolation formula
-    float interpolated_val = A * (1 - x) * (1 - y) +
-                             B * x * (1 - y) +
-                             C * (1 - x) * y +
-                             D * x * y;
+    // Perform bilinear interpolation using the formula.
+    float interp_val = (1 - x) * (1 - y) * A +
+                       x * (1 - y) * B +
+                       (1 - x) * y * C +
+                       x * y * D;
 
-    // Optionally add an offset
-    if (do_offset)
-    {
-        float offset = ctrl_point_params[3][ctrl_point_params_ind];
-        interpolated_val += offset;
-    }
+    // Optionally add an offset to the interpolated value.
+    interp_val += do_offset ? ctrl_point_params[3][ctrl_point_params_ind] : -1*ctrl_point_params[3][ctrl_point_params_ind];
 
-    return interpolated_val;
+    // Return the final interpolated value.
+    return interp_val;
 }
 
 void absDistInterp_TEMP(float ctrl_point_params[4][5], float &interp_2d_x, float &interp_2d_y, float grid_row_i, float grid_col_i, int grid_size)
@@ -559,6 +554,21 @@ void absDistInterp_TEMP(float ctrl_point_params[4][5], float &interp_2d_x, float
     interp_2d_y = grid_col_i * (y_cp0 + interp_1d_row_y + interp_1d_col_y);
 }
 
+/**
+ * @brief Computes the maximum width and height to enclose all control points.
+ *
+ * This function takes an array of control point parameters and calculates the maximum
+ * width and height needed to enclose all of these points. The dimensions are returned
+ * as reference arguments.
+ *
+ * @param ctrl_point_params The 4x5 array of control point parameters. Each row
+ *                          represents a different control point, and the columns
+ *                          contain different attributes of that point.
+ * @param[out] r_max_width Reference to a float variable where the maximum width will be stored.
+ * @param[out] r_max_height Reference to a float variable where the maximum height will be stored.
+ *
+ * @note The units for the x and y coordinates are in OpenGL's Normalized Device Coordinates (NDC) [-1, 1].
+ */
 void computeMaxBoundaryDimensions(float ctrl_point_params[4][5], float &r_max_width, float &r_max_height)
 {
 
@@ -585,6 +595,24 @@ void computeMaxBoundaryDimensions(float ctrl_point_params[4][5], float &r_max_wi
     r_max_height = max_y - min_y;
 }
 
+float computeMaxDimension(float ctrl_point_params[4][5], int ctrl_point_params_ind)
+{
+    // Initialize variables to store the min and max coordinates
+    float min_coord = std::numeric_limits<float>::max();
+    float max_coord = std::numeric_limits<float>::min();
+
+    // Loop through all control points to find the min and max coordinates
+    for (int i = 0; i < 4; ++i)
+    {
+        float coord = ctrl_point_params[i][ctrl_point_params_ind];
+        min_coord = std::min(min_coord, coord);
+        max_coord = std::max(max_coord, coord);
+    }
+
+    // Calculate and return the maximum dimension along the specified axis
+    return max_coord - min_coord;
+}
+
 std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, float height, float shear_amount)
 {
     std::vector<cv::Point2f> quad_vertices_vec;
@@ -609,6 +637,13 @@ void computeHomography(cv::Mat &r_hom_mat, float ctrl_point_params[4][5])
     // Compute the width and height of the rectangular region that contains all control points (e.g., Boundary Dimensions).
     float target_plane_boundary_width = fabs(ctrl_point_params[0][0]) + ctrl_point_params[1][0];
     float target_plane_boundary_height = ctrl_point_params[0][1] + fabs(ctrl_point_params[3][1]);
+
+    // float target_plane_boundary_width = computeMaxDimension(ctrl_point_params, 0); // specify the column index for the x coordinate
+    // float target_plane_boundary_height = computeMaxDimension(ctrl_point_params, 1); // specify the column index for the y coordinate
+
+    // float target_plane_boundary_width;
+    // float target_plane_boundary_height;
+    // computeMaxBoundaryDimensions(ctrl_point_params, target_plane_boundary_width, target_plane_boundary_height);
 
     // Calculate the vertices for the control point boundary dimensions.
     // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.

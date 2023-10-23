@@ -24,7 +24,6 @@ float ctrlPointParams[4][5];
 int cpSelectedInd = 0;
 std::vector<float> cpActiveRGBVec = {0.0f, 1.0f, 0.0f}; // Active control point marker color (green)
 std::vector<float> cpInactiveRGBVec = {1.0f, 0.0f, 0.0f}; // Inactive control point marker color (red)
-std::vector<float> cpDisabledRGBVec = {0.5f, 0.5f, 0.5f}; // Inactive control point marker color (gray)
 std::string calModeStr = "position"; // Parmeter being modified [position, dimension, shear]
 
 // The 3x3 homography matrix of 32-bit floating-point numbers used to warp perspective.
