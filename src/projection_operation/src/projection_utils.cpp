@@ -8,6 +8,11 @@
 
 #include "projection_utils.h"
 
+// ================================================== VARIABLES ==================================================
+
+// Initialze struct class for storing wall image parameters
+DebugParams dbParams;
+
 // ================================================== FUNCTIONS ==================================================
 
 int checkErrorDevIL(int line, const char *file_str, const char *msg_str)
@@ -492,26 +497,23 @@ float bilinearInterpolation(float ctrl_point_params[4][5], int ctrl_point_params
     return interp_2d;
 }
 
-float bilinearInterpolationFull(float ctrl_point_params[4][5], int ctrl_point_params_ind, int grid_row_i, int grid_col_i, int grid_size, bool do_offset)
+float bilinearInterpolationFull(float ctrl_point_params[4][5], int ctrl_point_params_ind, int grid_row_i, int grid_col_i, int grid_size)
 {
     // Adjust the control point values based on the new mapping.
-    float A = ctrl_point_params[3][ctrl_point_params_ind]; // Corresponds to grid point [0][0]
-    float B = ctrl_point_params[0][ctrl_point_params_ind]; // Corresponds to grid point [s-1][0]
+    float A = ctrl_point_params[0][ctrl_point_params_ind]; // Corresponds to grid point [0][0]
+    float B = ctrl_point_params[1][ctrl_point_params_ind]; // Corresponds to grid point [s-1][0]
     float C = ctrl_point_params[2][ctrl_point_params_ind]; // Corresponds to grid point [0][s-1]
-    float D = ctrl_point_params[1][ctrl_point_params_ind]; // Corresponds to grid point [s-1][s-1]
+    float D = ctrl_point_params[3][ctrl_point_params_ind]; // Corresponds to grid point [s-1][s-1]
 
     // Calculate the relative position within the grid.
-    float x = static_cast<float>(grid_row_i) / (grid_size - 1);
-    float y = static_cast<float>(grid_col_i) / (grid_size - 1);
+    float x = static_cast<float>(grid_col_i) / (grid_size - 1);
+    float y = static_cast<float>(grid_row_i) / (grid_size - 1);
 
     // Perform bilinear interpolation using the formula.
-    float interp_val = (1 - x) * (1 - y) * A +
-                       x * (1 - y) * B +
+    float interp_val = (1 - x) * (1 - y) * D +
+                       x * (1 - y) * A +
                        (1 - x) * y * C +
-                       x * y * D;
-
-    // Optionally add an offset to the interpolated value.
-    interp_val += do_offset ? ctrl_point_params[3][ctrl_point_params_ind] : -1*ctrl_point_params[3][ctrl_point_params_ind];
+                       x * y * B;
 
     // Return the final interpolated value.
     return interp_val;
@@ -635,8 +637,8 @@ std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, fl
 void computeHomography(cv::Mat &r_hom_mat, float ctrl_point_params[4][5])
 {
     // Compute the width and height of the rectangular region that contains all control points (e.g., Boundary Dimensions).
-    float target_plane_boundary_width = fabs(ctrl_point_params[0][0]) + ctrl_point_params[1][0];
-    float target_plane_boundary_height = ctrl_point_params[0][1] + fabs(ctrl_point_params[3][1]);
+    float origin_plane_boundary_width = fabs(ctrl_point_params[0][0]) + ctrl_point_params[1][0];
+    float origin_plane_boundary_height = ctrl_point_params[0][1] + fabs(ctrl_point_params[3][1]);
 
     // float target_plane_boundary_width = computeMaxDimension(ctrl_point_params, 0); // specify the column index for the x coordinate
     // float target_plane_boundary_height = computeMaxDimension(ctrl_point_params, 1); // specify the column index for the y coordinate
@@ -648,7 +650,7 @@ void computeHomography(cv::Mat &r_hom_mat, float ctrl_point_params[4][5])
     // Calculate the vertices for the control point boundary dimensions.
     // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
     std::vector<cv::Point2f> origin_plane_vertices;
-    origin_plane_vertices = computeQuadVertices(0.0f, 0.0f, target_plane_boundary_width, target_plane_boundary_height, 0);
+    origin_plane_vertices = computeQuadVertices(0.0f, 0.0f, origin_plane_boundary_width, origin_plane_boundary_height, 0);
 
     // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
     // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
@@ -724,7 +726,7 @@ void updateCalParams(float (&r_ctrl_point_params)[4][5], int mode_cal_ind)
     }
 }
 
-void printCtrlPointParams(float ctrl_point_params[4][5])
+void dbLogCtrlPointParams(float ctrl_point_params[4][5])
 {
     ROS_INFO("Control Point Parameters");
     ROS_INFO("CP  |  X-Dist  |  Y-Dist  |  W-Width  |  W-Height  |  Shear");
@@ -739,5 +741,47 @@ void printCtrlPointParams(float ctrl_point_params[4][5])
                  ctrl_point_params[i][3],
                  ctrl_point_params[i][4]);
     }
+    ROS_INFO("---------------------------------------------------------");
+}
+
+void dbStoreWallParam(float wall_row_i, float wall_col_i,
+                      float width_interp, float height_interp,
+                      float shear_interp, float x_interp, float y_interp,
+                      const std::vector<cv::Point2f> &quad_vertices_vec)
+{
+    // Cast float indices to int
+    int row = static_cast<int>(wall_row_i);
+    int col = static_cast<int>(wall_col_i);
+
+    // Store the parameters in the DebugParams struct
+    dbParams.width_interp[row][col] = width_interp;
+    dbParams.height_interp[row][col] = height_interp;
+    dbParams.shear_interp[row][col] = shear_interp;
+    dbParams.x_interp[row][col] = x_interp;
+    dbParams.y_interp[row][col] = y_interp;
+    dbParams.quad_vertices_vec[row][col] = quad_vertices_vec;
+}
+
+void dbLogWallParam()
+{
+    ROS_INFO("Wall Parameters for Each Cell in Maze");
+    ROS_INFO("Row | Col | W-Width | W-Height | Shear  | X-Dist  | Y-Dist");
+    ROS_INFO("---------------------------------------------------------");
+
+    // Loop through each row and column in the maze
+    for (int row = 0; row < MAZE_SIZE; ++row)
+    {
+        for (int col = 0; col < MAZE_SIZE; ++col)
+        {
+            ROS_INFO("[%2d | %2d] |  %6.2f  |  %6.2f   |  %6.2f  |  %6.2f  |  %6.2f",
+                     row, col,
+                     dbParams.width_interp[row][col],
+                     dbParams.height_interp[row][col],
+                     dbParams.shear_interp[row][col],
+                     dbParams.x_interp[row][col],
+                     dbParams.y_interp[row][col]);
+        }
+    }
+
     ROS_INFO("---------------------------------------------------------");
 }

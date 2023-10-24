@@ -335,7 +335,6 @@ int main(int argc, char **argv)
     // Log paths for debugging
     ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
     ROS_INFO("[SETUP] Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
-    ROS_INFO("[SETUP] Wall (Norm): Width=%0.2f Space=%0.2f", wall_width_ndc, WALL_SPACE);
 
     // Initialize control point parameters
     updateCalParams(ctrlPointParams, 0);

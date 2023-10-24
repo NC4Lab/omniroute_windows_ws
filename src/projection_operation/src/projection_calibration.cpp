@@ -434,7 +434,7 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
     glEnable(GL_TEXTURE_2D);
 
     // // TEMP
-    // printCtrlPointParams(ctrl_point_params);
+    // dbLogCtrlPointParams(ctrl_point_params);
 
     // Iterate through the maze grid rows
     for (float wall_row_i = 0; wall_row_i < MAZE_SIZE; wall_row_i++)
@@ -475,9 +475,9 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
                 return -1;
 
             // Calculate width, height and shear for the current wall
-            float width_interp = bilinearInterpolationFull(ctrl_point_params, 2, wall_row_i, wall_col_i, MAZE_SIZE, true);
-            float height_interp = bilinearInterpolationFull(ctrl_point_params, 3, wall_row_i, wall_col_i, MAZE_SIZE, true);
-            float shear_interp = bilinearInterpolationFull(ctrl_point_params, 4, wall_row_i, wall_col_i, MAZE_SIZE, true);
+            float width_interp = bilinearInterpolationFull(ctrl_point_params, 2, wall_row_i, wall_col_i, MAZE_SIZE); // wall width
+            float height_interp = bilinearInterpolationFull(ctrl_point_params, 3, wall_row_i, wall_col_i, MAZE_SIZE); // wall height
+            float shear_interp = bilinearInterpolationFull(ctrl_point_params, 4, wall_row_i, wall_col_i, MAZE_SIZE); // wall shear
 
             // Create wall vertices
             std::vector<cv::Point2f> quad_vertices_vec = computeQuadVertices(0.0f, 0.0f, width_interp, height_interp, shear_interp);
@@ -496,6 +496,9 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
 
             // Apply perspective warping to vertices
             std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_vec, r_hom_mat, x_interp, y_interp);
+
+            // // Call to dbStoreWallParam to store parameters for debugging
+            // dbStoreWallParam(wall_row_i, wall_col_i, width_interp, height_interp, shear_interp, x_interp, y_interp, quad_vertices_warped);
 
             // Set texture image
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),

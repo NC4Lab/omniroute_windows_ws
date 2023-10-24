@@ -177,11 +177,15 @@ extern const int WALL_HEIGHT_PXL = 540;
 // Control point image radius
 extern const float CP_RADIUS_NDC = 0.005f;
 
+// Specify the origin plane width and height (NDC)
+const float originPlaneWidth = 0.3f;
+const float originPlaneHeight = 0.6f;
+
 // Defualt control point parameter values
-const float cp_x = 0.15f;                                                                 // X-coordinate
-const float cp_y = 0.3f;                                                                  // X-coordinate
-const float wall_width_ndc = ((cp_x * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));  // Wall width in NDC
-const float wall_height_ndc = ((cp_y * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2)); // Wall height in NDC
+const float wallSpaceX = originPlaneWidth / (float(MAZE_SIZE) - 1);
+const float wallSpaceY = originPlaneHeight / (float(MAZE_SIZE) - 1);
+const float wall_width_ndc = wallSpaceX / (1 + std::sqrt(2)); // Wall width based on octogonal geometry in NDC
+const float wall_height_ndc = wallSpaceY / (1 + std::sqrt(2));  // Wall height based on octogonal geometry in NDC
 
 /**
  * @brief Control Point Calibration Parameter Array
@@ -236,6 +240,8 @@ const float wall_height_ndc = ((cp_y * 2) / (float(MAZE_SIZE) - 1)) / (1 + std::
  * The X-axis extends from -1 (left) to 1 (right).
  * The Y-axis extends from -1 (bottom) to 1 (top).
  */
+const float cp_x = originPlaneWidth/2; // starting X-coordinate in NDC coordinates
+const float cp_y = originPlaneHeight/2;  // starting Y-coordinate in NDC coordinates
 extern const float CTRL_POINT_PARAMS[4][5] = {
     // Default control point parameters
     {-cp_x, +cp_y, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
@@ -244,8 +250,19 @@ extern const float CTRL_POINT_PARAMS[4][5] = {
     {-cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f}  // bottom-left control point
 };
 
-// TEMP (UNUSED)
-extern const float WALL_SPACE = 2.0f * wall_width_ndc;
+/**
+ * @brief Struct to hold debugging parameters for the maze.
+ */
+struct DebugParams
+{
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> width_interp;                         ///< Width interpolation values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> height_interp;                        ///< Height interpolation values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> shear_interp;                         ///< Shear interpolation values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> x_interp;                             ///< X interpolation values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> y_interp;                             ///< Y interpolation values
+    std::array<std::array<std::vector<cv::Point2f>, MAZE_SIZE>, MAZE_SIZE> quad_vertices_vec; ///< Quad vertices
+};
+extern DebugParams dbParams;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -398,11 +415,10 @@ float bilinearInterpolation(float[4][5], int, int, int, int, bool);
  * @param grid_row_i Index of the point along the first axis (rows) within the grid.
  * @param grid_col_i Index of the point along the second axis (columns) within the grid.
  * @param grid_size Number of cells along one axis in the grid.
- * @param do_offset Flag to indicate whether to offset the interpolated value by the control point parameter at the origin.
  *
  * @return float The interpolated value calculated based on the specified control point parameters and grid position.
  */
-float bilinearInterpolationFull(float[4][5], int, int, int, int, bool);
+float bilinearInterpolationFull(float[4][5], int, int, int, int);
 
 /**
  * @brief No longer in use
@@ -532,6 +548,32 @@ void updateCalParams(float (&)[4][5], int);
  *
  * @param ctrl_point_params 4x5 array of control point parameters.
  */
-void printCtrlPointParams(float ctrl_point_params[4][5]);
+void dbLogCtrlPointParams(float ctrl_point_params[4][5]);
+
+/**
+ * @brief Function to store wall parameters for debugging.
+ *
+ * @param dbParams DebugParams struct to hold debugging parameters.
+ * @param wall_row_i Row index of the wall.
+ * @param wall_col_i Column index of the wall.
+ * @param width_interp Interpolated width of the wall.
+ * @param height_interp Interpolated height of the wall.
+ * @param shear_interp Interpolated shear of the wall.
+ * @param x_interp Interpolated x-coordinate of the wall.
+ * @param y_interp Interpolated y-coordinate of the wall.
+ * @param quad_vertices_vec Vector of quad vertices.
+ */
+void dbStoreWallParam(float wall_row_i, float wall_col_i,
+                      float width_interp, float height_interp,
+                      float shear_interp, float x_interp, float y_interp,
+                      const std::vector<cv::Point2f> &quad_vertices_vec);
+
+/**
+ * @brief Function to log wall parameters for debugging.
+ *
+ * This function logs the parameters stored in the global DebugParams
+ * variable as a structured table.
+ */
+void dbLogWallParam();
 
 #endif
