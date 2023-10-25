@@ -287,6 +287,9 @@ int drawWalls(
             return -1;
         }
 
+        // TEMP 
+        computeHomography(hom_mat, ctrl_point_params);
+
         // Iterate through the maze grid
         for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++)
         {

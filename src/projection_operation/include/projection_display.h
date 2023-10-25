@@ -14,14 +14,8 @@
 
 // ================================================== VARIABLES ==================================================
 
-// Control point parameter array
-std::array<std::array<float, 6>, 4> ctrlPointParams;
-
-// The homography matrix used to warp perspective.
-cv::Mat homMat = cv::Mat::eye(3, 3, CV_32F);
-
 // Directory paths
-std::string image_wall_dir_path = IMAGE_TOP_DIR_PATH + "/runtime_images/shapes";
+std::string image_wall_dir_path = IMAGE_TOP_DIR_PATH + "/runtime_images/shapes_no_outline";
 
 // Maze image container
 std::vector<ILuint> imgMazeIDVec(4);

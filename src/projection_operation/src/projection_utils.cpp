@@ -136,7 +136,7 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> &
             ROS_INFO("[LOAD XML] Loaded XML: File[%s]", file_name.c_str());
         }
         // Print the control point array
-        if (verbose_level == 2)
+        if (verbose_level == 1 || verbose_level == 2)
         {
             std::ostringstream oss;
             oss << "[LOAD XML] Control Point Array:\n";
@@ -151,7 +151,7 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> &
             ROS_INFO("%s", oss.str().c_str());
         }
         // Print the homography matrix
-        if (verbose_level == 3)
+        if (verbose_level == 1 || verbose_level == 3)
         {
             std::ostringstream oss;
             oss << "[LOAD XML] Homography Matrix:\n";

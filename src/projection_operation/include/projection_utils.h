@@ -122,20 +122,20 @@ int IMG_PROJ_MAP[4][3][3][3] = {
     // Projector 0: East
     {
         // Chamber Row: Top, Column: Left, Center, Right
-        {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        {{0, 0, 0}, {1, 1, 1}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
         // Chamber Row: Middle
-        {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        {{0, 0, 0}, {0, 0, 4}, {0, 2, 2}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
         // Chamber Row: Bottom
-        {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
     },
     // Projector 1: North
     {
         // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {1, 2, 3}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        {{0, 0, 0}, {0, 2, 2}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
         // Chamber Row: Middle
-        {{1, 2, 3}, {0, 0, 0}, {3, 2, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        {{0, 1, 1}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
         // Chamber Row: Bottom
-        {{0, 0, 0}, {3, 2, 1}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        {{0, 0, 0}, {0, 0, 0}, {0, 3, 3}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
     },
     // Projector 2: West
     {
@@ -156,6 +156,46 @@ int IMG_PROJ_MAP[4][3][3][3] = {
         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
     },
 };
+
+// // Actual hardcoded image indices used to display
+// int IMG_PROJ_MAP[4][3][3][3] = {
+//     // Projector 0: East
+//     {
+//         // Chamber Row: Top, Column: Left, Center, Right
+//         {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//         // Chamber Row: Middle
+//         {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//         // Chamber Row: Bottom
+//         {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//     },
+//     // Projector 1: North
+//     {
+//         // Chamber Row: Top, Column: Left, Center, Right
+//         {{0, 0, 0}, {1, 2, 3}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//         // Chamber Row: Middle
+//         {{1, 2, 3}, {0, 0, 0}, {3, 2, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//         // Chamber Row: Bottom
+//         {{0, 0, 0}, {3, 2, 1}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//     },
+//     // Projector 2: West
+//     {
+//         // Chamber Row: Top, Column: Left, Center, Right
+//         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//         // Chamber Row: Middle
+//         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//         // Chamber Row: Bottom
+//         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//     },
+//     // Projector 3: South
+//     {
+//         // Chamber Row: Top, Column: Left, Center, Right
+//         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//         // Chamber Row: Middle
+//         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//         // Chamber Row: Bottom
+//         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//     },
+// };
 
 // Spricify window resolution: 4K resolution (3840x2160)
 extern const int PROJ_WIN_WIDTH_PXL = 3840;
@@ -189,8 +229,8 @@ extern const float WALL_SPACE_X = originPlaneWidth / (float(MAZE_SIZE) - 1);  //
 extern const float WALL_SPACE_Y = originPlaneHeight / (float(MAZE_SIZE) - 1); // Wall spacing on Y axis NDC
 
 // Default wall width and height (NDC)
-const float wall_width_ndc = WALL_SPACE_X / (1 + std::sqrt(2));        // Wall width based on octogonal geometry in NDC
-const float wall_height_ndc = WALL_SPACE_Y / (1 + std::sqrt(2));       // Wall height based on octogonal geometry in NDC
+const float wall_width_ndc = WALL_SPACE_X / (1 + std::sqrt(2));  // Wall width based on octogonal geometry in NDC
+const float wall_height_ndc = WALL_SPACE_Y / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
 
 /**
  * @brief Control Point Calibration Parameter Array

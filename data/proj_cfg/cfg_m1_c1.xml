@@ -36,19 +36,19 @@
 	</ctrl_point_params>
 	<hom_mat>
 		<row>
-			<cell>7.936070</cell>
+			<cell>0.000002</cell>
 			<cell>1.819108</cell>
-			<cell>-0.085612</cell>
+			<cell>22203410443881582428160.000000</cell>
 		</row>
 		<row>
-			<cell>-67199220045110258925266630868992.000000</cell>
-			<cell>1.330250</cell>
-			<cell>1603.963013</cell>
+			<cell>202244708368384.000000</cell>
+			<cell>1.330249</cell>
+			<cell>141448391342161920.000000</cell>
 		</row>
 		<row>
+			<cell>0.004263</cell>
+			<cell>-1.140861</cell>
 			<cell>0.000000</cell>
-			<cell>-1.140858</cell>
-			<cell>-17808441344.000000</cell>
 		</row>
 	</hom_mat>
 </config>

@@ -74,7 +74,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
 
             // Load the coordinates from the XML file
-            loadCoordinatesXML(homMat, ctrlPointParams, file_path, 1);
+            loadCoordinatesXML(homMat, ctrlPointParams, file_path, 3);
         }
 
         // ---------- Control Point Reset [R] ----------
