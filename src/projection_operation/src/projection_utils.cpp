@@ -68,14 +68,14 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> &
     // Check the dimensions of control pount array
     if (ctrl_point_params_vec_temp.size() != 4)
     {
-        ROS_ERROR("[LOAD XML] Control Point Array from XML has Wrong Number of Rows[%zu]", ctrl_point_params_vec_temp.size());
+        ROS_ERROR("[LOAD XML] Control Point Data from XML has Wrong Number of Rows[%zu] File[%s]", ctrl_point_params_vec_temp.size(), file_name.c_str());
         return -1;
     }
     for (const auto &row : ctrl_point_params_vec_temp)
     {
         if (row.size() != 6)
         {
-            ROS_ERROR("[LOAD XML] Control Point Array from XML has Wrong Number of Columns[%zu]", row.size());
+            ROS_ERROR("[LOAD XML] Control Point Data from XML has Wrong Number of Columns[%zu] File[%s]", row.size(), file_name.c_str());
             return -1;
         }
     }
@@ -106,14 +106,14 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> &
     // Check the dimensions of homography matrix
     if (hom_mat_temp.size() != 3)
     {
-        ROS_ERROR("[LOAD XML] Homography Matrix from XML has Wrong Number of Rows[%zu]", hom_mat_temp.size());
+        ROS_ERROR("[LOAD XML] Homography Matrix from XML has Wrong Number of Rows[%zu] File[%s]", hom_mat_temp.size(), file_name.c_str());
         return -1;
     }
     for (const auto &row : hom_mat_temp)
     {
         if (row.size() != 3)
         {
-            ROS_ERROR("[LOAD XML] Homography Matrix from XML has Wrong Number of Columns[%zu]", row.size());
+            ROS_ERROR("[LOAD XML] Homography Matrix from XML has Wrong Number of Columns[%zu] File[%s]", row.size(), file_name.c_str());
             return -1;
         }
     }

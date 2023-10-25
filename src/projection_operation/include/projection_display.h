@@ -52,7 +52,6 @@ const int nProjectors = 1; // Number of projectors  (autopopulated)
 std::vector<int> projMonIndArr = {
     // Index of the monitor associeted to each projector (hardcoded)
     1,
-    2,
 };
 bool isFullScreen = false; // Flag to indicate if the window is in full screen mode
 bool isWinOnProj = false;  // Flag to indicate if the window is on the projector
@@ -117,12 +116,33 @@ void callbackFrameBufferSizeGLFW(GLFWwindow *, int, int);
 static void callbackErrorGLFW(int, const char *);
 
 /**
- * @brief Check and print OpenGL errors.
+ * @brief Checks for OpenGL errors and logs them.
+ * Should be called after OpenGL API calls.
  *
- * @param line The line number from where the function is called.
- * @param file_str The file name from where the function is called.
+ * @example checkErrorGL(__LINE__, __FILE__);
+ *
+ * @param line Line number where the function is called.
+ * @param file_str File name where the function is called.
+ * @param msg_str Optional message to provide additional context (default to nullptr).
+ *
+ * @return 0 if no errors, -1 if error.
  */
-void checkErrorGL(int, const char *);
+int checkErrorGL(int, const char *, const char * = nullptr);
+
+/**
+ * @brief Checks for GLFW errors and logs them.
+ * Should be called after GLFW API calls.
+ *
+ * @example checkErrorGLFW(__LINE__, __FILE__);
+ *
+ * @param line Line number where the function is called.
+ * @param file_str File name where the function is called.
+ * @param msg_str Optional message to provide additional context (default to nullptr).
+ *
+ * @return 0 if no errors, -1 if error.
+ */
+int checkErrorGLFW(int, const char *, const char * = nullptr);
+
 
 /**
  * @brief Set up a GLFW window and its associated Framebuffer Object (FBO) and texture.
@@ -141,31 +161,6 @@ void checkErrorGL(int, const char *);
  * @return 0 on successful execution, -1 on failure.
  */
 int setupProjGLFW(GLFWwindow **, int, GLFWmonitor **&, int, const std::string &, GLuint &, GLuint &);
-
-/**
- * @brief Draws a textured rectangle using OpenGL.
- *
- * @param quad_vertices_vec Vector of vertex/corner points for a rectangular image.
- */
-void drawQuadImage(std::vector<cv::Point2f>);
-
-/**
- * @brief Draws walls on the OpenGL window.
- *
- * This function is responsible for drawing the walls on the OpenGL window.
- * It iterates through each calibration mode and each wall in the maze to
- * draw the corresponding image.
- *
- * @param r_hom_mat Reference to the Homography Matrix.
- * @param ctrl_point_params Array containing control point parameters.
- * @param proj_i Index of the projector being used.
- * @param p_window_id Pointer to the GLFW window.
- * @param fbo_texture_id Framebuffer Object's texture ID.
- * @param r_image_id_vec Reference to the vector containing image IDs.
- *
- * @return Returns 0 on success, -1 otherwise.
- */
-int drawWalls(cv::Mat &, std::array<std::array<float, 6>, 4>, int, GLFWwindow *, GLuint, std::vector<ILuint> &);
 
 /**
  * @brief Changes the display mode and monitor of the application window.
@@ -190,6 +185,35 @@ int drawWalls(cv::Mat &, std::array<std::array<float, 6>, 4>, int, GLFWwindow *,
  * @return 0 on successful execution, -1 on failure.
  */
 int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
+
+
+/**
+ * @brief Draws a textured rectangle using OpenGL.
+ *
+ * @param quad_vertices_vec Vector of vertex/corner points for a rectangular image.
+ *
+ * @return 0 if no errors, -1 if error.
+ */
+int drawQuadImage(std::vector<cv::Point2f>);
+
+/**
+ * @brief Draws walls on the OpenGL window.
+ *
+ * This function is responsible for drawing the walls on the OpenGL window.
+ * It iterates through each calibration mode and each wall in the maze to
+ * draw the corresponding image.
+ *
+ * @param r_hom_mat Reference to the Homography Matrix.
+ * @param ctrl_point_params Array containing control point parameters.
+ * @param proj_i Index of the projector being used.
+ * @param p_window_id Pointer to the GLFW window.
+ * @param fbo_texture_id Framebuffer Object's texture ID.
+ * @param r_image_id_vec Reference to the vector containing image IDs.
+ *
+ * @return Returns 0 on success, -1 otherwise.
+ */
+int drawWalls(cv::Mat &, std::array<std::array<float, 6>, 4>, int, GLFWwindow *, GLuint, std::vector<ILuint> &);
+
 
 /**
  * @brief  Entry point for the projection_display ROS node.

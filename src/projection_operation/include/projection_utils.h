@@ -182,11 +182,13 @@ extern const float CP_RADIUS_NDC = 0.005f;
 const float originPlaneWidth = 0.3f;
 const float originPlaneHeight = 0.6f;
 
-// Defualt control point parameter values
-const float wallSpaceX = originPlaneWidth / (float(MAZE_SIZE) - 1);  // Wall spacing on X axis NDC
-const float wallSpaceY = originPlaneHeight / (float(MAZE_SIZE) - 1); // Wall spacing on Y axis NDC
-const float wall_width_ndc = wallSpaceX / (1 + std::sqrt(2));        // Wall width based on octogonal geometry in NDC
-const float wall_height_ndc = wallSpaceY / (1 + std::sqrt(2));       // Wall height based on octogonal geometry in NDC
+// Wall spacing (NDC)
+extern const float WALL_SPACE_X = originPlaneWidth / (float(MAZE_SIZE) - 1);  // Wall spacing on X axis NDC
+extern const float WALL_SPACE_Y = originPlaneHeight / (float(MAZE_SIZE) - 1); // Wall spacing on Y axis NDC
+
+// Default wall width and height (NDC)
+const float wall_width_ndc = WALL_SPACE_X / (1 + std::sqrt(2));        // Wall width based on octogonal geometry in NDC
+const float wall_height_ndc = WALL_SPACE_Y / (1 + std::sqrt(2));       // Wall height based on octogonal geometry in NDC
 
 /**
  * @brief Control Point Calibration Parameter Array

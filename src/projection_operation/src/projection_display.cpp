@@ -65,14 +65,33 @@ static void callbackErrorGLFW(int error, const char *description)
     ROS_ERROR("[GLFW] Error Flagged: Error[%d] Description[%s]", error, description);
 }
 
-void checkErrorGL(int line, const char *file_str)
+int checkErrorGL(int line, const char *file_str, const char *msg_str)
 {
-    GLenum err;
-    while ((err = glGetError()) != GL_NO_ERROR)
+    GLenum gl_err;
+    while ((gl_err = glGetError()) != GL_NO_ERROR)
     {
-        // Log or print the error code
-        ROS_INFO("[OpenGL] Error Flagged: Line[%d] File[%s] Error Number[%s]: ", line, file_str, err);
+        if (msg_str)
+            ROS_INFO("[OpenGL] Error Flagged: Message[%s] Error Number[%u] File[%s] Line[%d]", msg_str, gl_err, file_str, line);
+        else
+            ROS_INFO("[OpenGL] Error Flagged: Error Number[%u] File[%s] Line[%d]", gl_err, file_str, line);
+        return -1;
     }
+    return 0;
+}
+
+int checkErrorGLFW(int line, const char *file_str, const char *msg_str)
+{
+    const char *description;
+    int glfw_err = glfwGetError(&description);
+    if (glfw_err != GLFW_NO_ERROR)
+    {
+        if (msg_str)
+            ROS_ERROR("[GLFW] Error Flagged: Message[%s] Description[%s] File[%s] Line[%d]", msg_str, description, file_str, line);
+        else
+            ROS_ERROR("[GLFW] Error Flagged: Description[%s] File[%s] Line[%d]", description, file_str, line);
+        return -1;
+    }
+    return 0;
 }
 
 int setupProjGLFW(
@@ -141,7 +160,7 @@ int setupProjGLFW(
     return 0;
 }
 
-void drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
+int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
 {
 
     // Start drawing a quadrilateral
@@ -153,27 +172,27 @@ void drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
 
     // Set texture and vertex coordinates for each corner
 
-    // Bottom-left corner
+    // Top-left corner of texture
     glTexCoord2f(0.0f, 1.0f);
     glVertex2f(quad_vertices_vec[0].x, quad_vertices_vec[0].y);
 
-    // Bottom-right corner
+    // Top-right corner of texture
     glTexCoord2f(1.0f, 1.0f);
     glVertex2f(quad_vertices_vec[1].x, quad_vertices_vec[1].y);
 
-    // Top-right corner
+    // Bottom-right corner of texture
     glTexCoord2f(1.0f, 0.0f);
     glVertex2f(quad_vertices_vec[2].x, quad_vertices_vec[2].y);
 
-    // Top-left corner
+    // Bottom-left corner of texture
     glTexCoord2f(0.0f, 0.0f);
     glVertex2f(quad_vertices_vec[3].x, quad_vertices_vec[3].y);
 
     // End drawing
     glEnd();
 
-    // Check for GL errors
-    checkErrorGL(__LINE__, __FILE__);
+    // Check and return GL status
+    return checkErrorGL(__LINE__, __FILE__);
 }
 
 int drawWalls(
@@ -204,44 +223,46 @@ int drawWalls(
             // Iterate through each cell in the maze row
             for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++)
             {
-                // // Get the image index for the current wall
-                // int wall_row = MAZE_SIZE - 1 - (int)grid_col_i;
-                // int wall_col = (int)grid_row_i;
-                // int img_ind = IMG_PROJ_MAP[proj_i][wall_row][wall_col][cal_i];
+                // Get the image index for the current wall
+                int wall_row = MAZE_SIZE - 1 - (int)grid_row_i;
+                int wall_col = (int)grid_col_i;
+                int img_ind = IMG_PROJ_MAP[proj_i][wall_row][wall_col][cal_i];
 
-                // // Bind image
-                // ilBindImage(r_image_id_vec[img_ind]); // show test pattern
+                // Bind image
+                ilBindImage(r_image_id_vec[img_ind]); // show test pattern
 
-                // // Calculate width, height and shear for the current wall
-                // float width_val = bilinearInterpolation(ctrl_point_params, 2, grid_row_i, grid_col_i, MAZE_SIZE, true);
-                // float height_val = bilinearInterpolation(ctrl_point_params, 3, grid_row_i, grid_col_i, MAZE_SIZE, true);
-                // float shear_val = bilinearInterpolation(ctrl_point_params, 4, grid_row_i, grid_col_i, MAZE_SIZE, true);
+                // Calculate width, height and shear for the current wall
+                float width = bilinearInterpolationFull(ctrl_point_params, 2, grid_row_i, grid_col_i, MAZE_SIZE);   // wall width
+                float height = bilinearInterpolationFull(ctrl_point_params, 3, grid_row_i, grid_col_i, MAZE_SIZE);  // wall height
+                float shear_x = bilinearInterpolationFull(ctrl_point_params, 4, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
+                float shear_y = bilinearInterpolationFull(ctrl_point_params, 5, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
 
-                // // Create wall vertices
-                // std::vector<cv::Point2f> quad_vertices_vec = computeQuadVertices(0.0f, 0.0f, width_val, height_val, shear_val);
+                // Get origin coordinates of wall
+                float x_origin = grid_col_i * WALL_SPACE_X;
+                float y_origin = grid_row_i * WALL_SPACE_Y;
 
-                // // Calculate the interpolated wall spacings for this grid cell
-                // float x_translate = bilinearInterpolation(ctrl_point_params, 0, grid_row_i, grid_col_i, MAZE_SIZE, false);
-                // float y_translate = bilinearInterpolation(ctrl_point_params, 1, grid_row_i, grid_col_i, MAZE_SIZE, false);
+                // Create wall vertices
+                std::vector<cv::Point2f> quad_vertices_raw = computeQuadVertices(x_origin, y_origin, width, height, shear_x, shear_y);
 
-                // // Apply perspective warping to vertices
-                // std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_vec, r_hom_mat, x_translate, y_translate);
+                // Apply perspective warping to vertices
+                std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_raw, r_hom_mat);
 
-                // // Set texture image
-                // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
-                //              ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
-                //              GL_UNSIGNED_BYTE, ilGetData());
+                // Set texture image
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
+                             ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
+                             GL_UNSIGNED_BYTE, ilGetData());
 
-                // // Bind texture to framebuffer object
-                // glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
-                // if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-                // {
-                //     ROS_ERROR("Failed to Bind GL Frame Buffer Opbject for window[%d]", proj_i);
-                //     return -1;
-                // }
+                // Bind texture to framebuffer object
+                glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
+                if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+                {
+                    ROS_ERROR("Failed to Bind GL Frame Buffer Opbject for window[%d]", proj_i);
+                    return -1;
+                }
 
-                // // Draw the wall
-                // drawQuadImage(quad_vertices_warped);
+                // Draw the wall
+                if (drawQuadImage(quad_vertices_warped) != 0)
+                    return -1;
             }
         }
     }
@@ -388,17 +409,21 @@ int main(int argc, char **argv)
     ilInit();
 
     // Load images
-    loadImgTextures(imgWallPathVec, imgWallIDVec);
+    if (loadImgTextures(imgWallPathVec, imgWallIDVec) != 0)
+    {
+        ROS_ERROR("[DevIL] Failed to load wall images");
+        return -1;
+    }
 
     // _______________ MAIN LOOP _______________
 
-    // Initialize a variable to check if all windows should close
-    bool shouldClose = false;
+    // Initialize a variable to check for errors and windows closed
+    bool is_win_closed = false;
+    bool is_err_thrown = false;
 
-    while (!shouldClose)
+    while (!is_err_thrown && !is_win_closed && ros::ok())
     {
-        // Initialize a variable to check if all windows should close
-        shouldClose = true;
+        is_win_closed = true;
 
         // Update the window contents and process events for each projectors window
         for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
@@ -409,14 +434,15 @@ int main(int argc, char **argv)
 
             if (!glfwWindowShouldClose(p_window_id))
             {
-                shouldClose = false; // At least one window is still open
+                is_win_closed = false; // At least one window is still open
 
                 // Make the window's context current
                 glfwMakeContextCurrent(p_window_id);
                 if (glfwGetCurrentContext() != p_window_id)
                 {
                     ROS_ERROR("[MAIN] Failed to Set GLFW Context for Window[%d]", proj_i);
-                    return -1;
+                    is_err_thrown = true;
+                    break;
                 }
 
                 // Clear back buffer for new frame
@@ -426,7 +452,8 @@ int main(int argc, char **argv)
                 if (drawWalls(homMat, ctrlPointParams, proj_i, p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec) != 0)
                 {
                     ROS_ERROR("[MAIN] Failed to Draw Walls for Window[%d]", proj_i);
-                    return -1;
+                    is_err_thrown = true;
+                    break;
                 }
 
                 // Unbind the texture
@@ -437,54 +464,72 @@ int main(int argc, char **argv)
 
                 // Swap buffers
                 glfwSwapBuffers(p_window_id);
-
-                // Check for GL errors
-                checkErrorGL(__LINE__, __FILE__);
+                if (checkErrorGLFW(__LINE__, __FILE__) ||
+                    checkErrorGL(__LINE__, __FILE__))
+                {
+                    is_err_thrown = true;
+                    break;
+                }
             }
 
             // Exit condition
             if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_window_id))
             {
-                shouldClose = true;
+                is_win_closed = true;
                 break;
             }
         }
 
         // Poll and process events for all windows
         glfwPollEvents();
-
-        // Check for GL errors
-        checkErrorGL(__LINE__, __FILE__);
+        if (checkErrorGLFW(__LINE__, __FILE__))
+            break;
     }
 
     // _______________ CLEANUP _______________
-    ROS_INFO("[SHUTDOWN] Started");
+    ROS_INFO("SHUTTING DOWN");
+
+    // Check which condition caused the loop to exit
+    if (!ros::ok())
+        ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
+    else if (is_win_closed)
+        ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
+    else if (is_err_thrown)
+        ROS_INFO("[LOOP TERMINATION] An Error Was Thrown");
+    else
+        ROS_INFO("[LOOP TERMINATION] Reason Unknown");
+
+    // Delete FBO and textures
+    for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
+    {
+        glDeleteFramebuffers(1, &fboIDVec[proj_i]);
+        checkErrorGL(__LINE__, __FILE__);
+        glDeleteTextures(1, &fboTextureIDVec[proj_i]);
+        checkErrorGL(__LINE__, __FILE__);
+    }
+    ROS_INFO("[SHUTDOWN] Deleted FBO and textures");
+
+    // Delete DevIL images
+    deleteImgTextures(imgWallIDVec);
+    ROS_INFO("[SHUTDOWN] Deleted DevIL images");
 
     // Destroy GL objects
     for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
     {
-        // Destroy GLFW window
         glfwDestroyWindow(p_windowIDVec[proj_i]);
-
-        //  Delete each FBO and texture
-        glDeleteFramebuffers(1, &fboIDVec[proj_i]);
-        glDeleteTextures(1, &fboTextureIDVec[proj_i]);
+        p_windowIDVec[proj_i] = nullptr;
+        checkErrorGLFW(__LINE__, __FILE__);
     }
-    ROS_INFO("[SHUTDOWN] Detroyd GLFW window and DevIL images");
-
-    // Destroy DevIL images
-    for (ILuint image_id : imgWallIDVec)
-    {
-        ilDeleteImages(1, &image_id);
-    }
-    ROS_INFO("[SHUTDOWN] Deleted DevIL images");
+    ROS_INFO("[SHUTDOWN] Detroyd GLFW windows");
 
     // Shutdown DevIL
     ilShutDown();
+    checkErrorDevIL(__LINE__, __FILE__);
     ROS_INFO("[SHUTDOWN] Shutdown DevIL");
 
     // Terminate GLFW
     glfwTerminate();
+    checkErrorGLFW(__LINE__, __FILE__);
     ROS_INFO("[SHUTDOWN] Terminated GLFW");
 
     return 0;

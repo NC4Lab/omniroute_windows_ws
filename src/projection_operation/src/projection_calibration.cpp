@@ -490,8 +490,8 @@ int drawWalls(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> ctrl_point
             float shear_y = bilinearInterpolationFull(ctrl_point_params, 5, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
 
             // Get origin coordinates of wall
-            float x_origin = grid_col_i * wallSpaceX;
-            float y_origin = grid_row_i * wallSpaceY;
+            float x_origin = grid_col_i * WALL_SPACE_X;
+            float y_origin = grid_row_i * WALL_SPACE_Y;
 
             // Create wall vertices
             std::vector<cv::Point2f> quad_vertices_raw = computeQuadVertices(x_origin, y_origin, width, height, shear_x, shear_y);
@@ -654,9 +654,11 @@ int main(int argc, char **argv)
             break;
 
         // Draw/update wall images
-        drawWalls(homMat, ctrlPointParams, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]);
-        if (checkErrorGL(__LINE__, __FILE__))
-            break;
+        if (drawWalls(homMat, ctrlPointParams, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]) != 0)
+        {
+            ROS_ERROR("[MAIN] Draw Walls Threw Error");
+            return -1;
+        }
 
         // Draw/update control points
         for (int i = 0; i < 4; i++)
@@ -665,20 +667,22 @@ int main(int argc, char **argv)
             std::vector<float> cp_col = (cpSelectedInd != i) ? cpInactiveRGBVec : cpActiveRGBVec;
 
             // Draw the control point
-            drawControlPoint(ctrlPointParams[i][0], ctrlPointParams[i][1], CP_RADIUS_NDC, cp_col);
-            if (checkErrorGL(__LINE__, __FILE__))
-                break;
+            if (drawControlPoint(ctrlPointParams[i][0], ctrlPointParams[i][1], CP_RADIUS_NDC, cp_col) != 0)
+            {
+                ROS_ERROR("[MAIN] Draw Control Point Threw Error");
+                return -1;
+            }
         }
 
         // Swap buffers and poll events
         glfwSwapBuffers(p_windowID);
-        checkErrorGLFW(__LINE__, __FILE__);
+        if (checkErrorGLFW(__LINE__, __FILE__))
+            break;
         if (checkErrorGL(__LINE__, __FILE__))
             break;
 
         // Poll events
         glfwPollEvents();
-        checkErrorGLFW(__LINE__, __FILE__);
 
         // Exit condition
         if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_windowID))
@@ -690,26 +694,20 @@ int main(int argc, char **argv)
 
     // Check which condition caused the loop to exit
     if (!ros::ok())
-    {
         ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
-    }
     else if (glfwWindowShouldClose(p_windowID))
-    {
         ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
-    }
     else if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    {
         ROS_INFO("[LOOP TERMINATION] Escape Key was Pressed");
-    }
+    else
+        ROS_INFO("[LOOP TERMINATION] Reason Unknown");
 
-    // Destroy GLFW window and DevIL images
-    if (p_windowID)
-    {
-        glfwDestroyWindow(p_windowID);
-        p_windowID = nullptr;
-    }
-    checkErrorGLFW(__LINE__, __FILE__);
-    ROS_INFO("[SHUTDOWN] Detroyd GLFW windows");
+    // Delete FBO and textures
+    glDeleteFramebuffers(1, &fbo_id);
+    checkErrorGL(__LINE__, __FILE__);
+    glDeleteTextures(1, &fbo_texture_id);
+    checkErrorGL(__LINE__, __FILE__);
+    ROS_INFO("[SHUTDOWN] Deleted FBO and textures");
 
     // Delete DevIL images
     deleteImgTextures(imgWallIDVec);
@@ -718,15 +716,14 @@ int main(int argc, char **argv)
     deleteImgTextures(imgCalIDVec);
     ROS_INFO("[SHUTDOWN] Deleted DevIL images");
 
-    // Delete FBO and textures
-    ///@todo figure out why errro thrown here
-    glDeleteFramebuffers(1, &fbo_id);
-    checkErrorGL(__LINE__, __FILE__);
-
-    // Delete FBO and textures
-    glDeleteTextures(1, &fbo_texture_id);
-    checkErrorGL(__LINE__, __FILE__);
-    ROS_INFO("[SHUTDOWN] Deleted FBO and textures");
+    // Destroy GLFW window
+    if (p_windowID)
+    {
+        glfwDestroyWindow(p_windowID);
+        p_windowID = nullptr;
+    }
+    checkErrorGLFW(__LINE__, __FILE__);
+    ROS_INFO("[SHUTDOWN] Destroyed GLFW windows");
 
     // Shutdown DevIL
     ilShutDown();
