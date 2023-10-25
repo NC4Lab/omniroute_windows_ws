@@ -72,7 +72,7 @@ GLFWmonitor **pp_monitorIDVec = nullptr;
 
 // Projector variable for OpenGL
 GLFWmonitor *p_projectorID = nullptr;
-GLFWmonitor *p_projectorIDVec[nProjectors]= {nullptr};
+GLFWmonitor *p_projectorIDVec[nProjectors] = {nullptr};
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -143,7 +143,6 @@ int checkErrorGL(int, const char *, const char * = nullptr);
  */
 int checkErrorGLFW(int, const char *, const char * = nullptr);
 
-
 /**
  * @brief Set up a GLFW window and its associated Framebuffer Object (FBO) and texture.
  *
@@ -186,7 +185,6 @@ int setupProjGLFW(GLFWwindow **, int, GLFWmonitor **&, int, const std::string &,
  */
 int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
 
-
 /**
  * @brief Draws a textured rectangle using OpenGL.
  *
@@ -203,17 +201,15 @@ int drawQuadImage(std::vector<cv::Point2f>);
  * It iterates through each calibration mode and each wall in the maze to
  * draw the corresponding image.
  *
- * @param r_hom_mat Reference to the Homography Matrix.
- * @param ctrl_point_params Array containing control point parameters.
- * @param proj_i Index of the projector being used.
+ * @param proj_ind Index of the projector being used.
+ * @param mon_iind Index of the projector monitor being used.
  * @param p_window_id Pointer to the GLFW window.
  * @param fbo_texture_id Framebuffer Object's texture ID.
  * @param r_image_id_vec Reference to the vector containing image IDs.
  *
  * @return Returns 0 on success, -1 otherwise.
  */
-int drawWalls(cv::Mat &, std::array<std::array<float, 6>, 4>, int, GLFWwindow *, GLuint, std::vector<ILuint> &);
-
+int drawWalls(int, int, GLFWwindow *, GLuint, std::vector<ILuint> &);
 
 /**
  * @brief  Entry point for the projection_display ROS node.

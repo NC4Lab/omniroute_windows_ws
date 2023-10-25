@@ -160,122 +160,6 @@ int setupProjGLFW(
     return 0;
 }
 
-int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
-{
-
-    // Start drawing a quadrilateral
-    glBegin(GL_QUADS);
-
-    // Set the color to white (for texture mapping)
-    /// @note: this is nececary when drawing the control points
-    glColor3f(1.0f, 1.0f, 1.0f);
-
-    // Set texture and vertex coordinates for each corner
-
-    // Top-left corner of texture
-    glTexCoord2f(0.0f, 1.0f);
-    glVertex2f(quad_vertices_vec[0].x, quad_vertices_vec[0].y);
-
-    // Top-right corner of texture
-    glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(quad_vertices_vec[1].x, quad_vertices_vec[1].y);
-
-    // Bottom-right corner of texture
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(quad_vertices_vec[2].x, quad_vertices_vec[2].y);
-
-    // Bottom-left corner of texture
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(quad_vertices_vec[3].x, quad_vertices_vec[3].y);
-
-    // End drawing
-    glEnd();
-
-    // Check and return GL status
-    return checkErrorGL(__LINE__, __FILE__);
-}
-
-int drawWalls(
-    cv::Mat &r_hom_mat,
-    std::array<std::array<float, 6>, 4> ctrl_point_params,
-    int proj_i,
-    GLFWwindow *p_window_id,
-    GLuint fbo_texture_id,
-    std::vector<ILuint> &r_image_id_vec)
-{
-    // Enable OpenGL texture mapping
-    glEnable(GL_TEXTURE_2D);
-
-    // Draw wall images for each calibration mode wall [left, middle, right]
-    for (int cal_i = 0; cal_i < 3; cal_i++)
-    {
-        // Load the image transform coordinates from the XML file
-        std::string file_path = formatCoordinatesFilePathXML(projMonIndArr[proj_i], cal_i, CONFIG_DIR_PATH);
-        if (loadCoordinatesXML(homMat, ctrlPointParams, file_path, 0) != 0)
-        {
-            ROS_ERROR("XML: Missing XML File[%s]", file_path.c_str());
-            return -1;
-        }
-
-        // Iterate through the maze grid
-        for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++)
-        {
-            // Iterate through each cell in the maze row
-            for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++)
-            {
-                // Get the image index for the current wall
-                int wall_row = MAZE_SIZE - 1 - (int)grid_row_i;
-                int wall_col = (int)grid_col_i;
-                int img_ind = IMG_PROJ_MAP[proj_i][wall_row][wall_col][cal_i];
-
-                // Bind image
-                ilBindImage(r_image_id_vec[img_ind]); // show test pattern
-
-                // Calculate width, height and shear for the current wall
-                float width = bilinearInterpolationFull(ctrl_point_params, 2, grid_row_i, grid_col_i, MAZE_SIZE);   // wall width
-                float height = bilinearInterpolationFull(ctrl_point_params, 3, grid_row_i, grid_col_i, MAZE_SIZE);  // wall height
-                float shear_x = bilinearInterpolationFull(ctrl_point_params, 4, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
-                float shear_y = bilinearInterpolationFull(ctrl_point_params, 5, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
-
-                // Get origin coordinates of wall
-                float x_origin = grid_col_i * WALL_SPACE_X;
-                float y_origin = grid_row_i * WALL_SPACE_Y;
-
-                // Create wall vertices
-                std::vector<cv::Point2f> quad_vertices_raw = computeQuadVertices(x_origin, y_origin, width, height, shear_x, shear_y);
-
-                // Apply perspective warping to vertices
-                std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_raw, r_hom_mat);
-
-                // Set texture image
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
-                             ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
-                             GL_UNSIGNED_BYTE, ilGetData());
-
-                // Bind texture to framebuffer object
-                glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
-                if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-                {
-                    ROS_ERROR("Failed to Bind GL Frame Buffer Opbject for window[%d]", proj_i);
-                    return -1;
-                }
-
-                // Draw the wall
-                if (drawQuadImage(quad_vertices_warped) != 0)
-                    return -1;
-            }
-        }
-    }
-
-    // Disable OpenGL texture mapping
-    glDisable(GL_TEXTURE_2D);
-
-    // Check for GL errors
-    checkErrorGL(__LINE__, __FILE__);
-
-    return 0;
-}
-
 int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_r_monitor_id, int mon_id_ind, bool is_fullscreen)
 {
     int x_pos, y_pos;
@@ -343,6 +227,126 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
     return 0;
 }
 
+int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
+{
+
+    // Start drawing a quadrilateral
+    glBegin(GL_QUADS);
+
+    // Set the color to white (for texture mapping)
+    /// @note: this is nececary when drawing the control points
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    // Set texture and vertex coordinates for each corner
+
+    // Top-left corner of texture
+    glTexCoord2f(0.0f, 1.0f);
+    glVertex2f(quad_vertices_vec[0].x, quad_vertices_vec[0].y);
+
+    // Top-right corner of texture
+    glTexCoord2f(1.0f, 1.0f);
+    glVertex2f(quad_vertices_vec[1].x, quad_vertices_vec[1].y);
+
+    // Bottom-right corner of texture
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex2f(quad_vertices_vec[2].x, quad_vertices_vec[2].y);
+
+    // Bottom-left corner of texture
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex2f(quad_vertices_vec[3].x, quad_vertices_vec[3].y);
+
+    // End drawing
+    glEnd();
+
+    // Check and return GL status
+    return checkErrorGL(__LINE__, __FILE__);
+}
+
+int drawWalls(
+    int proj_ind,
+    int mon_id_ind,
+    GLFWwindow *p_window_id,
+    GLuint fbo_texture_id,
+    std::vector<ILuint> &r_image_id_vec)
+{
+
+    // Enable OpenGL texture mapping
+    glEnable(GL_TEXTURE_2D);
+
+    // Draw wall images for each calibration mode wall [left, middle, right]
+    for (int cal_i = 0; cal_i < 3; cal_i++)
+    {
+        // Initialize control point parameter array and homography matrix
+        std::array<std::array<float, 6>, 4> ctrl_point_params;
+        cv::Mat hom_mat = cv::Mat::eye(3, 3, CV_32F);
+
+        // Load the image transform coordinates from the XML file
+        std::string file_path = formatCoordinatesFilePathXML(mon_id_ind, cal_i, CONFIG_DIR_PATH);
+        if (loadCoordinatesXML(hom_mat, ctrl_point_params, file_path, 0) != 0)
+        {
+            ROS_ERROR("XML: Missing XML File[%s]", file_path.c_str());
+            return -1;
+        }
+
+        // Iterate through the maze grid
+        for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++)
+        {
+            // Iterate through each cell in the maze row
+            for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++)
+            {
+                // Get the image index for the current wall
+                int wall_row = MAZE_SIZE - 1 - (int)grid_row_i;
+                int wall_col = (int)grid_col_i;
+                int img_ind = IMG_PROJ_MAP[proj_ind][wall_row][wall_col][cal_i];
+
+                // Bind image
+                ilBindImage(r_image_id_vec[img_ind]); // show test pattern
+
+                // Calculate width, height and shear for the current wall
+                float width = bilinearInterpolationFull(ctrl_point_params, 2, grid_row_i, grid_col_i, MAZE_SIZE);   // wall width
+                float height = bilinearInterpolationFull(ctrl_point_params, 3, grid_row_i, grid_col_i, MAZE_SIZE);  // wall height
+                float shear_x = bilinearInterpolationFull(ctrl_point_params, 4, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
+                float shear_y = bilinearInterpolationFull(ctrl_point_params, 5, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
+
+                // Get origin coordinates of wall
+                float x_origin = grid_col_i * WALL_SPACE_X;
+                float y_origin = grid_row_i * WALL_SPACE_Y;
+
+                // Create wall vertices
+                std::vector<cv::Point2f> quad_vertices_raw = computeQuadVertices(x_origin, y_origin, width, height, shear_x, shear_y);
+
+                // Apply perspective warping to vertices
+                std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_raw, hom_mat);
+
+                // Set texture image
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
+                             ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
+                             GL_UNSIGNED_BYTE, ilGetData());
+
+                // Bind texture to framebuffer object
+                glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
+                if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+                {
+                    ROS_ERROR("Failed to Bind GL Frame Buffer Opbject for window[%d]", proj_ind);
+                    return -1;
+                }
+
+                // Draw the wall
+                if (drawQuadImage(quad_vertices_warped) != 0)
+                    return -1;
+            }
+        }
+    }
+
+    // Disable OpenGL texture mapping
+    glDisable(GL_TEXTURE_2D);
+
+    // Check for GL errors
+    checkErrorGL(__LINE__, __FILE__);
+
+    return 0;
+}
+
 int main(int argc, char **argv)
 {
     //  _______________ SETUP _______________
@@ -356,12 +360,6 @@ int main(int argc, char **argv)
     // Log paths for debugging
     ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
     ROS_INFO("[SETUP] Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
-
-    // Initialize control point parameters
-    updateCalParams(ctrlPointParams, 0);
-
-    // Do initial computations of homography matrix
-    computeHomography(homMat, ctrlPointParams);
 
     // --------------- OpenGL SETUP V2 ---------------
 
@@ -449,7 +447,7 @@ int main(int argc, char **argv)
                 glClear(GL_COLOR_BUFFER_BIT);
 
                 // Draw the walls
-                if (drawWalls(homMat, ctrlPointParams, proj_i, p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec) != 0)
+                if (drawWalls(proj_i, projMonIndArr[proj_i], p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec) != 0)
                 {
                     ROS_ERROR("[MAIN] Failed to Draw Walls for Window[%d]", proj_i);
                     is_err_thrown = true;

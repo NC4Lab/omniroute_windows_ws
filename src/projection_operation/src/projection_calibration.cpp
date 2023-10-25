@@ -74,7 +74,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
 
             // Load the coordinates from the XML file
-            loadCoordinatesXML(homMat, ctrlPointParams, file_path);
+            loadCoordinatesXML(homMat, ctrlPointParams, file_path, 1);
         }
 
         // ---------- Control Point Reset [R] ----------
@@ -437,7 +437,7 @@ int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
     return checkErrorGL(__LINE__, __FILE__);
 }
 
-int drawWalls(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> ctrl_point_params, GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id)
+int drawWalls(cv::Mat hom_mat, std::array<std::array<float, 6>, 4> ctrl_point_params, GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id)
 {
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
@@ -497,7 +497,7 @@ int drawWalls(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> ctrl_point
             std::vector<cv::Point2f> quad_vertices_raw = computeQuadVertices(x_origin, y_origin, width, height, shear_x, shear_y);
 
             // Apply perspective warping to vertices
-            std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_raw, r_hom_mat);
+            std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_raw, hom_mat);
 
             // // Call to dbStoreQuadParams to store parameters for debugging
             // dbStoreQuadParams(grid_row_i, grid_col_i, width, height, shear_x, shear_y, x_origin, y_origin, quad_vertices_raw, quad_vertices_warped);
