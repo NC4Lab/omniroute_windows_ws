@@ -227,20 +227,29 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 }
             }
 
-            // ---------- Wall shear calibration change [LEFT, RIGHT] ----------
+            // ---------- Wall shear calibration change [LEFT, RIGHT, UP, DOWN] ----------
             if (calModeStr == "shear")
             {
                 // Set the shear increment based on whether the shift key is pressed
-                float shr_inc = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.001f;
+                float shr_inc_x = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.001f;
+                float shr_inc_y = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.001f;
 
                 // Listen for arrow key input to adjust shear
                 if (key == GLFW_KEY_LEFT)
                 {
-                    ctrlPointParams[cpSelectedInd][4] -= shr_inc; // Skew left
+                    ctrlPointParams[cpSelectedInd][4] -= shr_inc_x; // Skew left
                 }
                 else if (key == GLFW_KEY_RIGHT)
                 {
-                    ctrlPointParams[cpSelectedInd][4] += shr_inc; // Skew right
+                    ctrlPointParams[cpSelectedInd][4] += shr_inc_x; // Skew right
+                }
+                else if (key == GLFW_KEY_UP)
+                {
+                    ctrlPointParams[cpSelectedInd][5] += shr_inc_y; // Increase height
+                }
+                else if (key == GLFW_KEY_DOWN)
+                {
+                    ctrlPointParams[cpSelectedInd][5] -= shr_inc_y; // Decrease height
                 }
             }
         }
@@ -428,7 +437,7 @@ int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
     return checkErrorGL(__LINE__, __FILE__);
 }
 
-int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id)
+int drawWalls(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> ctrl_point_params, GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id)
 {
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
@@ -475,26 +484,23 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
                 return -1;
 
             // Calculate width, height and shear for the current wall
-            float width_interp = bilinearInterpolationFull(ctrl_point_params, 2, grid_row_i, grid_col_i, MAZE_SIZE);  // wall width
-            float height_interp = bilinearInterpolationFull(ctrl_point_params, 3, grid_row_i, grid_col_i, MAZE_SIZE); // wall height
-            float shear_interp = bilinearInterpolationFull(ctrl_point_params, 4, grid_row_i, grid_col_i, MAZE_SIZE);  // wall shear
+            float width = bilinearInterpolationFull(ctrl_point_params, 2, grid_row_i, grid_col_i, MAZE_SIZE);   // wall width
+            float height = bilinearInterpolationFull(ctrl_point_params, 3, grid_row_i, grid_col_i, MAZE_SIZE);  // wall height
+            float shear_x = bilinearInterpolationFull(ctrl_point_params, 4, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
+            float shear_y = bilinearInterpolationFull(ctrl_point_params, 5, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
 
             // Get origin coordinates of wall
-            float x_origin = grid_col_i*wallSpaceX;
-            float y_origin = grid_row_i*wallSpaceY;
-
-            // float x_origin;
-            // float y_origin;
-            // absDistInterp_TEMP(ctrl_point_params, x_origin, y_origin, grid_row_i, grid_col_i, MAZE_SIZE);
+            float x_origin = grid_col_i * wallSpaceX;
+            float y_origin = grid_row_i * wallSpaceY;
 
             // Create wall vertices
-            std::vector<cv::Point2f> quad_vertices_raw = computeQuadVertices(x_origin, y_origin, width_interp, height_interp, shear_interp);
+            std::vector<cv::Point2f> quad_vertices_raw = computeQuadVertices(x_origin, y_origin, width, height, shear_x, shear_y);
 
             // Apply perspective warping to vertices
             std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_raw, r_hom_mat);
 
             // // Call to dbStoreQuadParams to store parameters for debugging
-            // dbStoreQuadParams(grid_row_i, grid_col_i, width_interp, height_interp, shear_interp, x_origin, y_origin, quad_vertices_raw, quad_vertices_warped);
+            // dbStoreQuadParams(grid_row_i, grid_col_i, width, height, shear_x, shear_y, x_origin, y_origin, quad_vertices_raw, quad_vertices_warped);
 
             // Set texture image
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),

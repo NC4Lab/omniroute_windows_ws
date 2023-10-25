@@ -38,7 +38,7 @@ std::string formatCoordinatesFilePathXML(int mon_id_ind, int mode_cal_ind, std::
     return file_path;
 }
 
-int loadCoordinatesXML(cv::Mat &r_hom_mat, float (&r_ctrl_point_params)[4][5], std::string full_path, int verbose_level)
+int loadCoordinatesXML(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> &r_ctrl_point_params, std::string full_path, int verbose_level)
 {
     // Get file name from path
     std::string file_name = full_path.substr(full_path.find_last_of('/') + 1);
@@ -73,7 +73,7 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, float (&r_ctrl_point_params)[4][5], s
     }
     for (const auto &row : ctrl_point_params_vec_temp)
     {
-        if (row.size() != 5)
+        if (row.size() != 6)
         {
             ROS_ERROR("[LOAD XML] Control Point Array from XML has Wrong Number of Columns[%zu]", row.size());
             return -1;
@@ -83,7 +83,7 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, float (&r_ctrl_point_params)[4][5], s
     // Copy data from temporary array to reference array
     for (int i = 0; i < 4; i++)
     {
-        for (int j = 0; j < 5; j++)
+        for (int j = 0; j < 6; j++)
         {
             r_ctrl_point_params[i][j] = ctrl_point_params_vec_temp[i][j];
         }
@@ -170,7 +170,7 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, float (&r_ctrl_point_params)[4][5], s
     return 0;
 }
 
-void saveCoordinatesXML(cv::Mat hom_mat, float ctrl_point_params[4][5], std::string full_path)
+void saveCoordinatesXML(cv::Mat hom_mat, std::array<std::array<float, 6>, 4> ctrl_point_params, std::string full_path)
 {
     // Create an XML document object
     pugi::xml_document doc;
@@ -179,16 +179,16 @@ void saveCoordinatesXML(cv::Mat hom_mat, float ctrl_point_params[4][5], std::str
     pugi::xml_node root = doc.append_child("config");
 
     // Create a child node for storing control point positions
-    pugi::xml_node arrayNode = root.append_child("ctrl_point_params");
+    pugi::xml_node arr_node = root.append_child("ctrl_point_params");
 
     // Iterate over the rows of the 2D array 'ctrl_point_params'
     for (int i = 0; i < 4; ++i)
     {
         // Create a row element under "ctrl_point_params"
-        pugi::xml_node rowNode = arrayNode.append_child("row");
+        pugi::xml_node rowNode = arr_node.append_child("row");
 
         // Iterate over the elements in the row
-        for (int j = 0; j < 5; ++j)
+        for (int j = 0; j < 6; ++j)
         {
             // Create a cell element under the row
             pugi::xml_node cellNode = rowNode.append_child("cell");
@@ -197,14 +197,14 @@ void saveCoordinatesXML(cv::Mat hom_mat, float ctrl_point_params[4][5], std::str
     }
 
     // Create a 2D array to store the homography matrix
-    float array_2d[3][3];
+    float hom_arr_2d[3][3];
 
     // Copy data from cv::Mat homology matrix to the 2D array 'array2'
     for (int i = 0; i < 3; i++)
     {
         for (int j = 0; j < 3; j++)
         {
-            array_2d[i][j] = hom_mat.at<float>(i, j);
+            hom_arr_2d[i][j] = hom_mat.at<float>(i, j);
         }
     }
 
@@ -212,17 +212,17 @@ void saveCoordinatesXML(cv::Mat hom_mat, float ctrl_point_params[4][5], std::str
     pugi::xml_node arrayNode2 = root.append_child("hom_mat");
 
     // Iterate over the rows of the 2D array 'array2'
-    for (const auto &row : array_2d)
+    for (const auto &row : hom_arr_2d)
     {
         // Create a row element under "hom_mat"
-        pugi::xml_node rowNode = arrayNode2.append_child("row");
+        pugi::xml_node row_node = arrayNode2.append_child("row");
 
         // Iterate over the elements in the row
         for (const auto &value : row)
         {
             // Create a cell element under the row
-            pugi::xml_node cellNode = rowNode.append_child("cell");
-            cellNode.append_child(pugi::node_pcdata).set_value(std::to_string(value).c_str());
+            pugi::xml_node cell_node = row_node.append_child("cell");
+            cell_node.append_child(pugi::node_pcdata).set_value(std::to_string(value).c_str());
         }
     }
 
@@ -456,17 +456,7 @@ int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &r_img_merge_id)
     return 0;
 }
 
-std::vector<float> getArrColumn(float ctrl_point_params[4][5], int ctrl_point_params_ind)
-{
-    std::vector<float> column_vector;
-    for (int i = 0; i < 4; ++i)
-    {
-        column_vector.push_back(ctrl_point_params[i][ctrl_point_params_ind]);
-    }
-    return column_vector;
-}
-
-float bilinearInterpolation(float ctrl_point_params[4][5], int ctrl_point_params_ind, int grid_row_i, int grid_col_i, int grid_size, bool do_offset)
+float bilinearInterpolation(std::array<std::array<float, 6>, 4> ctrl_point_params, int ctrl_point_params_ind, int grid_row_i, int grid_col_i, int grid_size, bool do_offset)
 {
     // Get control point values that will be used as the reference corners for interpolation.
     // Note: Only 3 control points are used in this implimentation.
@@ -497,7 +487,7 @@ float bilinearInterpolation(float ctrl_point_params[4][5], int ctrl_point_params
     return interp_2d;
 }
 
-float bilinearInterpolationFull(float ctrl_point_params[4][5], int ctrl_point_params_ind, int grid_row_i, int grid_col_i, int grid_size)
+float bilinearInterpolationFull(std::array<std::array<float, 6>, 4> ctrl_point_params, int ctrl_point_params_ind, int grid_row_i, int grid_col_i, int grid_size)
 {
     // Adjust the control point values based on the new mapping.
     float A = ctrl_point_params[3][ctrl_point_params_ind]; // Corresponds to grid point row[0] col[0]
@@ -519,18 +509,37 @@ float bilinearInterpolationFull(float ctrl_point_params[4][5], int ctrl_point_pa
     return interp_val;
 }
 
-std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, float height, float shear_amount)
+// std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, float height, float shear_x, float shear_y)
+// {
+//     std::vector<cv::Point2f> quad_vertices_vec;
+
+//     // Top-left vertex after applying shear
+//     quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_x, y0 + height));
+
+//     // Top-right vertex after applying shear
+//     quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_x + width, y0 + height));
+
+//     // Bottom-right vertex
+//     quad_vertices_vec.push_back(cv::Point2f(x0 + width, y0));
+
+//     // Bottom-left vertex
+//     quad_vertices_vec.push_back(cv::Point2f(x0, y0));
+
+//     return quad_vertices_vec;
+// }
+
+std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, float height, float shear_x, float shear_y)
 {
     std::vector<cv::Point2f> quad_vertices_vec;
 
     // Top-left vertex after applying shear
-    quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_amount, y0 + height));
+    quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_x, y0 + height));
 
     // Top-right vertex after applying shear
-    quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_amount + width, y0 + height));
+    quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_x + width, y0 + height + width * shear_y));
 
     // Bottom-right vertex
-    quad_vertices_vec.push_back(cv::Point2f(x0 + width, y0));
+    quad_vertices_vec.push_back(cv::Point2f(x0 + width, y0 + width * shear_y));
 
     // Bottom-left vertex
     quad_vertices_vec.push_back(cv::Point2f(x0, y0));
@@ -538,12 +547,12 @@ std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, fl
     return quad_vertices_vec;
 }
 
-void computeHomography(cv::Mat &r_hom_mat, float ctrl_point_params[4][5])
+void computeHomography(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> ctrl_point_params)
 {
     // Calculate the vertices for the control point boundary dimensions.
     // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
     std::vector<cv::Point2f> origin_plane_vertices;
-    origin_plane_vertices = computeQuadVertices(0.0f, 0.0f, originPlaneWidth, originPlaneHeight, 0);
+    origin_plane_vertices = computeQuadVertices(0.0f, 0.0f, originPlaneWidth, originPlaneHeight, 0.0f, 0.0f);
 
     // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
     // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
@@ -586,12 +595,12 @@ std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f> quad_ve
     return quad_vertices_vec;
 }
 
-void updateCalParams(float (&r_ctrl_point_params)[4][5], int mode_cal_ind)
+void updateCalParams(std::array<std::array<float, 6>, 4> &r_ctrl_point_params, int mode_cal_ind)
 {
     // Copy the default array to the dynamic one
     for (int i = 0; i < 4; ++i)
     {
-        for (int j = 0; j < 5; ++j)
+        for (int j = 0; j < 6; ++j)
         {
             r_ctrl_point_params[i][j] = CTRL_POINT_PARAMS[i][j];
         }
@@ -615,10 +624,10 @@ void updateCalParams(float (&r_ctrl_point_params)[4][5], int mode_cal_ind)
     }
 }
 
-void dbLogCtrlPointParams(float ctrl_point_params[4][5])
+void dbLogCtrlPointParams(std::array<std::array<float, 6>, 4> ctrl_point_params)
 {
     ROS_INFO("Control Point Parameters");
-    ROS_INFO("CP  |  X-Dist  |  Y-Dist  |  W-Width  |  W-Height  |  Shear");
+    ROS_INFO("CP  |  X-Org   |  Y-Org   |    Width  |    Height  |  ShearX |  ShearY  |");
     ROS_INFO("---------------------------------------------------------");
     for (int i = 0; i < 4; ++i)
     {
@@ -628,16 +637,18 @@ void dbLogCtrlPointParams(float ctrl_point_params[4][5])
                  ctrl_point_params[i][1],
                  ctrl_point_params[i][2],
                  ctrl_point_params[i][3],
-                 ctrl_point_params[i][4]);
+                 ctrl_point_params[i][4],
+                 ctrl_point_params[i][5]);
     }
     ROS_INFO("---------------------------------------------------------");
 }
 
 void dbStoreQuadParams(float grid_row_i, float grid_col_i,
-                      float quad_width, float quad_height,
-                      float quad_shear, float quad_origin_x, float quad_origin_y,
-                      const std::vector<cv::Point2f> &quad_vertices_raw,
-                      const std::vector<cv::Point2f> &quad_vertices_warped)
+                       float quad_width, float quad_height,
+                       float quad_shear_x, float quad_shear_y,
+                       float quad_origin_x, float quad_origin_y,
+                       const std::vector<cv::Point2f> &quad_vertices_raw,
+                       const std::vector<cv::Point2f> &quad_vertices_warped)
 {
     // Cast float indices to int
     int row = static_cast<int>(grid_row_i);
@@ -646,7 +657,8 @@ void dbStoreQuadParams(float grid_row_i, float grid_col_i,
     // Store the parameters in the DebugParams struct
     dbParams.quad_width[row][col] = quad_width;
     dbParams.quad_height[row][col] = quad_height;
-    dbParams.quad_shear[row][col] = quad_shear;
+    dbParams.quad_shear_x[row][col] = quad_shear_x;
+    dbParams.quad_shear_y[row][col] = quad_shear_y;
     dbParams.quad_origin_x[row][col] = quad_origin_x;
     dbParams.quad_origin_y[row][col] = quad_origin_y;
     dbParams.quad_vertices_raw[row][col] = quad_vertices_raw;
@@ -660,7 +672,7 @@ void dbLogQuadParams(std::string param_str)
     {
 
         ROS_INFO("Wall Parameters for Each Cell in Maze");
-        ROS_INFO(" [Row,Col]| X-Org | Y-Org  | Width  | Height  | Shear |");
+        ROS_INFO(" [Row,Col]| X-Org | Y-Org  | Width  | Height  | ShearX | ShearY |");
         ROS_INFO("-----------------------------------------------------------------------------");
 
         // Loop through each row and column in the maze
@@ -668,13 +680,14 @@ void dbLogQuadParams(std::string param_str)
         {
             for (int col = 0; col < MAZE_SIZE; ++col)
             {
-                ROS_INFO(" [%d, %d]  |  %4.2f  |  %4.2f  |  %4.2f  |  %4.2f  |  %4.2f  |",
+                ROS_INFO(" [%d, %d]  |  %4.2f  |  %4.2f  |  %4.2f  |  %4.2f  |  %4.2f  |  %4.2f  |",
                          row, col,
                          dbParams.quad_origin_x[row][col],
                          dbParams.quad_origin_y[row][col],
                          dbParams.quad_width[row][col],
                          dbParams.quad_height[row][col],
-                         dbParams.quad_shear[row][col]);
+                         dbParams.quad_shear_x[row][col],
+                         dbParams.quad_shear_y[row][col]);
             }
         }
 

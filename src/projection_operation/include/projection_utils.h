@@ -45,6 +45,7 @@
 #include <iostream>
 #include <algorithm>
 #include <limits>
+#include <array>
 #include <vector>
 #include <string>
 
@@ -211,11 +212,12 @@ const float wall_height_ndc = wallSpaceY / (1 + std::sqrt(2));       // Wall hei
  *   - [1]: Y-coordinate in NDC
  *   - [2]: Wall width in NDC
  *   - [3]: Wall height in NDC
- *   - [4]: Shearing factor
+ *   - [4]: Horizontal shearing factor
+ *   - [5]: Vertical shearing factor
  *
  * @note
  * - Control Point Parameters (Example):
- *    CP  |  X-Dist  |  Y-Dist  |  W-Width  |  W-Height  |  Shear
+ *    CP  |  X-Dist  |  Y-Dist  |    Width  |   Height  |  Shear X  |  Shear Y  |
  *    ---------------------------------------------------------
  *    [0] |   -0.15  |    0.30  |    0.06   |    0.12   |    0.00
  *    [1] |    0.15  |    0.30  |    0.06   |    0.12   |    0.00
@@ -242,24 +244,24 @@ const float wall_height_ndc = wallSpaceY / (1 + std::sqrt(2));       // Wall hei
  */
 const float cp_x = originPlaneWidth / 2;  // starting X-coordinate in NDC coordinates
 const float cp_y = originPlaneHeight / 2; // starting Y-coordinate in NDC coordinates
-extern const float CTRL_POINT_PARAMS[4][5] = {
-    // Default control point parameters
-    {-cp_x, +cp_y, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
-    {+cp_x, +cp_y, wall_width_ndc, wall_height_ndc, 0.0f}, // top-right control point
-    {+cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f}, // bottom-right control point
-    {-cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f}  // bottom-left control point
-};
+extern const std::array<std::array<float, 6>, 4> CTRL_POINT_PARAMS = {{
+    {{-cp_x, +cp_y, wall_width_ndc, wall_height_ndc, 0.0f, 0.0f}}, // top-left control point
+    {{+cp_x, +cp_y, wall_width_ndc, wall_height_ndc, 0.0f, 0.0f}}, // top-right control point
+    {{+cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f, 0.0f}}, // bottom-right control point
+    {{-cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f, 0.0f}}  // bottom-left control point
+}};
 
 /**
  * @brief Struct to hold debugging parameters for the maze.
  */
 struct DebugParams
 {
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_width;                              // Width interpolation values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_height;                             // Height interpolation values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_shear;                              // Shear interpolation values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_origin_x;                                  // X interpolation values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_origin_y;                                  // Y interpolation values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_width;                              // Width values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_height;                             // Height values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_shear_x;                            // Shear x values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_shear_y;                            // Shear y values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_origin_x;                           // X values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_origin_y;                           // Y values
     std::array<std::array<std::vector<cv::Point2f>, MAZE_SIZE>, MAZE_SIZE> quad_vertices_raw;    // Wall quad vertices pre-warp
     std::array<std::array<std::vector<cv::Point2f>, MAZE_SIZE>, MAZE_SIZE> quad_vertices_warped; // Wall quad vertices warped
 };
@@ -303,13 +305,13 @@ std::string formatCoordinatesFilePathXML(int, int, std::string);
  * @note Uses pugiXML for XML parsing.
  *
  * @param[out] r_hom_mat Reference to the homography matrix to populate.
- * @param[out] r_ctrl_point_params Reference to a 4x5 array containing control point parameters (x, y, width, height, shear).
+ * @param[out] r_ctrl_point_params Reference to a 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
  * @param full_path Path to the XML file.
  * @param verbose_level Level of verbosity for printing loaded data (0:nothing, 1:file name, 2:control point parameters, 3:homography matrix).
  *
  * @return 0 on successful execution, -1 on failure.
  */
-int loadCoordinatesXML(cv::Mat &, float (&)[4][5], std::string, int = 0);
+int loadCoordinatesXML(cv::Mat &, std::array<std::array<float, 6>, 4> &, std::string, int = 0);
 
 /**
  * @brief Saves the calibration parameter coordinates and homography matrix to an XML file.
@@ -342,10 +344,10 @@ int loadCoordinatesXML(cv::Mat &, float (&)[4][5], std::string, int = 0);
  * @endcode
  *
  * @param hom_mat The homography matrix used to warp perspective.
- * @param ctrl_point_params A 4x5 array containing control point parameters (x, y, width, height, shear).
+ * @param ctrl_point_params A 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
  * @param full_path Path to the XML file.
  */
-void saveCoordinatesXML(cv::Mat, float[4][5], std::string);
+void saveCoordinatesXML(cv::Mat, std::array<std::array<float, 6>, 4>, std::string);
 
 /**
  * @brief Loads images from specified file paths and stores their IDs in a reference vector.
@@ -391,9 +393,9 @@ int mergeImages(ILuint, ILuint, ILuint &);
  * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
  *
  * This function performs bilinear interpolation based on a point's position (grid_row_i, grid_col_i)
- * within a 2D grid. The grid corners are defined by a set of 4x5 control point parameters.
+ * within a 2D grid. The grid corners are defined by a set of 4x6 control point parameters.
  *
- * @param ctrl_point_params A 4x5 array containing control point parameters (x, y, width, height, shear).
+ * @param ctrl_point_params A 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
  * @param ctrl_point_params_ind Index of the specific control point parameter to interpolate [0, 4].
  * @param grid_row_i Index of the point along the first axis (rows) within the grid.
  * @param grid_col_i Index of the point along the second axis (columns) within the grid.
@@ -402,16 +404,16 @@ int mergeImages(ILuint, ILuint, ILuint &);
  *
  * @return float The interpolated value calculated based on the specified control point parameters and grid position.
  */
-float bilinearInterpolation(float[4][5], int, int, int, int, bool);
+float bilinearInterpolation(std::array<std::array<float, 6>, 4>, int, int, int, int, bool);
 
 /**
  * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
  *
  * This function performs bilinear interpolation based on a point's position (grid_row_i, grid_col_i)
- * within a 2D grid. The grid corners are defined by a set of 4x5 control point parameters.
+ * within a 2D grid. The grid corners are defined by a set of 4x6 control point parameters.
  *
- * @param ctrl_point_params 4x5 array of control point parameters. Each row corresponds to one control point
- *                          and contains five parameters for that point (x, y, width, height, shear).
+ * @param ctrl_point_params 4x6 array of control point parameters. Each row corresponds to one control point
+ *                          and contains five parameters for that point (x, y, width, height, shear x, shear y).
  * @param ctrl_point_params_ind Index of the specific control point parameter to interpolate [0, 4].
  * @param grid_row_i Index of the point along the first axis (rows) within the grid.
  * @param grid_col_i Index of the point along the second axis (columns) within the grid.
@@ -419,7 +421,7 @@ float bilinearInterpolation(float[4][5], int, int, int, int, bool);
  *
  * @return float The interpolated value calculated based on the specified control point parameters and grid position.
  */
-float bilinearInterpolationFull(float[4][5], int, int, int, int);
+float bilinearInterpolationFull(std::array<std::array<float, 6>, 4>, int, int, int, int);
 
 /**
  * @brief Creates a vector of points representing a quadrilateral with shear.
@@ -433,11 +435,12 @@ float bilinearInterpolationFull(float[4][5], int, int, int, int);
  * @param y0 The y-coordinate of the top-left corner of the quadrilateral in NDC.
  * @param width The width of the quadrilateral in NDC.
  * @param height The height of the quadrilateral in NDC.
- * @param shear_amount The amount of shear to apply to the quadrilateral.
+ * @param shear_x The amount of horizontal shear to apply to the quadrilateral.
+ * @param shear_y The amount of vertical shear to apply to the quadrilateral.
  *
  * @return std::vector<cv::Point2f> A vector of 4 points representing the corners of the rectangle, in NDC.
  */
-std::vector<cv::Point2f> computeQuadVertices(float, float, float, float, float);
+std::vector<cv::Point2f> computeQuadVertices(float, float, float, float, float, float);
 
 /**
  * @brief Computes the global homography matrix based on overall control point parameters.
@@ -454,9 +457,9 @@ std::vector<cv::Point2f> computeQuadVertices(float, float, float, float, float);
  * @note This function utilizes the OpenCV library to compute the homography matrix.
  *
  * @param r_hom_mat Reference to the cv::Mat object where the computed homography matrix will be stored.
- * @param ctrl_point_params A 4x5 array containing control point parameters (x, y, width, height, shear).
+ * @param ctrl_point_params A 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
  */
-void computeHomography(cv::Mat &, float[4][5]);
+void computeHomography(cv::Mat &, std::array<std::array<float, 6>, 4>);
 
 /**
  * @brief Computes the perspective warp of a given set of quadrilateral vertices using a homography matrix.
@@ -496,41 +499,39 @@ std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f>, cv::Ma
 /**
  * @brief Used to reset control point parameter list.
  *
- * @param r_ctrl_point_params Reference to the 4x5 array of control point parameters.
+ * @param r_ctrl_point_params Reference to the 4x6 array of control point parameters.
  * @param mode_cal_ind Index of the active calibration mode.
  */
-void updateCalParams(float (&)[4][5], int);
+void updateCalParams(std::array<std::array<float, 6>, 4> &, int);
 
 /**
  * @brief Prints the control point parameters to the ROS log.
  *
- * @param ctrl_point_params 4x5 array of control point parameters.
+ * @param ctrl_point_params 4x6 array of control point parameters.
  */
-void dbLogCtrlPointParams(float ctrl_point_params[4][5]);
+void dbLogCtrlPointParams(std::array<std::array<float, 6>, 4>);
 
 /**
- * @brief Function to store wall parameters for debugging.
+ * @brief Function to store quadrilateral parameters for debugging.
  *
- * @param dbParams DebugParams struct to hold debugging parameters.
- * @param grid_row_i Row index of the wall.
- * @param grid_col_i Column index of the wall.
- * @param quad_width Interpolated width of the wall.
- * @param quad_height Interpolated height of the wall.
- * @param quad_shear Interpolated shear of the wall.
- * @param quad_origin_x Interpolated x-coordinate of the wall.
- * @param quad_origin_y Interpolated y-coordinate of the wall.
+ * @param grid_row_i Grid row index.
+ * @param grid_col_i Grid column index.
+ * @param quad_width Width of the quad.
+ * @param quad_height Height of the quad.
+ * @param quad_shear_x shear of the quad.
+ * @param quad_shear_x shear of the quad.
+ * @param quad_origin_x x-coordinate of the quad.
+ * @param quad_origin_y y-coordinate of the quad.
  * @param quad_vertices_raw Vector of unwarped quad vertices.
  * @param quad_vertices_warped Vector of warped quad vertices.
  */
-void dbStoreQuadParams(float grid_row_i, float grid_col_i,
-                      float quad_width, float quad_height,
-                      float quad_shear, float quad_origin_x, float quad_origin_y,
-                      const std::vector<cv::Point2f> &quad_vertices_raw,
-                      const std::vector<cv::Point2f> &quad_vertices_warped);
+void dbStoreQuadParams(float, float, float, float, float, float, float, float,
+                       const std::vector<cv::Point2f> &quad_vertices_raw,
+                       const std::vector<cv::Point2f> &quad_vertices_warped);
 
 /**
  * @brief Function to log wall parameters for debugging.
- * 
+ *
  * @param param_str Srting specifying what to print.
  *
  * This function logs the parameters stored in the global DebugParams

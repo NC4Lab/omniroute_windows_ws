@@ -178,7 +178,7 @@ void drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
 
 int drawWalls(
     cv::Mat &r_hom_mat,
-    float ctrl_point_params[4][5],
+    std::array<std::array<float, 6>, 4> ctrl_point_params,
     int proj_i,
     GLFWwindow *p_window_id,
     GLuint fbo_texture_id,

@@ -15,7 +15,7 @@
 // ================================================== VARIABLES ==================================================
 
 // Control point parameter array
-float ctrlPointParams[4][5];
+std::array<std::array<float, 6>, 4> ctrlPointParams;
 
 // The homography matrix used to warp perspective.
 cv::Mat homMat = cv::Mat::eye(3, 3, CV_32F);
@@ -165,7 +165,7 @@ void drawQuadImage(std::vector<cv::Point2f>);
  *
  * @return Returns 0 on success, -1 otherwise.
  */
-int drawWalls(cv::Mat &, float[4][5], int, GLFWwindow *, GLuint, std::vector<ILuint> &);
+int drawWalls(cv::Mat &, std::array<std::array<float, 6>, 4>, int, GLFWwindow *, GLuint, std::vector<ILuint> &);
 
 /**
  * @brief Changes the display mode and monitor of the application window.

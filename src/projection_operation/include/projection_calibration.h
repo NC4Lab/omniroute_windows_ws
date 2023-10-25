@@ -18,7 +18,7 @@
 std::string windowName = "Projection Calibration";
 
 // Dynamic control point parameter arrays
-float ctrlPointParams[4][5]; 
+std::array<std::array<float, 6>, 4> ctrlPointParams;
 
 // Other variables related to control points
 int cpSelectedInd = 0;
@@ -226,7 +226,7 @@ int drawQuadImage(std::vector<cv::Point2f>);
  * - Bottom-Left:   NDC (-1, -1),   Control Point [3],  Grid Index [0][0]
  * 
  * @param r_hom_mat The 3x3 homography matrix used for perspective warping of the walls.
- * @param ctrl_point_params A 4x5 array containing control point parameters (x, y, width, height, shear).
+ * @param ctrl_point_params A 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
  * @param fbo_texture_id OpenGL framebuffer object's texture ID.
  * @param img_wall_id DevIL image ID for the base wall image.
  * @param img_mode_mon_id DevIL image ID for the monitor mode image.
@@ -235,7 +235,7 @@ int drawQuadImage(std::vector<cv::Point2f>);
  *
  * @return Integer status code: 0 if successful, -1 if an error occurred.
  */
-int drawWalls(cv::Mat &, float[4][5], GLuint, ILuint, ILuint, ILuint, ILuint);
+int drawWalls(cv::Mat &, std::array<std::array<float, 6>, 4>, GLuint, ILuint, ILuint, ILuint, ILuint);
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.
