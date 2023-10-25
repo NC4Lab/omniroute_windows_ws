@@ -199,30 +199,30 @@ int drawWalls(
         }
 
         // Iterate through the maze grid
-        for (float wall_row_i = 0; wall_row_i < MAZE_SIZE; wall_row_i++)
+        for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++)
         {
             // Iterate through each cell in the maze row
-            for (float wall_col_i = 0; wall_col_i < MAZE_SIZE; wall_col_i++)
+            for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++)
             {
                 // // Get the image index for the current wall
-                // int wall_row = MAZE_SIZE - 1 - (int)wall_col_i;
-                // int wall_col = (int)wall_row_i;
+                // int wall_row = MAZE_SIZE - 1 - (int)grid_col_i;
+                // int wall_col = (int)grid_row_i;
                 // int img_ind = IMG_PROJ_MAP[proj_i][wall_row][wall_col][cal_i];
 
                 // // Bind image
                 // ilBindImage(r_image_id_vec[img_ind]); // show test pattern
 
                 // // Calculate width, height and shear for the current wall
-                // float width_val = bilinearInterpolation(ctrl_point_params, 2, wall_row_i, wall_col_i, MAZE_SIZE, true);
-                // float height_val = bilinearInterpolation(ctrl_point_params, 3, wall_row_i, wall_col_i, MAZE_SIZE, true);
-                // float shear_val = bilinearInterpolation(ctrl_point_params, 4, wall_row_i, wall_col_i, MAZE_SIZE, true);
+                // float width_val = bilinearInterpolation(ctrl_point_params, 2, grid_row_i, grid_col_i, MAZE_SIZE, true);
+                // float height_val = bilinearInterpolation(ctrl_point_params, 3, grid_row_i, grid_col_i, MAZE_SIZE, true);
+                // float shear_val = bilinearInterpolation(ctrl_point_params, 4, grid_row_i, grid_col_i, MAZE_SIZE, true);
 
                 // // Create wall vertices
                 // std::vector<cv::Point2f> quad_vertices_vec = computeQuadVertices(0.0f, 0.0f, width_val, height_val, shear_val);
 
                 // // Calculate the interpolated wall spacings for this grid cell
-                // float x_translate = bilinearInterpolation(ctrl_point_params, 0, wall_row_i, wall_col_i, MAZE_SIZE, false);
-                // float y_translate = bilinearInterpolation(ctrl_point_params, 1, wall_row_i, wall_col_i, MAZE_SIZE, false);
+                // float x_translate = bilinearInterpolation(ctrl_point_params, 0, grid_row_i, grid_col_i, MAZE_SIZE, false);
+                // float y_translate = bilinearInterpolation(ctrl_point_params, 1, grid_row_i, grid_col_i, MAZE_SIZE, false);
 
                 // // Apply perspective warping to vertices
                 // std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_vec, r_hom_mat, x_translate, y_translate);

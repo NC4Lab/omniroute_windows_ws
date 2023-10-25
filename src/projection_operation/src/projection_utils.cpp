@@ -519,43 +519,6 @@ float bilinearInterpolationFull(float ctrl_point_params[4][5], int ctrl_point_pa
     return interp_val;
 }
 
-void absDistInterp_TEMP(float ctrl_point_params[4][5], float &interp_2d_x, float &interp_2d_y, float grid_row_i, float grid_col_i, int grid_size)
-{
-    int _xi_ = 0; // Index for x coordinate in ctrl_point_params
-    int _yi_ = 1; // Index for y coordinate in ctrl_point_params
-
-    // Calculate normalized spacings for each control point
-    float x_cp0 = (fabs(ctrl_point_params[0][_xi_]) + fabs(ctrl_point_params[1][_xi_])) / static_cast<float>(grid_size - 1); // x: cp[0] + cp[1]
-    float y_cp0 = (fabs(ctrl_point_params[0][_yi_]) + fabs(ctrl_point_params[3][_yi_])) / static_cast<float>(grid_size - 1); // y: cp[0] + cp[3]
-
-    float x_cp1 = (fabs(ctrl_point_params[0][_xi_]) + fabs(ctrl_point_params[1][_xi_])) / static_cast<float>(grid_size - 1); // x: cp[0] + cp[1]
-    float y_cp1 = (fabs(ctrl_point_params[0][_yi_]) + fabs(ctrl_point_params[3][_yi_])) / static_cast<float>(grid_size - 1); // y: cp[0] + cp[3]
-
-    float x_cp2 = (fabs(ctrl_point_params[0][_xi_]) + fabs(ctrl_point_params[1][_xi_])) / static_cast<float>(grid_size - 1); // x: cp[0] + cp[1]
-    float y_cp2 = (fabs(ctrl_point_params[0][_yi_]) + fabs(ctrl_point_params[3][_yi_])) / static_cast<float>(grid_size - 1); // y: cp[0] + cp[3]
-
-    float x_cp3 = (fabs(ctrl_point_params[0][_xi_]) + fabs(ctrl_point_params[1][_xi_])) / static_cast<float>(grid_size - 1); // x: cp[0] + cp[1]
-    float y_cp3 = (fabs(ctrl_point_params[0][_yi_]) + fabs(ctrl_point_params[3][_yi_])) / static_cast<float>(grid_size - 1); // y: cp[0] + cp[3]
-
-    // // Normalize indices
-    float norm_grid_row_i = static_cast<float>(grid_row_i) / (grid_size - 1);
-    float norm_grid_col_i = static_cast<float>(grid_col_i) / (grid_size - 1);
-
-    // Perform 1D linear interpolation along the row and column for the x axis
-    float interp_1d_row_x = norm_grid_row_i * (x_cp2 - x_cp0);
-    float interp_1d_col_x = norm_grid_col_i * (x_cp1 - x_cp0);
-
-    // Combine the 1D interpolated values to compute the final 2D interpolated value for x
-    interp_2d_x = grid_row_i * (x_cp0 + interp_1d_row_x + interp_1d_col_x);
-
-    // Perform 1D linear interpolation along the row and column for the y axis
-    float interp_1d_row_y = norm_grid_row_i * (y_cp2 - y_cp0);
-    float interp_1d_col_y = norm_grid_col_i * (y_cp1 - y_cp0);
-
-    // Combine the 1D interpolated values to compute the final 2D interpolated value for y
-    interp_2d_y = grid_col_i * (y_cp0 + interp_1d_row_y + interp_1d_col_y);
-}
-
 std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, float height, float shear_amount)
 {
     std::vector<cv::Point2f> quad_vertices_vec;
@@ -577,15 +540,6 @@ std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, fl
 
 void computeHomography(cv::Mat &r_hom_mat, float ctrl_point_params[4][5])
 {
-    // // Compute the width and height of the rectangular region that contains all control points (e.g., Boundary Dimensions).
-    // float origin_plane_boundary_width = fabs(ctrl_point_params[0][0]) + ctrl_point_params[1][0];
-    // float origin_plane_boundary_height = ctrl_point_params[0][1] + fabs(ctrl_point_params[3][1]);
-
-    // // Calculate the vertices for the control point boundary dimensions.
-    // // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
-    // std::vector<cv::Point2f> origin_plane_vertices;
-    // origin_plane_vertices = computeQuadVertices(0.0f, 0.0f, origin_plane_boundary_width, origin_plane_boundary_height, 0);
-
     // Calculate the vertices for the control point boundary dimensions.
     // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
     std::vector<cv::Point2f> origin_plane_vertices;
@@ -679,27 +633,27 @@ void dbLogCtrlPointParams(float ctrl_point_params[4][5])
     ROS_INFO("---------------------------------------------------------");
 }
 
-void dbStoreWallParam(float wall_row_i, float wall_col_i,
-                      float width_wall, float height_wall,
-                      float shear_wall, float x_wall, float y_wall,
+void dbStoreQuadParams(float grid_row_i, float grid_col_i,
+                      float quad_width, float quad_height,
+                      float quad_shear, float quad_origin_x, float quad_origin_y,
                       const std::vector<cv::Point2f> &quad_vertices_raw,
                       const std::vector<cv::Point2f> &quad_vertices_warped)
 {
     // Cast float indices to int
-    int row = static_cast<int>(wall_row_i);
-    int col = static_cast<int>(wall_col_i);
+    int row = static_cast<int>(grid_row_i);
+    int col = static_cast<int>(grid_col_i);
 
     // Store the parameters in the DebugParams struct
-    dbParams.width_wall[row][col] = width_wall;
-    dbParams.height_wall[row][col] = height_wall;
-    dbParams.shear_wall[row][col] = shear_wall;
-    dbParams.x_wall[row][col] = x_wall;
-    dbParams.y_wall[row][col] = y_wall;
+    dbParams.quad_width[row][col] = quad_width;
+    dbParams.quad_height[row][col] = quad_height;
+    dbParams.quad_shear[row][col] = quad_shear;
+    dbParams.quad_origin_x[row][col] = quad_origin_x;
+    dbParams.quad_origin_y[row][col] = quad_origin_y;
     dbParams.quad_vertices_raw[row][col] = quad_vertices_raw;
     dbParams.quad_vertices_warped[row][col] = quad_vertices_warped;
 }
 
-void dbLogWallParam(std::string param_str)
+void dbLogQuadParams(std::string param_str)
 {
 
     if (param_str == "wall_params")
@@ -716,11 +670,11 @@ void dbLogWallParam(std::string param_str)
             {
                 ROS_INFO(" [%d, %d]  |  %4.2f  |  %4.2f  |  %4.2f  |  %4.2f  |  %4.2f  |",
                          row, col,
-                         dbParams.x_wall[row][col],
-                         dbParams.y_wall[row][col],
-                         dbParams.width_wall[row][col],
-                         dbParams.height_wall[row][col],
-                         dbParams.shear_wall[row][col]);
+                         dbParams.quad_origin_x[row][col],
+                         dbParams.quad_origin_y[row][col],
+                         dbParams.quad_width[row][col],
+                         dbParams.quad_height[row][col],
+                         dbParams.quad_shear[row][col]);
             }
         }
 

@@ -437,17 +437,17 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
     // dbLogCtrlPointParams(ctrl_point_params);
 
     // Iterate through the maze grid rows
-    for (float wall_row_i = 0; wall_row_i < MAZE_SIZE; wall_row_i++) // image bottom to top
+    for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++) // image bottom to top
     {
         // Iterate through each column in the maze row
-        for (float wall_col_i = 0; wall_col_i < MAZE_SIZE; wall_col_i++) // image left to right
+        for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++) // image left to right
         {
             //  Create merged image for the wall corresponding to the selected control point
             if (
-                (cpSelectedInd == 0 && wall_row_i == MAZE_SIZE - 1 && wall_col_i == 0) ||
-                (cpSelectedInd == 1 && wall_row_i == MAZE_SIZE - 1 && wall_col_i == MAZE_SIZE - 1) ||
-                (cpSelectedInd == 2 && wall_row_i == 0 && wall_col_i == MAZE_SIZE - 1) ||
-                (cpSelectedInd == 3 && wall_row_i == 0 && wall_col_i == 0))
+                (cpSelectedInd == 0 && grid_row_i == MAZE_SIZE - 1 && grid_col_i == 0) ||
+                (cpSelectedInd == 1 && grid_row_i == MAZE_SIZE - 1 && grid_col_i == MAZE_SIZE - 1) ||
+                (cpSelectedInd == 2 && grid_row_i == 0 && grid_col_i == MAZE_SIZE - 1) ||
+                (cpSelectedInd == 3 && grid_row_i == 0 && grid_col_i == 0))
             {
                 ILuint img_merge1_id;
                 ILuint img_merge2_id;
@@ -475,17 +475,17 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
                 return -1;
 
             // Calculate width, height and shear for the current wall
-            float width_interp = bilinearInterpolationFull(ctrl_point_params, 2, wall_row_i, wall_col_i, MAZE_SIZE);  // wall width
-            float height_interp = bilinearInterpolationFull(ctrl_point_params, 3, wall_row_i, wall_col_i, MAZE_SIZE); // wall height
-            float shear_interp = bilinearInterpolationFull(ctrl_point_params, 4, wall_row_i, wall_col_i, MAZE_SIZE);  // wall shear
+            float width_interp = bilinearInterpolationFull(ctrl_point_params, 2, grid_row_i, grid_col_i, MAZE_SIZE);  // wall width
+            float height_interp = bilinearInterpolationFull(ctrl_point_params, 3, grid_row_i, grid_col_i, MAZE_SIZE); // wall height
+            float shear_interp = bilinearInterpolationFull(ctrl_point_params, 4, grid_row_i, grid_col_i, MAZE_SIZE);  // wall shear
 
             // Get origin coordinates of wall
-            float x_origin = wall_col_i*wallSpaceX;
-            float y_origin = wall_row_i*wallSpaceY;
+            float x_origin = grid_col_i*wallSpaceX;
+            float y_origin = grid_row_i*wallSpaceY;
 
             // float x_origin;
             // float y_origin;
-            // absDistInterp_TEMP(ctrl_point_params, x_origin, y_origin, wall_row_i, wall_col_i, MAZE_SIZE);
+            // absDistInterp_TEMP(ctrl_point_params, x_origin, y_origin, grid_row_i, grid_col_i, MAZE_SIZE);
 
             // Create wall vertices
             std::vector<cv::Point2f> quad_vertices_raw = computeQuadVertices(x_origin, y_origin, width_interp, height_interp, shear_interp);
@@ -493,8 +493,8 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
             // Apply perspective warping to vertices
             std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_raw, r_hom_mat);
 
-            // // Call to dbStoreWallParam to store parameters for debugging
-            // dbStoreWallParam(wall_row_i, wall_col_i, width_interp, height_interp, shear_interp, x_origin, y_origin, quad_vertices_raw, quad_vertices_warped);
+            // // Call to dbStoreQuadParams to store parameters for debugging
+            // dbStoreQuadParams(grid_row_i, grid_col_i, width_interp, height_interp, shear_interp, x_origin, y_origin, quad_vertices_raw, quad_vertices_warped);
 
             // Set texture image
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
@@ -511,7 +511,7 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
     }
 
     // // Print wall params
-    // dbLogWallParam("quad_vec");
+    // dbLogQuadParams("quad_vec");
 
     // Disable OpenGL texture mapping
     glDisable(GL_TEXTURE_2D);

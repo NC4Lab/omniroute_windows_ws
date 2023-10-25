@@ -214,7 +214,7 @@ const float wall_height_ndc = wallSpaceY / (1 + std::sqrt(2));       // Wall hei
  *   - [4]: Shearing factor
  *
  * @note
- * - Control Point Parameters:
+ * - Control Point Parameters (Example):
  *    CP  |  X-Dist  |  Y-Dist  |  W-Width  |  W-Height  |  Shear
  *    ---------------------------------------------------------
  *    [0] |   -0.15  |    0.30  |    0.06   |    0.12   |    0.00
@@ -255,11 +255,11 @@ extern const float CTRL_POINT_PARAMS[4][5] = {
  */
 struct DebugParams
 {
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> width_wall;                              // Width interpolation values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> height_wall;                             // Height interpolation values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> shear_wall;                              // Shear interpolation values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> x_wall;                                  // X interpolation values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> y_wall;                                  // Y interpolation values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_width;                              // Width interpolation values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_height;                             // Height interpolation values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_shear;                              // Shear interpolation values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_origin_x;                                  // X interpolation values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_origin_y;                                  // Y interpolation values
     std::array<std::array<std::vector<cv::Point2f>, MAZE_SIZE>, MAZE_SIZE> quad_vertices_raw;    // Wall quad vertices pre-warp
     std::array<std::array<std::vector<cv::Point2f>, MAZE_SIZE>, MAZE_SIZE> quad_vertices_warped; // Wall quad vertices warped
 };
@@ -422,11 +422,6 @@ float bilinearInterpolation(float[4][5], int, int, int, int, bool);
 float bilinearInterpolationFull(float[4][5], int, int, int, int);
 
 /**
- * @brief No longer in use
- */
-void absDistInterp_TEMP(float ctrl_point_params[4][5], float &x_translate, float &y_translate, float wall_row_i, float wall_col_i, int grid_size);
-
-/**
  * @brief Creates a vector of points representing a quadrilateral with shear.
  *
  * This function generates a quadrilateral's corner points starting from the top-left corner
@@ -517,19 +512,19 @@ void dbLogCtrlPointParams(float ctrl_point_params[4][5]);
  * @brief Function to store wall parameters for debugging.
  *
  * @param dbParams DebugParams struct to hold debugging parameters.
- * @param wall_row_i Row index of the wall.
- * @param wall_col_i Column index of the wall.
- * @param width_wall Interpolated width of the wall.
- * @param height_wall Interpolated height of the wall.
- * @param shear_wall Interpolated shear of the wall.
- * @param x_wall Interpolated x-coordinate of the wall.
- * @param y_wall Interpolated y-coordinate of the wall.
+ * @param grid_row_i Row index of the wall.
+ * @param grid_col_i Column index of the wall.
+ * @param quad_width Interpolated width of the wall.
+ * @param quad_height Interpolated height of the wall.
+ * @param quad_shear Interpolated shear of the wall.
+ * @param quad_origin_x Interpolated x-coordinate of the wall.
+ * @param quad_origin_y Interpolated y-coordinate of the wall.
  * @param quad_vertices_raw Vector of unwarped quad vertices.
  * @param quad_vertices_warped Vector of warped quad vertices.
  */
-void dbStoreWallParam(float wall_row_i, float wall_col_i,
-                      float width_wall, float height_wall,
-                      float shear_wall, float x_wall, float y_wall,
+void dbStoreQuadParams(float grid_row_i, float grid_col_i,
+                      float quad_width, float quad_height,
+                      float quad_shear, float quad_origin_x, float quad_origin_y,
                       const std::vector<cv::Point2f> &quad_vertices_raw,
                       const std::vector<cv::Point2f> &quad_vertices_warped);
 
@@ -541,6 +536,6 @@ void dbStoreWallParam(float wall_row_i, float wall_col_i,
  * This function logs the parameters stored in the global DebugParams
  * variable as a structured table.
  */
-void dbLogWallParam(std::string);
+void dbLogQuadParams(std::string);
 
 #endif
