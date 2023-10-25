@@ -500,10 +500,10 @@ float bilinearInterpolation(float ctrl_point_params[4][5], int ctrl_point_params
 float bilinearInterpolationFull(float ctrl_point_params[4][5], int ctrl_point_params_ind, int grid_row_i, int grid_col_i, int grid_size)
 {
     // Adjust the control point values based on the new mapping.
-    float A = ctrl_point_params[3][ctrl_point_params_ind]; // Corresponds to grid point [s-1][s-1]
-    float B = ctrl_point_params[2][ctrl_point_params_ind]; // Corresponds to grid point [0][0]
-    float C = ctrl_point_params[0][ctrl_point_params_ind]; // Corresponds to grid point [0][s-1]
-    float D = ctrl_point_params[1][ctrl_point_params_ind]; // Corresponds to grid point [s-1][0]
+    float A = ctrl_point_params[3][ctrl_point_params_ind]; // Corresponds to grid point row[0] col[0]
+    float B = ctrl_point_params[2][ctrl_point_params_ind]; // Corresponds to grid point row[0] col[s-1]
+    float C = ctrl_point_params[0][ctrl_point_params_ind]; // Corresponds to grid point row[s-1] col[0]
+    float D = ctrl_point_params[1][ctrl_point_params_ind]; // Corresponds to grid point row[s-1] col[s-1]
 
     // Calculate the relative position within the grid.
     float x = static_cast<float>(grid_col_i) / (grid_size - 1);

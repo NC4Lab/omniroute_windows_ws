@@ -444,9 +444,9 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
         {
             //  Create merged image for the wall corresponding to the selected control point
             if (
-                (cpSelectedInd == 0 && wall_row_i == 0 && wall_col_i == MAZE_SIZE - 1) ||
+                (cpSelectedInd == 0 && wall_row_i == MAZE_SIZE - 1 && wall_col_i == 0) ||
                 (cpSelectedInd == 1 && wall_row_i == MAZE_SIZE - 1 && wall_col_i == MAZE_SIZE - 1) ||
-                (cpSelectedInd == 2 && wall_row_i == MAZE_SIZE - 1 && wall_col_i == 0) ||
+                (cpSelectedInd == 2 && wall_row_i == 0 && wall_col_i == MAZE_SIZE - 1) ||
                 (cpSelectedInd == 3 && wall_row_i == 0 && wall_col_i == 0))
             {
                 ILuint img_merge1_id;
