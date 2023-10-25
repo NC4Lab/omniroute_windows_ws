@@ -206,7 +206,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             {
                 // Set the width and height dimension increment based on whether the shift key is pressed
                 float wd_inc = (mods & GLFW_MOD_SHIFT) ? 0.001f : 0.0001f;
-                float ht_inc = (mods & GLFW_MOD_SHIFT) ? 0.05f : 0.005f;
+                float ht_inc = (mods & GLFW_MOD_SHIFT) ? 0.05f : 0.00025f;
 
                 // Listen for arrow key input to adjust dimension/height
                 if (key == GLFW_KEY_LEFT)
@@ -494,7 +494,7 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
             std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_raw, r_hom_mat);
 
             // // Call to dbStoreWallParam to store parameters for debugging
-            dbStoreWallParam(wall_row_i, wall_col_i, width_interp, height_interp, shear_interp, x_origin, y_origin, quad_vertices_raw, quad_vertices_warped);
+            // dbStoreWallParam(wall_row_i, wall_col_i, width_interp, height_interp, shear_interp, x_origin, y_origin, quad_vertices_raw, quad_vertices_warped);
 
             // Set texture image
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
@@ -510,8 +510,8 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
         }
     }
 
-    // Print wall params
-    dbLogWallParam("quad_vec");
+    // // Print wall params
+    // dbLogWallParam("quad_vec");
 
     // Disable OpenGL texture mapping
     glDisable(GL_TEXTURE_2D);
