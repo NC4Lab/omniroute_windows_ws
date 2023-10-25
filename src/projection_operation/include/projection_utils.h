@@ -182,10 +182,10 @@ const float originPlaneWidth = 0.3f;
 const float originPlaneHeight = 0.6f;
 
 // Defualt control point parameter values
-const float wallSpaceX = originPlaneWidth / (float(MAZE_SIZE) - 1);
-const float wallSpaceY = originPlaneHeight / (float(MAZE_SIZE) - 1);
-const float wall_width_ndc = wallSpaceX / (1 + std::sqrt(2)); // Wall width based on octogonal geometry in NDC
-const float wall_height_ndc = wallSpaceY / (1 + std::sqrt(2));  // Wall height based on octogonal geometry in NDC
+const float wallSpaceX = originPlaneWidth / (float(MAZE_SIZE) - 1);  // Wall spacing on X axis NDC
+const float wallSpaceY = originPlaneHeight / (float(MAZE_SIZE) - 1); // Wall spacing on Y axis NDC
+const float wall_width_ndc = wallSpaceX / (1 + std::sqrt(2));        // Wall width based on octogonal geometry in NDC
+const float wall_height_ndc = wallSpaceY / (1 + std::sqrt(2));       // Wall height based on octogonal geometry in NDC
 
 /**
  * @brief Control Point Calibration Parameter Array
@@ -240,8 +240,8 @@ const float wall_height_ndc = wallSpaceY / (1 + std::sqrt(2));  // Wall height b
  * The X-axis extends from -1 (left) to 1 (right).
  * The Y-axis extends from -1 (bottom) to 1 (top).
  */
-const float cp_x = originPlaneWidth/2; // starting X-coordinate in NDC coordinates
-const float cp_y = originPlaneHeight/2;  // starting Y-coordinate in NDC coordinates
+const float cp_x = originPlaneWidth / 2;  // starting X-coordinate in NDC coordinates
+const float cp_y = originPlaneHeight / 2; // starting Y-coordinate in NDC coordinates
 extern const float CTRL_POINT_PARAMS[4][5] = {
     // Default control point parameters
     {-cp_x, +cp_y, wall_width_ndc, wall_height_ndc, 0.0f}, // top-left control point
@@ -255,12 +255,13 @@ extern const float CTRL_POINT_PARAMS[4][5] = {
  */
 struct DebugParams
 {
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> width_interp;                         ///< Width interpolation values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> height_interp;                        ///< Height interpolation values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> shear_interp;                         ///< Shear interpolation values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> x_interp;                             ///< X interpolation values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> y_interp;                             ///< Y interpolation values
-    std::array<std::array<std::vector<cv::Point2f>, MAZE_SIZE>, MAZE_SIZE> quad_vertices_vec; ///< Quad vertices
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> width_wall;                              // Width interpolation values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> height_wall;                             // Height interpolation values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> shear_wall;                              // Shear interpolation values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> x_wall;                                  // X interpolation values
+    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> y_wall;                                  // Y interpolation values
+    std::array<std::array<std::vector<cv::Point2f>, MAZE_SIZE>, MAZE_SIZE> quad_vertices_raw;    // Wall quad vertices pre-warp
+    std::array<std::array<std::vector<cv::Point2f>, MAZE_SIZE>, MAZE_SIZE> quad_vertices_warped; // Wall quad vertices warped
 };
 extern DebugParams dbParams;
 
@@ -426,38 +427,6 @@ float bilinearInterpolationFull(float[4][5], int, int, int, int);
 void absDistInterp_TEMP(float ctrl_point_params[4][5], float &x_translate, float &y_translate, float wall_row_i, float wall_col_i, int grid_size);
 
 /**
- * @brief Computes the maximum width and height to enclose all control points.
- *
- * This function takes an array of control point parameters and calculates the maximum
- * width and height needed to enclose all of these points. The dimensions are returned
- * as reference arguments.
- *
- * @param ctrl_point_params A 4x5 array containing control point parameters (x, y, width, height, shear).
- * @param[out] r_max_width Reference to a float variable where the maximum width will be stored.
- * @param[out] r_max_height Reference to a float variable where the maximum height will be stored.
- *
- * @note The units for the x and y coordinates are in OpenGL's Normalized Device Coordinates (NDC) [-1, 1].
- */
-void computeMaxBoundaryDimensions(float[4][5], float &, float &);
-
-/**
- * @brief Computes the maximum dimension to enclose all control points along a specified axis.
- *
- * This function takes an array of control point parameters and calculates the maximum
- * dimension (either width or height) needed to enclose all these points along the axis
- * specified by ctrl_point_params_ind. The maximum dimension is returned as a float.
- *
- * @param ctrl_point_params A 4x5 array containing control point parameters (x, y, width, height, shear).
- * @param ctrl_point_params_ind The index specifying which dimension to consider (0 for x-axis, 1 for y-axis, etc.).
- *
- *
- * @return float The maximum dimension along the specified axis.
- *
- * @note The units for the dimensions are in OpenGL's Normalized Device Coordinates (NDC) [-1, 1].
- */
-float computeMaxDimension(float[4][5], int);
-
-/**
  * @brief Creates a vector of points representing a quadrilateral with shear.
  *
  * This function generates a quadrilateral's corner points starting from the top-left corner
@@ -507,12 +476,6 @@ void computeHomography(cv::Mat &, float[4][5]);
  * @param r_hom_mat Reference to the homography matrix. This 3x3 matrix is used to perform the projective
  *                  transformation on each vertex.
  *
- * @param x_translate Optional x-coordinate translation applied to each vertex before warping. Given in the
- *                    same units as the vertices.
- *
- * @param y_translate Optional y-coordinate translation applied to each vertex before warping. Given in the
- *                    same units as the vertices.
- *
  * @details
  * 1. Each vertex undergoes a translation operation defined by `x_translate` and `y_translate`.
  *
@@ -533,7 +496,7 @@ void computeHomography(cv::Mat &, float[4][5]);
  *
  * @return std::vector<cv::Point2f> A vector containing the new Cartesian coordinates of the warped vertices.
  */
-std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f>, cv::Mat &, float, float);
+std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f>, cv::Mat &);
 
 /**
  * @brief Used to reset control point parameter list.
@@ -556,24 +519,28 @@ void dbLogCtrlPointParams(float ctrl_point_params[4][5]);
  * @param dbParams DebugParams struct to hold debugging parameters.
  * @param wall_row_i Row index of the wall.
  * @param wall_col_i Column index of the wall.
- * @param width_interp Interpolated width of the wall.
- * @param height_interp Interpolated height of the wall.
- * @param shear_interp Interpolated shear of the wall.
- * @param x_interp Interpolated x-coordinate of the wall.
- * @param y_interp Interpolated y-coordinate of the wall.
- * @param quad_vertices_vec Vector of quad vertices.
+ * @param width_wall Interpolated width of the wall.
+ * @param height_wall Interpolated height of the wall.
+ * @param shear_wall Interpolated shear of the wall.
+ * @param x_wall Interpolated x-coordinate of the wall.
+ * @param y_wall Interpolated y-coordinate of the wall.
+ * @param quad_vertices_raw Vector of unwarped quad vertices.
+ * @param quad_vertices_warped Vector of warped quad vertices.
  */
 void dbStoreWallParam(float wall_row_i, float wall_col_i,
-                      float width_interp, float height_interp,
-                      float shear_interp, float x_interp, float y_interp,
-                      const std::vector<cv::Point2f> &quad_vertices_vec);
+                      float width_wall, float height_wall,
+                      float shear_wall, float x_wall, float y_wall,
+                      const std::vector<cv::Point2f> &quad_vertices_raw,
+                      const std::vector<cv::Point2f> &quad_vertices_warped);
 
 /**
  * @brief Function to log wall parameters for debugging.
+ * 
+ * @param param_str Srting specifying what to print.
  *
  * This function logs the parameters stored in the global DebugParams
  * variable as a structured table.
  */
-void dbLogWallParam();
+void dbLogWallParam(std::string);
 
 #endif

@@ -500,20 +500,20 @@ float bilinearInterpolation(float ctrl_point_params[4][5], int ctrl_point_params
 float bilinearInterpolationFull(float ctrl_point_params[4][5], int ctrl_point_params_ind, int grid_row_i, int grid_col_i, int grid_size)
 {
     // Adjust the control point values based on the new mapping.
-    float A = ctrl_point_params[0][ctrl_point_params_ind]; // Corresponds to grid point [0][0]
-    float B = ctrl_point_params[1][ctrl_point_params_ind]; // Corresponds to grid point [s-1][0]
-    float C = ctrl_point_params[2][ctrl_point_params_ind]; // Corresponds to grid point [0][s-1]
-    float D = ctrl_point_params[3][ctrl_point_params_ind]; // Corresponds to grid point [s-1][s-1]
+    float A = ctrl_point_params[3][ctrl_point_params_ind]; // Corresponds to grid point [s-1][s-1]
+    float B = ctrl_point_params[2][ctrl_point_params_ind]; // Corresponds to grid point [0][0]
+    float C = ctrl_point_params[0][ctrl_point_params_ind]; // Corresponds to grid point [0][s-1]
+    float D = ctrl_point_params[1][ctrl_point_params_ind]; // Corresponds to grid point [s-1][0]
 
     // Calculate the relative position within the grid.
     float x = static_cast<float>(grid_col_i) / (grid_size - 1);
     float y = static_cast<float>(grid_row_i) / (grid_size - 1);
 
     // Perform bilinear interpolation using the formula.
-    float interp_val = (1 - x) * (1 - y) * D +
-                       x * (1 - y) * A +
+    float interp_val = (1 - x) * (1 - y) * A +
+                       x * (1 - y) * B +
                        (1 - x) * y * C +
-                       x * y * B;
+                       x * y * D;
 
     // Return the final interpolated value.
     return interp_val;
@@ -556,65 +556,6 @@ void absDistInterp_TEMP(float ctrl_point_params[4][5], float &interp_2d_x, float
     interp_2d_y = grid_col_i * (y_cp0 + interp_1d_row_y + interp_1d_col_y);
 }
 
-/**
- * @brief Computes the maximum width and height to enclose all control points.
- *
- * This function takes an array of control point parameters and calculates the maximum
- * width and height needed to enclose all of these points. The dimensions are returned
- * as reference arguments.
- *
- * @param ctrl_point_params The 4x5 array of control point parameters. Each row
- *                          represents a different control point, and the columns
- *                          contain different attributes of that point.
- * @param[out] r_max_width Reference to a float variable where the maximum width will be stored.
- * @param[out] r_max_height Reference to a float variable where the maximum height will be stored.
- *
- * @note The units for the x and y coordinates are in OpenGL's Normalized Device Coordinates (NDC) [-1, 1].
- */
-void computeMaxBoundaryDimensions(float ctrl_point_params[4][5], float &r_max_width, float &r_max_height)
-{
-
-    // Initialize variables to store the min and max coordinates
-    float min_x = std::numeric_limits<float>::max();
-    float max_x = std::numeric_limits<float>::min();
-    float min_y = std::numeric_limits<float>::max();
-    float max_y = std::numeric_limits<float>::min();
-
-    // Loop through all control points to find the min and max coordinates
-    for (int i = 0; i < 4; ++i)
-    {
-        float x = ctrl_point_params[i][0];
-        float y = ctrl_point_params[i][1];
-
-        min_x = std::min(min_x, x);
-        max_x = std::max(max_x, x);
-        min_y = std::min(min_y, y);
-        max_y = std::max(max_y, y);
-    }
-
-    // Calculate the maximum width and height
-    r_max_width = max_x - min_x;
-    r_max_height = max_y - min_y;
-}
-
-float computeMaxDimension(float ctrl_point_params[4][5], int ctrl_point_params_ind)
-{
-    // Initialize variables to store the min and max coordinates
-    float min_coord = std::numeric_limits<float>::max();
-    float max_coord = std::numeric_limits<float>::min();
-
-    // Loop through all control points to find the min and max coordinates
-    for (int i = 0; i < 4; ++i)
-    {
-        float coord = ctrl_point_params[i][ctrl_point_params_ind];
-        min_coord = std::min(min_coord, coord);
-        max_coord = std::max(max_coord, coord);
-    }
-
-    // Calculate and return the maximum dimension along the specified axis
-    return max_coord - min_coord;
-}
-
 std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, float height, float shear_amount)
 {
     std::vector<cv::Point2f> quad_vertices_vec;
@@ -636,21 +577,19 @@ std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, fl
 
 void computeHomography(cv::Mat &r_hom_mat, float ctrl_point_params[4][5])
 {
-    // Compute the width and height of the rectangular region that contains all control points (e.g., Boundary Dimensions).
-    float origin_plane_boundary_width = fabs(ctrl_point_params[0][0]) + ctrl_point_params[1][0];
-    float origin_plane_boundary_height = ctrl_point_params[0][1] + fabs(ctrl_point_params[3][1]);
+    // // Compute the width and height of the rectangular region that contains all control points (e.g., Boundary Dimensions).
+    // float origin_plane_boundary_width = fabs(ctrl_point_params[0][0]) + ctrl_point_params[1][0];
+    // float origin_plane_boundary_height = ctrl_point_params[0][1] + fabs(ctrl_point_params[3][1]);
 
-    // float target_plane_boundary_width = computeMaxDimension(ctrl_point_params, 0); // specify the column index for the x coordinate
-    // float target_plane_boundary_height = computeMaxDimension(ctrl_point_params, 1); // specify the column index for the y coordinate
-
-    // float target_plane_boundary_width;
-    // float target_plane_boundary_height;
-    // computeMaxBoundaryDimensions(ctrl_point_params, target_plane_boundary_width, target_plane_boundary_height);
+    // // Calculate the vertices for the control point boundary dimensions.
+    // // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
+    // std::vector<cv::Point2f> origin_plane_vertices;
+    // origin_plane_vertices = computeQuadVertices(0.0f, 0.0f, origin_plane_boundary_width, origin_plane_boundary_height, 0);
 
     // Calculate the vertices for the control point boundary dimensions.
     // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
     std::vector<cv::Point2f> origin_plane_vertices;
-    origin_plane_vertices = computeQuadVertices(0.0f, 0.0f, origin_plane_boundary_width, origin_plane_boundary_height, 0);
+    origin_plane_vertices = computeQuadVertices(0.0f, 0.0f, originPlaneWidth, originPlaneHeight, 0);
 
     // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
     // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
@@ -665,15 +604,11 @@ void computeHomography(cv::Mat &r_hom_mat, float ctrl_point_params[4][5])
     r_hom_mat = findHomography(origin_plane_vertices, target_plane_vertices);
 }
 
-std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f> quad_vertices_vec, cv::Mat &r_hom_mat, float x_translate, float y_translate)
+std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f> quad_vertices_vec, cv::Mat &r_hom_mat)
 {
     // Iterate through each vertex in the quadrilateral
     for (auto &vert : quad_vertices_vec)
     {
-        // Translate the vertex to a new position
-        vert.x += x_translate;
-        vert.y += y_translate;
-
         // Convert to 3x1 homogeneous coordinate matrix
         float data[] = {vert.x, vert.y, 1}; // Column matrix with the vertex's homogeneous coordinates [x, y, 1].
         cv::Mat ptMat(3, 1, CV_32F, data);  // Point's homogeneous coordinates stored as a 3x1 matrix of type CV_32F (32-bit float)
@@ -745,43 +680,85 @@ void dbLogCtrlPointParams(float ctrl_point_params[4][5])
 }
 
 void dbStoreWallParam(float wall_row_i, float wall_col_i,
-                      float width_interp, float height_interp,
-                      float shear_interp, float x_interp, float y_interp,
-                      const std::vector<cv::Point2f> &quad_vertices_vec)
+                      float width_wall, float height_wall,
+                      float shear_wall, float x_wall, float y_wall,
+                      const std::vector<cv::Point2f> &quad_vertices_raw,
+                      const std::vector<cv::Point2f> &quad_vertices_warped)
 {
     // Cast float indices to int
     int row = static_cast<int>(wall_row_i);
     int col = static_cast<int>(wall_col_i);
 
     // Store the parameters in the DebugParams struct
-    dbParams.width_interp[row][col] = width_interp;
-    dbParams.height_interp[row][col] = height_interp;
-    dbParams.shear_interp[row][col] = shear_interp;
-    dbParams.x_interp[row][col] = x_interp;
-    dbParams.y_interp[row][col] = y_interp;
-    dbParams.quad_vertices_vec[row][col] = quad_vertices_vec;
+    dbParams.width_wall[row][col] = width_wall;
+    dbParams.height_wall[row][col] = height_wall;
+    dbParams.shear_wall[row][col] = shear_wall;
+    dbParams.x_wall[row][col] = x_wall;
+    dbParams.y_wall[row][col] = y_wall;
+    dbParams.quad_vertices_raw[row][col] = quad_vertices_raw;
+    dbParams.quad_vertices_warped[row][col] = quad_vertices_warped;
 }
 
-void dbLogWallParam()
+void dbLogWallParam(std::string param_str)
 {
-    ROS_INFO("Wall Parameters for Each Cell in Maze");
-    ROS_INFO("Row | Col | W-Width | W-Height | Shear  | X-Dist  | Y-Dist");
-    ROS_INFO("---------------------------------------------------------");
 
-    // Loop through each row and column in the maze
-    for (int row = 0; row < MAZE_SIZE; ++row)
+    if (param_str == "wall_params")
     {
-        for (int col = 0; col < MAZE_SIZE; ++col)
+
+        ROS_INFO("Wall Parameters for Each Cell in Maze");
+        ROS_INFO(" [Row,Col]| X-Org | Y-Org  | Width  | Height  | Shear |");
+        ROS_INFO("-----------------------------------------------------------------------------");
+
+        // Loop through each row and column in the maze
+        for (int row = 0; row < MAZE_SIZE; ++row)
         {
-            ROS_INFO("[%2d | %2d] |  %6.2f  |  %6.2f   |  %6.2f  |  %6.2f  |  %6.2f",
-                     row, col,
-                     dbParams.width_interp[row][col],
-                     dbParams.height_interp[row][col],
-                     dbParams.shear_interp[row][col],
-                     dbParams.x_interp[row][col],
-                     dbParams.y_interp[row][col]);
+            for (int col = 0; col < MAZE_SIZE; ++col)
+            {
+                ROS_INFO(" [%d, %d]  |  %4.2f  |  %4.2f  |  %4.2f  |  %4.2f  |  %4.2f  |",
+                         row, col,
+                         dbParams.x_wall[row][col],
+                         dbParams.y_wall[row][col],
+                         dbParams.width_wall[row][col],
+                         dbParams.height_wall[row][col],
+                         dbParams.shear_wall[row][col]);
+            }
         }
+
+        ROS_INFO("-----------------------------------------------------------------------------");
     }
 
-    ROS_INFO("---------------------------------------------------------");
+    if (param_str == "quad_vec")
+    {
+        ROS_INFO("Wall Parameters for Each Cell in Maze");
+        ROS_INFO(" [Row,Col] | Bottom Left     | Bottom Right    | Top Right       | Top Left        |");
+        ROS_INFO("---------------------------------------------------------------------------------------");
+
+        // Loop through each row and column in the maze
+        for (int row = 0; row < MAZE_SIZE; ++row)
+        {
+            for (int col = 0; col < MAZE_SIZE; ++col)
+            {
+                // Fetch the quad vertices for the current [row][col]
+                std::vector<cv::Point2f> quad = dbParams.quad_vertices_warped[row][col];
+
+                // Ensure there are 4 vertices in the vector
+                if (quad.size() == 4)
+                {
+                    ROS_INFO("  [%2d,%2d]  | X[%4.2f] Y[%4.2f] | X[%4.2f] Y[%4.2f] | X[%4.2f] Y[%4.2f] |  X[%4.2f] Y[%4.2f]",
+                             row, col,
+                             quad[0].x, quad[0].y,
+                             quad[1].x, quad[1].y,
+                             quad[2].x, quad[2].y,
+                             quad[3].x, quad[3].y);
+                }
+                else
+                {
+                    // Print an error message if the size isn't 4
+                    ROS_WARN("Skipped printing quad vertices for cell [%2d, %2d] due to incorrect size.", row, col);
+                }
+            }
+        }
+
+        ROS_INFO("---------------------------------------------------------------------------------------");
+    }
 }

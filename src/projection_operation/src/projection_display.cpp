@@ -204,44 +204,44 @@ int drawWalls(
             // Iterate through each cell in the maze row
             for (float wall_col_i = 0; wall_col_i < MAZE_SIZE; wall_col_i++)
             {
-                // Get the image index for the current wall
-                int wall_row = MAZE_SIZE - 1 - (int)wall_col_i;
-                int wall_col = (int)wall_row_i;
-                int img_ind = IMG_PROJ_MAP[proj_i][wall_row][wall_col][cal_i];
+                // // Get the image index for the current wall
+                // int wall_row = MAZE_SIZE - 1 - (int)wall_col_i;
+                // int wall_col = (int)wall_row_i;
+                // int img_ind = IMG_PROJ_MAP[proj_i][wall_row][wall_col][cal_i];
 
-                // Bind image
-                ilBindImage(r_image_id_vec[img_ind]); // show test pattern
+                // // Bind image
+                // ilBindImage(r_image_id_vec[img_ind]); // show test pattern
 
-                // Calculate width, height and shear for the current wall
-                float width_val = bilinearInterpolation(ctrl_point_params, 2, wall_row_i, wall_col_i, MAZE_SIZE, true);
-                float height_val = bilinearInterpolation(ctrl_point_params, 3, wall_row_i, wall_col_i, MAZE_SIZE, true);
-                float shear_val = bilinearInterpolation(ctrl_point_params, 4, wall_row_i, wall_col_i, MAZE_SIZE, true);
+                // // Calculate width, height and shear for the current wall
+                // float width_val = bilinearInterpolation(ctrl_point_params, 2, wall_row_i, wall_col_i, MAZE_SIZE, true);
+                // float height_val = bilinearInterpolation(ctrl_point_params, 3, wall_row_i, wall_col_i, MAZE_SIZE, true);
+                // float shear_val = bilinearInterpolation(ctrl_point_params, 4, wall_row_i, wall_col_i, MAZE_SIZE, true);
 
-                // Create wall vertices
-                std::vector<cv::Point2f> quad_vertices_vec = computeQuadVertices(0.0f, 0.0f, width_val, height_val, shear_val);
+                // // Create wall vertices
+                // std::vector<cv::Point2f> quad_vertices_vec = computeQuadVertices(0.0f, 0.0f, width_val, height_val, shear_val);
 
-                // Calculate the interpolated wall spacings for this grid cell
-                float x_translate = bilinearInterpolation(ctrl_point_params, 0, wall_row_i, wall_col_i, MAZE_SIZE, false);
-                float y_translate = bilinearInterpolation(ctrl_point_params, 1, wall_row_i, wall_col_i, MAZE_SIZE, false);
+                // // Calculate the interpolated wall spacings for this grid cell
+                // float x_translate = bilinearInterpolation(ctrl_point_params, 0, wall_row_i, wall_col_i, MAZE_SIZE, false);
+                // float y_translate = bilinearInterpolation(ctrl_point_params, 1, wall_row_i, wall_col_i, MAZE_SIZE, false);
 
-                // Apply perspective warping to vertices
-                std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_vec, r_hom_mat, x_translate, y_translate);
+                // // Apply perspective warping to vertices
+                // std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_vec, r_hom_mat, x_translate, y_translate);
 
-                // Set texture image
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
-                             ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
-                             GL_UNSIGNED_BYTE, ilGetData());
+                // // Set texture image
+                // glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
+                //              ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
+                //              GL_UNSIGNED_BYTE, ilGetData());
 
-                // Bind texture to framebuffer object
-                glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
-                if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-                {
-                    ROS_ERROR("Failed to Bind GL Frame Buffer Opbject for window[%d]", proj_i);
-                    return -1;
-                }
+                // // Bind texture to framebuffer object
+                // glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
+                // if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+                // {
+                //     ROS_ERROR("Failed to Bind GL Frame Buffer Opbject for window[%d]", proj_i);
+                //     return -1;
+                // }
 
-                // Draw the wall
-                drawQuadImage(quad_vertices_warped);
+                // // Draw the wall
+                // drawQuadImage(quad_vertices_warped);
             }
         }
     }

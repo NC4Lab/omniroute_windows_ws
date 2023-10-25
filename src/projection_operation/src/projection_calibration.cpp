@@ -405,19 +405,19 @@ int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
 
     // Set texture and vertex coordinates for each corner
 
-    // Bottom-left corner
+    // Top-left corner of texture
     glTexCoord2f(0.0f, 1.0f);
     glVertex2f(quad_vertices_vec[0].x, quad_vertices_vec[0].y);
 
-    // Bottom-right corner
+    // Top-right corner of texture
     glTexCoord2f(1.0f, 1.0f);
     glVertex2f(quad_vertices_vec[1].x, quad_vertices_vec[1].y);
 
-    // Top-right corner
+    // Bottom-right corner of texture
     glTexCoord2f(1.0f, 0.0f);
     glVertex2f(quad_vertices_vec[2].x, quad_vertices_vec[2].y);
 
-    // Top-left corner
+    // Bottom-left corner of texture
     glTexCoord2f(0.0f, 0.0f);
     glVertex2f(quad_vertices_vec[3].x, quad_vertices_vec[3].y);
 
@@ -437,10 +437,10 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
     // dbLogCtrlPointParams(ctrl_point_params);
 
     // Iterate through the maze grid rows
-    for (float wall_row_i = 0; wall_row_i < MAZE_SIZE; wall_row_i++)
+    for (float wall_row_i = 0; wall_row_i < MAZE_SIZE; wall_row_i++) // image bottom to top
     {
         // Iterate through each column in the maze row
-        for (float wall_col_i = 0; wall_col_i < MAZE_SIZE; wall_col_i++)
+        for (float wall_col_i = 0; wall_col_i < MAZE_SIZE; wall_col_i++) // image left to right
         {
             //  Create merged image for the wall corresponding to the selected control point
             if (
@@ -475,30 +475,26 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
                 return -1;
 
             // Calculate width, height and shear for the current wall
-            float width_interp = bilinearInterpolationFull(ctrl_point_params, 2, wall_row_i, wall_col_i, MAZE_SIZE); // wall width
+            float width_interp = bilinearInterpolationFull(ctrl_point_params, 2, wall_row_i, wall_col_i, MAZE_SIZE);  // wall width
             float height_interp = bilinearInterpolationFull(ctrl_point_params, 3, wall_row_i, wall_col_i, MAZE_SIZE); // wall height
-            float shear_interp = bilinearInterpolationFull(ctrl_point_params, 4, wall_row_i, wall_col_i, MAZE_SIZE); // wall shear
+            float shear_interp = bilinearInterpolationFull(ctrl_point_params, 4, wall_row_i, wall_col_i, MAZE_SIZE);  // wall shear
+
+            // Get origin coordinates of wall
+            float x_origin = wall_col_i*wallSpaceX;
+            float y_origin = wall_row_i*wallSpaceY;
+
+            // float x_origin;
+            // float y_origin;
+            // absDistInterp_TEMP(ctrl_point_params, x_origin, y_origin, wall_row_i, wall_col_i, MAZE_SIZE);
 
             // Create wall vertices
-            std::vector<cv::Point2f> quad_vertices_vec = computeQuadVertices(0.0f, 0.0f, width_interp, height_interp, shear_interp);
-
-            // // // Calculate the interpolated wall spacings for this grid cell
-            // float x_interp = bilinearInterpolationFull(ctrl_point_params, 0, wall_row_i, wall_col_i, MAZE_SIZE, false);
-            // float y_interp = bilinearInterpolationFull(ctrl_point_params, 1, wall_row_i, wall_col_i, MAZE_SIZE, false);
-
-            // TEMP
-            float x_interp;
-            float y_interp;
-            absDistInterp_TEMP(ctrl_point_params, x_interp, y_interp, wall_row_i, wall_col_i, MAZE_SIZE);
-
-            // // TEMP
-            // ROS_INFO("Offset: i[%0.2f] j[%0.2f] x[%0.2f] y[%0.2f]", wall_row_i, wall_col_i, x_interp, y_interp);
+            std::vector<cv::Point2f> quad_vertices_raw = computeQuadVertices(x_origin, y_origin, width_interp, height_interp, shear_interp);
 
             // Apply perspective warping to vertices
-            std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_vec, r_hom_mat, x_interp, y_interp);
+            std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_raw, r_hom_mat);
 
             // // Call to dbStoreWallParam to store parameters for debugging
-            // dbStoreWallParam(wall_row_i, wall_col_i, width_interp, height_interp, shear_interp, x_interp, y_interp, quad_vertices_warped);
+            dbStoreWallParam(wall_row_i, wall_col_i, width_interp, height_interp, shear_interp, x_origin, y_origin, quad_vertices_raw, quad_vertices_warped);
 
             // Set texture image
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
@@ -513,6 +509,9 @@ int drawWalls(cv::Mat &r_hom_mat, float ctrl_point_params[4][5], GLuint fbo_text
                 return -1;
         }
     }
+
+    // Print wall params
+    dbLogWallParam("quad_vec");
 
     // Disable OpenGL texture mapping
     glDisable(GL_TEXTURE_2D);
@@ -656,7 +655,7 @@ int main(int argc, char **argv)
         // Draw/update control points
         for (int i = 0; i < 4; i++)
         {
-            // Get control point color based on cp selection 
+            // Get control point color based on cp selection
             std::vector<float> cp_col = (cpSelectedInd != i) ? cpInactiveRGBVec : cpActiveRGBVec;
 
             // Draw the control point
