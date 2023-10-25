@@ -38,26 +38,21 @@ std::vector<std::string> imgWallPathVec = {
     image_wall_dir_path + "/pentagon.bmp", // [5] Pentagon image
 };
 
-// Specify the window names for the projectors
-std::vector<std::string> windowNameVec = {
-    "Projector 0",
-    "Projector 1",
-    "Projector 2",
-    "Projector 3",
-};
+// Default monitor index for all windows
+int winMonIndDefault = 3; // Default monitor index for the window
 
 // Monitor and projector variables
-int nMonitors;             // Number of monitors (autopopulated)
-const int nProjectors = 1; // Number of projectors  (autopopulated)
+const int nProjectors = 2; // Number of projectors  (hardcoded)
 std::vector<int> projMonIndArr = {
     // Index of the monitor associeted to each projector (hardcoded)
     1,
+    2,
 };
 bool isFullScreen = false; // Flag to indicate if the window is in full screen mode
 bool isWinOnProj = false;  // Flag to indicate if the window is on the projector
 
-// Default monitor index for all windows
-int winMonIndDefault = 2; // Default monitor index for the window
+// Number of monitors (autopopulated)
+int nMonitors;             
 
 // Window for OpenGL
 GLFWwindow *p_windowIDVec[nProjectors];
@@ -69,10 +64,6 @@ std::vector<GLuint> fboTextureIDVec(nProjectors);
 // Monitor variable for OpenGL
 GLFWmonitor *p_monitorID = nullptr;
 GLFWmonitor **pp_monitorIDVec = nullptr;
-
-// Projector variable for OpenGL
-GLFWmonitor *p_projectorID = nullptr;
-GLFWmonitor *p_projectorIDVec[nProjectors] = {nullptr};
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -153,13 +144,12 @@ int checkErrorGLFW(int, const char *, const char * = nullptr);
  * @param win_ind Index of the window for which the setup is to be done.
  * @param pp_r_monitor_id Reference to the GLFWmonitor pointer array.
  * @param mon_id_ind Index of the monitor to move the window to.
- * @param r_window_name Reference to the name to be assigned to the GLFW window.
  * @param r_fbo_id Reference to the GLuint variable where the generated FBO ID will be stored.
  * @param r_fbo_texture_id Reference to the GLuint variable where the generated FBO texture ID will be stored.
  *
  * @return 0 on successful execution, -1 on failure.
  */
-int setupProjGLFW(GLFWwindow **, int, GLFWmonitor **&, int, const std::string &, GLuint &, GLuint &);
+int setupProjGLFW(GLFWwindow **, int, GLFWmonitor **&, int, GLuint &, GLuint &);
 
 /**
  * @brief Changes the display mode and monitor of the application window.

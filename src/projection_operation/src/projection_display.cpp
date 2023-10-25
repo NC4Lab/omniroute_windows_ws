@@ -99,12 +99,11 @@ int setupProjGLFW(
     int win_ind,
     GLFWmonitor **&pp_r_monitor_id,
     int mon_id_ind,
-    const std::string &r_window_name,
     GLuint &r_fbo_id,
     GLuint &r_fbo_texture_id)
 {
     // Create GLFW window
-    pp_window_id[win_ind] = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, r_window_name.c_str(), NULL, NULL);
+    pp_window_id[win_ind] = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
     if (!pp_window_id[win_ind])
     {
         glfwTerminate();
@@ -382,19 +381,13 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    // Copy the monitor ind associated with each projector
-    for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
-    {
-        p_projectorIDVec[proj_i] = pp_monitorIDVec[projMonIndArr[proj_i]];
-    }
-
     // Create GLFW window
     for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
     {
         int mon_id_ind = winMonIndDefault; // Show image on default monitor
         // int mon_id_ind =  projMonIndArr[proj_i]; // Show image on projector monitor
 
-        if (setupProjGLFW(p_windowIDVec, proj_i, pp_monitorIDVec, mon_id_ind, windowNameVec[proj_i], fboIDVec[proj_i], fboTextureIDVec[proj_i]) != 0)
+        if (setupProjGLFW(p_windowIDVec, proj_i, pp_monitorIDVec, mon_id_ind, fboIDVec[proj_i], fboTextureIDVec[proj_i]) != 0)
         {
             ROS_ERROR("[GLFW] Setup Failed for Window[%d]", proj_i);
             return -1;

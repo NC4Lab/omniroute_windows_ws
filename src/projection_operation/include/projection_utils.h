@@ -76,6 +76,7 @@
  *
  * Format: array[4][3][3][3] = array[Projector][Chamber Row][Chamber Column][Calibration Mode{Left, Center, Right}]
  */
+
 // Template of 4D array for hardcoded image indices to display
 int TEMPLATE[4][3][3][3] = {
     // Projector 0: East
@@ -115,6 +116,7 @@ int TEMPLATE[4][3][3][3] = {
         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
     },
 };
+
 // Actual hardcoded image indices used to display
 int IMG_PROJ_MAP[4][3][3][3] = {
     // Projector 0: East
