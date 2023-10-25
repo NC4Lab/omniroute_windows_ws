@@ -206,7 +206,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             {
                 // Set the width and height dimension increment based on whether the shift key is pressed
                 float wd_inc = (mods & GLFW_MOD_SHIFT) ? 0.001f : 0.0001f;
-                float ht_inc = (mods & GLFW_MOD_SHIFT) ? 0.05f : 0.00025f;
+                float ht_inc = (mods & GLFW_MOD_SHIFT) ? 0.0025f : 0.00025f;
 
                 // Listen for arrow key input to adjust dimension/height
                 if (key == GLFW_KEY_LEFT)
@@ -232,7 +232,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             {
                 // Set the shear increment based on whether the shift key is pressed
                 float shr_inc_x = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.001f;
-                float shr_inc_y = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.001f;
+                float shr_inc_y = (mods & GLFW_MOD_SHIFT) ? 0.025f : 0.0025f;
 
                 // Listen for arrow key input to adjust shear
                 if (key == GLFW_KEY_LEFT)
