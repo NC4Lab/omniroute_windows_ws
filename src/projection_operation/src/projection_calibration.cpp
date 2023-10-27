@@ -526,6 +526,86 @@ int drawWalls(cv::Mat hom_mat, std::array<std::array<float, 6>, 4> ctrl_point_pa
     return checkErrorGL(__LINE__, __FILE__);
 }
 
+int drawWallsV2(cv::Mat hom_mat, std::array<std::array<float, 6>, 4> ctrl_point_params, GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id)
+{
+    // Enable OpenGL texture mapping
+    glEnable(GL_TEXTURE_2D);
+
+    // // TEMP
+    // dbLogCtrlPointParams(ctrl_point_params);
+
+    // Iterate through the maze grid rows
+    for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++) // image bottom to top
+    {
+        // Iterate through each column in the maze row
+        for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++) // image left to right
+        {
+            //  Create merged image for the wall corresponding to the selected control point
+            if (
+                (cpSelectedInd == 0 && grid_row_i == MAZE_SIZE - 1 && grid_col_i == 0) ||
+                (cpSelectedInd == 1 && grid_row_i == MAZE_SIZE - 1 && grid_col_i == MAZE_SIZE - 1) ||
+                (cpSelectedInd == 2 && grid_row_i == 0 && grid_col_i == MAZE_SIZE - 1) ||
+                (cpSelectedInd == 3 && grid_row_i == 0 && grid_col_i == 0))
+            {
+                ILuint img_merge1_id;
+                ILuint img_merge2_id;
+                ILuint img_merge3_id;
+
+                // Merge test pattern and active monitor image
+                if (mergeImages(img_wall_id, img_mode_mon_id, img_merge1_id) != 0)
+                    return -1;
+
+                // Merge previous image and active cp parameter image
+                if (mergeImages(img_merge1_id, img_mode_param_id, img_merge2_id) != 0)
+                    return -1;
+
+                // Merge previous image and active calibration image
+                if (mergeImages(img_merge2_id, img_mode_cal_id, img_merge3_id) != 0)
+                    return -1;
+
+                ilBindImage(img_merge3_id);
+            }
+            else
+            {
+                ilBindImage(img_wall_id); // show test pattern
+            }
+            if (checkErrorDevIL(__LINE__, __FILE__) != 0)
+                return -1;
+
+            // Copy wall vertices
+            std::vector<cv::Point2f> quad_vertices;
+            quad_vertices.assign(wallVertices3d[grid_row_i][grid_col_i].begin(), wallVertices3d[grid_row_i][grid_col_i].end());
+
+            // Apply perspective warping to vertices
+            std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices, hom_mat);
+
+            // // Call to dbStoreQuadParams to store parameters for debugging
+            // dbStoreQuadParams(grid_row_i, grid_col_i, width, height, shear_x, shear_y, x_origin, y_origin, quad_vertices_raw, quad_vertices_warped);
+
+            // Set texture image
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
+                         ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
+                         GL_UNSIGNED_BYTE, ilGetData());
+
+            // Bind texture to framebuffer object
+            glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
+
+            // Draw the wall
+            if (drawQuadImage(quad_vertices_warped) != 0)
+                return -1;
+        }
+    }
+
+    // // Print wall params
+    // dbLogQuadParams("quad_vec");
+
+    // Disable OpenGL texture mapping
+    glDisable(GL_TEXTURE_2D);
+
+    // Return GL status
+    return checkErrorGL(__LINE__, __FILE__);
+}
+
 int main(int argc, char **argv)
 {
     //  _______________ SETUP _______________
@@ -546,6 +626,11 @@ int main(int argc, char **argv)
 
     // Do initial computations of homography matrix
     computeHomography(homMat, ctrlPointParams);
+
+    // // TEMP
+    // initControlPointCoordinates();
+    // updateWallVert3d();
+    // computeHomographyV2(homMat);
 
     // --------------- OpenGL SETUP ---------------
 
@@ -653,12 +738,20 @@ int main(int argc, char **argv)
         if (checkErrorGL(__LINE__, __FILE__))
             break;
 
-        // Draw/update wall images
-        if (drawWalls(homMat, ctrlPointParams, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]) != 0)
-        {
-            ROS_ERROR("[MAIN] Draw Walls Threw Error");
-            return -1;
-        }
+        // // Draw/update wall images
+        // if (drawWalls(homMat, ctrlPointParams, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]) != 0)
+        // {
+        //     ROS_ERROR("[MAIN] Draw Walls Threw Error");
+        //     return -1;
+        // }
+
+        // // TEMP
+        // // Draw/update wall images
+        // if (drawWallsV2(homMat, ctrlPointParams, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]) != 0)
+        // {
+        //     ROS_ERROR("[MAIN] Draw Walls Threw Error");
+        //     return -1;
+        // }
 
         // Draw/update control points
         for (int i = 0; i < 4; i++)

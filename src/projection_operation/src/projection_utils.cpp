@@ -509,25 +509,6 @@ float bilinearInterpolationFull(std::array<std::array<float, 6>, 4> ctrl_point_p
     return interp_val;
 }
 
-// std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, float height, float shear_x, float shear_y)
-// {
-//     std::vector<cv::Point2f> quad_vertices_vec;
-
-//     // Top-left vertex after applying shear
-//     quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_x, y0 + height));
-
-//     // Top-right vertex after applying shear
-//     quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_x + width, y0 + height));
-
-//     // Bottom-right vertex
-//     quad_vertices_vec.push_back(cv::Point2f(x0 + width, y0));
-
-//     // Bottom-left vertex
-//     quad_vertices_vec.push_back(cv::Point2f(x0, y0));
-
-//     return quad_vertices_vec;
-// }
-
 std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, float height, float shear_x, float shear_y)
 {
     std::vector<cv::Point2f> quad_vertices_vec;
@@ -622,6 +603,107 @@ void updateCalParams(std::array<std::array<float, 6>, 4> &r_ctrl_point_params, i
         r_ctrl_point_params[2][0] += horz_offset; // bottom-right
         r_ctrl_point_params[3][0] += horz_offset; // bottom-left
     }
+}
+
+float bilinearInterpolationFullV2(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size)
+{
+    // Calculate the relative position within the grid.
+    float x = static_cast<float>(grid_col_i) / (grid_size - 1);
+    float y = static_cast<float>(grid_row_i) / (grid_size - 1);
+
+    // Perform bilinear interpolation using the formula.
+    float interp_val = (1 - x) * (1 - y) * a +
+                       x * (1 - y) * b +
+                       (1 - x) * y * c +
+                       x * y * d;
+
+    // Return the final interpolated value.
+    return interp_val;
+}
+
+void initControlPointCoordinates()
+{
+    // Specify the control point limits
+    const float cp_x = originPlaneWidth / 2;  // starting X-coordinate in NDC coordinates
+    const float cp_y = originPlaneHeight / 2; // starting Y-coordinate in NDC coordinates
+
+    // Iterate through the maze grid rows
+    for (float cp_i = 0; cp_i < MAZE_SIZE; cp_i++) // image bottom to top
+    {
+        cv::Point2f p_org;
+
+        // Control pint 0 (top-left)
+        if (cp_i == 0)
+            p_org = cv::Point2f(-cp_x, +cp_y);
+
+        // Control point 1 (top-right)
+        else if (cp_i == 1)
+            p_org = cv::Point2f(+cp_x, +cp_y);
+
+        // Control point 2 (bottom-right)
+        else if (cp_i == 2)
+            p_org = cv::Point2f(-cp_x, -cp_y);
+
+        // Control point 3 (bottom-left)
+        else if (cp_i == 3)
+            p_org = cv::Point2f(+cp_x, -cp_y);
+
+        // Set values
+        controlPointCoordinates[cp_i] = {
+            cv::Point2f(p_org.x, p_org.x + W_WD_DEF),            // top left
+            cv::Point2f(p_org.x + W_WD_DEF, p_org.y + W_HT_DEF), // top rigt
+            cv::Point2f(p_org.x + W_WD_DEF, p_org.y),            // bottom right
+            cv::Point2f(p_org.x, p_org.y)                        // bottom left
+        };
+    }
+}
+
+void updateWallVert3d()
+{
+    // Interpolate intermediate wall vertices
+    for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++) // image bottom to top
+    {
+        // Iterate through each column in the maze row
+        for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++) // image left to right
+        {
+            // Itterate through verteces
+            for (int v_ind = 0; v_ind < 4; v_ind++)
+            {
+                cv::Point2f p_a = controlPointCoordinates[3][v_ind];
+                cv::Point2f p_b = controlPointCoordinates[2][v_ind];
+                cv::Point2f p_c = controlPointCoordinates[0][v_ind];
+                cv::Point2f p_d = controlPointCoordinates[1][v_ind];
+
+                // Get the interpolated vertex x-coordinate
+                wallVertices3d[grid_row_i][grid_col_i][v_ind].x =
+                    bilinearInterpolationFullV2(p_a.x, p_b.x, p_c.x, p_d.x, grid_row_i, grid_col_i, MAZE_SIZE);
+
+                // Get the interpolated vertex y-coordinate
+                wallVertices3d[grid_row_i][grid_col_i][v_ind].y =
+                    bilinearInterpolationFullV2(p_a.y, p_b.y, p_c.y, p_d.y, grid_row_i, grid_col_i, MAZE_SIZE);
+            }
+        }
+    }
+}
+
+void computeHomographyV2(cv::Mat &r_hom_mat)
+{
+    // Calculate the vertices for the control point boundary dimensions.
+    // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
+    std::vector<cv::Point2f> origin_plane_vertices;
+    origin_plane_vertices = computeQuadVertices(0.0f, 0.0f, originPlaneWidth, originPlaneHeight, 0.0f, 0.0f);
+
+    // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
+    // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
+    std::vector<cv::Point2f> target_plane_vertices;
+    target_plane_vertices.push_back(cv::Point2f(controlPointCoordinates[0][3].x, controlPointCoordinates[0][3].y)); // top-left
+    target_plane_vertices.push_back(cv::Point2f(controlPointCoordinates[1][3].x, controlPointCoordinates[1][3].y)); // top-right
+    target_plane_vertices.push_back(cv::Point2f(controlPointCoordinates[2][3].x, controlPointCoordinates[2][3].y)); // bottom-right
+    target_plane_vertices.push_back(cv::Point2f(controlPointCoordinates[3][3].x, controlPointCoordinates[3][3].y)); // bottom-left
+
+    // Use OpenCV's findHomography function to compute the homography matrix.
+    // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
+    r_hom_mat = findHomography(origin_plane_vertices, target_plane_vertices);
 }
 
 void dbLogCtrlPointParams(std::array<std::array<float, 6>, 4> ctrl_point_params)

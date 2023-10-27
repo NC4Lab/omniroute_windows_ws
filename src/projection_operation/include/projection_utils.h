@@ -295,6 +295,40 @@ extern const std::array<std::array<float, 6>, 4> CTRL_POINT_PARAMS = {{
     {{-cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f, 0.0f}}  // bottom-left control point
 }};
 
+// Default wall width and height (NDC)
+extern const float W_WD_DEF = WALL_SPACE_X / (1 + std::sqrt(2)); // Wall width based on octogonal geometry in NDC
+extern const float W_HT_DEF = WALL_SPACE_Y / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
+
+// Defualt x and y coordinates for control points (NDC)
+extern const float CP_X_DEF = originPlaneWidth / 2;  // starting X-coordinate in NDC coordinates
+extern const float CP_Y_DEF = originPlaneHeight / 2; // starting Y-coordinate in NDC coordinates
+
+// Track control point coordingates (NDC)
+std::array<std::array<cv::Point2f, 4>, 4> controlPointCoordinates;
+
+/**
+ * @brief  3x3 Wall quadrilateral vertices (NDC) [3][3][4] = [row][col][vertex]
+ *
+ * @details
+ *
+ * - Dim 1: Rows [0-MAZE_SIZE-1]
+ *  - Top to Bottom
+ *
+ * - Dim 2: Column [0-MAZE_SIZE-1]
+ *  - Left to Right
+ *
+ * - Dim 2: Vertex(x,y) [0-3]
+ *  - 0: Top-left, 1: Top-right, 2: Bottom-right, 3: Bottom-left
+ * 
+ * @note
+ * - Control point indeces:
+ *  - [0] (0,0): Top-left 
+ *  - [1] (0,2): Top-right
+ *  - [2] (2,2): Bottom-right
+ *  - [3] (2,0): Bottom-left
+ */
+extern std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> wallVertices3d;
+
 /**
  * @brief Struct to hold debugging parameters for the maze.
  */
@@ -547,6 +581,11 @@ std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f>, cv::Ma
  * @param mode_cal_ind Index of the active calibration mode.
  */
 void updateCalParams(std::array<std::array<float, 6>, 4> &, int);
+
+float bilinearInterpolationFullV2(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size);
+void initControlPointCoordinates();
+void updateWallVert3d();
+void computeHomographyV2(cv::Mat &r_hom_mat);
 
 /**
  * @brief Prints the control point parameters to the ROS log.
