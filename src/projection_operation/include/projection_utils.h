@@ -300,50 +300,6 @@ extern const float W_HT_DEF = WALL_SPACE_Y / (1 + std::sqrt(2)); // Wall height 
 extern const float CP_X_DEF = originPlaneWidth / 2;  // starting X-coordinate in NDC coordinates
 extern const float CP_Y_DEF = originPlaneHeight / 2; // starting Y-coordinate in NDC coordinates
 
-/**
- * @brief  4x4 data container for tracking control point coordinates in Normalized Device Coordinates (NDC)
- *         [4][4] = [conrol point][vertex]
- *
- * @details
- *
- * - Dimension 1: Control Point [0, 1, 2, 3]
- *  - 0: Top-left (image vertex)
- *  - 1: Top-right (image vertex)
- *  - 2: Bottom-left (image vertex)
- *  - 3: Bottom-right (image vertex)
- *
- * - Dimension 2: Vertex(x, y) [0, 1, 2, 3]
- *  - 0: Top-left  (quadrilateral vertex)
- *  - 1: Top-right  (quadrilateral vertex)
- *  - 2: Bottom-left  (quadrilateral vertex)
- *  - 3: Bottom-right  (quadrilateral vertex)
- */
-std::array<std::array<cv::Point2f, 4>, 4> CONTROL_POINT_COORDINATES;
-
-/**
- * @brief  3x3x4 data container for tracking storing warped wall vertices coordinates in Normalized Device Coordinates (NDC)
- *         [3][3][4] = [row][col][vertex]
- *
- * @details
- *
- * - Dimension 1: Rows [0-MAZE_SIZE-1]:
- *  - Top to Bottom
- *
- * - Dimension 2: Column [0-MAZE_SIZE-1]:
- *  - Left to Right
- *
- * - Dimension 3: Vertex(x, y) [0, 1, 2, 3]
- *  - 0: Top-left  (quadrilateral vertex)
- *  - 1: Top-right  (quadrilateral vertex)
- *  - 2: Bottom-left  (quadrilateral vertex)
- *  - 3: Bottom-right  (quadrilateral vertex)
- */
-std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WARPED_WALL_COORDINATES;
-
-// The 3x3 homography matrix of 32-bit floating-point numbers used to warp perspective.
-cv::Mat H_MAT = cv::Mat::eye(3, 3, CV_32F);
-
-
 // ================================================== FUNCTIONS ==================================================
 
 /**
@@ -614,16 +570,20 @@ std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates();
 
 cv::Mat computeHomographyV2(const std::array<std::array<cv::Point2f, 4>, 4> &);
 
-cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, const cv::Mat &H_MAT);
+cv::Point2f perspectiveWarpPoint(cv::Point2f, const cv::Mat &);
 
-std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateWarpedWallVertices(const std::array<std::array<cv::Point2f, 4>, 4> &);
+std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateWarpedWallVertices(
+    const cv::Mat &, 
+    const std::array<std::array<cv::Point2f, 4>, 4> &);
 
 void dbLogQuadVertices(const std::vector<cv::Point2f> &);
 
-void dbLogQuadVerticesArr(const std::array<cv::Point2f, 4> &);
+void dbLogQuadVertices(const std::array<cv::Point2f, 4> &);
 
 void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4>&);
 
 void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &);
+
+void dbLogHomMat(const cv::Mat &);
 
 #endif

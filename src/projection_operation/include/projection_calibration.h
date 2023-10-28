@@ -14,6 +14,49 @@
 
 // ================================================== VARIABLES ==================================================
 
+/**
+ * @brief  4x4 data container for tracking control point coordinates in Normalized Device Coordinates (NDC)
+ *         [4][4] = [conrol point][vertex]
+ *
+ * @details
+ *
+ * - Dimension 1: Control Point [0, 1, 2, 3]
+ *  - 0: Top-left (image vertex)
+ *  - 1: Top-right (image vertex)
+ *  - 2: Bottom-left (image vertex)
+ *  - 3: Bottom-right (image vertex)
+ *
+ * - Dimension 2: Vertex(x, y) [0, 1, 2, 3]
+ *  - 0: Top-left  (quadrilateral vertex)
+ *  - 1: Top-right  (quadrilateral vertex)
+ *  - 2: Bottom-left  (quadrilateral vertex)
+ *  - 3: Bottom-right  (quadrilateral vertex)
+ */
+std::array<std::array<cv::Point2f, 4>, 4> CTRL_PNT_COORDS;
+
+/**
+ * @brief  3x3x4 data container for tracking storing warped wall vertices coordinates in Normalized Device Coordinates (NDC)
+ *         [3][3][4] = [row][col][vertex]
+ *
+ * @details
+ *
+ * - Dimension 1: Rows [0-MAZE_SIZE-1]:
+ *  - Top to Bottom
+ *
+ * - Dimension 2: Column [0-MAZE_SIZE-1]:
+ *  - Left to Right
+ *
+ * - Dimension 3: Vertex(x, y) [0, 1, 2, 3]
+ *  - 0: Top-left  (quadrilateral vertex)
+ *  - 1: Top-right  (quadrilateral vertex)
+ *  - 2: Bottom-left  (quadrilateral vertex)
+ *  - 3: Bottom-right  (quadrilateral vertex)
+ */
+std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WARP_WALL_COORDS;
+
+// The 3x3 homography matrix of 32-bit floating-point numbers used to warp perspective.
+cv::Mat H_MAT = cv::Mat::eye(3, 3, CV_32F);
+
 // Specify the window name
 std::string windowName = "Projection Calibration";
 

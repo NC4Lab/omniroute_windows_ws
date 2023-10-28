@@ -540,6 +540,14 @@ void computeHomography(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> c
     // Use OpenCV's findHomography function to compute the homography matrix.
     // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
     r_hom_mat = findHomography(origin_plane_vertices, target_plane_vertices);
+
+    // TEMP
+    ROS_INFO("computeHomography: origin_plane_vertices");
+    dbLogQuadVertices(origin_plane_vertices);
+    // TEMP
+    ROS_INFO("computeHomography: target_plane_vertices");
+    dbLogQuadVertices(target_plane_vertices);
+    dbLogHomMat(r_hom_mat);
 }
 
 std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f> quad_vertices_vec, cv::Mat &r_hom_mat)
@@ -636,6 +644,9 @@ float bilinearInterpolationFullV2(float a, float b, float c, float d, int grid_r
 
 std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates()
 {
+    // Create a 2D array to store the control point coordinates
+    std::array<std::array<cv::Point2f, 4>, 4> ctrl_pnt_coords;
+
     // Specify the control point limits
     const float cp_x = originPlaneWidth / 2;  // starting X-coordinate in NDC coordinates
     const float cp_y = originPlaneHeight / 2; // starting Y-coordinate in NDC coordinates
@@ -645,24 +656,24 @@ std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates()
     {
         cv::Point2f p_org;
 
-        // Control pint 0 (image top-left)
+        // 0: image top-left
         if (cp_i == 0)
             p_org = cv::Point2f(-cp_x, +cp_y);
 
-        // Control point 1 (image top-right)
+        // 1: image top-right
         else if (cp_i == 1)
             p_org = cv::Point2f(+cp_x, +cp_y);
 
-        // Control point 2 (image bottom-left)
+        // 2: image bottom-left
         else if (cp_i == 2)
             p_org = cv::Point2f(-cp_x, -cp_y);
 
-        // Control point 3 (image bottom-right)
+        // 3: image bottom-right
         else if (cp_i == 3)
             p_org = cv::Point2f(+cp_x, -cp_y);
 
         // Set x y values for each vertex
-        CONTROL_POINT_COORDINATES[cp_i] = {
+        ctrl_pnt_coords[cp_i] = {
             cv::Point2f(p_org.x, p_org.y + W_HT_DEF),            // top left
             cv::Point2f(p_org.x + W_WD_DEF, p_org.y + W_HT_DEF), // top right
             cv::Point2f(p_org.x, p_org.y),                       // bottom left
@@ -671,10 +682,10 @@ std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates()
     }
 
     // Return the data container for use in other libraries
-    return CONTROL_POINT_COORDINATES;
+    return ctrl_pnt_coords;
 }
 
-cv::Mat computeHomographyV2(const std::array<std::array<cv::Point2f, 4>, 4> &CONTROL_POINT_COORDINATES)
+cv::Mat computeHomographyV2(const std::array<std::array<cv::Point2f, 4>, 4> &r_ctrl_pnt_coords)
 {
     // Calculate the vertices for based on the initial control point boundary dimensions.
     // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
@@ -687,20 +698,28 @@ cv::Mat computeHomographyV2(const std::array<std::array<cv::Point2f, 4>, 4> &CON
     // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
     // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
     std::vector<cv::Point2f> target_plane_vertices;
-    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[0][3].x, CONTROL_POINT_COORDINATES[0][3].y)); // top-left
-    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[1][3].x, CONTROL_POINT_COORDINATES[1][3].y)); // top-right
-    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[2][3].x, CONTROL_POINT_COORDINATES[2][3].y)); // bottom-left
-    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[3][3].x, CONTROL_POINT_COORDINATES[3][3].y)); // bottom-right
+    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[0][2].x, r_ctrl_pnt_coords[0][2].y)); // top-left
+    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[1][2].x, r_ctrl_pnt_coords[1][2].y)); // top-right
+    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[2][2].x, r_ctrl_pnt_coords[2][2].y)); // bottom-left
+    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[3][2].x, r_ctrl_pnt_coords[3][2].y)); // bottom-right
 
     // Use OpenCV's findHomography function to compute the homography matrix.
     // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
-    H_MAT = findHomography(origin_plane_vertices, target_plane_vertices);
+    cv::Mat h_mat = findHomography(origin_plane_vertices, target_plane_vertices);
+
+    // TEMP
+    ROS_INFO("computeHomographyV2: origin_plane_vertices");
+    dbLogQuadVertices(origin_plane_vertices);
+    // TEMP
+    ROS_INFO("computeHomographyV2: target_plane_vertices");
+    dbLogQuadVertices(target_plane_vertices);
+    dbLogHomMat(h_mat);
 
     // Return the homography matrix for use in other libraries
-    return H_MAT;
+    return h_mat;
 }
 
-cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, const cv::Mat &H_MAT)
+cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, const cv::Mat &r_h_mat)
 {
 
     // Convert to 3x1 homogeneous coordinate matrix
@@ -708,12 +727,12 @@ cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, const cv::Mat &H_MAT)
     cv::Mat ptMat(3, 1, CV_32F, data);              // Point's homogeneous coordinates stored as a 3x1 matrix of type CV_32F (32-bit float)
 
     // Homography Matrix Type Conversion (for later matrix multiplication)
-    H_MAT.convertTo(H_MAT, ptMat.type());
+    r_h_mat.convertTo(r_h_mat, ptMat.type());
 
     // Apply Homography Matrix to Warp Perspective
     // Multiply the homography matrix with the point's homogeneous coordinates.
     // This results in a new column matrix representing the point's warped coordinates.
-    ptMat = H_MAT * ptMat;
+    ptMat = r_h_mat * ptMat;
 
     // Convert back to Cartesian Coordinates
     ptMat /= ptMat.at<float>(2); // Divide first two elements by the third element (w)
@@ -726,8 +745,13 @@ cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, const cv::Mat &H_MAT)
     return v_warped;
 }
 
-std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateWarpedWallVertices(const std::array<std::array<cv::Point2f, 4>, 4> &CONTROL_POINT_COORDINATES)
+std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateWarpedWallVertices(
+    const cv::Mat &r_h_mat,
+    const std::array<std::array<cv::Point2f, 4>, 4> &r_ctrl_pnt_coords)
 {
+    // Initialize the warped wall coordinates array
+    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> warp_wall_coords;
+
     // Iterate trough grid/wall rows
     for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++) // image bottom to top
     {
@@ -739,10 +763,10 @@ std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateW
             {
                 // Get the corner values for the interpolation function
                 ///@note that y values must be flipped to account for the image origin being in the top-left corner
-                cv::Point2f p_a = CONTROL_POINT_COORDINATES[0][p_i]; // bottom-left interp == top left NDC
-                cv::Point2f p_b = CONTROL_POINT_COORDINATES[1][p_i]; // bottom-right interp == top right NDC
-                cv::Point2f p_c = CONTROL_POINT_COORDINATES[2][p_i]; // top-left interp == bottom left NDC
-                cv::Point2f p_d = CONTROL_POINT_COORDINATES[3][p_i]; // top-right interp == bottom right NDC
+                cv::Point2f p_a = r_ctrl_pnt_coords[0][p_i]; // bottom-left interp == top left NDC
+                cv::Point2f p_b = r_ctrl_pnt_coords[1][p_i]; // bottom-right interp == top right NDC
+                cv::Point2f p_c = r_ctrl_pnt_coords[2][p_i]; // top-left interp == bottom left NDC
+                cv::Point2f p_d = r_ctrl_pnt_coords[3][p_i]; // top-right interp == bottom right NDC
 
                 // Get the interpolated vertex x-coordinate
                 cv::Point2f p_interp(
@@ -750,20 +774,20 @@ std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateW
                     bilinearInterpolationFullV2(p_a.y, p_b.y, p_c.y, p_d.y, grid_row_i, grid_col_i, MAZE_SIZE)); // y
 
                 // Get the warped vertex coordinates
-                cv::Point2f p_warped = perspectiveWarpPoint(p_interp, H_MAT);
+                cv::Point2f p_warped = perspectiveWarpPoint(p_interp, r_h_mat);
 
                 // Store the warped vertex coordinates
-                WARPED_WALL_COORDINATES[grid_row_i][grid_col_i][p_i] = p_warped;
+                warp_wall_coords[grid_row_i][grid_col_i][p_i] = p_warped;
             }
         }
     }
 
-    // Print the warped wall coordinates
-    dbLogCtrlPointCoordinates();
-    // dbLogWallVerticesCoordinates();
+    // TEMP
+    // dbLogCtrlPointCoordinates(r_ctrl_pnt_coords);
+    // dbLogWallVerticesCoordinates(warp_wall_coords);
 
     // Return the warped wall coordinates for use in other libraries
-    return WARPED_WALL_COORDINATES;
+    return warp_wall_coords;
 }
 
 void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
@@ -775,49 +799,37 @@ void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
         return;
     }
 
-    ROS_INFO("          Quad Vertices          ");
-    ROS_INFO("=================================");
-    ROS_INFO("          |   X   |   Y   |");
-    ROS_INFO("---------------------------------");
+    // Convert to an array
+    std::array<cv::Point2f, 4> result;
+    std::copy(quad_vertices.begin(), quad_vertices.end(), result.begin());
 
-    // Print the top vertices
-    ROS_INFO("Top-left   | %+5.2f | %+5.2f |", quad_vertices[0].x, quad_vertices[0].y);
-    ROS_INFO("Top-right  | %+5.2f | %+5.2f |", quad_vertices[1].x, quad_vertices[1].y);
+    // Run main version of function
+    dbLogQuadVertices(result);
 
-    // Separator line
-    ROS_INFO("---------------------------------");
-
-    // Print the bottom vertices
-    ROS_INFO("Btm-left   | %+5.2f | %+5.2f |", quad_vertices[2].x, quad_vertices[2].y);
-    ROS_INFO("Btm-right  | %+5.2f | %+5.2f |", quad_vertices[3].x, quad_vertices[3].y);
-
-    // Separator line
-    ROS_INFO("=================================");
 }
 
-void dbLogQuadVerticesArr(const std::array<cv::Point2f, 4> &quad_vertices)
+void dbLogQuadVertices(const std::array<cv::Point2f, 4> &vertices)
 {
-    ROS_INFO("          Quad Vertices          ");
-    ROS_INFO("=================================");
-    ROS_INFO("          |   X   |   Y   |");
-    ROS_INFO("---------------------------------");
+    ROS_INFO("         Quad Vertices               ");
+    ROS_INFO("=====================================");
+    ROS_INFO("    |      Left     |     Right     |");
 
-    // Print the top vertices
-    ROS_INFO("Top-left   | %+5.2f | %+5.2f |", quad_vertices[0].x, quad_vertices[0].y);
-    ROS_INFO("Top-right  | %+5.2f | %+5.2f |", quad_vertices[1].x, quad_vertices[1].y);
+    ROS_INFO("-------------------------------------");
+    ROS_INFO("    |   X   ,   Y   |   X   ,   Y   |");
+    ROS_INFO("-------------------------------------");
 
-    // Separator line
-    ROS_INFO("---------------------------------");
+    // Print the top row coordinates
+    ROS_INFO(" Top | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
+             vertices[0].x, vertices[0].y, vertices[1].x, vertices[1].y);
 
-    // Print the bottom vertices
-    ROS_INFO("Btm-left   | %+5.2f | %+5.2f |", quad_vertices[2].x, quad_vertices[2].y);
-    ROS_INFO("Btm-right  | %+5.2f | %+5.2f |", quad_vertices[3].x, quad_vertices[3].y);
+    // Print the bottom row coordinates
+    ROS_INFO(" Btm | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
+             vertices[2].x, vertices[2].y, vertices[3].x, vertices[3].y);
 
-    // Separator line
-    ROS_INFO("=================================");
+    ROS_INFO("=====================================");
 }
 
-void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &CONTROL_POINT_COORDINATES)
+void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &r_ctrl_pnt_coords)
 {
     ROS_INFO("         Control Point Coordinates        ");
     ROS_INFO("==========================================");
@@ -827,26 +839,26 @@ void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &
     for (int cp = 0; cp < 4; ++cp)
     {
         // Fetch the vertices for the current control point
-        auto &vertices = CONTROL_POINT_COORDINATES[cp];
+        auto &vertices = r_ctrl_pnt_coords[cp];
 
         ROS_INFO("------------------------------------------");
-        ROS_INFO("         |   X   |   Y   |   X   |   Y   |");
+        ROS_INFO("         |   X   ,   Y   |   X   ,   Y   |");
         ROS_INFO("------------------------------------------");
 
         // Print the top row coordinates
-        ROS_INFO("[%d]  Top | %+5.2f | %+5.2f | %+5.2f | %+5.2f |",
+        ROS_INFO("[%d]  Top | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
                  cp,
                  vertices[0].x, vertices[0].y, vertices[1].x, vertices[1].y);
 
         // Print the bottom row coordinates
-        ROS_INFO("[%d]  Btm | %+5.2f | %+5.2f | %+5.2f | %+5.2f |",
+        ROS_INFO("[%d]  Btm | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
                  cp,
                  vertices[2].x, vertices[2].y, vertices[3].x, vertices[3].y);
     }
     ROS_INFO("==========================================");
 }
 
-void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &WARPED_WALL_COORDINATES)
+void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &r_warp_wall_coords)
 {
     ROS_INFO("                                       Warped Wall Coordinates                                               ");
     ROS_INFO("=============================================================================================================");
@@ -867,7 +879,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
         for (int col = 0; col < MAZE_SIZE; ++col)
         {
             // Fetch the quad vertices for the current [row][col]
-            auto &quad = WARPED_WALL_COORDINATES[row][col];
+            auto &quad = r_warp_wall_coords[row][col];
             snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
                      quad[0].x, quad[0].y, quad[1].x, quad[1].y);
         }
@@ -878,7 +890,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
         for (int col = 0; col < MAZE_SIZE; ++col)
         {
             // Fetch the quad vertices for the current [row][col]
-            auto &quad = WARPED_WALL_COORDINATES[row][col];
+            auto &quad = r_warp_wall_coords[row][col];
             snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
                      quad[2].x, quad[2].y, quad[3].x, quad[3].y);
         }
@@ -886,4 +898,30 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
 
         ROS_INFO("-------------------------------------------------------------------------------------------------------------");
     }
+}
+
+void dbLogHomMat(const cv::Mat &r_h_mat)
+{
+    // Check if the input matrix is 3x3
+    if (r_h_mat.rows != 3 || r_h_mat.cols != 3)
+    {
+        ROS_WARN("The input matrix is not 3x3. Cannot print.");
+        return;
+    }
+
+    ROS_INFO("         Homography Matrix        ");
+    ROS_INFO("==================================");
+    ROS_INFO("          |  C0   |  C1   |  C2   |");
+    ROS_INFO("----------------------------------");
+
+    for (int i = 0; i < 3; ++i)
+    {
+        ROS_INFO("R%d        | %+5.2f | %+5.2f | %+5.2f |", i,
+                 r_h_mat.at<float>(i, 0),
+                 r_h_mat.at<float>(i, 1),
+                 r_h_mat.at<float>(i, 2));
+    }
+
+    // Separator line
+    ROS_INFO("==================================");
 }

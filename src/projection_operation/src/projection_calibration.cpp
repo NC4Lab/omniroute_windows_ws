@@ -553,21 +553,18 @@ int main(int argc, char **argv)
 
     // Initialize control point parameters
     updateCalParams(ctrlPointParams, calModeInd);
-    dbLogCtrlPointParams(ctrlPointParams);
 
     // Do initial computations of homography matrix
     computeHomography(homMat, ctrlPointParams);
 
-    // TEMP
-
     // Initialze control points
-    CONTROL_POINT_COORDINATES = initControlPointCoordinates();
+    CTRL_PNT_COORDS = initControlPointCoordinates();
 
     // Compute homography matrix once
-    H_MAT = computeHomographyV2();
+    H_MAT = computeHomographyV2(CTRL_PNT_COORDS);
 
     // Initialize warped wall vertices
-    WARPED_WALL_COORDINATES = updateWarpedWallVertices();
+    WARP_WALL_COORDS = updateWarpedWallVertices(H_MAT, CTRL_PNT_COORDS);
 
     // --------------- OpenGL SETUP ---------------
 
@@ -827,7 +824,7 @@ int drawWallsV2(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_i
             glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
 
             // Get warped vertices for this wall
-            std::array<cv::Point2f, 4> quad_vertices_warped = WARPED_WALL_COORDINATES[grid_row_i][grid_col_i];
+            std::array<cv::Point2f, 4> quad_vertices_warped = WARP_WALL_COORDS[grid_row_i][grid_col_i];
 
             // Draw the wall
             if (drawQuadImageV2(quad_vertices_warped) != 0)
@@ -902,7 +899,7 @@ int drawControlPoints()
                 cp_rad = cpMakerRadius[1];
 
             // Warp the vertex
-            cv::Point2f p_warped = perspectiveWarpPoint(CONTROL_POINT_COORDINATES[cp_i][v_i], H_MAT);
+            cv::Point2f p_warped = perspectiveWarpPoint(CTRL_PNT_COORDS[cp_i][v_i], H_MAT);
 
             // Draw the control point
             if (drawColoredCircle(p_warped.x, p_warped.y, cp_rad, cp_col) != 0)
@@ -1006,7 +1003,7 @@ void callbackKeyBindingV2(GLFWwindow *window, int key, int scancode, int action,
 
         else if (key == GLFW_KEY_R)
         {
-            CONTROL_POINT_COORDINATES = initControlPointCoordinates();
+            CTRL_PNT_COORDS = initControlPointCoordinates();
         }
     }
 
@@ -1093,32 +1090,32 @@ void callbackKeyBindingV2(GLFWwindow *window, int key, int scancode, int action,
             float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.0005f;
 
             // Store current origin
-            cv::Point2f cp_origin_save = CONTROL_POINT_COORDINATES[cpWallSelectedInd][2];
+            cv::Point2f cp_origin_save = CTRL_PNT_COORDS[cpWallSelectedInd][2];
 
             // Listen for arrow key input to move selected control point
             if (key == GLFW_KEY_LEFT)
             {
-                CONTROL_POINT_COORDINATES[cpWallSelectedInd][cpVertSelectedInd].x -= pos_inc; // Move left
+                CTRL_PNT_COORDS[cpWallSelectedInd][cpVertSelectedInd].x -= pos_inc; // Move left
                 do_wall_update = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                CONTROL_POINT_COORDINATES[cpWallSelectedInd][cpVertSelectedInd].x += pos_inc; // Move right
+                CTRL_PNT_COORDS[cpWallSelectedInd][cpVertSelectedInd].x += pos_inc; // Move right
                 do_wall_update = true;
             }
             else if (key == GLFW_KEY_UP)
             {
-                CONTROL_POINT_COORDINATES[cpWallSelectedInd][cpVertSelectedInd].y += pos_inc; // Move up
+                CTRL_PNT_COORDS[cpWallSelectedInd][cpVertSelectedInd].y += pos_inc; // Move up
                 do_wall_update = true;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                CONTROL_POINT_COORDINATES[cpWallSelectedInd][cpVertSelectedInd].y -= pos_inc; // Move down
+                CTRL_PNT_COORDS[cpWallSelectedInd][cpVertSelectedInd].y -= pos_inc; // Move down
                 do_wall_update = true;
             }
 
             // Shift all control points if origin moved
-            cv::Point2f cp_origin_new = CONTROL_POINT_COORDINATES[cpWallSelectedInd][2];
+            cv::Point2f cp_origin_new = CTRL_PNT_COORDS[cpWallSelectedInd][2];
 
             // Calculate the change in x and y for the origin
             float delta_x = cp_origin_new.x - cp_origin_save.x;
@@ -1132,8 +1129,8 @@ void callbackKeyBindingV2(GLFWwindow *window, int key, int scancode, int action,
                 {
                     if (i != 2) // Skip the origin vertex itself
                     {
-                        CONTROL_POINT_COORDINATES[cpWallSelectedInd][i].x += delta_x;
-                        CONTROL_POINT_COORDINATES[cpWallSelectedInd][i].y += delta_y;
+                        CTRL_PNT_COORDS[cpWallSelectedInd][i].x += delta_x;
+                        CTRL_PNT_COORDS[cpWallSelectedInd][i].y += delta_y;
                     }
                 }
             }
@@ -1144,7 +1141,7 @@ void callbackKeyBindingV2(GLFWwindow *window, int key, int scancode, int action,
 
     // Recompute warped wall vertices
     if (do_wall_update)
-        WARPED_WALL_COORDINATES = updateWarpedWallVertices();
+        WARP_WALL_COORDS = updateWarpedWallVertices(H_MAT, CTRL_PNT_COORDS);
 
     // Update the window monitor and mode
     updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
