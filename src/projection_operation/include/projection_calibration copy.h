@@ -250,8 +250,8 @@ int drawWalls(cv::Mat, std::array<std::array<float, 6>, 4>, GLuint, ILuint, ILui
  */
 int main(int, char **);
 
-int drawWallsV2(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id);
+int drawWallsV2(cv::Mat hom_mat, std::array<std::array<float, 6>, 4> ctrl_point_params, GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id);
 
-int drawQuadImageV2(std::array<cv::Point2f, 4> quad_vertices_arr);
+int drawQuadImageV2(std::vector<cv::Point2f> quad_vertices_vec);
 
 #endif

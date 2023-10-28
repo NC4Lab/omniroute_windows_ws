@@ -674,12 +674,64 @@ std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates()
     return CONTROL_POINT_COORDINATES;
 }
 
-std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> interpolateWallVertices()
+cv::Mat computeHomographyV2()
 {
-    // Interpolate intermediate wall vertices
+    // Calculate the vertices for based on the initial control point boundary dimensions.
+    // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
+    std::vector<cv::Point2f> origin_plane_vertices = {
+        cv::Point2f(0.0f, originPlaneHeight),             // top-left
+        cv::Point2f(originPlaneWidth, originPlaneHeight), // top-right
+        cv::Point2f(0.0f, 0.0f),                          // bottom-left
+        cv::Point2f(originPlaneWidth, 0.0f)};             // bottom-right
+
+    // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
+    // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
+    std::vector<cv::Point2f> target_plane_vertices;
+    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[0][3].x, CONTROL_POINT_COORDINATES[0][3].y)); // top-left
+    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[1][3].x, CONTROL_POINT_COORDINATES[1][3].y)); // top-right
+    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[2][3].x, CONTROL_POINT_COORDINATES[2][3].y)); // bottom-left
+    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[3][3].x, CONTROL_POINT_COORDINATES[3][3].y)); // bottom-right
+
+    // Use OpenCV's findHomography function to compute the homography matrix.
+    // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
+    H_MAT = findHomography(origin_plane_vertices, target_plane_vertices);
+
+    // Return the homography matrix for use in other libraries
+    return H_MAT;
+}
+
+cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat &r_hom_mat)
+{
+
+    // Convert to 3x1 homogeneous coordinate matrix
+    float data[] = {p_unwarped.x, p_unwarped.y, 1}; // Column matrix with the vertex's homogeneous coordinates [x, y, 1].
+    cv::Mat ptMat(3, 1, CV_32F, data);              // Point's homogeneous coordinates stored as a 3x1 matrix of type CV_32F (32-bit float)
+
+    // Homography Matrix Type Conversion (for later matrix multiplication)
+    r_hom_mat.convertTo(r_hom_mat, ptMat.type());
+
+    // Apply Homography Matrix to Warp Perspective
+    // Multiply the homography matrix with the point's homogeneous coordinates.
+    // This results in a new column matrix representing the point's warped coordinates.
+    ptMat = r_hom_mat * ptMat;
+
+    // Convert back to Cartesian Coordinates
+    ptMat /= ptMat.at<float>(2); // Divide first two elements by the third element (w)
+
+    // Update/overwrite original vertex coordinates with the warped coordinates
+    cv::Point2f v_warped(
+        ptMat.at<float>(0, 0), // x
+        ptMat.at<float>(0, 1)); // y
+
+    return v_warped;
+}
+
+std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateWarpedWallVertices()
+{
+    // Iterate trough grid/wall rows
     for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++) // image bottom to top
     {
-        // Iterate through each column in the maze row
+        // Iterate trough grid/wall columns
         for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++) // image left to right
         {
             // Itterate through verteces
@@ -693,57 +745,21 @@ std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> interpo
                 cv::Point2f p_d = CONTROL_POINT_COORDINATES[3][v_ind]; // top-right interp == bottom right NDC
 
                 // Get the interpolated vertex x-coordinate
-                WALL_VERTICES_COORDINATES[grid_row_i][grid_col_i][v_ind].x =
-                    bilinearInterpolationFullV2(p_a.x, p_b.x, p_c.x, p_d.x, grid_row_i, grid_col_i, MAZE_SIZE);
+                cv::Point2f p_interp(
+                    bilinearInterpolationFullV2(p_a.x, p_b.x, p_c.x, p_d.x, grid_row_i, grid_col_i, MAZE_SIZE),  // x
+                    bilinearInterpolationFullV2(p_a.y, p_b.y, p_c.y, p_d.y, grid_row_i, grid_col_i, MAZE_SIZE)); // y
 
-                // Get the interpolated vertex y-coordinate
-                WALL_VERTICES_COORDINATES[grid_row_i][grid_col_i][v_ind].y =
-                    bilinearInterpolationFullV2(p_a.y, p_b.y, p_c.y, p_d.y, grid_row_i, grid_col_i, MAZE_SIZE);
+                // Get the warped vertex coordinates
+                cv::Point2f p_warped = perspectiveWarpPoint(p_interp, H_MAT);
+
+                // Store the warped vertex coordinates
+                WARPED_WALL_COORDINATES[grid_row_i][grid_col_i][v_ind] = p_warped;
             }
         }
     }
 
-    // Return the data container for use in other libraries
-    return WALL_VERTICES_COORDINATES;
-}
-
-std::vector<cv::Point2f> computeQuadVerticesV2(float x0, float y0, float width, float height, float shear_x, float shear_y)
-{
-    std::vector<cv::Point2f> quad_vertices_vec;
-
-    // Top-left vertex after applying shear
-    quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_x, y0 + height));
-
-    // Top-right vertex after applying shear
-    quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_x + width, y0 + height + width * shear_y));
-
-    // Bottom-left vertex
-    quad_vertices_vec.push_back(cv::Point2f(x0, y0));
-
-    // Bottom-right vertex
-    quad_vertices_vec.push_back(cv::Point2f(x0 + width, y0 + width * shear_y));
-
-    return quad_vertices_vec;
-}
-
-void computeHomographyV2(cv::Mat &r_hom_mat)
-{
-    // Calculate the vertices for the control point boundary dimensions.
-    // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
-    std::vector<cv::Point2f> origin_plane_vertices;
-    origin_plane_vertices = computeQuadVerticesV2(0.0f, 0.0f, originPlaneWidth, originPlaneHeight, 0.0f, 0.0f);
-
-    // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
-    // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
-    std::vector<cv::Point2f> target_plane_vertices;
-    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[0][3].x, CONTROL_POINT_COORDINATES[0][3].y)); // top-left
-    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[1][3].x, CONTROL_POINT_COORDINATES[1][3].y)); // top-right
-    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[2][3].x, CONTROL_POINT_COORDINATES[2][3].y)); // bottom-left
-    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[3][3].x, CONTROL_POINT_COORDINATES[3][3].y)); // bottom-right
-
-    // Use OpenCV's findHomography function to compute the homography matrix.
-    // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
-    r_hom_mat = findHomography(origin_plane_vertices, target_plane_vertices);
+    // Return the warped wall coordinates for use in other libraries
+    return WARPED_WALL_COORDINATES;
 }
 
 void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
@@ -828,7 +844,7 @@ void dbLogCtrlPointCoordinates()
 
 void dbLogWallVerticesCoordinates()
 {
-    ROS_INFO("                                     Wall Vertices Coordinates                                               ");
+    ROS_INFO("                                       Warped Wall Coordinates                                               ");
     ROS_INFO("=============================================================================================================");
     ROS_INFO("        ||   (0) Left    |   (0) Right   ||   (1) Left    |   (1) Right   ||   (2) Left    |   (2) Right   ||");
     ROS_INFO("-------------------------------------------------------------------------------------------------------------");
@@ -847,7 +863,7 @@ void dbLogWallVerticesCoordinates()
         for (int col = 0; col < MAZE_SIZE; ++col)
         {
             // Fetch the quad vertices for the current [row][col]
-            auto &quad = WALL_VERTICES_COORDINATES[row][col];
+            auto &quad = WARPED_WALL_COORDINATES[row][col];
             snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
                      quad[0].x, quad[0].y, quad[1].x, quad[1].y);
         }
@@ -858,7 +874,7 @@ void dbLogWallVerticesCoordinates()
         for (int col = 0; col < MAZE_SIZE; ++col)
         {
             // Fetch the quad vertices for the current [row][col]
-            auto &quad = WALL_VERTICES_COORDINATES[row][col];
+            auto &quad = WARPED_WALL_COORDINATES[row][col];
             snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
                      quad[2].x, quad[2].y, quad[3].x, quad[3].y);
         }

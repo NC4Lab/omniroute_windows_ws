@@ -306,7 +306,7 @@ extern const float CP_Y_DEF = originPlaneHeight / 2; // starting Y-coordinate in
 /**
  * @brief  4x4 data container for tracking control point coordinates in Normalized Device Coordinates (NDC)
  *         [4][4] = [conrol point][vertex]
-  *
+ *
  * @details
  *
  * - Dimension 1: Control Point [0, 1, 2, 3]
@@ -323,9 +323,8 @@ extern const float CP_Y_DEF = originPlaneHeight / 2; // starting Y-coordinate in
  */
 std::array<std::array<cv::Point2f, 4>, 4> CONTROL_POINT_COORDINATES;
 
-
 /**
- * @brief  3x3x4 data container for tracking al Wall vertices coordinates in Normalized Device Coordinates (NDC)
+ * @brief  3x3x4 data container for tracking storing warped wall vertices coordinates in Normalized Device Coordinates (NDC)
  *         [3][3][4] = [row][col][vertex]
  *
  * @details
@@ -342,7 +341,11 @@ std::array<std::array<cv::Point2f, 4>, 4> CONTROL_POINT_COORDINATES;
  *  - 2: Bottom-left  (quadrilateral vertex)
  *  - 3: Bottom-right  (quadrilateral vertex)
  */
-std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WALL_VERTICES_COORDINATES;
+std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WARPED_WALL_COORDINATES;
+
+// The 3x3 homography matrix of 32-bit floating-point numbers used to warp perspective.
+cv::Mat H_MAT = cv::Mat::eye(3, 3, CV_32F);
+
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -590,7 +593,7 @@ void dbLogCtrlPointParams(std::array<std::array<float, 6>, 4>);
 
 /**
  * @brief Performs bilinear interpolation.
- * 
+ *
  * @param a The value at the bottom-left corner.
  * @param b The value at the bottom-right corner.
  * @param c The value at the top-left corner.
@@ -598,29 +601,29 @@ void dbLogCtrlPointParams(std::array<std::array<float, 6>, 4>);
  * @param grid_row_i The row index in the grid.
  * @param grid_col_i The column index in the grid.
  * @param grid_size The size of the grid.
- * 
+ *
  * @details
  * The corner values correspond to the following positions within a unit square:
  * - a: Value at the bottom-left corner  (x, y) = (0, 0)
  * - b: Value at the bottom-right corner (x, y) = (1, 0)
  * - c: Value at the top-left corner     (x, y) = (0, 1)
  * - d: Value at the top-right corner    (x, y) = (1, 1)
- * 
+ *
  * @return The interpolated value at the specified grid point.
  */
 float bilinearInterpolationFullV2(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size);
 
 std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates();
 
-std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> interpolateWallVertices();
+cv::Mat computeHomographyV2();
 
-std::vector<cv::Point2f> computeQuadVerticesV2(float x0, float y0, float width, float height, float shear_x, float shear_y);
+cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat &r_hom_mat);
 
-void computeHomographyV2(cv::Mat &r_hom_mat);
+std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateWarpedWallVertices();
 
-void dbLogQuadVertices(const std::vector<cv::Point2f>& quad_vertices);
+void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices);
 
-void dbLogQuadVerticesArr(const std::array<cv::Point2f, 4>& quad_vertices);
+void dbLogQuadVerticesArr(const std::array<cv::Point2f, 4> &quad_vertices);
 
 void dbLogCtrlPointCoordinates();
 

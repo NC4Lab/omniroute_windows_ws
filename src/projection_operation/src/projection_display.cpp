@@ -261,93 +261,93 @@ int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
     return checkErrorGL(__LINE__, __FILE__);
 }
 
-int drawWalls(
-    int proj_ind,
-    int mon_id_ind,
-    GLFWwindow *p_window_id,
-    GLuint fbo_texture_id,
-    std::vector<ILuint> &r_image_id_vec)
-{
+// int drawWalls(
+//     int proj_ind,
+//     int mon_id_ind,
+//     GLFWwindow *p_window_id,
+//     GLuint fbo_texture_id,
+//     std::vector<ILuint> &r_image_id_vec)
+// {
 
-    // // Enable OpenGL texture mapping
-    // glEnable(GL_TEXTURE_2D);
+//     // Enable OpenGL texture mapping
+//     glEnable(GL_TEXTURE_2D);
 
-    // // Draw wall images for each calibration mode wall [left, middle, right]
-    // for (int cal_i = 0; cal_i < 3; cal_i++)
-    // {
-    //     // Initialize control point parameter array and homography matrix
-    //     std::array<std::array<float, 6>, 4> ctrl_point_params;
-    //     cv::Mat hom_mat = cv::Mat::eye(3, 3, CV_32F);
+//     // Draw wall images for each calibration mode wall [left, middle, right]
+//     for (int cal_i = 0; cal_i < 3; cal_i++)
+//     {
+//         // Initialize control point parameter array and homography matrix
+//         std::array<std::array<float, 6>, 4> ctrl_point_params;
+//         cv::Mat hom_mat = cv::Mat::eye(3, 3, CV_32F);
 
-    //     // Load the image transform coordinates from the XML file
-    //     std::string file_path = formatCoordinatesFilePathXML(mon_id_ind, cal_i, CONFIG_DIR_PATH);
-    //     if (loadCoordinatesXML(hom_mat, ctrl_point_params, file_path, 0) != 0)
-    //     {
-    //         ROS_ERROR("XML: Missing XML File[%s]", file_path.c_str());
-    //         return -1;
-    //     }
+//         // Load the image transform coordinates from the XML file
+//         std::string file_path = formatCoordinatesFilePathXML(mon_id_ind, cal_i, CONFIG_DIR_PATH);
+//         if (loadCoordinatesXML(hom_mat, ctrl_point_params, file_path, 0) != 0)
+//         {
+//             ROS_ERROR("XML: Missing XML File[%s]", file_path.c_str());
+//             return -1;
+//         }
 
-    //     // TEMP 
-    //     computeHomography(hom_mat, ctrl_point_params);
+//         // TEMP 
+//         computeHomography(hom_mat, ctrl_point_params);
 
-    //     // Iterate through the maze grid
-    //     for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++)
-    //     {
-    //         // Iterate through each cell in the maze row
-    //         for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++)
-    //         {
-    //             // Get the image index for the current wall
-    //             int wall_row = MAZE_SIZE - 1 - (int)grid_row_i;
-    //             int wall_col = (int)grid_col_i;
-    //             int img_ind = IMG_PROJ_MAP[proj_ind][wall_row][wall_col][cal_i];
+//         // Iterate through the maze grid
+//         for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++)
+//         {
+//             // Iterate through each cell in the maze row
+//             for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++)
+//             {
+//                 // Get the image index for the current wall
+//                 int wall_row = MAZE_SIZE - 1 - (int)grid_row_i;
+//                 int wall_col = (int)grid_col_i;
+//                 int img_ind = IMG_PROJ_MAP[proj_ind][wall_row][wall_col][cal_i];
 
-    //             // Bind image
-    //             ilBindImage(r_image_id_vec[img_ind]); // show test pattern
+//                 // Bind image
+//                 ilBindImage(r_image_id_vec[img_ind]); // show test pattern
 
-    //             // Calculate width, height and shear for the current wall
-    //             float width = bilinearInterpolationFull(ctrl_point_params, 2, grid_row_i, grid_col_i, MAZE_SIZE);   // wall width
-    //             float height = bilinearInterpolationFull(ctrl_point_params, 3, grid_row_i, grid_col_i, MAZE_SIZE);  // wall height
-    //             float shear_x = bilinearInterpolationFull(ctrl_point_params, 4, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
-    //             float shear_y = bilinearInterpolationFull(ctrl_point_params, 5, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
+//                 // Calculate width, height and shear for the current wall
+//                 float width = bilinearInterpolationFull(ctrl_point_params, 2, grid_row_i, grid_col_i, MAZE_SIZE);   // wall width
+//                 float height = bilinearInterpolationFull(ctrl_point_params, 3, grid_row_i, grid_col_i, MAZE_SIZE);  // wall height
+//                 float shear_x = bilinearInterpolationFull(ctrl_point_params, 4, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
+//                 float shear_y = bilinearInterpolationFull(ctrl_point_params, 5, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
 
-    //             // Get origin coordinates of wall
-    //             float x_origin = grid_col_i * WALL_SPACE_X;
-    //             float y_origin = grid_row_i * WALL_SPACE_Y;
+//                 // Get origin coordinates of wall
+//                 float x_origin = grid_col_i * WALL_SPACE_X;
+//                 float y_origin = grid_row_i * WALL_SPACE_Y;
 
-    //             // Create wall vertices
-    //             std::vector<cv::Point2f> quad_vertices_raw = computeQuadVertices(x_origin, y_origin, width, height, shear_x, shear_y);
+//                 // Create wall vertices
+//                 std::vector<cv::Point2f> quad_vertices_raw = computeQuadVertices(x_origin, y_origin, width, height, shear_x, shear_y);
 
-    //             // Apply perspective warping to vertices
-    //             std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_raw, hom_mat);
+//                 // Apply perspective warping to vertices
+//                 std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_raw, hom_mat);
 
-    //             // Set texture image
-    //             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
-    //                          ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
-    //                          GL_UNSIGNED_BYTE, ilGetData());
+//                 // Set texture image
+//                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
+//                              ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
+//                              GL_UNSIGNED_BYTE, ilGetData());
 
-    //             // Bind texture to framebuffer object
-    //             glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
-    //             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-    //             {
-    //                 ROS_ERROR("Failed to Bind GL Frame Buffer Opbject for window[%d]", proj_ind);
-    //                 return -1;
-    //             }
+//                 // Bind texture to framebuffer object
+//                 glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
+//                 if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+//                 {
+//                     ROS_ERROR("Failed to Bind GL Frame Buffer Opbject for window[%d]", proj_ind);
+//                     return -1;
+//                 }
 
-    //             // Draw the wall
-    //             if (drawQuadImage(quad_vertices_warped) != 0)
-    //                 return -1;
-    //         }
-    //     }
-    // }
+//                 // Draw the wall
+//                 if (drawQuadImage(quad_vertices_warped) != 0)
+//                     return -1;
+//             }
+//         }
+//     }
 
-    // // Disable OpenGL texture mapping
-    // glDisable(GL_TEXTURE_2D);
+//     // Disable OpenGL texture mapping
+//     glDisable(GL_TEXTURE_2D);
 
-    // // Check for GL errors
-    // checkErrorGL(__LINE__, __FILE__);
+//     // Check for GL errors
+//     checkErrorGL(__LINE__, __FILE__);
 
-    return 0;
-}
+//     return 0;
+// }
 
 int main(int argc, char **argv)
 {

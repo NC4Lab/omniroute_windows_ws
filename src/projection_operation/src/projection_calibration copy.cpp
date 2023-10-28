@@ -559,16 +559,13 @@ int main(int argc, char **argv)
     computeHomography(homMat, ctrlPointParams);
 
     // TEMP
-
-    // Initialze control points
     CONTROL_POINT_COORDINATES = initControlPointCoordinates();
     dbLogCtrlPointCoordinates();
 
-    // Compute homography matrix once
-    H_MAT = computeHomographyV2();
+    WARPED_WALL_COORDINATES = interpolateWallVertices();
+    dbLogWallVerticesCoordinates();
 
-    // Initialize warped wall vertices
-    WARPED_WALL_COORDINATES = updateWarpedWallVertices();
+    computeHomographyV2(homMat);
 
     // --------------- OpenGL SETUP ---------------
 
@@ -685,7 +682,7 @@ int main(int argc, char **argv)
 
         // TEMP
         // Draw/update wall images
-        if (drawWallsV2(fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]) != 0)
+        if (drawWallsV2(homMat, ctrlPointParams, fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]) != 0)
         {
             ROS_ERROR("[MAIN] Draw Walls Threw Error");
             return -1;
@@ -697,16 +694,8 @@ int main(int argc, char **argv)
             // Get control point color based on cp selection
             std::vector<float> cp_col = (cpSelectedInd != i) ? cpInactiveRGBVec : cpActiveRGBVec;
 
-            // // Draw the control point
-            // if (drawControlPoint(ctrlPointParams[i][0], ctrlPointParams[i][1], CP_RADIUS_NDC, cp_col) != 0)
-            // {
-            //     ROS_ERROR("[MAIN] Draw Control Point Threw Error");
-            //     return -1;
-            // }
-
-            // TEMP
-            cv::Point2f p_warped = perspectiveWarpPoint(CONTROL_POINT_COORDINATES[i][2], H_MAT);
-            if (drawControlPoint(p_warped.x, p_warped.y, CP_RADIUS_NDC, cp_col) != 0)
+            // Draw the control point
+            if (drawControlPoint(ctrlPointParams[i][0], ctrlPointParams[i][1], CP_RADIUS_NDC, cp_col) != 0)
             {
                 ROS_ERROR("[MAIN] Draw Control Point Threw Error");
                 return -1;
@@ -778,10 +767,13 @@ int main(int argc, char **argv)
     return 0;
 }
 
-int drawWallsV2(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id)
+int drawWallsV2(cv::Mat hom_mat, std::array<std::array<float, 6>, 4> ctrl_point_params, GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id)
 {
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
+
+    // // TEMP
+    // dbLogCtrlPointParams(ctrl_point_params);
 
     // Iterate through the maze grid rows
     for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++) // image bottom to top
@@ -821,6 +813,24 @@ int drawWallsV2(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_i
             if (checkErrorDevIL(__LINE__, __FILE__) != 0)
                 return -1;
 
+            // Copy wall vertices
+            std::vector<cv::Point2f> quad_vertices_raw;
+            quad_vertices_raw.assign(WARPED_WALL_COORDINATES[grid_row_i][grid_col_i].begin(),
+                                     WARPED_WALL_COORDINATES[grid_row_i][grid_col_i].end());
+
+            // Apply perspective warping to vertices
+            std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_raw, hom_mat);
+
+            // TEMP
+            if (grid_row_i != 0 || grid_col_i != 0)
+            {
+                continue;
+            }
+            ROS_INFO("Wall Raw Vertices:");
+            dbLogQuadVertices(quad_vertices_raw);
+            ROS_INFO("Wall Warped Vertices:");
+            dbLogQuadVertices(quad_vertices_warped);
+
             // Set texture image
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
                          ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
@@ -829,14 +839,14 @@ int drawWallsV2(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_i
             // Bind texture to framebuffer object
             glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
 
-            // Get warped vertices for this wall
-            std::array<cv::Point2f, 4> quad_vertices_warped = WARPED_WALL_COORDINATES[grid_row_i][grid_col_i];
-
             // Draw the wall
             if (drawQuadImageV2(quad_vertices_warped) != 0)
                 return -1;
         }
     }
+
+    // // Print wall params
+    // dbLogQuadParams("quad_vec");
 
     // Disable OpenGL texture mapping
     glDisable(GL_TEXTURE_2D);
@@ -845,30 +855,33 @@ int drawWallsV2(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_i
     return checkErrorGL(__LINE__, __FILE__);
 }
 
-int drawQuadImageV2(std::array<cv::Point2f, 4> quad_vertices_arr)
+int drawQuadImageV2(std::vector<cv::Point2f> quad_vertices_vec)
 {
+
     // Start drawing a quadrilateral
     glBegin(GL_QUADS);
 
     // Set the color to white (for texture mapping)
-    /// @note: this is necessary when drawing the control points
+    /// @note: this is nececary when drawing the control points
     glColor3f(1.0f, 1.0f, 1.0f);
+
+    // Set texture and vertex coordinates for each corner
 
     // Top-left corner of texture
     glTexCoord2f(0.0f, 1.0f);
-    glVertex2f(quad_vertices_arr[0].x, quad_vertices_arr[0].y);
+    glVertex2f(quad_vertices_vec[0].x, quad_vertices_vec[0].y);
 
     // Top-right corner of texture
     glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(quad_vertices_arr[1].x, quad_vertices_arr[1].y);
-
-    // Bottom-right corner of texture
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(quad_vertices_arr[3].x, quad_vertices_arr[3].y);
+    glVertex2f(quad_vertices_vec[1].x, quad_vertices_vec[1].y);
 
     // Bottom-left corner of texture
     glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(quad_vertices_arr[2].x, quad_vertices_arr[2].y);
+    glVertex2f(quad_vertices_vec[3].x, quad_vertices_vec[2].y);
+
+    // Bottom-right corner of texture
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex2f(quad_vertices_vec[2].x, quad_vertices_vec[3].y);
 
     // End drawing
     glEnd();

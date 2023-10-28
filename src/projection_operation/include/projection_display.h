@@ -178,22 +178,22 @@ int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
  */
 int drawQuadImage(std::vector<cv::Point2f>);
 
-/**
- * @brief Draws walls on the OpenGL window.
- *
- * This function is responsible for drawing the walls on the OpenGL window.
- * It iterates through each calibration mode and each wall in the maze to
- * draw the corresponding image.
- *
- * @param proj_ind Index of the projector being used.
- * @param mon_iind Index of the projector monitor being used.
- * @param p_window_id Pointer to the GLFW window.
- * @param fbo_texture_id Framebuffer Object's texture ID.
- * @param r_image_id_vec Reference to the vector containing image IDs.
- *
- * @return Returns 0 on success, -1 otherwise.
- */
-int drawWalls(int, int, GLFWwindow *, GLuint, std::vector<ILuint> &);
+// /**
+//  * @brief Draws walls on the OpenGL window.
+//  *
+//  * This function is responsible for drawing the walls on the OpenGL window.
+//  * It iterates through each calibration mode and each wall in the maze to
+//  * draw the corresponding image.
+//  *
+//  * @param proj_ind Index of the projector being used.
+//  * @param mon_iind Index of the projector monitor being used.
+//  * @param p_window_id Pointer to the GLFW window.
+//  * @param fbo_texture_id Framebuffer Object's texture ID.
+//  * @param r_image_id_vec Reference to the vector containing image IDs.
+//  *
+//  * @return Returns 0 on success, -1 otherwise.
+//  */
+// int drawWalls(int, int, GLFWwindow *, GLuint, std::vector<ILuint> &);
 
 /**
  * @brief  Entry point for the projection_display ROS node.
