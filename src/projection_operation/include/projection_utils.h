@@ -226,79 +226,8 @@ extern const float WALL_SPACE_X = originPlaneWidth / (float(MAZE_SIZE) - 1);  //
 extern const float WALL_SPACE_Y = originPlaneHeight / (float(MAZE_SIZE) - 1); // Wall spacing on Y axis NDC
 
 // Default wall width and height (NDC)
-const float wall_width_ndc = WALL_SPACE_X / (1 + std::sqrt(2));  // Wall width based on octogonal geometry in NDC
-const float wall_height_ndc = WALL_SPACE_Y / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
-
-/**
- * @brief Control Point Calibration Parameter Array
- *
- * This array stores the position and transformation parameters for each control point used in calibration.
- * The units for the x, y, width, and height parameters are in OpenGL's Normalized Device Coordinates (NDC),
- * which range from [-1, 1] with the origin at the center of the screen.
- *
- * @note Control point at index 1 only allows for positional adjustments and does not contribute to scaling or shearing.
- *
- * Each row in the array corresponds to a specific control point on the screen, while each column represents a different attribute
- * of that control point.
- *
- * @details
- * - Rows:
- *   - [0]: Top-left control point,     corresponding to grid point [0][s-1]
- *   - [1]: Top-right control point,    corresponding to grid point [s-1][s-1]
- *   - [2]: Bottom-right control point, corresponding to grid point [s-1][0]
- *   - [3]: Bottom-left control point,  corresponding to grid point [0][0]
- *
- * - Columns:
- *   - [0]: X-coordinate in NDC
- *   - [1]: Y-coordinate in NDC
- *   - [2]: Wall width in NDC
- *   - [3]: Wall height in NDC
- *   - [4]: Horizontal shearing factor
- *   - [5]: Vertical shearing factor
- *
- * @note
- * - Control Point Parameters (Example):
- *    CP  |  X-Dist  |  Y-Dist  |    Width  |   Height  |  Shear X  |  Shear Y  |
- *    ---------------------------------------------------------
- *    [0] |   -0.15  |    0.30  |    0.06   |    0.12   |    0.00
- *    [1] |    0.15  |    0.30  |    0.06   |    0.12   |    0.00
- *    [2] |    0.15  |   -0.30  |    0.06   |    0.12   |    0.00
- *    [3] |   -0.15  |   -0.30  |    0.06   |    0.12   |    0.00
- *    ---------------------------------------------------------
- *
- * @note
- * Control Point Indices to Grid Point Mapping
- *
- *         Ctrl Points    Grid Points
- *        =============  =============
- *        | -1  | +1  |  |  0  | s-1 |
- *    =================  =================
- *     +1 | [0] | [1] |  | [0] | [1] | s-1
- *    -----------------  -----------------
- *     -1 | [3] | [2] |  | [3] | [2] |  0
- *    =================  =================
- *
- * @section NDC Origin
- * In OpenGL's NDC, the origin (0,0) is located at the center of the screen.
- * The X-axis extends from -1 (left) to 1 (right).
- * The Y-axis extends from -1 (bottom) to 1 (top).
- */
-const float cp_x = originPlaneWidth / 2;  // starting X-coordinate in NDC coordinates
-const float cp_y = originPlaneHeight / 2; // starting Y-coordinate in NDC coordinates
-const std::array<std::array<float, 6>, 4> CTRL_POINT_PARAMS = {{
-    {{-cp_x, +cp_y, wall_width_ndc, wall_height_ndc, 0.0f, 0.0f}}, // top-left control point
-    {{+cp_x, +cp_y, wall_width_ndc, wall_height_ndc, 0.0f, 0.0f}}, // top-right control point
-    {{+cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f, 0.0f}}, // bottom-right control point
-    {{-cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f, 0.0f}}  // bottom-left control point
-}};
-
-// Default wall width and height (NDC)
 extern const float W_WD_DEF = WALL_SPACE_X / (1 + std::sqrt(2)); // Wall width based on octogonal geometry in NDC
 extern const float W_HT_DEF = WALL_SPACE_Y / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
-
-// Defualt x and y coordinates for control points (NDC)
-extern const float CP_X_DEF = originPlaneWidth / 2;  // starting X-coordinate in NDC coordinates
-extern const float CP_Y_DEF = originPlaneHeight / 2; // starting Y-coordinate in NDC coordinates
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -423,57 +352,29 @@ int deleteImgTextures(std::vector<ILuint> &);
 int mergeImages(ILuint, ILuint, ILuint &);
 
 /**
- * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
+ * @brief Performs bilinear interpolation.
  *
  * This function performs bilinear interpolation based on a point's position (grid_row_i, grid_col_i)
- * within a 2D grid. The grid corners are defined by a set of 4x6 control point parameters.
+ * within a 2D grid based on the vertex coordinates of the corner walls.
  *
- * @param ctrl_point_params A 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
- * @param ctrl_point_params_ind Index of the specific control point parameter to interpolate [0, 4].
- * @param grid_row_i Index of the point along the first axis (rows) within the grid.
- * @param grid_col_i Index of the point along the second axis (columns) within the grid.
- * @param grid_size Number of cells along one axis in the grid.
- * @param do_offset Flag to indicate whether to offset the interpolated value by the control point parameter at the origin.
+ * @param a The value at the bottom-left corner.
+ * @param b The value at the bottom-right corner.
+ * @param c The value at the top-left corner.
+ * @param d The value at the top-right corner.
+ * @param grid_row_i The row index in the grid.
+ * @param grid_col_i The column index in the grid.
+ * @param grid_size The size of the grid.
  *
- * @return float The interpolated value calculated based on the specified control point parameters and grid position.
+ * @details
+ * The corner values correspond to the following positions within a unit square:
+ * - a: Value at the bottom-left corner  (x, y) = (0, 0)
+ * - b: Value at the bottom-right corner (x, y) = (1, 0)
+ * - c: Value at the top-left corner     (x, y) = (0, 1)
+ * - d: Value at the top-right corner    (x, y) = (1, 1)
+ *
+ * @return The interpolated value at the specified grid point.
  */
-float bilinearInterpolation(std::array<std::array<float, 6>, 4>, int, int, int, int, bool);
-
-/**
- * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
- *
- * This function performs bilinear interpolation based on a point's position (grid_row_i, grid_col_i)
- * within a 2D grid. The grid corners are defined by a set of 4x6 control point parameters.
- *
- * @param ctrl_point_params 4x6 array of control point parameters. Each row corresponds to one control point
- *                          and contains five parameters for that point (x, y, width, height, shear x, shear y).
- * @param ctrl_point_params_ind Index of the specific control point parameter to interpolate [0, 4].
- * @param grid_row_i Index of the point along the first axis (rows) within the grid.
- * @param grid_col_i Index of the point along the second axis (columns) within the grid.
- * @param grid_size Number of cells along one axis in the grid.
- *
- * @return float The interpolated value calculated based on the specified control point parameters and grid position.
- */
-float bilinearInterpolationFull(std::array<std::array<float, 6>, 4>, int, int, int, int);
-
-/**
- * @brief Creates a vector of points representing a quadrilateral with shear.
- *
- * This function generates a quadrilateral's corner points starting from the top-left corner
- * and going clockwise. The quadrilateral is defined by its top-left corner (x0, y0),
- * width, height, and a shear amount. The units for x0, y0, width, and height are in
- * OpenGL's Normalized Device Coordinates (NDC) [-1, 1].
- *
- * @param x0 The x-coordinate of the top-left corner of the quadrilateral in NDC.
- * @param y0 The y-coordinate of the top-left corner of the quadrilateral in NDC.
- * @param width The width of the quadrilateral in NDC.
- * @param height The height of the quadrilateral in NDC.
- * @param shear_x The amount of horizontal shear to apply to the quadrilateral.
- * @param shear_y The amount of vertical shear to apply to the quadrilateral.
- *
- * @return std::vector<cv::Point2f> A vector of 4 points representing the corners of the rectangle, in NDC.
- */
-std::vector<cv::Point2f> computeQuadVertices(float, float, float, float, float, float);
+float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size);
 
 /**
  * @brief Computes the global homography matrix based on overall control point parameters.
@@ -483,23 +384,17 @@ std::vector<cv::Point2f> computeQuadVertices(float, float, float, float, float, 
  * Unlike per-wall transformations, this matrix is intended for the complete image, providing a
  * unified perspective warp.
  *
- * Control point x and y coordinates are specified in Normalized Device Coordinates (NDC) [-1, 1].
- * The vertices for the entire projected image are calculated based on the dimensions that enclose
- * all control points (i.e., boundary dimensions in the control point plane).
+ * @param ctrl_point_params The 4x4 array containing the coordinates of the corner wall's vertices.
  *
- * @note This function utilizes the OpenCV library to compute the homography matrix.
- *
- * @param r_hom_mat Reference to the cv::Mat object where the computed homography matrix will be stored.
- * @param ctrl_point_params A 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
+ * @return The cv::Mat object where the computed homography matrix is be stored.
  */
-void computeHomography(cv::Mat &, std::array<std::array<float, 6>, 4>);
+cv::Mat computeHomography(const std::array<std::array<cv::Point2f, 4>, 4> &);
 
 /**
- * @brief Computes the perspective warp of a given set of quadrilateral vertices using a homography matrix.
+ * @brief Computes the perspective warp of a given coordinate point using a homography matrix.
  *
- * This function takes a set of quadrilateral vertices and applies a projective transformation to each vertex.
- * The transformation is governed by a given homography matrix. Before the warp, an optional translation is
- * applied to each vertex.
+ * This function takes a cv::Point2f point vertices and applies a projective transformation to each vertex.
+ * The transformation is governed by a given homography matrix.
  *
  * @param quad_vertices_vec A vector containing the original Cartesian coordinates of the quadrilateral's vertices.
  *                          The vertices are processed in-place.
@@ -525,65 +420,53 @@ void computeHomography(cv::Mat &, std::array<std::array<float, 6>, 4>);
  *        post-transformation so we divide the new x and y by this value
  *        (ptMat /= ptMat.at<float>(2)) to get back to cartisian x, y coordinates.
  *
- * @return std::vector<cv::Point2f> A vector containing the new Cartesian coordinates of the warped vertices.
+ * @return cv::Point2f containing the new Cartesian coordinates of the warped vertex position.
  */
-std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f>, cv::Mat &);
+cv::Point2f perspectiveWarpPoint(cv::Point2f, cv::Mat);
 
 /**
- * @brief Used to reset control point parameter list.
+ * @brief Initializes values for the verteces of the coner walls which will be used as calibraton control points.
  *
- * @param r_ctrl_point_params Reference to the 4x6 array of control point parameters.
- * @param mode_cal_ind Index of the active calibration mode.
+ *
+ * Control point x and y coordinates are specified in Normalized Device Coordinates (NDC) [-1, 1].
+ * The vertices for the entire projected image are calculated based on the dimensions that enclose
+ * all control points (i.e., boundary dimensions in the control point plane).
+ *
+ * @return The 4x4 array containing the coordinates of the corner wall's vertices.
  */
-void updateCalParams(std::array<std::array<float, 6>, 4> &, int);
-
-/**
- * @brief Prints the control point parameters to the ROS log.
- *
- * @param ctrl_point_params 4x6 array of control point parameters.
- */
-void dbLogCtrlPointParams(std::array<std::array<float, 6>, 4>);
-
-/**
- * @brief Performs bilinear interpolation.
- *
- * @param a The value at the bottom-left corner.
- * @param b The value at the bottom-right corner.
- * @param c The value at the top-left corner.
- * @param d The value at the top-right corner.
- * @param grid_row_i The row index in the grid.
- * @param grid_col_i The column index in the grid.
- * @param grid_size The size of the grid.
- *
- * @details
- * The corner values correspond to the following positions within a unit square:
- * - a: Value at the bottom-left corner  (x, y) = (0, 0)
- * - b: Value at the bottom-right corner (x, y) = (1, 0)
- * - c: Value at the top-left corner     (x, y) = (0, 1)
- * - d: Value at the top-right corner    (x, y) = (1, 1)
- *
- * @return The interpolated value at the specified grid point.
- */
-float bilinearInterpolationFullV2(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size);
-
 std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates();
 
-cv::Mat computeHomographyV2(const std::array<std::array<cv::Point2f, 4>, 4> &);
-
-cv::Point2f perspectiveWarpPoint(cv::Point2f, const cv::Mat &);
-
+/**
+ * @brief Updates the stored warped wall image vertices based on the control point array.
+ *
+ * @param r_h_mat The homography matrix used to warp the wall image.
+ * @param r_ctrl_pnt_coords The control point coordinates used to warp the wall image.
+ *
+ * @return The updated 3x3x4 warped wall image vertices array.
+ */
 std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateWarpedWallVertices(
-    const cv::Mat &, 
+    const cv::Mat &,
     const std::array<std::array<cv::Point2f, 4>, 4> &);
 
+/**
+ * @brief Prints the coordinates of a quadrilateral's vertices.
+ */
 void dbLogQuadVertices(const std::vector<cv::Point2f> &);
-
 void dbLogQuadVertices(const std::array<cv::Point2f, 4> &);
 
-void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4>&);
+/**
+ * @brief Prints the coordinates of all entries in the control point array.
+ */
+void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &);
 
+/**
+ * @brief Prints the coordinates of all entries in the warped wall vertices array.
+ */
 void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &);
 
+/**
+ * @brief Prints the coordinates of all entries in the homography matrix.
+ */
 void dbLogHomMat(const cv::Mat &);
 
 #endif

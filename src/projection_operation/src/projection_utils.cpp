@@ -409,13 +409,6 @@ int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &r_img_merge_id)
         return -1;
     }
 
-    static bool t1 = true;
-    if (t1)
-    {
-        t1 = false;
-        ROS_INFO("TEST1");
-    }
-
     // Loop to overlay non-white pixels from img2 onto img1
     for (int i = 0; i < n_pxl_rbga; i += 4)
     {
@@ -431,13 +424,6 @@ int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &r_img_merge_id)
         }
     }
 
-    static bool t2 = true;
-    if (t2)
-    {
-        t2 = false;
-        ROS_INFO("TEST2");
-    }
-
     // Set merge image data to the new image
     ilBindImage(r_img_merge_id);
     ilSetPixels(0, 0, 0, width1, height1, 1, IL_RGBA, IL_UNSIGNED_BYTE, merged_img_data.data());
@@ -451,182 +437,7 @@ int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &r_img_merge_id)
     return 0;
 }
 
-float bilinearInterpolation(std::array<std::array<float, 6>, 4> ctrl_point_params, int ctrl_point_params_ind, int grid_row_i, int grid_col_i, int grid_size, bool do_offset)
-{
-    // Get control point values that will be used as the reference corners for interpolation.
-    // Note: Only 3 control points are used in this implimentation.
-    float cp_val_0 = ctrl_point_params[0][ctrl_point_params_ind];
-    // float cp_val_1 = ctrl_point_params[1][ctrl_point_params_ind];
-    float cp_val_2 = ctrl_point_params[2][ctrl_point_params_ind];
-    float cp_val_3 = ctrl_point_params[3][ctrl_point_params_ind];
-
-    // Calculate the relative position within the grid by dividing the current index by the maximum index (grid_size - 1).
-    float norm_grid_row_i = static_cast<float>(grid_row_i) / (grid_size - 1);
-    float norm_grid_col_i = static_cast<float>(grid_col_i) / (grid_size - 1);
-
-    // Perform 1D linear interpolation along the row.
-    // The interpolation is between the third and fourth control points (cp_val_2 and cp_val_3).
-    float interp_1d_row = norm_grid_row_i * (cp_val_2 - cp_val_3);
-
-    // Perform 1D linear interpolation along the column.
-    // The interpolation is between the first and fourth control points (cp_val_0 and cp_val_3).
-    float interp_1d_col = norm_grid_col_i * (cp_val_0 - cp_val_3);
-
-    // Combine the 1D interpolated values to compute the final 2D interpolated value.
-    float interp_2d = interp_1d_row + interp_1d_col;
-
-    // Optionally add an offset to the interpolated value. The offset is the parameter value of the control point at the origin (cp_val_3).
-    interp_2d += do_offset ? cp_val_3 : 0.0;
-
-    // Return the final interpolated value.
-    return interp_2d;
-}
-
-float bilinearInterpolationFull(std::array<std::array<float, 6>, 4> ctrl_point_params, int ctrl_point_params_ind, int grid_row_i, int grid_col_i, int grid_size)
-{
-    // Adjust the control point values based on the new mapping.
-    float A = ctrl_point_params[3][ctrl_point_params_ind]; // Corresponds to grid point row[0] col[0]
-    float B = ctrl_point_params[2][ctrl_point_params_ind]; // Corresponds to grid point row[0] col[s-1]
-    float C = ctrl_point_params[0][ctrl_point_params_ind]; // Corresponds to grid point row[s-1] col[0]
-    float D = ctrl_point_params[1][ctrl_point_params_ind]; // Corresponds to grid point row[s-1] col[s-1]
-
-    // Calculate the relative position within the grid.
-    float x = static_cast<float>(grid_col_i) / (grid_size - 1);
-    float y = static_cast<float>(grid_row_i) / (grid_size - 1);
-
-    // Perform bilinear interpolation using the formula.
-    float interp_val = (1 - x) * (1 - y) * A +
-                       x * (1 - y) * B +
-                       (1 - x) * y * C +
-                       x * y * D;
-
-    // Return the final interpolated value.
-    return interp_val;
-}
-
-std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, float height, float shear_x, float shear_y)
-{
-    std::vector<cv::Point2f> quad_vertices_vec;
-
-    // Top-left vertex after applying shear
-    quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_x, y0 + height));
-
-    // Top-right vertex after applying shear
-    quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_x + width, y0 + height + width * shear_y));
-
-    // Bottom-right vertex
-    quad_vertices_vec.push_back(cv::Point2f(x0 + width, y0 + width * shear_y));
-
-    // Bottom-left vertex
-    quad_vertices_vec.push_back(cv::Point2f(x0, y0));
-
-    return quad_vertices_vec;
-}
-
-void computeHomography(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> ctrl_point_params)
-{
-    // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
-    std::vector<cv::Point2f> origin_plane_vertices;
-    origin_plane_vertices = computeQuadVertices(0.0f, 0.0f, originPlaneWidth, originPlaneHeight, 0.0f, 0.0f);
-
-    // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
-    // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
-    std::vector<cv::Point2f> target_plane_vertices;
-    target_plane_vertices.push_back(cv::Point2f(ctrl_point_params[0][0], ctrl_point_params[0][1])); // top-left
-    target_plane_vertices.push_back(cv::Point2f(ctrl_point_params[1][0], ctrl_point_params[1][1])); // top-right
-    target_plane_vertices.push_back(cv::Point2f(ctrl_point_params[2][0], ctrl_point_params[2][1])); // bottom-right
-    target_plane_vertices.push_back(cv::Point2f(ctrl_point_params[3][0], ctrl_point_params[3][1])); // bottom-left
-
-    // Use OpenCV's findHomography function to compute the homography matrix.
-    // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
-    r_hom_mat = findHomography(origin_plane_vertices, target_plane_vertices);
-
-    // TEMP
-    ROS_INFO("computeHomography: origin_plane_vertices");
-    dbLogQuadVertices(origin_plane_vertices);
-    // TEMP
-    ROS_INFO("computeHomography: target_plane_vertices");
-    dbLogQuadVertices(target_plane_vertices);
-    dbLogHomMat(r_hom_mat);
-}
-
-std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f> quad_vertices_vec, cv::Mat &r_hom_mat)
-{
-    // Iterate through each vertex in the quadrilateral
-    for (auto &vert : quad_vertices_vec)
-    {
-        // Convert to 3x1 homogeneous coordinate matrix
-        float data[] = {vert.x, vert.y, 1}; // Column matrix with the vertex's homogeneous coordinates [x, y, 1].
-        cv::Mat ptMat(3, 1, CV_32F, data);  // Point's homogeneous coordinates stored as a 3x1 matrix of type CV_32F (32-bit float)
-
-        // Homography Matrix Type Conversion (for later matrix multiplication)
-        r_hom_mat.convertTo(r_hom_mat, ptMat.type());
-
-        // Apply Homography Matrix to Warp Perspective
-        // Multiply the homography matrix with the point's homogeneous coordinates.
-        // This results in a new column matrix representing the point's warped coordinates.
-        ptMat = r_hom_mat * ptMat;
-
-        // Convert back to Cartesian Coordinates
-        ptMat /= ptMat.at<float>(2); // Divide first two elements by the third element (w)
-
-        // Update/overwrite original certex coordinates with the warped coordinates
-        vert.x = ptMat.at<float>(0, 0);
-        vert.y = ptMat.at<float>(0, 1);
-    }
-
-    return quad_vertices_vec;
-}
-
-void updateCalParams(std::array<std::array<float, 6>, 4> &r_ctrl_point_params, int mode_cal_ind)
-{
-    // Copy the default array to the dynamic one
-    for (int i = 0; i < 4; ++i)
-    {
-        for (int j = 0; j < 6; ++j)
-        {
-            r_ctrl_point_params[i][j] = CTRL_POINT_PARAMS[i][j];
-        }
-    }
-
-    // Add an offset when calibrating left or right wall images
-    float horz_offset = 0.05f;
-    if (mode_cal_ind == 0) // left wall
-    {
-        r_ctrl_point_params[0][0] -= horz_offset; // top-left
-        r_ctrl_point_params[1][0] -= horz_offset; // top-right
-        r_ctrl_point_params[2][0] -= horz_offset; // bottom-right
-        r_ctrl_point_params[3][0] -= horz_offset; // bottom-left
-    }
-    else if (mode_cal_ind == 2) // right wall
-    {
-        r_ctrl_point_params[0][0] += horz_offset; // top-left
-        r_ctrl_point_params[1][0] += horz_offset; // top-right
-        r_ctrl_point_params[2][0] += horz_offset; // bottom-right
-        r_ctrl_point_params[3][0] += horz_offset; // bottom-left
-    }
-}
-
-void dbLogCtrlPointParams(std::array<std::array<float, 6>, 4> ctrl_point_params)
-{
-    ROS_INFO("Control Point Parameters");
-    ROS_INFO("CP  |  X-Org   |  Y-Org   |    Width  |    Height  |  ShearX |  ShearY  |");
-    ROS_INFO("---------------------------------------------------------");
-    for (int i = 0; i < 4; ++i)
-    {
-        ROS_INFO("[%d] |  %6.2f  |  %6.2f  |  %6.2f   |  %6.2f   |  %6.2f",
-                 i,
-                 ctrl_point_params[i][0],
-                 ctrl_point_params[i][1],
-                 ctrl_point_params[i][2],
-                 ctrl_point_params[i][3],
-                 ctrl_point_params[i][4],
-                 ctrl_point_params[i][5]);
-    }
-    ROS_INFO("---------------------------------------------------------");
-}
-
-float bilinearInterpolationFullV2(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size)
+float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size)
 {
     // Calculate the relative position within the grid.
     float x = static_cast<float>(grid_col_i) / (grid_size - 1);
@@ -642,6 +453,56 @@ float bilinearInterpolationFullV2(float a, float b, float c, float d, int grid_r
     return interp_val;
 }
 
+cv::Mat computeHomography(const std::array<std::array<cv::Point2f, 4>, 4> &r_ctrl_pnt_coords)
+{
+    // Calculate the vertices for based on the initial control point boundary dimensions.
+    // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
+    std::vector<cv::Point2f> origin_plane_vertices = {
+        cv::Point2f(0.0f, originPlaneHeight),             // top-left
+        cv::Point2f(originPlaneWidth, originPlaneHeight), // top-right
+        cv::Point2f(0.0f, 0.0f),                          // bottom-left
+        cv::Point2f(originPlaneWidth, 0.0f)};             // bottom-right
+
+    // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
+    // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
+    std::vector<cv::Point2f> target_plane_vertices;
+    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[0][2].x, r_ctrl_pnt_coords[0][2].y)); // top-left
+    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[1][2].x, r_ctrl_pnt_coords[1][2].y)); // top-right
+    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[2][2].x, r_ctrl_pnt_coords[2][2].y)); // bottom-left
+    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[3][2].x, r_ctrl_pnt_coords[3][2].y)); // bottom-right
+
+    // Use OpenCV's findHomography function to compute the homography matrix.
+    // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
+    cv::Mat h_mat = findHomography(origin_plane_vertices, target_plane_vertices);
+
+    // Return the homography matrix for use in other libraries
+    return h_mat;
+}
+
+cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat h_mat)
+{
+    // Convert to 3x1 homogeneous coordinate matrix
+    float data[] = {p_unwarped.x, p_unwarped.y, 1}; // Column matrix with the vertex's homogeneous coordinates [x, y, 1].
+    cv::Mat ptMat(3, 1, CV_32F, data);              // Point's homogeneous coordinates stored as a 3x1 matrix of type CV_32F (32-bit float)
+
+    // Homography Matrix Type Conversion (for later matrix multiplication)
+    h_mat.convertTo(h_mat, ptMat.type());
+
+    // Apply Homography Matrix to Warp Perspective
+    // Multiply the homography matrix with the point's homogeneous coordinates.
+    // This results in a new column matrix representing the point's warped coordinates.
+    ptMat = h_mat * ptMat;
+
+    // Convert back to Cartesian Coordinates
+    ptMat /= ptMat.at<float>(2); // Divide first two elements by the third element (w)
+
+    // Update/overwrite original vertex coordinates with the warped coordinates
+    cv::Point2f v_warped(
+        ptMat.at<float>(0, 0),  // x
+        ptMat.at<float>(0, 1)); // y
+
+    return v_warped;
+}
 std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates()
 {
     // Create a 2D array to store the control point coordinates
@@ -685,65 +546,6 @@ std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates()
     return ctrl_pnt_coords;
 }
 
-cv::Mat computeHomographyV2(const std::array<std::array<cv::Point2f, 4>, 4> &r_ctrl_pnt_coords)
-{
-    // Calculate the vertices for based on the initial control point boundary dimensions.
-    // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
-    std::vector<cv::Point2f> origin_plane_vertices = {
-        cv::Point2f(0.0f, originPlaneHeight),             // top-left
-        cv::Point2f(originPlaneWidth, originPlaneHeight), // top-right
-        cv::Point2f(0.0f, 0.0f),                          // bottom-left
-        cv::Point2f(originPlaneWidth, 0.0f)};             // bottom-right
-
-    // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
-    // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
-    std::vector<cv::Point2f> target_plane_vertices;
-    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[0][2].x, r_ctrl_pnt_coords[0][2].y)); // top-left
-    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[1][2].x, r_ctrl_pnt_coords[1][2].y)); // top-right
-    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[2][2].x, r_ctrl_pnt_coords[2][2].y)); // bottom-left
-    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[3][2].x, r_ctrl_pnt_coords[3][2].y)); // bottom-right
-
-    // Use OpenCV's findHomography function to compute the homography matrix.
-    // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
-    cv::Mat h_mat = findHomography(origin_plane_vertices, target_plane_vertices);
-
-    // TEMP
-    ROS_INFO("computeHomographyV2: origin_plane_vertices");
-    dbLogQuadVertices(origin_plane_vertices);
-    // TEMP
-    ROS_INFO("computeHomographyV2: target_plane_vertices");
-    dbLogQuadVertices(target_plane_vertices);
-    dbLogHomMat(h_mat);
-
-    // Return the homography matrix for use in other libraries
-    return h_mat;
-}
-
-cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, const cv::Mat &r_h_mat)
-{
-
-    // Convert to 3x1 homogeneous coordinate matrix
-    float data[] = {p_unwarped.x, p_unwarped.y, 1}; // Column matrix with the vertex's homogeneous coordinates [x, y, 1].
-    cv::Mat ptMat(3, 1, CV_32F, data);              // Point's homogeneous coordinates stored as a 3x1 matrix of type CV_32F (32-bit float)
-
-    // Homography Matrix Type Conversion (for later matrix multiplication)
-    r_h_mat.convertTo(r_h_mat, ptMat.type());
-
-    // Apply Homography Matrix to Warp Perspective
-    // Multiply the homography matrix with the point's homogeneous coordinates.
-    // This results in a new column matrix representing the point's warped coordinates.
-    ptMat = r_h_mat * ptMat;
-
-    // Convert back to Cartesian Coordinates
-    ptMat /= ptMat.at<float>(2); // Divide first two elements by the third element (w)
-
-    // Update/overwrite original vertex coordinates with the warped coordinates
-    cv::Point2f v_warped(
-        ptMat.at<float>(0, 0),  // x
-        ptMat.at<float>(0, 1)); // y
-
-    return v_warped;
-}
 
 std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateWarpedWallVertices(
     const cv::Mat &r_h_mat,
@@ -753,10 +555,10 @@ std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateW
     std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> warp_wall_coords;
 
     // Iterate trough grid/wall rows
-    for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++) // image bottom to top
+    for (float grow_i = 0; grow_i < MAZE_SIZE; grow_i++) // image bottom to top
     {
         // Iterate trough grid/wall columns
-        for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++) // image left to right
+        for (float gcol_i = 0; gcol_i < MAZE_SIZE; gcol_i++) // image left to right
         {
             // Itterate through verteces
             for (int p_i = 0; p_i < 4; p_i++)
@@ -770,14 +572,14 @@ std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateW
 
                 // Get the interpolated vertex x-coordinate
                 cv::Point2f p_interp(
-                    bilinearInterpolationFullV2(p_a.x, p_b.x, p_c.x, p_d.x, grid_row_i, grid_col_i, MAZE_SIZE),  // x
-                    bilinearInterpolationFullV2(p_a.y, p_b.y, p_c.y, p_d.y, grid_row_i, grid_col_i, MAZE_SIZE)); // y
+                    bilinearInterpolation(p_a.x, p_b.x, p_c.x, p_d.x, grow_i, gcol_i, MAZE_SIZE),  // x
+                    bilinearInterpolation(p_a.y, p_b.y, p_c.y, p_d.y, grow_i, gcol_i, MAZE_SIZE)); // y
 
                 // Get the warped vertex coordinates
                 cv::Point2f p_warped = perspectiveWarpPoint(p_interp, r_h_mat);
 
                 // Store the warped vertex coordinates
-                warp_wall_coords[grid_row_i][grid_col_i][p_i] = p_warped;
+                warp_wall_coords[grow_i][gcol_i][p_i] = p_warped;
             }
         }
     }
@@ -788,6 +590,25 @@ std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateW
 
     // Return the warped wall coordinates for use in other libraries
     return warp_wall_coords;
+}
+
+void dbLogCtrlPointParams(std::array<std::array<float, 6>, 4> ctrl_point_params)
+{
+    ROS_INFO("Control Point Parameters");
+    ROS_INFO("CP  |  X-Org   |  Y-Org   |    Width  |    Height  |  ShearX |  ShearY  |");
+    ROS_INFO("---------------------------------------------------------");
+    for (int i = 0; i < 4; ++i)
+    {
+        ROS_INFO("[%d] |  %6.2f  |  %6.2f  |  %6.2f   |  %6.2f   |  %6.2f",
+                 i,
+                 ctrl_point_params[i][0],
+                 ctrl_point_params[i][1],
+                 ctrl_point_params[i][2],
+                 ctrl_point_params[i][3],
+                 ctrl_point_params[i][4],
+                 ctrl_point_params[i][5]);
+    }
+    ROS_INFO("---------------------------------------------------------");
 }
 
 void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
@@ -805,7 +626,6 @@ void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
 
     // Run main version of function
     dbLogQuadVertices(result);
-
 }
 
 void dbLogQuadVertices(const std::array<cv::Point2f, 4> &vertices)
@@ -827,35 +647,6 @@ void dbLogQuadVertices(const std::array<cv::Point2f, 4> &vertices)
              vertices[2].x, vertices[2].y, vertices[3].x, vertices[3].y);
 
     ROS_INFO("=====================================");
-}
-
-void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &r_ctrl_pnt_coords)
-{
-    ROS_INFO("         Control Point Coordinates        ");
-    ROS_INFO("==========================================");
-    ROS_INFO("         |      Left     |     Right     |");
-
-    // Loop through each control point
-    for (int cp = 0; cp < 4; ++cp)
-    {
-        // Fetch the vertices for the current control point
-        auto &vertices = r_ctrl_pnt_coords[cp];
-
-        ROS_INFO("------------------------------------------");
-        ROS_INFO("         |   X   ,   Y   |   X   ,   Y   |");
-        ROS_INFO("------------------------------------------");
-
-        // Print the top row coordinates
-        ROS_INFO("[%d]  Top | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
-                 cp,
-                 vertices[0].x, vertices[0].y, vertices[1].x, vertices[1].y);
-
-        // Print the bottom row coordinates
-        ROS_INFO("[%d]  Btm | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
-                 cp,
-                 vertices[2].x, vertices[2].y, vertices[3].x, vertices[3].y);
-    }
-    ROS_INFO("==========================================");
 }
 
 void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &r_warp_wall_coords)

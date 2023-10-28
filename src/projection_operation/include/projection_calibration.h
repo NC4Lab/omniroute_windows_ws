@@ -17,6 +17,9 @@
 /**
  * @brief  4x4 data container for tracking control point coordinates in Normalized Device Coordinates (NDC)
  *         [4][4] = [conrol point][vertex]
+ * 
+ * The array stores the corner wall vertex OpenGL's Normalized Device Coordinates (NDC),
+ * which range from [-1, 1] with the origin at the center of the screen.
  *
  * @details
  *
@@ -240,20 +243,26 @@ int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
  * @param x The control point x-coordinate.
  * @param y The control point y-coordinate.
  * @param radius The radius of the control point.
- * @param rgb_arr Vector of rgb values to color the marker.
+ * @param rgb_arr Array of rgb values to color the marker.
  *
  * @return 0 if no errors, -1 if error.
  */
 int drawColoredCircle(float, float, float, std::array<float, 3>);
 
 /**
+ * @brief Draws control points associated with each corner wall.
+ *
+ */
+int drawControlPoints();
+
+/**
  * @brief Draws a textured quadrilateral using OpenGL.
  *
- * @param quad_vertices_vec Vector of vertex/corner points for a rectangular image.
+ * @param quad_vertices_vec Array of vertex/corner points for a quadrilateral image.
  *
  * @return 0 if no errors, -1 if error.
  */
-int drawQuadImage(std::vector<cv::Point2f>);
+int drawQuadImage(std::array<cv::Point2f, 4> quad_vertices_arr);
 
 /**
  * @brief Renders a 2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
@@ -265,19 +274,6 @@ int drawQuadImage(std::vector<cv::Point2f>);
  * 3. Shear and height adjustments based on control point calibration.
  * 4. Optional overlay of status images for cells corresponding to selected control points.
  *
- * @section Control Point and Grid Correspondence
- *
- * This function employs a set of control points for calibration. The table below describes
- * the correspondence between the displayed image, Normalized Device Coordinates (NDC),
- * control points, and grid indices:
- *
- * - Top-Left:      NDC (-1, 1),    Control Point [0],  Grid Index [0][s-1]
- * - Top-Right:     NDC (1, 1),     Control Point [1],  Grid Index [s-1][s-1]
- * - Bottom-Right:  NDC (1, -1),    Control Point [2],  Grid Index [s-1][0]
- * - Bottom-Left:   NDC (-1, -1),   Control Point [3],  Grid Index [0][0]
- *
- * @param hom_mat The 3x3 homography matrix used for perspective warping of the walls.
- * @param ctrl_point_params A 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
  * @param fbo_texture_id OpenGL framebuffer object's texture ID.
  * @param img_wall_id DevIL image ID for the base wall image.
  * @param img_mode_mon_id DevIL image ID for the monitor mode image.
@@ -286,7 +282,7 @@ int drawQuadImage(std::vector<cv::Point2f>);
  *
  * @return Integer status code: 0 if successful, -1 if an error occurred.
  */
-int drawWalls(cv::Mat, std::array<std::array<float, 6>, 4>, GLuint, ILuint, ILuint, ILuint, ILuint);
+int drawWalls(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id);
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.
@@ -300,13 +296,5 @@ int drawWalls(cv::Mat, std::array<std::array<float, 6>, 4>, GLuint, ILuint, ILui
  * @return 0 on successful execution, -1 on failure.
  */
 int main(int, char **);
-
-void callbackKeyBindingV2(GLFWwindow *, int, int, int, int);
-
-int drawWallsV2(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id);
-
-int drawQuadImageV2(std::array<cv::Point2f, 4> quad_vertices_arr);
-
-int drawControlPoints();
 
 #endif
