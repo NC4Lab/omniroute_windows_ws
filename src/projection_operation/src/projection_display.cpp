@@ -269,262 +269,262 @@ int drawWalls(
     std::vector<ILuint> &r_image_id_vec)
 {
 
-    // Enable OpenGL texture mapping
-    glEnable(GL_TEXTURE_2D);
+    // // Enable OpenGL texture mapping
+    // glEnable(GL_TEXTURE_2D);
 
-    // Draw wall images for each calibration mode wall [left, middle, right]
-    for (int cal_i = 0; cal_i < 3; cal_i++)
-    {
-        // Initialize control point parameter array and homography matrix
-        std::array<std::array<float, 6>, 4> ctrl_point_params;
-        cv::Mat hom_mat = cv::Mat::eye(3, 3, CV_32F);
+    // // Draw wall images for each calibration mode wall [left, middle, right]
+    // for (int cal_i = 0; cal_i < 3; cal_i++)
+    // {
+    //     // Initialize control point parameter array and homography matrix
+    //     std::array<std::array<float, 6>, 4> ctrl_point_params;
+    //     cv::Mat hom_mat = cv::Mat::eye(3, 3, CV_32F);
 
-        // Load the image transform coordinates from the XML file
-        std::string file_path = formatCoordinatesFilePathXML(mon_id_ind, cal_i, CONFIG_DIR_PATH);
-        if (loadCoordinatesXML(hom_mat, ctrl_point_params, file_path, 0) != 0)
-        {
-            ROS_ERROR("XML: Missing XML File[%s]", file_path.c_str());
-            return -1;
-        }
+    //     // Load the image transform coordinates from the XML file
+    //     std::string file_path = formatCoordinatesFilePathXML(mon_id_ind, cal_i, CONFIG_DIR_PATH);
+    //     if (loadCoordinatesXML(hom_mat, ctrl_point_params, file_path, 0) != 0)
+    //     {
+    //         ROS_ERROR("XML: Missing XML File[%s]", file_path.c_str());
+    //         return -1;
+    //     }
 
-        // TEMP 
-        computeHomography(hom_mat, ctrl_point_params);
+    //     // TEMP 
+    //     computeHomography(hom_mat, ctrl_point_params);
 
-        // Iterate through the maze grid
-        for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++)
-        {
-            // Iterate through each cell in the maze row
-            for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++)
-            {
-                // Get the image index for the current wall
-                int wall_row = MAZE_SIZE - 1 - (int)grid_row_i;
-                int wall_col = (int)grid_col_i;
-                int img_ind = IMG_PROJ_MAP[proj_ind][wall_row][wall_col][cal_i];
+    //     // Iterate through the maze grid
+    //     for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++)
+    //     {
+    //         // Iterate through each cell in the maze row
+    //         for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++)
+    //         {
+    //             // Get the image index for the current wall
+    //             int wall_row = MAZE_SIZE - 1 - (int)grid_row_i;
+    //             int wall_col = (int)grid_col_i;
+    //             int img_ind = IMG_PROJ_MAP[proj_ind][wall_row][wall_col][cal_i];
 
-                // Bind image
-                ilBindImage(r_image_id_vec[img_ind]); // show test pattern
+    //             // Bind image
+    //             ilBindImage(r_image_id_vec[img_ind]); // show test pattern
 
-                // Calculate width, height and shear for the current wall
-                float width = bilinearInterpolationFull(ctrl_point_params, 2, grid_row_i, grid_col_i, MAZE_SIZE);   // wall width
-                float height = bilinearInterpolationFull(ctrl_point_params, 3, grid_row_i, grid_col_i, MAZE_SIZE);  // wall height
-                float shear_x = bilinearInterpolationFull(ctrl_point_params, 4, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
-                float shear_y = bilinearInterpolationFull(ctrl_point_params, 5, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
+    //             // Calculate width, height and shear for the current wall
+    //             float width = bilinearInterpolationFull(ctrl_point_params, 2, grid_row_i, grid_col_i, MAZE_SIZE);   // wall width
+    //             float height = bilinearInterpolationFull(ctrl_point_params, 3, grid_row_i, grid_col_i, MAZE_SIZE);  // wall height
+    //             float shear_x = bilinearInterpolationFull(ctrl_point_params, 4, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
+    //             float shear_y = bilinearInterpolationFull(ctrl_point_params, 5, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
 
-                // Get origin coordinates of wall
-                float x_origin = grid_col_i * WALL_SPACE_X;
-                float y_origin = grid_row_i * WALL_SPACE_Y;
+    //             // Get origin coordinates of wall
+    //             float x_origin = grid_col_i * WALL_SPACE_X;
+    //             float y_origin = grid_row_i * WALL_SPACE_Y;
 
-                // Create wall vertices
-                std::vector<cv::Point2f> quad_vertices_raw = computeQuadVertices(x_origin, y_origin, width, height, shear_x, shear_y);
+    //             // Create wall vertices
+    //             std::vector<cv::Point2f> quad_vertices_raw = computeQuadVertices(x_origin, y_origin, width, height, shear_x, shear_y);
 
-                // Apply perspective warping to vertices
-                std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_raw, hom_mat);
+    //             // Apply perspective warping to vertices
+    //             std::vector<cv::Point2f> quad_vertices_warped = computePerspectiveWarp(quad_vertices_raw, hom_mat);
 
-                // Set texture image
-                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
-                             ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
-                             GL_UNSIGNED_BYTE, ilGetData());
+    //             // Set texture image
+    //             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
+    //                          ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
+    //                          GL_UNSIGNED_BYTE, ilGetData());
 
-                // Bind texture to framebuffer object
-                glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
-                if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-                {
-                    ROS_ERROR("Failed to Bind GL Frame Buffer Opbject for window[%d]", proj_ind);
-                    return -1;
-                }
+    //             // Bind texture to framebuffer object
+    //             glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
+    //             if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    //             {
+    //                 ROS_ERROR("Failed to Bind GL Frame Buffer Opbject for window[%d]", proj_ind);
+    //                 return -1;
+    //             }
 
-                // Draw the wall
-                if (drawQuadImage(quad_vertices_warped) != 0)
-                    return -1;
-            }
-        }
-    }
+    //             // Draw the wall
+    //             if (drawQuadImage(quad_vertices_warped) != 0)
+    //                 return -1;
+    //         }
+    //     }
+    // }
 
-    // Disable OpenGL texture mapping
-    glDisable(GL_TEXTURE_2D);
+    // // Disable OpenGL texture mapping
+    // glDisable(GL_TEXTURE_2D);
 
-    // Check for GL errors
-    checkErrorGL(__LINE__, __FILE__);
+    // // Check for GL errors
+    // checkErrorGL(__LINE__, __FILE__);
 
     return 0;
 }
 
 int main(int argc, char **argv)
 {
-    //  _______________ SETUP _______________
+    // //  _______________ SETUP _______________
 
-    // ROS Initialization
-    ros::init(argc, argv, "projection_display", ros::init_options::AnonymousName);
-    ros::NodeHandle n;
-    ros::NodeHandle nh("~");
-    ROS_INFO("RUNNING MAIN");
+    // // ROS Initialization
+    // ros::init(argc, argv, "projection_display", ros::init_options::AnonymousName);
+    // ros::NodeHandle n;
+    // ros::NodeHandle nh("~");
+    // ROS_INFO("RUNNING MAIN");
 
-    // Log paths for debugging
-    ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
-    ROS_INFO("[SETUP] Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
+    // // Log paths for debugging
+    // ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
+    // ROS_INFO("[SETUP] Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
 
-    // --------------- OpenGL SETUP V2 ---------------
+    // // --------------- OpenGL SETUP V2 ---------------
 
-    // Initialize GLFW
-    glfwSetErrorCallback(callbackErrorGLFW);
-    if (!glfwInit())
-    {
-        ROS_ERROR("[GLFW] Initialization Failed");
-        return -1;
-    }
+    // // Initialize GLFW
+    // glfwSetErrorCallback(callbackErrorGLFW);
+    // if (!glfwInit())
+    // {
+    //     ROS_ERROR("[GLFW] Initialization Failed");
+    //     return -1;
+    // }
 
-    // Get the list of available monitors and their count
-    pp_monitorIDVec = glfwGetMonitors(&nMonitors);
-    ROS_INFO("[GLFW] Monitors Found [%d] Projectors Sepcified[%d]", nMonitors, nProjectors);
+    // // Get the list of available monitors and their count
+    // pp_monitorIDVec = glfwGetMonitors(&nMonitors);
+    // ROS_INFO("[GLFW] Monitors Found [%d] Projectors Sepcified[%d]", nMonitors, nProjectors);
 
-    // Make sure nProj is not greater than the total number of monitors found
-    if (nProjectors > nMonitors)
-    {
-        ROS_ERROR("[GLFW] Error Fewer Monitors[%d] Found than Expected Projectors[%d]", nMonitors, nProjectors);
-        return -1;
-    }
+    // // Make sure nProj is not greater than the total number of monitors found
+    // if (nProjectors > nMonitors)
+    // {
+    //     ROS_ERROR("[GLFW] Error Fewer Monitors[%d] Found than Expected Projectors[%d]", nMonitors, nProjectors);
+    //     return -1;
+    // }
 
-    // Create GLFW window
-    for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
-    {
-        int mon_id_ind = winMonIndDefault; // Show image on default monitor
-        // int mon_id_ind =  projMonIndArr[proj_i]; // Show image on projector monitor
+    // // Create GLFW window
+    // for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
+    // {
+    //     int mon_id_ind = winMonIndDefault; // Show image on default monitor
+    //     // int mon_id_ind =  projMonIndArr[proj_i]; // Show image on projector monitor
 
-        if (setupProjGLFW(p_windowIDVec, proj_i, pp_monitorIDVec, mon_id_ind, fboIDVec[proj_i], fboTextureIDVec[proj_i]) != 0)
-        {
-            ROS_ERROR("[GLFW] Setup Failed for Window[%d]", proj_i);
-            return -1;
-        };
-    }
+    //     if (setupProjGLFW(p_windowIDVec, proj_i, pp_monitorIDVec, mon_id_ind, fboIDVec[proj_i], fboTextureIDVec[proj_i]) != 0)
+    //     {
+    //         ROS_ERROR("[GLFW] Setup Failed for Window[%d]", proj_i);
+    //         return -1;
+    //     };
+    // }
 
-    // --------------- DevIL SETUP ---------------
+    // // --------------- DevIL SETUP ---------------
 
-    // Initialize DevIL library
-    ilInit();
+    // // Initialize DevIL library
+    // ilInit();
 
-    // Load images
-    if (loadImgTextures(imgWallPathVec, imgWallIDVec) != 0)
-    {
-        ROS_ERROR("[DevIL] Failed to load wall images");
-        return -1;
-    }
+    // // Load images
+    // if (loadImgTextures(imgWallPathVec, imgWallIDVec) != 0)
+    // {
+    //     ROS_ERROR("[DevIL] Failed to load wall images");
+    //     return -1;
+    // }
 
-    // _______________ MAIN LOOP _______________
+    // // _______________ MAIN LOOP _______________
 
-    // Initialize a variable to check for errors and windows closed
-    bool is_win_closed = false;
-    bool is_err_thrown = false;
+    // // Initialize a variable to check for errors and windows closed
+    // bool is_win_closed = false;
+    // bool is_err_thrown = false;
 
-    while (!is_err_thrown && !is_win_closed && ros::ok())
-    {
-        is_win_closed = true;
+    // while (!is_err_thrown && !is_win_closed && ros::ok())
+    // {
+    //     is_win_closed = true;
 
-        // Update the window contents and process events for each projectors window
-        for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
-        {
-            // Get the GLFW objects for this projector
-            GLFWwindow *p_window_id = p_windowIDVec[proj_i];
-            GLuint fbo_texture_id = fboTextureIDVec[proj_i];
+    //     // Update the window contents and process events for each projectors window
+    //     for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
+    //     {
+    //         // Get the GLFW objects for this projector
+    //         GLFWwindow *p_window_id = p_windowIDVec[proj_i];
+    //         GLuint fbo_texture_id = fboTextureIDVec[proj_i];
 
-            if (!glfwWindowShouldClose(p_window_id))
-            {
-                is_win_closed = false; // At least one window is still open
+    //         if (!glfwWindowShouldClose(p_window_id))
+    //         {
+    //             is_win_closed = false; // At least one window is still open
 
-                // Make the window's context current
-                glfwMakeContextCurrent(p_window_id);
-                if (glfwGetCurrentContext() != p_window_id)
-                {
-                    ROS_ERROR("[MAIN] Failed to Set GLFW Context for Window[%d]", proj_i);
-                    is_err_thrown = true;
-                    break;
-                }
+    //             // Make the window's context current
+    //             glfwMakeContextCurrent(p_window_id);
+    //             if (glfwGetCurrentContext() != p_window_id)
+    //             {
+    //                 ROS_ERROR("[MAIN] Failed to Set GLFW Context for Window[%d]", proj_i);
+    //                 is_err_thrown = true;
+    //                 break;
+    //             }
 
-                // Clear back buffer for new frame
-                glClear(GL_COLOR_BUFFER_BIT);
+    //             // Clear back buffer for new frame
+    //             glClear(GL_COLOR_BUFFER_BIT);
 
-                // Draw the walls
-                if (drawWalls(proj_i, projMonIndArr[proj_i], p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec) != 0)
-                {
-                    ROS_ERROR("[MAIN] Failed to Draw Walls for Window[%d]", proj_i);
-                    is_err_thrown = true;
-                    break;
-                }
+    //             // Draw the walls
+    //             if (drawWalls(proj_i, projMonIndArr[proj_i], p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec) != 0)
+    //             {
+    //                 ROS_ERROR("[MAIN] Failed to Draw Walls for Window[%d]", proj_i);
+    //                 is_err_thrown = true;
+    //                 break;
+    //             }
 
-                // Unbind the texture
-                glBindTexture(GL_TEXTURE_2D, 0);
+    //             // Unbind the texture
+    //             glBindTexture(GL_TEXTURE_2D, 0);
 
-                // Unbind the FBO
-                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    //             // Unbind the FBO
+    //             glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-                // Swap buffers
-                glfwSwapBuffers(p_window_id);
-                if (checkErrorGLFW(__LINE__, __FILE__) ||
-                    checkErrorGL(__LINE__, __FILE__))
-                {
-                    is_err_thrown = true;
-                    break;
-                }
-            }
+    //             // Swap buffers
+    //             glfwSwapBuffers(p_window_id);
+    //             if (checkErrorGLFW(__LINE__, __FILE__) ||
+    //                 checkErrorGL(__LINE__, __FILE__))
+    //             {
+    //                 is_err_thrown = true;
+    //                 break;
+    //             }
+    //         }
 
-            // Exit condition
-            if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_window_id))
-            {
-                is_win_closed = true;
-                break;
-            }
-        }
+    //         // Exit condition
+    //         if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_window_id))
+    //         {
+    //             is_win_closed = true;
+    //             break;
+    //         }
+    //     }
 
-        // Poll and process events for all windows
-        glfwPollEvents();
-        if (checkErrorGLFW(__LINE__, __FILE__))
-            break;
-    }
+    //     // Poll and process events for all windows
+    //     glfwPollEvents();
+    //     if (checkErrorGLFW(__LINE__, __FILE__))
+    //         break;
+    // }
 
-    // _______________ CLEANUP _______________
-    ROS_INFO("SHUTTING DOWN");
+    // // _______________ CLEANUP _______________
+    // ROS_INFO("SHUTTING DOWN");
 
-    // Check which condition caused the loop to exit
-    if (!ros::ok())
-        ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
-    else if (is_win_closed)
-        ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
-    else if (is_err_thrown)
-        ROS_INFO("[LOOP TERMINATION] An Error Was Thrown");
-    else
-        ROS_INFO("[LOOP TERMINATION] Reason Unknown");
+    // // Check which condition caused the loop to exit
+    // if (!ros::ok())
+    //     ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
+    // else if (is_win_closed)
+    //     ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
+    // else if (is_err_thrown)
+    //     ROS_INFO("[LOOP TERMINATION] An Error Was Thrown");
+    // else
+    //     ROS_INFO("[LOOP TERMINATION] Reason Unknown");
 
-    // Delete FBO and textures
-    for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
-    {
-        glDeleteFramebuffers(1, &fboIDVec[proj_i]);
-        checkErrorGL(__LINE__, __FILE__);
-        glDeleteTextures(1, &fboTextureIDVec[proj_i]);
-        checkErrorGL(__LINE__, __FILE__);
-    }
-    ROS_INFO("[SHUTDOWN] Deleted FBO and textures");
+    // // Delete FBO and textures
+    // for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
+    // {
+    //     glDeleteFramebuffers(1, &fboIDVec[proj_i]);
+    //     checkErrorGL(__LINE__, __FILE__);
+    //     glDeleteTextures(1, &fboTextureIDVec[proj_i]);
+    //     checkErrorGL(__LINE__, __FILE__);
+    // }
+    // ROS_INFO("[SHUTDOWN] Deleted FBO and textures");
 
-    // Delete DevIL images
-    deleteImgTextures(imgWallIDVec);
-    ROS_INFO("[SHUTDOWN] Deleted DevIL images");
+    // // Delete DevIL images
+    // deleteImgTextures(imgWallIDVec);
+    // ROS_INFO("[SHUTDOWN] Deleted DevIL images");
 
-    // Destroy GL objects
-    for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
-    {
-        glfwDestroyWindow(p_windowIDVec[proj_i]);
-        p_windowIDVec[proj_i] = nullptr;
-        checkErrorGLFW(__LINE__, __FILE__);
-    }
-    ROS_INFO("[SHUTDOWN] Detroyd GLFW windows");
+    // // Destroy GL objects
+    // for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
+    // {
+    //     glfwDestroyWindow(p_windowIDVec[proj_i]);
+    //     p_windowIDVec[proj_i] = nullptr;
+    //     checkErrorGLFW(__LINE__, __FILE__);
+    // }
+    // ROS_INFO("[SHUTDOWN] Detroyd GLFW windows");
 
-    // Shutdown DevIL
-    ilShutDown();
-    checkErrorDevIL(__LINE__, __FILE__);
-    ROS_INFO("[SHUTDOWN] Shutdown DevIL");
+    // // Shutdown DevIL
+    // ilShutDown();
+    // checkErrorDevIL(__LINE__, __FILE__);
+    // ROS_INFO("[SHUTDOWN] Shutdown DevIL");
 
-    // Terminate GLFW
-    glfwTerminate();
-    checkErrorGLFW(__LINE__, __FILE__);
-    ROS_INFO("[SHUTDOWN] Terminated GLFW");
+    // // Terminate GLFW
+    // glfwTerminate();
+    // checkErrorGLFW(__LINE__, __FILE__);
+    // ROS_INFO("[SHUTDOWN] Terminated GLFW");
 
     return 0;
 }

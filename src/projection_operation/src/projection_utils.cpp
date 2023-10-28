@@ -8,11 +8,6 @@
 
 #include "projection_utils.h"
 
-// ================================================== VARIABLES ==================================================
-
-// Initialze struct class for storing wall image parameters
-DebugParams dbParams;
-
 // ================================================== FUNCTIONS ==================================================
 
 int checkErrorDevIL(int line, const char *file_str, const char *msg_str)
@@ -530,7 +525,6 @@ std::vector<cv::Point2f> computeQuadVertices(float x0, float y0, float width, fl
 
 void computeHomography(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> ctrl_point_params)
 {
-    // Calculate the vertices for the control point boundary dimensions.
     // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
     std::vector<cv::Point2f> origin_plane_vertices;
     origin_plane_vertices = computeQuadVertices(0.0f, 0.0f, originPlaneWidth, originPlaneHeight, 0.0f, 0.0f);
@@ -605,107 +599,6 @@ void updateCalParams(std::array<std::array<float, 6>, 4> &r_ctrl_point_params, i
     }
 }
 
-float bilinearInterpolationFullV2(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size)
-{
-    // Calculate the relative position within the grid.
-    float x = static_cast<float>(grid_col_i) / (grid_size - 1);
-    float y = static_cast<float>(grid_row_i) / (grid_size - 1);
-
-    // Perform bilinear interpolation using the formula.
-    float interp_val = (1 - x) * (1 - y) * a +
-                       x * (1 - y) * b +
-                       (1 - x) * y * c +
-                       x * y * d;
-
-    // Return the final interpolated value.
-    return interp_val;
-}
-
-void initControlPointCoordinates()
-{
-    // Specify the control point limits
-    const float cp_x = originPlaneWidth / 2;  // starting X-coordinate in NDC coordinates
-    const float cp_y = originPlaneHeight / 2; // starting Y-coordinate in NDC coordinates
-
-    // Iterate through the maze grid rows
-    for (float cp_i = 0; cp_i < MAZE_SIZE; cp_i++) // image bottom to top
-    {
-        cv::Point2f p_org;
-
-        // Control pint 0 (top-left)
-        if (cp_i == 0)
-            p_org = cv::Point2f(-cp_x, +cp_y);
-
-        // Control point 1 (top-right)
-        else if (cp_i == 1)
-            p_org = cv::Point2f(+cp_x, +cp_y);
-
-        // Control point 2 (bottom-right)
-        else if (cp_i == 2)
-            p_org = cv::Point2f(-cp_x, -cp_y);
-
-        // Control point 3 (bottom-left)
-        else if (cp_i == 3)
-            p_org = cv::Point2f(+cp_x, -cp_y);
-
-        // Set values
-        controlPointCoordinates[cp_i] = {
-            cv::Point2f(p_org.x, p_org.x + W_WD_DEF),            // top left
-            cv::Point2f(p_org.x + W_WD_DEF, p_org.y + W_HT_DEF), // top rigt
-            cv::Point2f(p_org.x + W_WD_DEF, p_org.y),            // bottom right
-            cv::Point2f(p_org.x, p_org.y)                        // bottom left
-        };
-    }
-}
-
-void updateWallVert3d()
-{
-    // Interpolate intermediate wall vertices
-    for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++) // image bottom to top
-    {
-        // Iterate through each column in the maze row
-        for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++) // image left to right
-        {
-            // Itterate through verteces
-            for (int v_ind = 0; v_ind < 4; v_ind++)
-            {
-                cv::Point2f p_a = controlPointCoordinates[3][v_ind];
-                cv::Point2f p_b = controlPointCoordinates[2][v_ind];
-                cv::Point2f p_c = controlPointCoordinates[0][v_ind];
-                cv::Point2f p_d = controlPointCoordinates[1][v_ind];
-
-                // Get the interpolated vertex x-coordinate
-                wallVertices3d[grid_row_i][grid_col_i][v_ind].x =
-                    bilinearInterpolationFullV2(p_a.x, p_b.x, p_c.x, p_d.x, grid_row_i, grid_col_i, MAZE_SIZE);
-
-                // Get the interpolated vertex y-coordinate
-                wallVertices3d[grid_row_i][grid_col_i][v_ind].y =
-                    bilinearInterpolationFullV2(p_a.y, p_b.y, p_c.y, p_d.y, grid_row_i, grid_col_i, MAZE_SIZE);
-            }
-        }
-    }
-}
-
-void computeHomographyV2(cv::Mat &r_hom_mat)
-{
-    // Calculate the vertices for the control point boundary dimensions.
-    // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
-    std::vector<cv::Point2f> origin_plane_vertices;
-    origin_plane_vertices = computeQuadVertices(0.0f, 0.0f, originPlaneWidth, originPlaneHeight, 0.0f, 0.0f);
-
-    // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
-    // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
-    std::vector<cv::Point2f> target_plane_vertices;
-    target_plane_vertices.push_back(cv::Point2f(controlPointCoordinates[0][3].x, controlPointCoordinates[0][3].y)); // top-left
-    target_plane_vertices.push_back(cv::Point2f(controlPointCoordinates[1][3].x, controlPointCoordinates[1][3].y)); // top-right
-    target_plane_vertices.push_back(cv::Point2f(controlPointCoordinates[2][3].x, controlPointCoordinates[2][3].y)); // bottom-right
-    target_plane_vertices.push_back(cv::Point2f(controlPointCoordinates[3][3].x, controlPointCoordinates[3][3].y)); // bottom-left
-
-    // Use OpenCV's findHomography function to compute the homography matrix.
-    // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
-    r_hom_mat = findHomography(origin_plane_vertices, target_plane_vertices);
-}
-
 void dbLogCtrlPointParams(std::array<std::array<float, 6>, 4> ctrl_point_params)
 {
     ROS_INFO("Control Point Parameters");
@@ -725,89 +618,252 @@ void dbLogCtrlPointParams(std::array<std::array<float, 6>, 4> ctrl_point_params)
     ROS_INFO("---------------------------------------------------------");
 }
 
-void dbStoreQuadParams(float grid_row_i, float grid_col_i,
-                       float quad_width, float quad_height,
-                       float quad_shear_x, float quad_shear_y,
-                       float quad_origin_x, float quad_origin_y,
-                       const std::vector<cv::Point2f> &quad_vertices_raw,
-                       const std::vector<cv::Point2f> &quad_vertices_warped)
+float bilinearInterpolationFullV2(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size)
 {
-    // Cast float indices to int
-    int row = static_cast<int>(grid_row_i);
-    int col = static_cast<int>(grid_col_i);
+    // Calculate the relative position within the grid.
+    float x = static_cast<float>(grid_col_i) / (grid_size - 1);
+    float y = static_cast<float>(grid_row_i) / (grid_size - 1);
 
-    // Store the parameters in the DebugParams struct
-    dbParams.quad_width[row][col] = quad_width;
-    dbParams.quad_height[row][col] = quad_height;
-    dbParams.quad_shear_x[row][col] = quad_shear_x;
-    dbParams.quad_shear_y[row][col] = quad_shear_y;
-    dbParams.quad_origin_x[row][col] = quad_origin_x;
-    dbParams.quad_origin_y[row][col] = quad_origin_y;
-    dbParams.quad_vertices_raw[row][col] = quad_vertices_raw;
-    dbParams.quad_vertices_warped[row][col] = quad_vertices_warped;
+    // Perform bilinear interpolation using the formula.
+    float interp_val = (1 - x) * (1 - y) * a +
+                       x * (1 - y) * b +
+                       (1 - x) * y * c +
+                       x * y * d;
+
+    // Return the final interpolated value.
+    return interp_val;
 }
 
-void dbLogQuadParams(std::string param_str)
+std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates()
 {
+    // Specify the control point limits
+    const float cp_x = originPlaneWidth / 2;  // starting X-coordinate in NDC coordinates
+    const float cp_y = originPlaneHeight / 2; // starting Y-coordinate in NDC coordinates
 
-    if (param_str == "wall_params")
+    // Iterate through control points
+    for (float cp_i = 0; cp_i < 4; cp_i++) // image bottom to top
     {
+        cv::Point2f p_org;
 
-        ROS_INFO("Wall Parameters for Each Cell in Maze");
-        ROS_INFO(" [Row,Col]| X-Org | Y-Org  | Width  | Height  | ShearX | ShearY |");
-        ROS_INFO("-----------------------------------------------------------------------------");
+        // Control pint 0 (image top-left)
+        if (cp_i == 0)
+            p_org = cv::Point2f(-cp_x, +cp_y);
 
-        // Loop through each row and column in the maze
-        for (int row = 0; row < MAZE_SIZE; ++row)
-        {
-            for (int col = 0; col < MAZE_SIZE; ++col)
-            {
-                ROS_INFO(" [%d, %d]  |  %4.2f  |  %4.2f  |  %4.2f  |  %4.2f  |  %4.2f  |  %4.2f  |",
-                         row, col,
-                         dbParams.quad_origin_x[row][col],
-                         dbParams.quad_origin_y[row][col],
-                         dbParams.quad_width[row][col],
-                         dbParams.quad_height[row][col],
-                         dbParams.quad_shear_x[row][col],
-                         dbParams.quad_shear_y[row][col]);
-            }
-        }
+        // Control point 1 (image top-right)
+        else if (cp_i == 1)
+            p_org = cv::Point2f(+cp_x, +cp_y);
 
-        ROS_INFO("-----------------------------------------------------------------------------");
+        // Control point 2 (image bottom-left)
+        else if (cp_i == 2)
+            p_org = cv::Point2f(-cp_x, -cp_y);
+
+        // Control point 3 (image bottom-right)
+        else if (cp_i == 3)
+            p_org = cv::Point2f(+cp_x, -cp_y);
+
+        // Set x y values for each vertex
+        CONTROL_POINT_COORDINATES[cp_i] = {
+            cv::Point2f(p_org.x, p_org.y + W_HT_DEF),            // top left
+            cv::Point2f(p_org.x + W_WD_DEF, p_org.y + W_HT_DEF), // top right
+            cv::Point2f(p_org.x, p_org.y),                       // bottom left
+            cv::Point2f(p_org.x + W_WD_DEF, p_org.y),            // bottom right
+        };
     }
 
-    if (param_str == "quad_vec")
+    // Return the data container for use in other libraries
+    return CONTROL_POINT_COORDINATES;
+}
+
+std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> interpolateWallVertices()
+{
+    // Interpolate intermediate wall vertices
+    for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++) // image bottom to top
     {
-        ROS_INFO("Wall Parameters for Each Cell in Maze");
-        ROS_INFO(" [Row,Col] | Bottom Left     | Bottom Right    | Top Right       | Top Left        |");
-        ROS_INFO("---------------------------------------------------------------------------------------");
-
-        // Loop through each row and column in the maze
-        for (int row = 0; row < MAZE_SIZE; ++row)
+        // Iterate through each column in the maze row
+        for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++) // image left to right
         {
-            for (int col = 0; col < MAZE_SIZE; ++col)
+            // Itterate through verteces
+            for (int v_ind = 0; v_ind < 4; v_ind++)
             {
-                // Fetch the quad vertices for the current [row][col]
-                std::vector<cv::Point2f> quad = dbParams.quad_vertices_warped[row][col];
+                // Get the corner values for the interpolation function
+                ///@note that y values must be flipped to account for the image origin being in the top-left corner
+                cv::Point2f p_a = CONTROL_POINT_COORDINATES[0][v_ind]; // bottom-left interp == top left NDC
+                cv::Point2f p_b = CONTROL_POINT_COORDINATES[1][v_ind]; // bottom-right interp == top right NDC
+                cv::Point2f p_c = CONTROL_POINT_COORDINATES[2][v_ind]; // top-left interp == bottom left NDC
+                cv::Point2f p_d = CONTROL_POINT_COORDINATES[3][v_ind]; // top-right interp == bottom right NDC
 
-                // Ensure there are 4 vertices in the vector
-                if (quad.size() == 4)
-                {
-                    ROS_INFO("  [%2d,%2d]  | X[%4.2f] Y[%4.2f] | X[%4.2f] Y[%4.2f] | X[%4.2f] Y[%4.2f] |  X[%4.2f] Y[%4.2f]",
-                             row, col,
-                             quad[0].x, quad[0].y,
-                             quad[1].x, quad[1].y,
-                             quad[2].x, quad[2].y,
-                             quad[3].x, quad[3].y);
-                }
-                else
-                {
-                    // Print an error message if the size isn't 4
-                    ROS_WARN("Skipped printing quad vertices for cell [%2d, %2d] due to incorrect size.", row, col);
-                }
+                // Get the interpolated vertex x-coordinate
+                WALL_VERTICES_COORDINATES[grid_row_i][grid_col_i][v_ind].x =
+                    bilinearInterpolationFullV2(p_a.x, p_b.x, p_c.x, p_d.x, grid_row_i, grid_col_i, MAZE_SIZE);
+
+                // Get the interpolated vertex y-coordinate
+                WALL_VERTICES_COORDINATES[grid_row_i][grid_col_i][v_ind].y =
+                    bilinearInterpolationFullV2(p_a.y, p_b.y, p_c.y, p_d.y, grid_row_i, grid_col_i, MAZE_SIZE);
             }
         }
+    }
 
-        ROS_INFO("---------------------------------------------------------------------------------------");
+    // Return the data container for use in other libraries
+    return WALL_VERTICES_COORDINATES;
+}
+
+std::vector<cv::Point2f> computeQuadVerticesV2(float x0, float y0, float width, float height, float shear_x, float shear_y)
+{
+    std::vector<cv::Point2f> quad_vertices_vec;
+
+    // Top-left vertex after applying shear
+    quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_x, y0 + height));
+
+    // Top-right vertex after applying shear
+    quad_vertices_vec.push_back(cv::Point2f(x0 + height * shear_x + width, y0 + height + width * shear_y));
+
+    // Bottom-left vertex
+    quad_vertices_vec.push_back(cv::Point2f(x0, y0));
+
+    // Bottom-right vertex
+    quad_vertices_vec.push_back(cv::Point2f(x0 + width, y0 + width * shear_y));
+
+    return quad_vertices_vec;
+}
+
+void computeHomographyV2(cv::Mat &r_hom_mat)
+{
+    // Calculate the vertices for the control point boundary dimensions.
+    // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
+    std::vector<cv::Point2f> origin_plane_vertices;
+    origin_plane_vertices = computeQuadVerticesV2(0.0f, 0.0f, originPlaneWidth, originPlaneHeight, 0.0f, 0.0f);
+
+    // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
+    // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
+    std::vector<cv::Point2f> target_plane_vertices;
+    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[0][3].x, CONTROL_POINT_COORDINATES[0][3].y)); // top-left
+    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[1][3].x, CONTROL_POINT_COORDINATES[1][3].y)); // top-right
+    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[2][3].x, CONTROL_POINT_COORDINATES[2][3].y)); // bottom-left
+    target_plane_vertices.push_back(cv::Point2f(CONTROL_POINT_COORDINATES[3][3].x, CONTROL_POINT_COORDINATES[3][3].y)); // bottom-right
+
+    // Use OpenCV's findHomography function to compute the homography matrix.
+    // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
+    r_hom_mat = findHomography(origin_plane_vertices, target_plane_vertices);
+}
+
+void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
+{
+    // Check if the input vector has exactly 4 vertices
+    if (quad_vertices.size() != 4)
+    {
+        ROS_WARN("The input vector does not contain exactly 4 vertices. Cannot print.");
+        return;
+    }
+
+    ROS_INFO("          Quad Vertices          ");
+    ROS_INFO("=================================");
+    ROS_INFO("          |   X   |   Y   |");
+    ROS_INFO("---------------------------------");
+
+    // Print the top vertices
+    ROS_INFO("Top-left   | %+5.2f | %+5.2f |", quad_vertices[0].x, quad_vertices[0].y);
+    ROS_INFO("Top-right  | %+5.2f | %+5.2f |", quad_vertices[1].x, quad_vertices[1].y);
+
+    // Separator line
+    ROS_INFO("---------------------------------");
+
+    // Print the bottom vertices
+    ROS_INFO("Btm-left   | %+5.2f | %+5.2f |", quad_vertices[2].x, quad_vertices[2].y);
+    ROS_INFO("Btm-right  | %+5.2f | %+5.2f |", quad_vertices[3].x, quad_vertices[3].y);
+
+    // Separator line
+    ROS_INFO("=================================");
+}
+
+void dbLogQuadVerticesArr(const std::array<cv::Point2f, 4> &quad_vertices)
+{
+    ROS_INFO("          Quad Vertices          ");
+    ROS_INFO("=================================");
+    ROS_INFO("          |   X   |   Y   |");
+    ROS_INFO("---------------------------------");
+
+    // Print the top vertices
+    ROS_INFO("Top-left   | %+5.2f | %+5.2f |", quad_vertices[0].x, quad_vertices[0].y);
+    ROS_INFO("Top-right  | %+5.2f | %+5.2f |", quad_vertices[1].x, quad_vertices[1].y);
+
+    // Separator line
+    ROS_INFO("---------------------------------");
+
+    // Print the bottom vertices
+    ROS_INFO("Btm-left   | %+5.2f | %+5.2f |", quad_vertices[2].x, quad_vertices[2].y);
+    ROS_INFO("Btm-right  | %+5.2f | %+5.2f |", quad_vertices[3].x, quad_vertices[3].y);
+
+    // Separator line
+    ROS_INFO("=================================");
+}
+
+void dbLogCtrlPointCoordinates()
+{
+    ROS_INFO("         Control Point Coordinates        ");
+    ROS_INFO("==========================================");
+    ROS_INFO("         |      Left     |     Right     |");
+
+    // Loop through each control point
+    for (int cp = 0; cp < 4; ++cp)
+    {
+        // Fetch the vertices for the current control point
+        auto &vertices = CONTROL_POINT_COORDINATES[cp];
+
+        ROS_INFO("------------------------------------------");
+        ROS_INFO("         |   X   |   Y   |   X   |   Y   |");
+        ROS_INFO("------------------------------------------");
+
+        // Print the top row coordinates
+        ROS_INFO("[%d]  Top | %+5.2f | %+5.2f | %+5.2f | %+5.2f |",
+                 cp,
+                 vertices[0].x, vertices[0].y, vertices[1].x, vertices[1].y);
+
+        // Print the bottom row coordinates
+        ROS_INFO("[%d]  Btm | %+5.2f | %+5.2f | %+5.2f | %+5.2f |",
+                 cp,
+                 vertices[2].x, vertices[2].y, vertices[3].x, vertices[3].y);
+    }
+    ROS_INFO("==========================================");
+}
+
+void dbLogWallVerticesCoordinates()
+{
+    ROS_INFO("                                     Wall Vertices Coordinates                                               ");
+    ROS_INFO("=============================================================================================================");
+    ROS_INFO("        ||   (0) Left    |   (0) Right   ||   (1) Left    |   (1) Right   ||   (2) Left    |   (2) Right   ||");
+    ROS_INFO("-------------------------------------------------------------------------------------------------------------");
+
+    // Loop through each row and column in the maze
+    for (int row = 0; row < MAZE_SIZE; ++row)
+    {
+        ROS_INFO("        ||   X   ,   Y   |   X   ,   Y   ||   X   ,   Y   |   X   ,   Y   ||   X   ,   Y   |   X   ,   Y   ||");
+        ROS_INFO("-------------------------------------------------------------------------------------------------------------");
+
+        // Buffer to hold the formatted string for each row
+        char buffer[256];
+
+        // Format and print the Top row coordinates
+        snprintf(buffer, sizeof(buffer), "(%d) Top ||", row);
+        for (int col = 0; col < MAZE_SIZE; ++col)
+        {
+            // Fetch the quad vertices for the current [row][col]
+            auto &quad = WALL_VERTICES_COORDINATES[row][col];
+            snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
+                     quad[0].x, quad[0].y, quad[1].x, quad[1].y);
+        }
+        ROS_INFO("%s", buffer);
+
+        // Format and print the Bottom row coordinates
+        snprintf(buffer, sizeof(buffer), "(%d) Btm ||", row);
+        for (int col = 0; col < MAZE_SIZE; ++col)
+        {
+            // Fetch the quad vertices for the current [row][col]
+            auto &quad = WALL_VERTICES_COORDINATES[row][col];
+            snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
+                     quad[2].x, quad[2].y, quad[3].x, quad[3].y);
+        }
+        ROS_INFO("%s", buffer);
+
+        ROS_INFO("-------------------------------------------------------------------------------------------------------------");
     }
 }

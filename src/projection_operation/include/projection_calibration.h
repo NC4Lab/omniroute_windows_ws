@@ -196,7 +196,7 @@ int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
 int drawControlPoint(float, float, float, std::vector<float>);
 
 /**
- * @brief Draws a textured rectangle using OpenGL.
+ * @brief Draws a textured quadrilateral using OpenGL.
  *
  * @param quad_vertices_vec Vector of vertex/corner points for a rectangular image.
  *
@@ -249,5 +249,9 @@ int drawWalls(cv::Mat, std::array<std::array<float, 6>, 4>, GLuint, ILuint, ILui
  * @return 0 on successful execution, -1 on failure.
  */
 int main(int, char **);
+
+int drawWallsV2(cv::Mat hom_mat, std::array<std::array<float, 6>, 4> ctrl_point_params, GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id);
+
+int drawQuadImageV2(std::vector<cv::Point2f> quad_vertices_vec);
 
 #endif

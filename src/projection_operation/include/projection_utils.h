@@ -288,7 +288,7 @@ const float wall_height_ndc = WALL_SPACE_Y / (1 + std::sqrt(2)); // Wall height 
  */
 const float cp_x = originPlaneWidth / 2;  // starting X-coordinate in NDC coordinates
 const float cp_y = originPlaneHeight / 2; // starting Y-coordinate in NDC coordinates
-extern const std::array<std::array<float, 6>, 4> CTRL_POINT_PARAMS = {{
+const std::array<std::array<float, 6>, 4> CTRL_POINT_PARAMS = {{
     {{-cp_x, +cp_y, wall_width_ndc, wall_height_ndc, 0.0f, 0.0f}}, // top-left control point
     {{+cp_x, +cp_y, wall_width_ndc, wall_height_ndc, 0.0f, 0.0f}}, // top-right control point
     {{+cp_x, -cp_y, wall_width_ndc, wall_height_ndc, 0.0f, 0.0f}}, // bottom-right control point
@@ -303,47 +303,46 @@ extern const float W_HT_DEF = WALL_SPACE_Y / (1 + std::sqrt(2)); // Wall height 
 extern const float CP_X_DEF = originPlaneWidth / 2;  // starting X-coordinate in NDC coordinates
 extern const float CP_Y_DEF = originPlaneHeight / 2; // starting Y-coordinate in NDC coordinates
 
-// Track control point coordingates (NDC)
-std::array<std::array<cv::Point2f, 4>, 4> controlPointCoordinates;
+/**
+ * @brief  4x4 data container for tracking control point coordinates in Normalized Device Coordinates (NDC)
+ *         [4][4] = [conrol point][vertex]
+  *
+ * @details
+ *
+ * - Dimension 1: Control Point [0, 1, 2, 3]
+ *  - 0: Top-left (image vertex)
+ *  - 1: Top-right (image vertex)
+ *  - 2: Bottom-left (image vertex)
+ *  - 3: Bottom-right (image vertex)
+ *
+ * - Dimension 2: Vertex(x, y) [0, 1, 2, 3]
+ *  - 0: Top-left  (quadrilateral vertex)
+ *  - 1: Top-right  (quadrilateral vertex)
+ *  - 2: Bottom-left  (quadrilateral vertex)
+ *  - 3: Bottom-right  (quadrilateral vertex)
+ */
+std::array<std::array<cv::Point2f, 4>, 4> CONTROL_POINT_COORDINATES;
+
 
 /**
- * @brief  3x3 Wall quadrilateral vertices (NDC) [3][3][4] = [row][col][vertex]
+ * @brief  3x3x4 data container for tracking al Wall vertices coordinates in Normalized Device Coordinates (NDC)
+ *         [3][3][4] = [row][col][vertex]
  *
  * @details
  *
- * - Dim 1: Rows [0-MAZE_SIZE-1]
+ * - Dimension 1: Rows [0-MAZE_SIZE-1]:
  *  - Top to Bottom
  *
- * - Dim 2: Column [0-MAZE_SIZE-1]
+ * - Dimension 2: Column [0-MAZE_SIZE-1]:
  *  - Left to Right
  *
- * - Dim 2: Vertex(x,y) [0-3]
- *  - 0: Top-left, 1: Top-right, 2: Bottom-right, 3: Bottom-left
- * 
- * @note
- * - Control point indeces:
- *  - [0] (0,0): Top-left 
- *  - [1] (0,2): Top-right
- *  - [2] (2,2): Bottom-right
- *  - [3] (2,0): Bottom-left
+ * - Dimension 3: Vertex(x, y) [0, 1, 2, 3]
+ *  - 0: Top-left  (quadrilateral vertex)
+ *  - 1: Top-right  (quadrilateral vertex)
+ *  - 2: Bottom-left  (quadrilateral vertex)
+ *  - 3: Bottom-right  (quadrilateral vertex)
  */
-extern std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> wallVertices3d;
-
-/**
- * @brief Struct to hold debugging parameters for the maze.
- */
-struct DebugParams
-{
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_width;                              // Width values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_height;                             // Height values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_shear_x;                            // Shear x values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_shear_y;                            // Shear y values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_origin_x;                           // X values
-    std::array<std::array<float, MAZE_SIZE>, MAZE_SIZE> quad_origin_y;                           // Y values
-    std::array<std::array<std::vector<cv::Point2f>, MAZE_SIZE>, MAZE_SIZE> quad_vertices_raw;    // Wall quad vertices pre-warp
-    std::array<std::array<std::vector<cv::Point2f>, MAZE_SIZE>, MAZE_SIZE> quad_vertices_warped; // Wall quad vertices warped
-};
-extern DebugParams dbParams;
+std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WALL_VERTICES_COORDINATES;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -582,11 +581,6 @@ std::vector<cv::Point2f> computePerspectiveWarp(std::vector<cv::Point2f>, cv::Ma
  */
 void updateCalParams(std::array<std::array<float, 6>, 4> &, int);
 
-float bilinearInterpolationFullV2(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size);
-void initControlPointCoordinates();
-void updateWallVert3d();
-void computeHomographyV2(cv::Mat &r_hom_mat);
-
 /**
  * @brief Prints the control point parameters to the ROS log.
  *
@@ -595,31 +589,41 @@ void computeHomographyV2(cv::Mat &r_hom_mat);
 void dbLogCtrlPointParams(std::array<std::array<float, 6>, 4>);
 
 /**
- * @brief Function to store quadrilateral parameters for debugging.
- *
- * @param grid_row_i Grid row index.
- * @param grid_col_i Grid column index.
- * @param quad_width Width of the quad.
- * @param quad_height Height of the quad.
- * @param quad_shear_x shear of the quad.
- * @param quad_shear_x shear of the quad.
- * @param quad_origin_x x-coordinate of the quad.
- * @param quad_origin_y y-coordinate of the quad.
- * @param quad_vertices_raw Vector of unwarped quad vertices.
- * @param quad_vertices_warped Vector of warped quad vertices.
+ * @brief Performs bilinear interpolation.
+ * 
+ * @param a The value at the bottom-left corner.
+ * @param b The value at the bottom-right corner.
+ * @param c The value at the top-left corner.
+ * @param d The value at the top-right corner.
+ * @param grid_row_i The row index in the grid.
+ * @param grid_col_i The column index in the grid.
+ * @param grid_size The size of the grid.
+ * 
+ * @details
+ * The corner values correspond to the following positions within a unit square:
+ * - a: Value at the bottom-left corner  (x, y) = (0, 0)
+ * - b: Value at the bottom-right corner (x, y) = (1, 0)
+ * - c: Value at the top-left corner     (x, y) = (0, 1)
+ * - d: Value at the top-right corner    (x, y) = (1, 1)
+ * 
+ * @return The interpolated value at the specified grid point.
  */
-void dbStoreQuadParams(float, float, float, float, float, float, float, float,
-                       const std::vector<cv::Point2f> &quad_vertices_raw,
-                       const std::vector<cv::Point2f> &quad_vertices_warped);
+float bilinearInterpolationFullV2(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size);
 
-/**
- * @brief Function to log wall parameters for debugging.
- *
- * @param param_str Srting specifying what to print.
- *
- * This function logs the parameters stored in the global DebugParams
- * variable as a structured table.
- */
-void dbLogQuadParams(std::string);
+std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates();
+
+std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> interpolateWallVertices();
+
+std::vector<cv::Point2f> computeQuadVerticesV2(float x0, float y0, float width, float height, float shear_x, float shear_y);
+
+void computeHomographyV2(cv::Mat &r_hom_mat);
+
+void dbLogQuadVertices(const std::vector<cv::Point2f>& quad_vertices);
+
+void dbLogQuadVerticesArr(const std::array<cv::Point2f, 4>& quad_vertices);
+
+void dbLogCtrlPointCoordinates();
+
+void dbLogWallVerticesCoordinates();
 
 #endif
