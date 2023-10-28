@@ -19,12 +19,20 @@ std::string windowName = "Projection Calibration";
 
 // Dynamic control point parameter arrays
 std::array<std::array<float, 6>, 4> ctrlPointParams;
-
-// Other variables related to control points
 int cpSelectedInd = 0;
-std::vector<float> cpActiveRGBVec = {0.0f, 1.0f, 0.0f}; // Active control point marker color (green)
-std::vector<float> cpInactiveRGBVec = {1.0f, 0.0f, 0.0f}; // Inactive control point marker color (red)
 std::string calModeStr = "position"; // Parmeter being modified [position, dimension, shear]
+
+// Control point graphics
+std::array<float, 3> cpVertSelectedRGB = {0.0f, 1.0f, 0.0f}; // Select control point marker color (green)
+std::array<float, 3> cpWallSelectedRGB = {1.0f, 0.0f, 0.0f}; // Selected control point wall color (red)
+std::array<float, 3> cpUnelectedRGB = {0.0f, 0.0f, 1.0f};     // Inactive control point marker color (blue)
+
+// Contorl point user interface
+int cpWallSelectedInd = 0; // Selected control point wall index [0,1,2,3]
+int cpVertSelectedInd = 2; // Selected control point wall vertex index [0,1,2,3]
+
+// Control point image radius
+const std::array<float, 2> cpMakerRadius = {0.0025f, 0.005f};
 
 // The 3x3 homography matrix of 32-bit floating-point numbers used to warp perspective.
 cv::Mat homMat = cv::Mat::eye(3, 3, CV_32F);
@@ -38,11 +46,11 @@ std::vector<ILuint> imgWallIDVec; // Container to hold the loaded images
 std::vector<std::string> imgWallPathVec = {
     // List of image file paths
     image_wall_dir_path + "/1_test_pattern.bmp",
-    image_wall_dir_path + "/2_all_white.bmp",
-    image_wall_dir_path + "/3_manu_pirate.bmp",
-    image_wall_dir_path + "/4_earthlings.bmp",
+    image_wall_dir_path + "/2_manu_pirate.bmp",
+    image_wall_dir_path + "/3_earthlings.bmp",
+    image_wall_dir_path + "/4_all_white.bmp",
 };
-int imgWallInd = 0;                      // Index of the image to be loaded
+int imgWallInd = 0; // Index of the image to be loaded
 
 // Monitor variables
 std::vector<ILuint> imgMonIDVec; // Container to hold the loaded images for ui
@@ -189,11 +197,11 @@ int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
  * @param x The control point x-coordinate.
  * @param y The control point y-coordinate.
  * @param radius The radius of the control point.
- * @param rgb_vec Vector of rgb values to color the marker.
+ * @param rgb_arr Vector of rgb values to color the marker.
  *
  * @return 0 if no errors, -1 if error.
  */
-int drawControlPoint(float, float, float, std::vector<float>);
+int drawColoredCircle(float, float, float, std::array<float, 3>);
 
 /**
  * @brief Draws a textured quadrilateral using OpenGL.
@@ -213,18 +221,18 @@ int drawQuadImage(std::vector<cv::Point2f>);
  * 2. Perspective warping based on a precomputed homography matrix.
  * 3. Shear and height adjustments based on control point calibration.
  * 4. Optional overlay of status images for cells corresponding to selected control points.
- * 
+ *
  * @section Control Point and Grid Correspondence
- * 
- * This function employs a set of control points for calibration. The table below describes 
- * the correspondence between the displayed image, Normalized Device Coordinates (NDC), 
+ *
+ * This function employs a set of control points for calibration. The table below describes
+ * the correspondence between the displayed image, Normalized Device Coordinates (NDC),
  * control points, and grid indices:
- * 
+ *
  * - Top-Left:      NDC (-1, 1),    Control Point [0],  Grid Index [0][s-1]
  * - Top-Right:     NDC (1, 1),     Control Point [1],  Grid Index [s-1][s-1]
  * - Bottom-Right:  NDC (1, -1),    Control Point [2],  Grid Index [s-1][0]
  * - Bottom-Left:   NDC (-1, -1),   Control Point [3],  Grid Index [0][0]
- * 
+ *
  * @param hom_mat The 3x3 homography matrix used for perspective warping of the walls.
  * @param ctrl_point_params A 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
  * @param fbo_texture_id OpenGL framebuffer object's texture ID.
@@ -250,8 +258,12 @@ int drawWalls(cv::Mat, std::array<std::array<float, 6>, 4>, GLuint, ILuint, ILui
  */
 int main(int, char **);
 
+void callbackKeyBindingV2(GLFWwindow *, int, int, int, int);
+
 int drawWallsV2(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id);
 
 int drawQuadImageV2(std::array<cv::Point2f, 4> quad_vertices_arr);
+
+int drawControlPoints();
 
 #endif

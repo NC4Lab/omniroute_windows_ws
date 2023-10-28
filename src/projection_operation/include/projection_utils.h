@@ -217,9 +217,6 @@ extern const int MAZE_SIZE = 3;
 extern const int WALL_WIDTH_PXL = 300;
 extern const int WALL_HEIGHT_PXL = 540;
 
-// Control point image radius
-extern const float CP_RADIUS_NDC = 0.005f;
-
 // Specify the origin plane width and height (NDC)
 const float originPlaneWidth = 0.3f;
 const float originPlaneHeight = 0.6f;
@@ -615,18 +612,18 @@ float bilinearInterpolationFullV2(float a, float b, float c, float d, int grid_r
 
 std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates();
 
-cv::Mat computeHomographyV2();
+cv::Mat computeHomographyV2(const std::array<std::array<cv::Point2f, 4>, 4> &);
 
-cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat &r_hom_mat);
+cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, const cv::Mat &H_MAT);
 
-std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateWarpedWallVertices();
+std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateWarpedWallVertices(const std::array<std::array<cv::Point2f, 4>, 4> &);
 
-void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices);
+void dbLogQuadVertices(const std::vector<cv::Point2f> &);
 
-void dbLogQuadVerticesArr(const std::array<cv::Point2f, 4> &quad_vertices);
+void dbLogQuadVerticesArr(const std::array<cv::Point2f, 4> &);
 
-void dbLogCtrlPointCoordinates();
+void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4>&);
 
-void dbLogWallVerticesCoordinates();
+void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &);
 
 #endif

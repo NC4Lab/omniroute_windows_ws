@@ -674,7 +674,7 @@ std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates()
     return CONTROL_POINT_COORDINATES;
 }
 
-cv::Mat computeHomographyV2()
+cv::Mat computeHomographyV2(const std::array<std::array<cv::Point2f, 4>, 4> &CONTROL_POINT_COORDINATES)
 {
     // Calculate the vertices for based on the initial control point boundary dimensions.
     // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
@@ -700,7 +700,7 @@ cv::Mat computeHomographyV2()
     return H_MAT;
 }
 
-cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat &r_hom_mat)
+cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, const cv::Mat &H_MAT)
 {
 
     // Convert to 3x1 homogeneous coordinate matrix
@@ -708,25 +708,25 @@ cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat &r_hom_mat)
     cv::Mat ptMat(3, 1, CV_32F, data);              // Point's homogeneous coordinates stored as a 3x1 matrix of type CV_32F (32-bit float)
 
     // Homography Matrix Type Conversion (for later matrix multiplication)
-    r_hom_mat.convertTo(r_hom_mat, ptMat.type());
+    H_MAT.convertTo(H_MAT, ptMat.type());
 
     // Apply Homography Matrix to Warp Perspective
     // Multiply the homography matrix with the point's homogeneous coordinates.
     // This results in a new column matrix representing the point's warped coordinates.
-    ptMat = r_hom_mat * ptMat;
+    ptMat = H_MAT * ptMat;
 
     // Convert back to Cartesian Coordinates
     ptMat /= ptMat.at<float>(2); // Divide first two elements by the third element (w)
 
     // Update/overwrite original vertex coordinates with the warped coordinates
     cv::Point2f v_warped(
-        ptMat.at<float>(0, 0), // x
+        ptMat.at<float>(0, 0),  // x
         ptMat.at<float>(0, 1)); // y
 
     return v_warped;
 }
 
-std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateWarpedWallVertices()
+std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateWarpedWallVertices(const std::array<std::array<cv::Point2f, 4>, 4> &CONTROL_POINT_COORDINATES)
 {
     // Iterate trough grid/wall rows
     for (float grid_row_i = 0; grid_row_i < MAZE_SIZE; grid_row_i++) // image bottom to top
@@ -735,14 +735,14 @@ std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateW
         for (float grid_col_i = 0; grid_col_i < MAZE_SIZE; grid_col_i++) // image left to right
         {
             // Itterate through verteces
-            for (int v_ind = 0; v_ind < 4; v_ind++)
+            for (int p_i = 0; p_i < 4; p_i++)
             {
                 // Get the corner values for the interpolation function
                 ///@note that y values must be flipped to account for the image origin being in the top-left corner
-                cv::Point2f p_a = CONTROL_POINT_COORDINATES[0][v_ind]; // bottom-left interp == top left NDC
-                cv::Point2f p_b = CONTROL_POINT_COORDINATES[1][v_ind]; // bottom-right interp == top right NDC
-                cv::Point2f p_c = CONTROL_POINT_COORDINATES[2][v_ind]; // top-left interp == bottom left NDC
-                cv::Point2f p_d = CONTROL_POINT_COORDINATES[3][v_ind]; // top-right interp == bottom right NDC
+                cv::Point2f p_a = CONTROL_POINT_COORDINATES[0][p_i]; // bottom-left interp == top left NDC
+                cv::Point2f p_b = CONTROL_POINT_COORDINATES[1][p_i]; // bottom-right interp == top right NDC
+                cv::Point2f p_c = CONTROL_POINT_COORDINATES[2][p_i]; // top-left interp == bottom left NDC
+                cv::Point2f p_d = CONTROL_POINT_COORDINATES[3][p_i]; // top-right interp == bottom right NDC
 
                 // Get the interpolated vertex x-coordinate
                 cv::Point2f p_interp(
@@ -753,10 +753,14 @@ std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateW
                 cv::Point2f p_warped = perspectiveWarpPoint(p_interp, H_MAT);
 
                 // Store the warped vertex coordinates
-                WARPED_WALL_COORDINATES[grid_row_i][grid_col_i][v_ind] = p_warped;
+                WARPED_WALL_COORDINATES[grid_row_i][grid_col_i][p_i] = p_warped;
             }
         }
     }
+
+    // Print the warped wall coordinates
+    dbLogCtrlPointCoordinates();
+    // dbLogWallVerticesCoordinates();
 
     // Return the warped wall coordinates for use in other libraries
     return WARPED_WALL_COORDINATES;
@@ -813,7 +817,7 @@ void dbLogQuadVerticesArr(const std::array<cv::Point2f, 4> &quad_vertices)
     ROS_INFO("=================================");
 }
 
-void dbLogCtrlPointCoordinates()
+void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &CONTROL_POINT_COORDINATES)
 {
     ROS_INFO("         Control Point Coordinates        ");
     ROS_INFO("==========================================");
@@ -842,7 +846,7 @@ void dbLogCtrlPointCoordinates()
     ROS_INFO("==========================================");
 }
 
-void dbLogWallVerticesCoordinates()
+void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &WARPED_WALL_COORDINATES)
 {
     ROS_INFO("                                       Warped Wall Coordinates                                               ");
     ROS_INFO("=============================================================================================================");

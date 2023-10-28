@@ -373,7 +373,7 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
     return 0;
 }
 
-int drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec)
+int drawColoredCircle(float x, float y, float radius, std::array<float, 3> rgb_arr)
 {
     const int segments = 100; // Number of segments to approximate a circle
 
@@ -381,7 +381,7 @@ int drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec)
     glBegin(GL_TRIANGLE_FAN);
 
     // Set the color to green
-    glColor3f(rgb_vec[0], rgb_vec[1], rgb_vec[2]);
+    glColor3f(rgb_arr[0], rgb_arr[1], rgb_arr[2]);
 
     // Center of the circle
     glVertex2f(x, y);
@@ -562,7 +562,6 @@ int main(int argc, char **argv)
 
     // Initialze control points
     CONTROL_POINT_COORDINATES = initControlPointCoordinates();
-    dbLogCtrlPointCoordinates();
 
     // Compute homography matrix once
     H_MAT = computeHomographyV2();
@@ -598,7 +597,7 @@ int main(int argc, char **argv)
     // Set OpenGL context and callbacks
     glfwMakeContextCurrent(p_windowID);
     gladLoadGL();
-    glfwSetKeyCallback(p_windowID, callbackKeyBinding);
+    glfwSetKeyCallback(p_windowID, callbackKeyBindingV2);
     glfwSetFramebufferSizeCallback(p_windowID, callbackFrameBufferSizeGLFW);
 
     // Initialize FBO and texture
@@ -691,26 +690,24 @@ int main(int argc, char **argv)
             return -1;
         }
 
-        // Draw/update control points
-        for (int i = 0; i < 4; i++)
+        // // Draw/update control points
+        // for (int i = 0; i < 4; i++)
+        // {
+        //     // Get control point color based on cp selection
+        //     std::vector<float> cp_col = (cpSelectedInd != i) ? cpWallSelectedRGB : cpActiveRGBVec;
+
+        //     // Draw the control point
+        //     if (drawColoredCircle(ctrlPointParams[i][0], ctrlPointParams[i][1], cpMakerRadius, cp_col) != 0)
+        //     {
+        //         ROS_ERROR("[MAIN] Draw Control Point Threw Error");
+        //         return -1;
+        //     }
+        // }
+
+        if (drawControlPoints() != 0)
         {
-            // Get control point color based on cp selection
-            std::vector<float> cp_col = (cpSelectedInd != i) ? cpInactiveRGBVec : cpActiveRGBVec;
-
-            // // Draw the control point
-            // if (drawControlPoint(ctrlPointParams[i][0], ctrlPointParams[i][1], CP_RADIUS_NDC, cp_col) != 0)
-            // {
-            //     ROS_ERROR("[MAIN] Draw Control Point Threw Error");
-            //     return -1;
-            // }
-
-            // TEMP
-            cv::Point2f p_warped = perspectiveWarpPoint(CONTROL_POINT_COORDINATES[i][2], H_MAT);
-            if (drawControlPoint(p_warped.x, p_warped.y, CP_RADIUS_NDC, cp_col) != 0)
-            {
-                ROS_ERROR("[MAIN] Draw Control Point Threw Error");
-                return -1;
-            }
+            ROS_ERROR("[MAIN] Draw Control Point Threw Error");
+            return -1;
         }
 
         // Swap buffers and poll events
@@ -875,4 +872,280 @@ int drawQuadImageV2(std::array<cv::Point2f, 4> quad_vertices_arr)
 
     // Check and return GL status
     return checkErrorGL(__LINE__, __FILE__);
+}
+
+int drawControlPoints()
+{
+
+    // Itterate through control points
+    for (int cp_i = 0; cp_i < 4; cp_i++)
+    {
+        // Itterate through verteces
+        for (int v_i = 0; v_i < 4; v_i++)
+        {
+            float cp_rad = cpMakerRadius[0];
+            std::array<float, 3> cp_col = cpUnelectedRGB;
+
+            // Set color based on cp selected
+            if (cp_i == cpWallSelectedInd)
+            {
+                if (cpVertSelectedInd == v_i)
+                {
+                    cp_col = cpVertSelectedRGB;
+                }
+                else
+                    cp_col = cpWallSelectedRGB;
+            }
+
+            // Make marker size larger for control point origin/anchor
+            if (v_i == 2)
+                cp_rad = cpMakerRadius[1];
+
+            // Warp the vertex
+            cv::Point2f p_warped = perspectiveWarpPoint(CONTROL_POINT_COORDINATES[cp_i][v_i], H_MAT);
+
+            // Draw the control point
+            if (drawColoredCircle(p_warped.x, p_warped.y, cp_rad, cp_col) != 0)
+            {
+                ROS_ERROR("[MAIN] Draw Control Point Threw Error");
+                return -1;
+            }
+        }
+    }
+    return 0;
+}
+
+void callbackKeyBindingV2(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+    bool do_wall_update = false;
+
+    // Set the current OpenGL context to the window
+    glfwMakeContextCurrent(window);
+
+    // _______________ ANY KEY RELEASE ACTION _______________
+
+    if (action == GLFW_RELEASE)
+    {
+
+        // ---------- Monitor handling [F] ----------
+
+        // Set/unset Fullscreen
+        if (key == GLFW_KEY_F)
+        {
+            isFullScreen = !isFullScreen;
+        }
+
+        // Move the window to another monitor
+        else if (key == GLFW_KEY_0)
+        {
+            winMonInd = 0;
+        }
+        else if (key == GLFW_KEY_1 && nMonitors > 1)
+        {
+            winMonInd = 1;
+        }
+        else if (key == GLFW_KEY_2 && nMonitors > 2)
+        {
+            winMonInd = 2;
+        }
+        else if (key == GLFW_KEY_3 && nMonitors > 3)
+        {
+            winMonInd = 3;
+        }
+        else if (key == GLFW_KEY_4 && nMonitors > 4)
+        {
+            winMonInd = 4;
+        }
+        else if (key == GLFW_KEY_5 && nMonitors > 5)
+        {
+            winMonInd = 5;
+        }
+
+        // ---------- XML Handling [ENTER, L] ----------
+
+        // Save coordinates to XML
+        else if (key == GLFW_KEY_ENTER)
+        {
+            // Get the path to the config directory and format the save file name
+            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
+
+            // Save the coordinates to the XML file
+            saveCoordinatesXML(homMat, ctrlPointParams, file_path);
+        }
+
+        // Load coordinates from XML
+        else if (key == GLFW_KEY_L)
+        {
+            // Get the path to the config directory and format the load file name
+            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
+
+            // Load the coordinates from the XML file
+            loadCoordinatesXML(homMat, ctrlPointParams, file_path, 3);
+        }
+
+        // ---------- Image selector keys [F1-F4] ----------
+
+        else if (key == GLFW_KEY_F1)
+        {
+            imgWallInd = (int)imgWallPathVec.size() > 0 ? 0 : imgWallInd;
+        }
+        else if (key == GLFW_KEY_F2)
+        {
+            imgWallInd = (int)imgWallPathVec.size() > 1 ? 1 : imgWallInd;
+        }
+        else if (key == GLFW_KEY_F3)
+        {
+            imgWallInd = (int)imgWallPathVec.size() > 2 ? 2 : imgWallInd;
+        }
+        else if (key == GLFW_KEY_F4)
+        {
+            imgWallInd = (int)imgWallPathVec.size() > 3 ? 3 : imgWallInd;
+        }
+
+        // ---------- Control Point Reset [R] ----------
+
+        else if (key == GLFW_KEY_R)
+        {
+            CONTROL_POINT_COORDINATES = initControlPointCoordinates();
+        }
+    }
+
+    // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
+    else if (action == GLFW_PRESS || action == GLFW_REPEAT)
+    {
+
+        // ---------- Calibration mode [CTRL + SHIFT [LEFT, RIGHT]] ----------
+
+        if ((mods & GLFW_MOD_CONTROL) && (mods & GLFW_MOD_SHIFT))
+        {
+            // Listen for arrow key input to switch through calibration modes
+            if (key == GLFW_KEY_LEFT)
+            {
+                calModeInd = (calModeInd > 0) ? calModeInd - 1 : (int)nCalModes - 1;
+            }
+            else if (key == GLFW_KEY_RIGHT)
+            {
+                calModeInd = (calModeInd < nCalModes - 1) ? calModeInd + 1 : 0;
+            }
+            // Reset a subset of control point parameters when switching calibration modes
+            if (key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT)
+            {
+                updateCalParams(ctrlPointParams, calModeInd);
+            }
+        }
+
+        // ---------- Contol point wall selector keys [CTRL [LEFT, RIGHT, UP, DOWN]] ----------
+
+        else if (mods & GLFW_MOD_CONTROL)
+        {
+            if (key == GLFW_KEY_UP)
+            {
+                // Move to the top row, keeping the horizontal position
+                cpWallSelectedInd = (cpWallSelectedInd % 2); // Result will be 0 or 1
+            }
+            else if (key == GLFW_KEY_DOWN)
+            {
+                // Move to the bottom row, keeping the horizontal position
+                cpWallSelectedInd = 2 + (cpWallSelectedInd % 2); // Result will be 2 or 3
+            }
+            else if (key == GLFW_KEY_LEFT)
+            {
+                // Move to the left column, keeping the vertical position
+                cpWallSelectedInd = (cpWallSelectedInd >= 2) ? 2 : 0; // Result will be 0 or 2
+            }
+            else if (key == GLFW_KEY_RIGHT)
+            {
+                // Move to the right column, keeping the vertical position
+                cpWallSelectedInd = (cpWallSelectedInd >= 2) ? 3 : 1; // Result will be 1 or 3
+            }
+        }
+
+        // ---------- Contol point vertex selector keys [ALT [LEFT, RIGHT, UP, DOWN]] ----------
+
+        else if (mods & GLFW_MOD_ALT)
+        {
+            if (key == GLFW_KEY_UP)
+            {
+                // Move to the top row, keeping the horizontal position
+                cpVertSelectedInd = (cpVertSelectedInd % 2); // Result will be 0 or 1
+            }
+            else if (key == GLFW_KEY_DOWN)
+            {
+                // Move to the bottom row, keeping the horizontal position
+                cpVertSelectedInd = 2 + (cpVertSelectedInd % 2); // Result will be 2 or 3
+            }
+            else if (key == GLFW_KEY_LEFT)
+            {
+                // Move to the left column, keeping the vertical position
+                cpVertSelectedInd = (cpVertSelectedInd >= 2) ? 2 : 0; // Result will be 0 or 2
+            }
+            else if (key == GLFW_KEY_RIGHT)
+            {
+                // Move to the right column, keeping the vertical position
+                cpVertSelectedInd = (cpVertSelectedInd >= 2) ? 3 : 1; // Result will be 1 or 3
+            }
+        }
+
+        // ---------- Control point translate [SHIFT or no modifier] ----------
+        else
+        {
+            // Set the position increment based on whether the shift key is pressed
+            float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.0005f;
+
+            // Store current origin
+            cv::Point2f cp_origin_save = CONTROL_POINT_COORDINATES[cpWallSelectedInd][2];
+
+            // Listen for arrow key input to move selected control point
+            if (key == GLFW_KEY_LEFT)
+            {
+                CONTROL_POINT_COORDINATES[cpWallSelectedInd][cpVertSelectedInd].x -= pos_inc; // Move left
+                do_wall_update = true;
+            }
+            else if (key == GLFW_KEY_RIGHT)
+            {
+                CONTROL_POINT_COORDINATES[cpWallSelectedInd][cpVertSelectedInd].x += pos_inc; // Move right
+                do_wall_update = true;
+            }
+            else if (key == GLFW_KEY_UP)
+            {
+                CONTROL_POINT_COORDINATES[cpWallSelectedInd][cpVertSelectedInd].y += pos_inc; // Move up
+                do_wall_update = true;
+            }
+            else if (key == GLFW_KEY_DOWN)
+            {
+                CONTROL_POINT_COORDINATES[cpWallSelectedInd][cpVertSelectedInd].y -= pos_inc; // Move down
+                do_wall_update = true;
+            }
+
+            // Shift all control points if origin moved
+            cv::Point2f cp_origin_new = CONTROL_POINT_COORDINATES[cpWallSelectedInd][2];
+
+            // Calculate the change in x and y for the origin
+            float delta_x = cp_origin_new.x - cp_origin_save.x;
+            float delta_y = cp_origin_new.y - cp_origin_save.y;
+
+            // Check if the origin vertex was moved
+            if (cpVertSelectedInd == 2)
+            {
+                // Update all other vertices based on the change in the origin
+                for (int i = 0; i < 4; ++i) // Assuming there are 4 vertices
+                {
+                    if (i != 2) // Skip the origin vertex itself
+                    {
+                        CONTROL_POINT_COORDINATES[cpWallSelectedInd][i].x += delta_x;
+                        CONTROL_POINT_COORDINATES[cpWallSelectedInd][i].y += delta_y;
+                    }
+                }
+            }
+        }
+    }
+
+    // _______________ Update _______________
+
+    // Recompute warped wall vertices
+    if (do_wall_update)
+        WARPED_WALL_COORDINATES = updateWarpedWallVertices();
+
+    // Update the window monitor and mode
+    updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
 }
