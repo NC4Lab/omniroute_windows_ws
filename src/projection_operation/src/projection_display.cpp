@@ -261,7 +261,7 @@ int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
     return checkErrorGL(__LINE__, __FILE__);
 }
 
-// int drawWalls(
+// int updateWallImages(
 //     int proj_ind,
 //     int mon_id_ind,
 //     GLFWwindow *p_window_id,
@@ -311,8 +311,8 @@ int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
 //                 float shear_y = bilinearInterpolationFull(ctrl_point_params, 5, grid_row_i, grid_col_i, MAZE_SIZE); // wall x shear
 
 //                 // Get origin coordinates of wall
-//                 float x_origin = grid_col_i * WALL_SPACE_X;
-//                 float y_origin = grid_row_i * WALL_SPACE_Y;
+//                 float x_origin = grid_col_i * WALL_SPACE_HORZ_NDC;
+//                 float y_origin = grid_row_i * WALL_SPACE_VERT_NDC;
 
 //                 // Create wall vertices
 //                 std::vector<cv::Point2f> quad_vertices_raw = computeQuadVertices(x_origin, y_origin, width, height, shear_x, shear_y);
@@ -443,7 +443,7 @@ int main(int argc, char **argv)
     //             glClear(GL_COLOR_BUFFER_BIT);
 
     //             // Draw the walls
-    //             if (drawWalls(proj_i, projMonIndArr[proj_i], p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec) != 0)
+    //             if (updateWallImages(proj_i, projMonIndArr[proj_i], p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec) != 0)
     //             {
     //                 ROS_ERROR("[MAIN] Failed to Draw Walls for Window[%d]", proj_i);
     //                 is_err_thrown = true;

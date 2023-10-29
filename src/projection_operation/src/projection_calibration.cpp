@@ -101,7 +101,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         else if (key == GLFW_KEY_R)
         {
-            CTRL_PNT_COORDS = initControlPointCoordinates();
+            CTRL_PNT_WALL_COORDS = initControlPointCoordinates();
         }
     }
 
@@ -125,7 +125,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Reset a subset of control point parameters when switching calibration modes
             if (key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT)
             {
-                CTRL_PNT_COORDS = initControlPointCoordinates();
+                CTRL_PNT_WALL_COORDS = initControlPointCoordinates();
             }
         }
 
@@ -188,32 +188,32 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.0005f;
 
             // Store current origin
-            cv::Point2f cp_origin_save = CTRL_PNT_COORDS[cpWallSelectedInd][2];
+            cv::Point2f cp_origin_save = CTRL_PNT_WALL_COORDS[cpWallSelectedInd][2];
 
             // Listen for arrow key input to move selected control point
             if (key == GLFW_KEY_LEFT)
             {
-                CTRL_PNT_COORDS[cpWallSelectedInd][cpVertSelectedInd].x -= pos_inc; // Move left
+                CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].x -= pos_inc; // Move left
                 do_wall_update = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                CTRL_PNT_COORDS[cpWallSelectedInd][cpVertSelectedInd].x += pos_inc; // Move right
+                CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].x += pos_inc; // Move right
                 do_wall_update = true;
             }
             else if (key == GLFW_KEY_UP)
             {
-                CTRL_PNT_COORDS[cpWallSelectedInd][cpVertSelectedInd].y += pos_inc; // Move up
+                CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].y += pos_inc; // Move up
                 do_wall_update = true;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                CTRL_PNT_COORDS[cpWallSelectedInd][cpVertSelectedInd].y -= pos_inc; // Move down
+                CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].y -= pos_inc; // Move down
                 do_wall_update = true;
             }
 
             // Shift all control points if origin moved
-            cv::Point2f cp_origin_new = CTRL_PNT_COORDS[cpWallSelectedInd][2];
+            cv::Point2f cp_origin_new = CTRL_PNT_WALL_COORDS[cpWallSelectedInd][2];
 
             // Calculate the change in x and y for the origin
             float delta_x = cp_origin_new.x - cp_origin_save.x;
@@ -227,8 +227,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 {
                     if (i != 2) // Skip the origin vertex itself
                     {
-                        CTRL_PNT_COORDS[cpWallSelectedInd][i].x += delta_x;
-                        CTRL_PNT_COORDS[cpWallSelectedInd][i].y += delta_y;
+                        CTRL_PNT_WALL_COORDS[cpWallSelectedInd][i].x += delta_x;
+                        CTRL_PNT_WALL_COORDS[cpWallSelectedInd][i].y += delta_y;
                     }
                 }
             }
@@ -239,7 +239,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
     // Recompute warped wall vertices
     if (do_wall_update)
-        WARP_WALL_COORDS = updateWarpedWallVertices(H_MAT, CTRL_PNT_COORDS);
+        WARP_WALL_COORDS = updateWarpedWallVertices(H_MAT, CTRL_PNT_WALL_COORDS);
 
     // Update the window monitor and mode
     updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
@@ -383,7 +383,7 @@ int drawColoredCircle(float x, float y, float radius, std::array<float, 3> rgb_a
     return checkErrorGL(__LINE__, __FILE__);
 }
 
-int drawControlPoints()
+int updateControlPointMarkers()
 {
 
     // Itterate through control points
@@ -411,7 +411,10 @@ int drawControlPoints()
                 cp_rad = cpMakerRadius[1];
 
             // Warp the vertex
-            cv::Point2f p_warped = perspectiveWarpPoint(CTRL_PNT_COORDS[cp_i][v_i], H_MAT);
+            cv::Point2f p_warped = perspectiveWarpPoint(CTRL_PNT_WALL_COORDS[cp_i][v_i], H_MAT);
+
+            // TEMP
+            p_warped = CTRL_PNT_WALL_COORDS[cp_i][v_i];
 
             // Draw the control point
             if (drawColoredCircle(p_warped.x, p_warped.y, cp_rad, cp_col) != 0)
@@ -456,10 +459,62 @@ int drawQuadImage(std::array<cv::Point2f, 4> quad_vertices_arr)
     return checkErrorGL(__LINE__, __FILE__);
 }
 
-int drawWalls(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id)
+int drawBarycentricImage(std::array<cv::Point2f, 4> quad_vertices_arr)
+{
+    // Divide the quadrilateral into two triangles
+    // Triangle 1: [0, 1, 2]
+    // Triangle 2: [2, 3, 0]
+
+    // Start drawing the triangles
+    glBegin(GL_TRIANGLES);
+
+    // Set the color to white for texture mapping
+    glColor3f(1.0f, 1.0f, 1.0f);
+
+    // --------------- First Triangle -----------------
+    // Triangle formed by vertices [0, 1, 2]
+
+    // Top-left corner of texture (Vertex 0)
+    glTexCoord2f(0.0f, 1.0f);
+    glVertex2f(quad_vertices_arr[0].x, quad_vertices_arr[0].y);
+
+    // Top-right corner of texture (Vertex 1)
+    glTexCoord2f(1.0f, 1.0f);
+    glVertex2f(quad_vertices_arr[1].x, quad_vertices_arr[1].y);
+
+    // Bottom-left corner of texture (Vertex 2)
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex2f(quad_vertices_arr[2].x, quad_vertices_arr[2].y);
+
+    // --------------- Second Triangle -----------------
+    // Triangle formed by vertices [2, 1, 3]
+
+    // Bottom-left corner of texture (Vertex 2)
+    glTexCoord2f(0.0f, 0.0f);
+    glVertex2f(quad_vertices_arr[2].x, quad_vertices_arr[2].y);
+
+    // Top-right corner of texture (Vertex 1)
+    glTexCoord2f(1.0f, 1.0f);
+    glVertex2f(quad_vertices_arr[1].x, quad_vertices_arr[1].y);
+
+    // Bottom-right corner of texture (Vertex 3)
+    glTexCoord2f(1.0f, 0.0f);
+    glVertex2f(quad_vertices_arr[3].x, quad_vertices_arr[3].y);
+
+    // End drawing
+    glEnd();
+
+    // Check and return GL status
+    return checkErrorGL(__LINE__, __FILE__);
+}
+
+int updateWallImages(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_cal_id)
 {
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
+
+    // Initialize DevIL image object
+    ILuint img_draw_id = img_wall_id;
 
     // Iterate through the maze grid rows
     for (float grow_i = 0; grow_i < MAZE_SIZE; grow_i++) // image bottom to top
@@ -474,28 +529,30 @@ int drawWalls(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id,
                 (cpWallSelectedInd == 2 && grow_i == MAZE_SIZE - 1 && gcol_i == 0) ||
                 (cpWallSelectedInd == 3 && grow_i == MAZE_SIZE - 1 && gcol_i == MAZE_SIZE - 1))
             {
-                ILuint img_merge1_id;
-                ILuint img_merge2_id;
-                ILuint img_merge3_id;
+                
+                // // Merge test pattern and active monitor image
+                // ILuint img_merge_id;
+                // if (mergeImages(img_wall_id, img_mode_mon_id, img_merge_id) != 0)
+                //     return -1;
 
-                // Merge test pattern and active monitor image
-                if (mergeImages(img_wall_id, img_mode_mon_id, img_merge1_id) != 0)
-                    return -1;
-
-                // Merge previous image and active cp parameter image
-                if (mergeImages(img_merge1_id, img_mode_param_id, img_merge2_id) != 0)
-                    return -1;
-
-                // Merge previous image and active calibration image
-                if (mergeImages(img_merge2_id, img_mode_cal_id, img_merge3_id) != 0)
-                    return -1;
-
-                ilBindImage(img_merge3_id);
+                // // Merge previous image and active calibration image
+                // if (mergeImages(img_merge_id, img_mode_cal_id, img_draw_id) != 0)
+                //     return -1;
             }
-            else
-            {
-                ilBindImage(img_wall_id); // show test pattern
-            }
+            if (checkErrorDevIL(__LINE__, __FILE__) != 0)
+                return -1;
+
+            // Get warped vertices for this wall as a vector
+            std::array<cv::Point2f, 4> quad_vertices_warped = WARP_WALL_COORDS[grow_i][gcol_i];
+
+            // Compute homography matrix for this wall's texture
+            cv::Mat h_mat = computeHomography(WALL_WIDTH_PXL, WALL_HEIGHT_PXL, quad_vertices_warped);
+
+            // Warp the texture
+            ILuint img_wall_warp = perspectiveWarpTexture(img_wall_id, h_mat, quad_vertices_warped);
+
+            // Bind warped image
+            ilBindImage(img_wall_warp); // show test pattern
             if (checkErrorDevIL(__LINE__, __FILE__) != 0)
                 return -1;
 
@@ -507,8 +564,9 @@ int drawWalls(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id,
             // Bind texture to framebuffer object
             glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
 
-            // Get warped vertices for this wall
-            std::array<cv::Point2f, 4> quad_vertices_warped = WARP_WALL_COORDS[grow_i][gcol_i];
+            // TEMP
+            if (gcol_i != 0 || grow_i != 0)
+                continue;
 
             // Draw the wall
             if (drawQuadImage(quad_vertices_warped) != 0)
@@ -533,21 +591,28 @@ int main(int argc, char **argv)
     ros::NodeHandle nh("~");
     ROS_INFO("RUNNING MAIN");
 
-    // Log paths for debugging
-    ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
-    ROS_INFO("[SETUP] Display: Width=%d Height=%d AR=%0.2f", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
-    ROS_INFO("[SETUP] Wall (Pxl): Width=%d Space=%d", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
-
-   
-
     // Initialze control points
-    CTRL_PNT_COORDS = initControlPointCoordinates();
+    CTRL_PNT_WALL_COORDS = initControlPointCoordinates();
+
+    // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
+    std::vector<cv::Point2f> target_plane_vertices;
+    target_plane_vertices.push_back(cv::Point2f(CTRL_PNT_WALL_COORDS[0][2].x, CTRL_PNT_WALL_COORDS[0][2].y)); // top-left
+    target_plane_vertices.push_back(cv::Point2f(CTRL_PNT_WALL_COORDS[1][2].x, CTRL_PNT_WALL_COORDS[1][2].y)); // top-right
+    target_plane_vertices.push_back(cv::Point2f(CTRL_PNT_WALL_COORDS[2][2].x, CTRL_PNT_WALL_COORDS[2][2].y)); // bottom-left
+    target_plane_vertices.push_back(cv::Point2f(CTRL_PNT_WALL_COORDS[3][2].x, CTRL_PNT_WALL_COORDS[3][2].y)); // bottom-right
 
     // Compute homography matrix once
-    H_MAT = computeHomography(CTRL_PNT_COORDS);
+    H_MAT = computeHomography(ORIGIN_PLANE_WIDTH_NDC, ORIGIN_PLANE_HEIGHT_NDC, target_plane_vertices);
 
     // Initialize warped wall vertices
-    WARP_WALL_COORDS = updateWarpedWallVertices(H_MAT, CTRL_PNT_COORDS);
+    WARP_WALL_COORDS = updateWarpedWallVertices(H_MAT, CTRL_PNT_WALL_COORDS);
+
+    // Log setup parameters
+    ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
+    ROS_INFO("[SETUP] Display: Width[%d] Height[%d] AR[%0.2f]", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
+    ROS_INFO("[SETUP] Wall (Pxl): Width[%d] Height[%d]", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
+    ROS_INFO("[SETUP] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_WIDTH_NDC, WALL_HEIGHT_NDC, WALL_SPACE_HORZ_NDC, WALL_SPACE_VERT_NDC);
+    ROS_INFO("[SETUP] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", ORIGIN_PLANE_WIDTH_NDC, ORIGIN_PLANE_HEIGHT_NDC);
 
     // --------------- OpenGL SETUP ---------------
 
@@ -634,11 +699,6 @@ int main(int argc, char **argv)
         ROS_ERROR("[DevIL] Failed to load monitor images");
         return -1;
     }
-    if (loadImgTextures(imgParamPathVec, imgParamIDVec) != 0)
-    {
-        ROS_ERROR("[DevIL] Failed to load parameter images");
-        return -1;
-    }
     if (loadImgTextures(imgCalPathVec, imgCalIDVec) != 0)
     {
         ROS_ERROR("[DevIL] Failed to load calibration images");
@@ -656,12 +716,12 @@ int main(int argc, char **argv)
             break;
 
         // Draw/update wall images
-        if (drawWalls(fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgParamIDVec[imgParamInd], imgCalIDVec[calModeInd]) != 0)
+        if (updateWallImages(fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgCalIDVec[calModeInd]) != 0)
         {
             ROS_ERROR("[MAIN] Draw Walls Threw Error");
             return -1;
         }
-        if (drawControlPoints() != 0)
+        if (updateControlPointMarkers() != 0)
         {
             ROS_ERROR("[MAIN] Draw Control Point Threw Error");
             return -1;
@@ -705,7 +765,6 @@ int main(int argc, char **argv)
     // Delete DevIL images
     deleteImgTextures(imgWallIDVec);
     deleteImgTextures(imgMonIDVec);
-    deleteImgTextures(imgParamIDVec);
     deleteImgTextures(imgCalIDVec);
     ROS_INFO("[SHUTDOWN] Deleted DevIL images");
 
@@ -731,5 +790,3 @@ int main(int argc, char **argv)
     // Return success
     return 0;
 }
-
-

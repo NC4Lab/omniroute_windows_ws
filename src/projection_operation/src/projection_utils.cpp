@@ -437,6 +437,60 @@ int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &r_img_merge_id)
     return 0;
 }
 
+// // Function to compute the homography matrix for texture mapping
+// cv::Mat computeHomography(
+//     ILuint textureID,
+//     const std::vector<cv::Point2f> &quad_vertices)
+// {
+//     // Bind the DevIL image
+//     ilBindImage(textureID);
+
+//     // Get the dimensions of the texture image
+//     int width = ilGetInteger(IL_IMAGE_WIDTH);
+//     int height = ilGetInteger(IL_IMAGE_HEIGHT);
+
+//     // Define the corners of the texture
+//     std::vector<cv::Point2f> texture_vertices = {
+//         cv::Point2f(0, 0),          // Top-left
+//         cv::Point2f(width, 0),      // Top-right
+//         cv::Point2f(0, height),     // Bottom-left
+//         cv::Point2f(width, height)  // Bottom-right
+//     };
+
+//     // Ensure quad_vertices is also in the same order as
+//     // texture_vertices for a correct 1-to-1 mapping
+//     if (quad_vertices.size() != 4) {
+//         throw std::invalid_argument("quad_vertices must contain exactly 4 points");
+//     }
+
+//     // Use OpenCV's findHomography function to compute the homography matrix
+//     cv::Mat h_mat = cv::findHomography(texture_vertices, quad_vertices);
+//     return h_mat;
+// }
+
+std::array<cv::Point2f, 4> quadVec2Arr(const std::vector<cv::Point2f> &quad_vert_vec)
+{
+    std::array<cv::Point2f, 4> quad_vert_arr{0, 0, 0, 0};
+
+    // Check if the input vector has exactly 4 vertices
+    if (quad_vert_vec.size() != 4)
+    {
+        ROS_WARN("[BAD ARG] Vertices Must have 4 Points for Array Conversion");
+        return quad_vert_arr;
+    }
+
+    // Convert to an array and return
+    std::copy(quad_vert_vec.begin(), quad_vert_vec.end(), quad_vert_arr.begin());
+    return quad_vert_arr;
+}
+
+std::vector<cv::Point2f> quadArr2Vec(const std::array<cv::Point2f, 4> &quad_vert_arr)
+{
+    // Convert array to vector and return
+    std::vector<cv::Point2f> quad_vert_vec(quad_vert_arr.begin(), quad_vert_arr.end());
+    return quad_vert_vec;
+}
+
 float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size)
 {
     // Calculate the relative position within the grid.
@@ -453,30 +507,138 @@ float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, 
     return interp_val;
 }
 
-cv::Mat computeHomography(const std::array<std::array<cv::Point2f, 4>, 4> &r_ctrl_pnt_coords)
+// cv::Mat computeHomographyV1(const std::array<std::array<cv::Point2f, 4>, 4> &r_CTRL_PNT_WALL_COORDS)
+// {
+//     // Calculate the vertices for based on the initial control point boundary dimensions.
+//     // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
+//     std::vector<cv::Point2f> origin_plane_vertices = {
+//         cv::Point2f(0.0f, ORIGIN_PLANE_HEIGHT_NDC),                   // top-left
+//         cv::Point2f(ORIGIN_PLANE_WIDTH_NDC, ORIGIN_PLANE_HEIGHT_NDC), // top-right
+//         cv::Point2f(0.0f, 0.0f),                                      // bottom-left
+//         cv::Point2f(ORIGIN_PLANE_WIDTH_NDC, 0.0f)};                   // bottom-right
+
+//     // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
+//     // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
+//     std::vector<cv::Point2f> target_plane_vertices;
+//     target_plane_vertices.push_back(cv::Point2f(r_CTRL_PNT_WALL_COORDS[0][2].x, r_CTRL_PNT_WALL_COORDS[0][2].y)); // top-left
+//     target_plane_vertices.push_back(cv::Point2f(r_CTRL_PNT_WALL_COORDS[1][2].x, r_CTRL_PNT_WALL_COORDS[1][2].y)); // top-right
+//     target_plane_vertices.push_back(cv::Point2f(r_CTRL_PNT_WALL_COORDS[2][2].x, r_CTRL_PNT_WALL_COORDS[2][2].y)); // bottom-left
+//     target_plane_vertices.push_back(cv::Point2f(r_CTRL_PNT_WALL_COORDS[3][2].x, r_CTRL_PNT_WALL_COORDS[3][2].y)); // bottom-right
+
+//     // Use OpenCV's findHomography function to compute the homography matrix.
+//     // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
+//     cv::Mat h_mat = findHomography(origin_plane_vertices, target_plane_vertices);
+
+//     // Return the homography matrix for use in other libraries
+//     return h_mat;
+// }
+
+cv::Mat computeHomography(int origin_width, int origin_height, const std::array<cv::Point2f, 4> &target_plane_vertices)
 {
-    // Calculate the vertices for based on the initial control point boundary dimensions.
-    // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
+    return computeHomography(origin_width, origin_height, quadArr2Vec(target_plane_vertices));
+}
+cv::Mat computeHomography(int origin_width, int origin_height, const std::vector<cv::Point2f> &target_plane_vertices)
+{
+    // // Define the corners of the texture based on the given dimensions
+    // std::vector<cv::Point2f> origin_plane_vertices = {
+    //     cv::Point2f(0, 0),                       // Top-left
+    //     cv::Point2f(origin_width, 0),            // Top-right
+    //     cv::Point2f(0, origin_height),           // Bottom-left
+    //     cv::Point2f(origin_width, origin_height) // Bottom-right
+    // };
+
     std::vector<cv::Point2f> origin_plane_vertices = {
-        cv::Point2f(0.0f, originPlaneHeight),             // top-left
-        cv::Point2f(originPlaneWidth, originPlaneHeight), // top-right
-        cv::Point2f(0.0f, 0.0f),                          // bottom-left
-        cv::Point2f(originPlaneWidth, 0.0f)};             // bottom-right
+        cv::Point2f(0.0f, origin_height),         // top-left
+        cv::Point2f(origin_width, origin_height), // top-right
+        cv::Point2f(0.0f, 0.0f),                  // bottom-left
+        cv::Point2f(origin_width, 0.0f)};         // bottom-right
 
-    // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
-    // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
-    std::vector<cv::Point2f> target_plane_vertices;
-    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[0][2].x, r_ctrl_pnt_coords[0][2].y)); // top-left
-    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[1][2].x, r_ctrl_pnt_coords[1][2].y)); // top-right
-    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[2][2].x, r_ctrl_pnt_coords[2][2].y)); // bottom-left
-    target_plane_vertices.push_back(cv::Point2f(r_ctrl_pnt_coords[3][2].x, r_ctrl_pnt_coords[3][2].y)); // bottom-right
+    // Ensure quad_vertices is in the same order as
+    // texture_vertices for a correct 1-to-1 mapping
+    if (target_plane_vertices.size() != 4)
+    {
+        ROS_WARN("[BAD ARG] Vertices Must have 4 Points for Homography Calculation");
+        return cv::Mat();
+    }
 
-    // Use OpenCV's findHomography function to compute the homography matrix.
-    // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
-    cv::Mat h_mat = findHomography(origin_plane_vertices, target_plane_vertices);
+    // Use OpenCV's findHomography function to compute
+    // the homography matrix
+    cv::Mat h_mat = cv::findHomography(origin_plane_vertices, target_plane_vertices);
 
-    // Return the homography matrix for use in other libraries
+    // TEMP
+    ROS_INFO("[COMPUTE HOMOGRAPHY] Origin Plane Vertices:");
+    dbLogQuadVertices(origin_plane_vertices);
+    ROS_INFO("[COMPUTE HOMOGRAPHY] Target Plane Vertices:");
+    dbLogQuadVertices(target_plane_vertices);
+    dbLogHomMat(h_mat);
+
+    // Return the homography matrix
     return h_mat;
+}
+
+cv::Size getBoundaryDims(const std::array<cv::Point2f, 4> &quad_vertices)
+{
+    float max_width = 0.0;
+    float max_height = 0.0;
+
+    for (int i = 0; i < 4; ++i)
+    {
+        for (int j = i + 1; j < 4; ++j)
+        {
+            float dx = quad_vertices[i].x - quad_vertices[j].x;
+            float dy = quad_vertices[i].y - quad_vertices[j].y;
+            max_width = std::max(max_width, std::abs(dx));
+            max_height = std::max(max_height, std::abs(dy));
+        }
+    }
+
+    int outputWidth = static_cast<int>(max_width);
+    int outputHeight = static_cast<int>(max_height);
+
+    return cv::Size(outputWidth, outputHeight);
+}
+
+ILuint perspectiveWarpTexture(
+    ILuint source_texture_id,
+    const cv::Mat &h_mat,
+    const std::array<cv::Point2f, 4> &target_plane_vertices)
+{
+    // Compute output/target image size
+    cv::Size warped_texture_size = getBoundaryDims(target_plane_vertices);
+
+    // Bind the DevIL image
+    ilBindImage(source_texture_id);
+
+    // Get the dimensions and data of the texture image
+    int source_width = ilGetInteger(IL_IMAGE_WIDTH);
+    int source_height = ilGetInteger(IL_IMAGE_HEIGHT);
+    ILubyte *data = ilGetData();
+
+    // Create a cv::Mat from the ILuint image
+    cv::Mat source_texture_mat(source_height, source_width, CV_8UC3, data);
+
+    // Create a cv::Mat to hold the warped texture
+    cv::Mat warped_texture_mat;
+
+    // Use OpenCV's warpPerspective function to apply the homography matrix to the texture image
+    cv::warpPerspective(
+        source_texture_mat,
+        warped_texture_mat,
+        h_mat,
+        warped_texture_size);
+
+    // Convert the warped cv::Mat back to an ILuint image
+    ILuint warped_texture_id;
+    ilGenImages(1, &warped_texture_id);
+    ilBindImage(warped_texture_id);
+    ilTexImage(
+        warped_texture_mat.cols,
+        warped_texture_mat.rows,
+        1, 3,
+        IL_RGB, IL_UNSIGNED_BYTE,
+        warped_texture_mat.data);
+
+    return warped_texture_id;
 }
 
 cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat h_mat)
@@ -506,11 +668,11 @@ cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat h_mat)
 std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates()
 {
     // Create a 2D array to store the control point coordinates
-    std::array<std::array<cv::Point2f, 4>, 4> ctrl_pnt_coords;
+    std::array<std::array<cv::Point2f, 4>, 4> CTRL_PNT_WALL_COORDS;
 
     // Specify the control point limits
-    const float cp_x = originPlaneWidth / 2;  // starting X-coordinate in NDC coordinates
-    const float cp_y = originPlaneHeight / 2; // starting Y-coordinate in NDC coordinates
+    const float cp_x = ORIGIN_PLANE_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
+    const float cp_y = ORIGIN_PLANE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates
 
     // Iterate through control points
     for (float cp_i = 0; cp_i < 4; cp_i++) // image bottom to top
@@ -534,22 +696,21 @@ std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates()
             p_org = cv::Point2f(+cp_x, -cp_y);
 
         // Set x y values for each vertex
-        ctrl_pnt_coords[cp_i] = {
-            cv::Point2f(p_org.x, p_org.y + W_HT_DEF),            // top left
-            cv::Point2f(p_org.x + W_WD_DEF, p_org.y + W_HT_DEF), // top right
-            cv::Point2f(p_org.x, p_org.y),                       // bottom left
-            cv::Point2f(p_org.x + W_WD_DEF, p_org.y),            // bottom right
+        CTRL_PNT_WALL_COORDS[cp_i] = {
+            cv::Point2f(p_org.x, p_org.y + WALL_HEIGHT_NDC),                  // top left
+            cv::Point2f(p_org.x + WALL_WIDTH_NDC, p_org.y + WALL_HEIGHT_NDC), // top right
+            cv::Point2f(p_org.x, p_org.y),                                    // bottom left
+            cv::Point2f(p_org.x + WALL_WIDTH_NDC, p_org.y),                   // bottom right
         };
     }
 
     // Return the data container for use in other libraries
-    return ctrl_pnt_coords;
+    return CTRL_PNT_WALL_COORDS;
 }
-
 
 std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateWarpedWallVertices(
     const cv::Mat &r_h_mat,
-    const std::array<std::array<cv::Point2f, 4>, 4> &r_ctrl_pnt_coords)
+    const std::array<std::array<cv::Point2f, 4>, 4> &r_CTRL_PNT_WALL_COORDS)
 {
     // Initialize the warped wall coordinates array
     std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> warp_wall_coords;
@@ -565,18 +726,20 @@ std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateW
             {
                 // Get the corner values for the interpolation function
                 ///@note that y values must be flipped to account for the image origin being in the top-left corner
-                cv::Point2f p_a = r_ctrl_pnt_coords[0][p_i]; // bottom-left interp == top left NDC
-                cv::Point2f p_b = r_ctrl_pnt_coords[1][p_i]; // bottom-right interp == top right NDC
-                cv::Point2f p_c = r_ctrl_pnt_coords[2][p_i]; // top-left interp == bottom left NDC
-                cv::Point2f p_d = r_ctrl_pnt_coords[3][p_i]; // top-right interp == bottom right NDC
+                cv::Point2f p_a = r_CTRL_PNT_WALL_COORDS[0][p_i]; // bottom-left interp == top left NDC
+                cv::Point2f p_b = r_CTRL_PNT_WALL_COORDS[1][p_i]; // bottom-right interp == top right NDC
+                cv::Point2f p_c = r_CTRL_PNT_WALL_COORDS[2][p_i]; // top-left interp == bottom left NDC
+                cv::Point2f p_d = r_CTRL_PNT_WALL_COORDS[3][p_i]; // top-right interp == bottom right NDC
 
                 // Get the interpolated vertex x-coordinate
                 cv::Point2f p_interp(
                     bilinearInterpolation(p_a.x, p_b.x, p_c.x, p_d.x, grow_i, gcol_i, MAZE_SIZE),  // x
                     bilinearInterpolation(p_a.y, p_b.y, p_c.y, p_d.y, grow_i, gcol_i, MAZE_SIZE)); // y
 
+                // TEMP
                 // Get the warped vertex coordinates
-                cv::Point2f p_warped = perspectiveWarpPoint(p_interp, r_h_mat);
+                // cv::Point2f p_warped = perspectiveWarpPoint(p_interp, r_h_mat);
+                cv::Point2f p_warped = p_interp;
 
                 // Store the warped vertex coordinates
                 warp_wall_coords[grow_i][gcol_i][p_i] = p_warped;
@@ -585,7 +748,7 @@ std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateW
     }
 
     // TEMP
-    // dbLogCtrlPointCoordinates(r_ctrl_pnt_coords);
+    // dbLogCtrlPointCoordinates(r_CTRL_PNT_WALL_COORDS);
     // dbLogWallVerticesCoordinates(warp_wall_coords);
 
     // Return the warped wall coordinates for use in other libraries
@@ -613,19 +776,7 @@ void dbLogCtrlPointParams(std::array<std::array<float, 6>, 4> ctrl_point_params)
 
 void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
 {
-    // Check if the input vector has exactly 4 vertices
-    if (quad_vertices.size() != 4)
-    {
-        ROS_WARN("The input vector does not contain exactly 4 vertices. Cannot print.");
-        return;
-    }
-
-    // Convert to an array
-    std::array<cv::Point2f, 4> result;
-    std::copy(quad_vertices.begin(), quad_vertices.end(), result.begin());
-
-    // Run main version of function
-    dbLogQuadVertices(result);
+    dbLogQuadVertices(quadVec2Arr(quad_vertices));
 }
 
 void dbLogQuadVertices(const std::array<cv::Point2f, 4> &vertices)

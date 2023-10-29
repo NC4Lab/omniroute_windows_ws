@@ -217,17 +217,25 @@ extern const int MAZE_SIZE = 3;
 extern const int WALL_WIDTH_PXL = 300;
 extern const int WALL_HEIGHT_PXL = 540;
 
-// Specify the origin plane width and height (NDC)
-const float originPlaneWidth = 0.3f;
-const float originPlaneHeight = 0.6f;
+// // Specify the origin plane width and height (NDC)
+// const float ORIGIN_PLANE_WIDTH_NDC = 0.3f;
+// const float ORIGIN_PLANE_HEIGHT_NDC = 0.6f;
 
-// Wall spacing (NDC)
-extern const float WALL_SPACE_X = originPlaneWidth / (float(MAZE_SIZE) - 1);  // Wall spacing on X axis NDC
-extern const float WALL_SPACE_Y = originPlaneHeight / (float(MAZE_SIZE) - 1); // Wall spacing on Y axis NDC
+// // Wall spacing (NDC)
+// extern const float WALL_SPACE_HORZ_NDC = ORIGIN_PLANE_WIDTH_NDC / (float(MAZE_SIZE) - 1);  // Wall spacing on X axis NDC
+// extern const float WALL_SPACE_VERT_NDC = ORIGIN_PLANE_HEIGHT_NDC / (float(MAZE_SIZE) - 1); // Wall spacing on Y axis NDC
 
-// Default wall width and height (NDC)
-extern const float W_WD_DEF = WALL_SPACE_X / (1 + std::sqrt(2)); // Wall width based on octogonal geometry in NDC
-extern const float W_HT_DEF = WALL_SPACE_Y / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
+// // Default wall width and height (NDC)
+// extern const float WALL_WIDTH_NDC = WALL_SPACE_HORZ_NDC / (1 + std::sqrt(2)); // Wall width based on octogonal geometry in NDC
+// extern const float WALL_HEIGHT_NDC = WALL_SPACE_VERT_NDC / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
+
+// TEMP
+const float ORIGIN_PLANE_WIDTH_NDC = 0.5;
+const float ORIGIN_PLANE_HEIGHT_NDC = 1.0f;
+extern const float WALL_SPACE_HORZ_NDC = ORIGIN_PLANE_WIDTH_NDC / (float(MAZE_SIZE) - 1);  // Wall spacing on X axis NDC
+extern const float WALL_SPACE_VERT_NDC = ORIGIN_PLANE_HEIGHT_NDC / (float(MAZE_SIZE) - 1); // Wall spacing on Y axis NDC
+extern const float WALL_WIDTH_NDC = 2 * WALL_SPACE_HORZ_NDC / (1 + std::sqrt(2));          // Wall width based on octogonal geometry in NDC
+extern const float WALL_HEIGHT_NDC = 2 * WALL_SPACE_VERT_NDC / (1 + std::sqrt(2));         // Wall height based on octogonal geometry in NDC
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -351,6 +359,25 @@ int deleteImgTextures(std::vector<ILuint> &);
  */
 int mergeImages(ILuint, ILuint, ILuint &);
 
+
+/**
+ * @brief Converts quadrilateral vertices vector of cv::Point2f to an array of cv::Point2f
+ * 
+ * @param quad_vert_vec 
+ * 
+ * @return quadrilateral vertices array of cv::Point2f
+ */
+std::array<cv::Point2f, 4> quadVec2Arr(const std::vector<cv::Point2f> &);
+
+/**
+ * @brief Converts quadrilateral vertices array of cv::Point2f to a vector of cv::Point2f
+ * 
+ * @param quad_vert_arr 
+ * 
+ * @return quadrilateral vertices vector of cv::Point2f
+ */
+std::vector<cv::Point2f> quadArr2Vec(const std::array<cv::Point2f, 4> &);
+
 /**
  * @brief Performs bilinear interpolation.
  *
@@ -374,21 +401,39 @@ int mergeImages(ILuint, ILuint, ILuint &);
  *
  * @return The interpolated value at the specified grid point.
  */
-float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size);
+float bilinearInterpolation(float, float, float, float, int, int, int);
 
 /**
- * @brief Computes the global homography matrix based on overall control point parameters.
- *
- * This function calculates the global homography matrix that maps points from the source plane
- * (representing the entire projected image) to the destination plane (defined by control points).
- * Unlike per-wall transformations, this matrix is intended for the complete image, providing a
- * unified perspective warp.
- *
- * @param ctrl_point_params The 4x4 array containing the coordinates of the corner wall's vertices.
- *
- * @return The cv::Mat object where the computed homography matrix is be stored.
+ * @brief Computes the homography matrix based on target plane vertices
+ * 
+ * @param origin_width Width of the origin plane
+ * @param origin_height Height of the origin plane
+ * @param target_plane_vertices Four vertices defining the target plane
+ * 
+ * @return Homography matrix
  */
-cv::Mat computeHomography(const std::array<std::array<cv::Point2f, 4>, 4> &);
+cv::Mat computeHomography(int, int, const std::array<cv::Point2f, 4> &);
+cv::Mat computeHomography(int, int, const std::vector<cv::Point2f> &);
+
+/**
+ * @brief Calculates the bounding dimensions based on a given set of vertices
+ * 
+ * @param quad_vertices std:arr of four vertices defining a quadrilateral
+ * 
+ * @return Size object containing the maximum dimensions
+ */
+cv::Size getBoundaryDims(const std::array<cv::Point2f, 4> &);
+
+/**
+ * @brief Applies a given homography matrix to a texture image and returns the transformed texture
+ * 
+ * @param source_texture_id DevIL image ID of the source texture
+ * @param h_mat Homography matrix
+ * @param target_plane_vertices Vertices of the target plane
+ * 
+ * @return DevIL image ID of the warped texture
+ */
+ILuint perspectiveWarpTexture(ILuint, const cv::Mat &, const std::array<cv::Point2f, 4> &);
 
 /**
  * @brief Computes the perspective warp of a given coordinate point using a homography matrix.
@@ -396,11 +441,6 @@ cv::Mat computeHomography(const std::array<std::array<cv::Point2f, 4>, 4> &);
  * This function takes a cv::Point2f point vertices and applies a projective transformation to each vertex.
  * The transformation is governed by a given homography matrix.
  *
- * @param quad_vertices_vec A vector containing the original Cartesian coordinates of the quadrilateral's vertices.
- *                          The vertices are processed in-place.
- *
- * @param r_hom_mat Reference to the homography matrix. This 3x3 matrix is used to perform the projective
- *                  transformation on each vertex.
  *
  * @details
  * 1. Each vertex undergoes a translation operation defined by `x_translate` and `y_translate`.
@@ -419,6 +459,11 @@ cv::Mat computeHomography(const std::array<std::array<cv::Point2f, 4>, 4> &);
  *        transformation. The third value (ptMat.at<float>(2)) may change
  *        post-transformation so we divide the new x and y by this value
  *        (ptMat /= ptMat.at<float>(2)) to get back to cartisian x, y coordinates.
+ *
+ * @param p_unwarped The unwarped cv::Point2f values.
+ *
+ * @param r_hom_mat Reference to the homography matrix. This 3x3 matrix is used to perform the projective
+ *                  transformation on each vertex.
  *
  * @return cv::Point2f containing the new Cartesian coordinates of the warped vertex position.
  */
@@ -440,7 +485,7 @@ std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates();
  * @brief Updates the stored warped wall image vertices based on the control point array.
  *
  * @param r_h_mat The homography matrix used to warp the wall image.
- * @param r_ctrl_pnt_coords The control point coordinates used to warp the wall image.
+ * @param r_CTRL_PNT_WALL_COORDS The control point coordinates used to warp the wall image.
  *
  * @return The updated 3x3x4 warped wall image vertices array.
  */

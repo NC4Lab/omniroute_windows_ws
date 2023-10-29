@@ -15,13 +15,13 @@
 // ================================================== VARIABLES ==================================================
 
 /**
- * @brief  4x4 data container for tracking control point coordinates in Normalized Device Coordinates (NDC)
- *         [4][4] = [conrol point][vertex]
+ * @brief  4x4 data container for tracking the vertex coordinates for the corner wall images which are used as control point
  * 
- * The array stores the corner wall vertex OpenGL's Normalized Device Coordinates (NDC),
- * which range from [-1, 1] with the origin at the center of the screen.
+ * The array stores the corner wall vertex as OpenGL's Normalized Device Coordinates (NDC), which range from [-1, 1] 
+ * with the origin at the center of the screen.
  *
  * @details
+ *[4][4] = [conrol point][vertex]
  *
  * - Dimension 1: Control Point [0, 1, 2, 3]
  *  - 0: Top-left (image vertex)
@@ -35,13 +35,16 @@
  *  - 2: Bottom-left  (quadrilateral vertex)
  *  - 3: Bottom-right  (quadrilateral vertex)
  */
-std::array<std::array<cv::Point2f, 4>, 4> CTRL_PNT_COORDS;
+std::array<std::array<cv::Point2f, 4>, 4> CTRL_PNT_WALL_COORDS;
 
 /**
- * @brief  3x3x4 data container for tracking storing warped wall vertices coordinates in Normalized Device Coordinates (NDC)
- *         [3][3][4] = [row][col][vertex]
+ * @brief  3x3x4 data container for storing the final warped wall vertex coordinates in Normalized Device Coordinates (NDC)
  *
+  * The array stores the all wall verteces as OpenGL's Normalized Device Coordinates (NDC), which range from [-1, 1] 
+ * with the origin at the center of the screen.
+ * 
  * @details
+ * [3][3][4] = [row][col][vertex]
  *
  * - Dimension 1: Rows [0-MAZE_SIZE-1]:
  *  - Top to Bottom
@@ -112,16 +115,6 @@ std::vector<std::string> imgMonPathVec = {
 int winMonInd = 0;         // Index of the image to be loaded
 int nMonitors;             // Number of monitors connected to the system
 bool isFullScreen = false; // Flag to indicate if the window is in full screen mode
-
-// Control point parameter image variables for ui
-std::vector<ILuint> imgParamIDVec; // Container to hold the loaded images for ui
-std::vector<std::string> imgParamPathVec = {
-    // List of calibration parameter image file paths
-    image_state_dir_path + "/p.bmp",
-    image_state_dir_path + "/d.bmp",
-    image_state_dir_path + "/s.bmp",
-};
-int imgParamInd = 0; // Index of the image to be loaded
 
 // Callibration image variables for ui
 std::vector<ILuint> imgCalIDVec; // Container to hold the loaded images for ui
@@ -253,7 +246,7 @@ int drawColoredCircle(float, float, float, std::array<float, 3>);
  * @brief Draws control points associated with each corner wall.
  *
  */
-int drawControlPoints();
+int updateControlPointMarkers();
 
 /**
  * @brief Draws a textured quadrilateral using OpenGL.
@@ -262,7 +255,16 @@ int drawControlPoints();
  *
  * @return 0 if no errors, -1 if error.
  */
-int drawQuadImage(std::array<cv::Point2f, 4> quad_vertices_arr);
+int drawQuadImage(std::array<cv::Point2f, 4>);
+
+/**
+ * @brief Draws a texture using barycentric coordinates texture mapping
+ *
+ * @param quad_vertices_vec Array of vertex/corner points for a quadrilateral image.
+ *
+ * @return 0 if no errors, -1 if error.
+ */
+int drawBarycentricImage(std::array<cv::Point2f, 4>);
 
 /**
  * @brief Renders a 2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
@@ -277,12 +279,11 @@ int drawQuadImage(std::array<cv::Point2f, 4> quad_vertices_arr);
  * @param fbo_texture_id OpenGL framebuffer object's texture ID.
  * @param img_wall_id DevIL image ID for the base wall image.
  * @param img_mode_mon_id DevIL image ID for the monitor mode image.
- * @param img_mode_param_id DevIL image ID for the parameter visualization image.
  * @param img_mode_cal_id DevIL image ID for the calibration image.
  *
  * @return Integer status code: 0 if successful, -1 if an error occurred.
  */
-int drawWalls(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_param_id, ILuint img_mode_cal_id);
+int updateWallImages(GLuint, ILuint, ILuint, ILuint);
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.

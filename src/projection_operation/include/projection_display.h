@@ -193,7 +193,7 @@ int drawQuadImage(std::vector<cv::Point2f>);
 //  *
 //  * @return Returns 0 on success, -1 otherwise.
 //  */
-// int drawWalls(int, int, GLFWwindow *, GLuint, std::vector<ILuint> &);
+// int updateWallImages(int, int, GLFWwindow *, GLuint, std::vector<ILuint> &);
 
 /**
  * @brief  Entry point for the projection_display ROS node.
