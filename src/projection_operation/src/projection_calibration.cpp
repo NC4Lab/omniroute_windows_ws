@@ -12,8 +12,6 @@
 
 void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
 {
-    bool do_wall_update = false;
-
     // Set the current OpenGL context to the window
     glfwMakeContextCurrent(window);
 
@@ -28,32 +26,39 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         if (key == GLFW_KEY_F)
         {
             isFullScreen = !isFullScreen;
+            F.doUpdateWindowMonMode = true;
         }
 
         // Move the window to another monitor
         else if (key == GLFW_KEY_0)
         {
             winMonInd = 0;
+            F.doUpdateWindowMonMode = true;
         }
         else if (key == GLFW_KEY_1 && nMonitors > 1)
         {
             winMonInd = 1;
+            F.doUpdateWindowMonMode = true;
         }
         else if (key == GLFW_KEY_2 && nMonitors > 2)
         {
             winMonInd = 2;
+            F.doUpdateWindowMonMode = true;
         }
         else if (key == GLFW_KEY_3 && nMonitors > 3)
         {
             winMonInd = 3;
+            F.doUpdateWindowMonMode = true;
         }
         else if (key == GLFW_KEY_4 && nMonitors > 4)
         {
             winMonInd = 4;
+            F.doUpdateWindowMonMode = true;
         }
         else if (key == GLFW_KEY_5 && nMonitors > 5)
         {
             winMonInd = 5;
+            F.doUpdateWindowMonMode = true;
         }
 
         // ---------- XML Handling [ENTER, L] ----------
@@ -61,21 +66,13 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // Save coordinates to XML
         else if (key == GLFW_KEY_ENTER)
         {
-            // Get the path to the config directory and format the save file name
-            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
-
-            // Save the coordinates to the XML file
-            saveCoordinatesXML(homMat, ctrlPointParams, file_path);
+            F.doSaveXML = true;
         }
 
         // Load coordinates from XML
         else if (key == GLFW_KEY_L)
         {
-            // Get the path to the config directory and format the load file name
-            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
-
-            // Load the coordinates from the XML file
-            loadCoordinatesXML(homMat, ctrlPointParams, file_path, 3);
+            F.doLoadXML = true;
         }
 
         // ---------- Image selector keys [F1-F4] ----------
@@ -101,7 +98,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         else if (key == GLFW_KEY_R)
         {
-            CTRL_PNT_WALL_COORDS = initControlPointCoordinates();
+            F.doReinitControlPointMarkers = true;
         }
     }
 
@@ -117,15 +114,12 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             if (key == GLFW_KEY_LEFT)
             {
                 calModeInd = (calModeInd > 0) ? calModeInd - 1 : (int)nCalModes - 1;
+                F.doReinitControlPointMarkers = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
                 calModeInd = (calModeInd < nCalModes - 1) ? calModeInd + 1 : 0;
-            }
-            // Reset a subset of control point parameters when switching calibration modes
-            if (key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT)
-            {
-                CTRL_PNT_WALL_COORDS = initControlPointCoordinates();
+                F.doReinitControlPointMarkers = true;
             }
         }
 
@@ -194,22 +188,22 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             if (key == GLFW_KEY_LEFT)
             {
                 CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].x -= pos_inc; // Move left
-                do_wall_update = true;
+                F.doUpdateWarpedWallVertices = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
                 CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].x += pos_inc; // Move right
-                do_wall_update = true;
+                F.doUpdateWarpedWallVertices = true;
             }
             else if (key == GLFW_KEY_UP)
             {
                 CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].y += pos_inc; // Move up
-                do_wall_update = true;
+                F.doUpdateWarpedWallVertices = true;
             }
             else if (key == GLFW_KEY_DOWN)
             {
                 CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].y -= pos_inc; // Move down
-                do_wall_update = true;
+                F.doUpdateWarpedWallVertices = true;
             }
 
             // Shift all control points if origin moved
@@ -234,21 +228,12 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             }
         }
     }
-
-    // _______________ Update _______________
-
-    // Recompute warped wall vertices
-    if (do_wall_update)
-        WARP_WALL_COORDS = updateWarpedWallVertices(H_MAT, CTRL_PNT_WALL_COORDS);
-
-    // Update the window monitor and mode
-    updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
 }
 
 void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
-    checkErrorGL(__LINE__, __FILE__);
+    checkErrorOpenGL(__LINE__, __FILE__);
 }
 
 static void callbackErrorGLFW(int error, const char *description)
@@ -256,7 +241,7 @@ static void callbackErrorGLFW(int error, const char *description)
     ROS_ERROR("[GLFW] Error Callback: Error[%d] Description[%s]", error, description);
 }
 
-int checkErrorGL(int line, const char *file_str, const char *msg_str)
+int checkErrorOpenGL(int line, const char *file_str, const char *msg_str)
 {
     GLenum gl_err;
     while ((gl_err = glGetError()) != GL_NO_ERROR)
@@ -380,7 +365,7 @@ int drawColoredCircle(float x, float y, float radius, std::array<float, 3> rgb_a
     glEnd();
 
     // Return GL status
-    return checkErrorGL(__LINE__, __FILE__);
+    return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
 int updateControlPointMarkers()
@@ -411,7 +396,8 @@ int updateControlPointMarkers()
                 cp_rad = cpMakerRadius[1];
 
             // Warp the vertex
-            cv::Point2f p_warped = perspectiveWarpPoint(CTRL_PNT_WALL_COORDS[cp_i][v_i], H_MAT);
+            cv::Point2f p_warped;
+            perspectiveWarpPoint(CTRL_PNT_WALL_COORDS[cp_i][v_i], H_MAT, p_warped);
 
             // TEMP
             p_warped = CTRL_PNT_WALL_COORDS[cp_i][v_i];
@@ -456,7 +442,7 @@ int drawQuadImage(std::array<cv::Point2f, 4> quad_vertices_arr)
     glEnd();
 
     // Check and return GL status
-    return checkErrorGL(__LINE__, __FILE__);
+    return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
 int drawBarycentricImage(std::array<cv::Point2f, 4> quad_vertices_arr)
@@ -505,7 +491,7 @@ int drawBarycentricImage(std::array<cv::Point2f, 4> quad_vertices_arr)
     glEnd();
 
     // Check and return GL status
-    return checkErrorGL(__LINE__, __FILE__);
+    return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
 int updateWallImages(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_cal_id)
@@ -529,7 +515,7 @@ int updateWallImages(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_
                 (cpWallSelectedInd == 2 && grow_i == MAZE_SIZE - 1 && gcol_i == 0) ||
                 (cpWallSelectedInd == 3 && grow_i == MAZE_SIZE - 1 && gcol_i == MAZE_SIZE - 1))
             {
-                
+
                 // // Merge test pattern and active monitor image
                 // ILuint img_merge_id;
                 // if (mergeImages(img_wall_id, img_mode_mon_id, img_merge_id) != 0)
@@ -546,10 +532,14 @@ int updateWallImages(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_
             std::array<cv::Point2f, 4> quad_vertices_warped = WARP_WALL_COORDS[grow_i][gcol_i];
 
             // Compute homography matrix for this wall's texture
-            cv::Mat h_mat = computeHomography(WALL_WIDTH_PXL, WALL_HEIGHT_PXL, quad_vertices_warped);
+            cv::Mat h_mat;
+            if (computeHomography(WALL_WIDTH_PXL, WALL_HEIGHT_PXL, quad_vertices_warped, h_mat) != 0)
+                return -1;
 
             // Warp the texture
-            ILuint img_wall_warp = perspectiveWarpTexture(img_wall_id, h_mat, quad_vertices_warped);
+            ILuint img_wall_warp;
+            if (perspectiveWarpTexture(img_wall_id, h_mat, quad_vertices_warped, img_wall_warp) != 0)
+                return -1;
 
             // Bind warped image
             ilBindImage(img_wall_warp); // show test pattern
@@ -578,7 +568,7 @@ int updateWallImages(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_
     glDisable(GL_TEXTURE_2D);
 
     // Return GL status
-    return checkErrorGL(__LINE__, __FILE__);
+    return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
 int main(int argc, char **argv)
@@ -591,6 +581,15 @@ int main(int argc, char **argv)
     ros::NodeHandle nh("~");
     ROS_INFO("RUNNING MAIN");
 
+    // Log setup parameters
+    ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
+    ROS_INFO("[SETUP] Display: Width[%d] Height[%d] AR[%0.2f]", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
+    ROS_INFO("[SETUP] Wall (Pxl): Width[%d] Height[%d]", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
+    ROS_INFO("[SETUP] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_WIDTH_NDC, WALL_HEIGHT_NDC, WALL_SPACE_HORZ_NDC, WALL_SPACE_VERT_NDC);
+    ROS_INFO("[SETUP] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", ORIGIN_PLANE_WIDTH_NDC, ORIGIN_PLANE_HEIGHT_NDC);
+
+    // --------------- VARIABLE SETUP ---------------
+
     // Initialze control points
     CTRL_PNT_WALL_COORDS = initControlPointCoordinates();
 
@@ -602,17 +601,12 @@ int main(int argc, char **argv)
     target_plane_vertices.push_back(cv::Point2f(CTRL_PNT_WALL_COORDS[3][2].x, CTRL_PNT_WALL_COORDS[3][2].y)); // bottom-right
 
     // Compute homography matrix once
-    H_MAT = computeHomography(ORIGIN_PLANE_WIDTH_NDC, ORIGIN_PLANE_HEIGHT_NDC, target_plane_vertices);
+    if (computeHomography(ORIGIN_PLANE_WIDTH_NDC, ORIGIN_PLANE_HEIGHT_NDC, target_plane_vertices, H_MAT) != 0)
+        return -1;
 
     // Initialize warped wall vertices
-    WARP_WALL_COORDS = updateWarpedWallVertices(H_MAT, CTRL_PNT_WALL_COORDS);
-
-    // Log setup parameters
-    ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
-    ROS_INFO("[SETUP] Display: Width[%d] Height[%d] AR[%0.2f]", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
-    ROS_INFO("[SETUP] Wall (Pxl): Width[%d] Height[%d]", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
-    ROS_INFO("[SETUP] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_WIDTH_NDC, WALL_HEIGHT_NDC, WALL_SPACE_HORZ_NDC, WALL_SPACE_VERT_NDC);
-    ROS_INFO("[SETUP] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", ORIGIN_PLANE_WIDTH_NDC, ORIGIN_PLANE_HEIGHT_NDC);
+    if (updateWarpedWallVertices(H_MAT, CTRL_PNT_WALL_COORDS, WARP_WALL_COORDS) != 0)
+        return -1;
 
     // --------------- OpenGL SETUP ---------------
 
@@ -652,7 +646,7 @@ int main(int argc, char **argv)
     // Generate and set up the FBO
     glGenFramebuffers(1, &fbo_id);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
-    checkErrorGL(__LINE__, __FILE__);
+    checkErrorOpenGL(__LINE__, __FILE__);
 
     // Generate and set up the texture
     glGenTextures(1, &fbo_texture_id);
@@ -660,12 +654,12 @@ int main(int argc, char **argv)
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    checkErrorGL(__LINE__, __FILE__);
+    checkErrorOpenGL(__LINE__, __FILE__);
 
     // Attach the texture to the FBO
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture_id, 0);
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    checkErrorGL(__LINE__, __FILE__);
+    checkErrorOpenGL(__LINE__, __FILE__);
 
     // Update the window monitor and mode
     updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
@@ -710,9 +704,57 @@ int main(int argc, char **argv)
     while (!glfwWindowShouldClose(p_windowID) && ros::ok())
     {
 
+        // --------------- Check Kayboard Callback Flags ---------------
+
+        // Load XML file
+        if (F.doLoadXML)
+        {
+            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
+            loadCoordinatesXML(file_path, 3, homMat, ctrlPointParams);
+            F.doLoadXML = false;
+        }
+
+         // Save XML file
+        if (F.doSaveXML)
+        {
+            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
+            saveCoordinatesXML(homMat, ctrlPointParams, file_path);
+            F.doSaveXML = false;
+        }
+
+        // Update the window monitor and mode
+        if (F.doUpdateWindowMonMode)
+        {
+            if (updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen) != 0)
+            {
+                ROS_ERROR("[MAIN] Update Window Monitor Mode Threw Error");
+                return -1;
+            }
+        }
+
+        // Recompute warped wall vertices
+        if (F.doReinitControlPointMarkers)
+        {
+            CTRL_PNT_WALL_COORDS = initControlPointCoordinates();
+            F.doReinitControlPointMarkers = false;
+        }
+
+        // Recompute warped wall vertices
+        if (F.doUpdateWarpedWallVertices)
+        {
+            if (updateWarpedWallVertices(H_MAT, CTRL_PNT_WALL_COORDS, WARP_WALL_COORDS) != 0)
+            {
+                ROS_ERROR("[MAIN] Update Warped Wall Vertices Threw Error");
+                return -1;
+            }
+            F.doUpdateWarpedWallVertices = false;
+        }
+
+        // --------------- Handle Image Processing for Next Frame ---------------
+
         // Clear back buffer for new frame
         glClear(GL_COLOR_BUFFER_BIT);
-        if (checkErrorGL(__LINE__, __FILE__))
+        if (checkErrorOpenGL(__LINE__, __FILE__))
             break;
 
         // Draw/update wall images
@@ -731,7 +773,7 @@ int main(int argc, char **argv)
         glfwSwapBuffers(p_windowID);
         if (checkErrorGLFW(__LINE__, __FILE__))
             break;
-        if (checkErrorGL(__LINE__, __FILE__))
+        if (checkErrorOpenGL(__LINE__, __FILE__))
             break;
 
         // Poll events
@@ -757,9 +799,9 @@ int main(int argc, char **argv)
 
     // Delete FBO and textures
     glDeleteFramebuffers(1, &fbo_id);
-    checkErrorGL(__LINE__, __FILE__);
+    checkErrorOpenGL(__LINE__, __FILE__);
     glDeleteTextures(1, &fbo_texture_id);
-    checkErrorGL(__LINE__, __FILE__);
+    checkErrorOpenGL(__LINE__, __FILE__);
     ROS_INFO("[SHUTDOWN] Deleted FBO and textures");
 
     // Delete DevIL images

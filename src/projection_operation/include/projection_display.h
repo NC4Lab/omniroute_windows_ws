@@ -112,7 +112,7 @@ static void callbackErrorGLFW(int, const char *);
  *
  * @return 0 if no errors, -1 if error.
  */
-int checkErrorGL(int, const char *, const char * = nullptr);
+int checkErrorOpenGL(int, const char *, const char * = nullptr);
 
 /**
  * @brief Checks for GLFW errors and logs them.

@@ -16,8 +16,8 @@
 
 /**
  * @brief  4x4 data container for tracking the vertex coordinates for the corner wall images which are used as control point
- * 
- * The array stores the corner wall vertex as OpenGL's Normalized Device Coordinates (NDC), which range from [-1, 1] 
+ *
+ * The array stores the corner wall vertex as OpenGL's Normalized Device Coordinates (NDC), which range from [-1, 1]
  * with the origin at the center of the screen.
  *
  * @details
@@ -40,9 +40,9 @@ std::array<std::array<cv::Point2f, 4>, 4> CTRL_PNT_WALL_COORDS;
 /**
  * @brief  3x3x4 data container for storing the final warped wall vertex coordinates in Normalized Device Coordinates (NDC)
  *
-  * The array stores the all wall verteces as OpenGL's Normalized Device Coordinates (NDC), which range from [-1, 1] 
+ * The array stores the all wall verteces as OpenGL's Normalized Device Coordinates (NDC), which range from [-1, 1]
  * with the origin at the center of the screen.
- * 
+ *
  * @details
  * [3][3][4] = [row][col][vertex]
  *
@@ -63,6 +63,16 @@ std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WARP_WA
 // The 3x3 homography matrix of 32-bit floating-point numbers used to warp perspective.
 cv::Mat H_MAT = cv::Mat::eye(3, 3, CV_32F);
 
+// Struct for tracking flags set in the keyboard callback
+static struct FlagStruct
+{
+    bool doLoadXML = false;                   // Flag to indicate if the XML file needs to be loaded
+    bool doSaveXML = false;                   // Flag to indicate if the XML file needs to be saved
+    bool doUpdateWindowMonMode = false;       // Flag to indicate if the window mode needs to be updated
+    bool doReinitControlPointMarkers = false; // Flag to indicate if the control point markers need to be reinitialized
+    bool doUpdateWarpedWallVertices = false;  // Flag to indicate if the warped wall vertices need to be updated
+} F;
+
 // Specify the window name
 std::string windowName = "Projection Calibration";
 
@@ -74,7 +84,7 @@ std::string calModeStr = "position"; // Parmeter being modified [position, dimen
 // Control point graphics
 std::array<float, 3> cpVertSelectedRGB = {0.0f, 1.0f, 0.0f}; // Select control point marker color (green)
 std::array<float, 3> cpWallSelectedRGB = {1.0f, 0.0f, 0.0f}; // Selected control point wall color (red)
-std::array<float, 3> cpUnelectedRGB = {0.0f, 0.0f, 1.0f};     // Inactive control point marker color (blue)
+std::array<float, 3> cpUnelectedRGB = {0.0f, 0.0f, 1.0f};    // Inactive control point marker color (blue)
 
 // Contorl point user interface
 int cpWallSelectedInd = 0; // Selected control point wall index [0,1,2,3]
@@ -187,7 +197,7 @@ static void callbackErrorGLFW(int, const char *);
  *
  * @return 0 if no errors, -1 if error.
  */
-int checkErrorGL(int, const char *, const char * = nullptr);
+int checkErrorOpenGL(int, const char *, const char * = nullptr);
 
 /**
  * @brief Checks for GLFW errors and logs them.

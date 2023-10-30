@@ -270,18 +270,18 @@ std::string formatCoordinatesFilePathXML(int, int, std::string);
  * @brief Loads control point parameters and homography matrix from an XML file.
  *
  * This is the primary function containing the implementation. It reads an XML file
- * to populate the `r_hom_mat` and `r_ctrl_point_params` matrices.
+ * to populate the `r_h_mat` and `r_ctrl_point_params` matrices.
  *
  * @note Uses pugiXML for XML parsing.
  *
- * @param[out] r_hom_mat Reference to the homography matrix to populate.
- * @param[out] r_ctrl_point_params Reference to a 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
  * @param full_path Path to the XML file.
  * @param verbose_level Level of verbosity for printing loaded data (0:nothing, 1:file name, 2:control point parameters, 3:homography matrix).
+ * @param[out] r_h_mat Reference to the homography matrix to populate.
+ * @param[out] r_ctrl_point_params Reference to a 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
  *
  * @return 0 on successful execution, -1 on failure.
  */
-int loadCoordinatesXML(cv::Mat &, std::array<std::array<float, 6>, 4> &, std::string, int = 0);
+int loadCoordinatesXML(std::string, int, cv::Mat &, std::array<std::array<float, 6>, 4> &);
 
 /**
  * @brief Saves the calibration parameter coordinates and homography matrix to an XML file.
@@ -303,17 +303,17 @@ int loadCoordinatesXML(cv::Mat &, std::array<std::array<float, 6>, 4> &, std::st
  *     </row>
  *     ...
  *   </ctrl_point_params>
- *   <hom_mat>
+ *   <h_mat>
  *     <row>
  *       <cell>value</cell>
  *       ...
  *     </row>
  *     ...
- *   </hom_mat>
+ *   </h_mat>
  * </config>
  * @endcode
  *
- * @param hom_mat The homography matrix used to warp perspective.
+ * @param h_mat The homography matrix used to warp perspective.
  * @param ctrl_point_params A 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
  * @param full_path Path to the XML file.
  */
@@ -359,21 +359,20 @@ int deleteImgTextures(std::vector<ILuint> &);
  */
 int mergeImages(ILuint, ILuint, ILuint &);
 
-
 /**
  * @brief Converts quadrilateral vertices vector of cv::Point2f to an array of cv::Point2f
- * 
- * @param quad_vert_vec 
- * 
+ *
+ * @param quad_vert_vec
+ *
  * @return quadrilateral vertices array of cv::Point2f
  */
 std::array<cv::Point2f, 4> quadVec2Arr(const std::vector<cv::Point2f> &);
 
 /**
  * @brief Converts quadrilateral vertices array of cv::Point2f to a vector of cv::Point2f
- * 
- * @param quad_vert_arr 
- * 
+ *
+ * @param quad_vert_arr
+ *
  * @return quadrilateral vertices vector of cv::Point2f
  */
 std::vector<cv::Point2f> quadArr2Vec(const std::array<cv::Point2f, 4> &);
@@ -405,35 +404,38 @@ float bilinearInterpolation(float, float, float, float, int, int, int);
 
 /**
  * @brief Computes the homography matrix based on target plane vertices
- * 
- * @param origin_width Width of the origin plane
- * @param origin_height Height of the origin plane
- * @param target_plane_vertices Four vertices defining the target plane
- * 
- * @return Homography matrix
+ *
+ * @param origin_width Width of the origin plane.
+ * @param origin_height Height of the origin plane.
+ * @param target_plane_vertices Four vertices defining the target plane.
+ * @param[out] r_h_mat Reference to the homography matrix.
+ *
+ *
+ * @return Status: 0 on successful execution, -1 on failure.
  */
-cv::Mat computeHomography(int, int, const std::array<cv::Point2f, 4> &);
-cv::Mat computeHomography(int, int, const std::vector<cv::Point2f> &);
+int computeHomography(int, int, const std::array<cv::Point2f, 4> &, cv::Mat &);
+int computeHomography(int, int, const std::vector<cv::Point2f> &, cv::Mat &);
 
 /**
- * @brief Calculates the bounding dimensions based on a given set of vertices
- * 
- * @param quad_vertices std:arr of four vertices defining a quadrilateral
- * 
- * @return Size object containing the maximum dimensions
+ * @brief Calculates the bounding dimensions based on a given set of vertices.
+ *
+ * @param quad_vertices std:arr of four vertices defining a quadrilateral.
+ *
+ * @return Size object containing the maximum dimensions.
  */
 cv::Size getBoundaryDims(const std::array<cv::Point2f, 4> &);
 
 /**
- * @brief Applies a given homography matrix to a texture image and returns the transformed texture
- * 
- * @param source_texture_id DevIL image ID of the source texture
- * @param h_mat Homography matrix
- * @param target_plane_vertices Vertices of the target plane
- * 
- * @return DevIL image ID of the warped texture
+ * @brief Applies a given homography matrix to a texture image and returns the transformed texture.
+ *
+ * @param source_texture_id DevIL image ID of the source texture.
+ * @param h_mat Homography matrix.
+ * @param target_plane_vertices Vertices of the target plane.
+ * @param[out] r_warped_texture_id Reference to the DevIL image ID of the outputed warped texture.
+ *
+ * @return Status: 0 on successful execution, -1 on failure.
  */
-ILuint perspectiveWarpTexture(ILuint, const cv::Mat &, const std::array<cv::Point2f, 4> &);
+int perspectiveWarpTexture(ILuint, const cv::Mat &, const std::array<cv::Point2f, 4> &, ILuint &r_warped_texture_id);
 
 /**
  * @brief Computes the perspective warp of a given coordinate point using a homography matrix.
@@ -448,7 +450,7 @@ ILuint perspectiveWarpTexture(ILuint, const cv::Mat &, const std::array<cv::Poin
  * 2. The function converts the translated vertices to homogeneous coordinates, which allows for a unified
  *    representation that can undergo linear transformations including projective warps.
  *
- * 3. The homography matrix `r_hom_mat` is then applied to these homogeneous coordinates to produce the
+ * 3. The homography matrix `r_h_mat` is then applied to these homogeneous coordinates to produce the
  *    new coordinates of each vertex in the warped perspective.
  *
  * 4. Finally, the function converts these new homogeneous coordinates back to Cartesian coordinates.
@@ -461,13 +463,12 @@ ILuint perspectiveWarpTexture(ILuint, const cv::Mat &, const std::array<cv::Poin
  *        (ptMat /= ptMat.at<float>(2)) to get back to cartisian x, y coordinates.
  *
  * @param p_unwarped The unwarped cv::Point2f values.
+ * @param r_h_mat Reference to the 3x3 homography matrix used to perform the projective transformation.
+ * @param[out] r_p_warped Reference to cv::Point2f containing the new Cartesian coordinates of the warped vertex position.
  *
- * @param r_hom_mat Reference to the homography matrix. This 3x3 matrix is used to perform the projective
- *                  transformation on each vertex.
- *
- * @return cv::Point2f containing the new Cartesian coordinates of the warped vertex position.
+ * @return Status: 0 on successful execution, -1 on failure.
  */
-cv::Point2f perspectiveWarpPoint(cv::Point2f, cv::Mat);
+int perspectiveWarpPoint(cv::Point2f, cv::Mat, cv::Point2f &);
 
 /**
  * @brief Initializes values for the verteces of the coner walls which will be used as calibraton control points.
@@ -486,12 +487,14 @@ std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates();
  *
  * @param r_h_mat The homography matrix used to warp the wall image.
  * @param r_CTRL_PNT_WALL_COORDS The control point coordinates used to warp the wall image.
+ * @param[out] r_WARP_WALL_COORDS updated 3x3x4 warped wall image vertices array.
  *
- * @return The updated 3x3x4 warped wall image vertices array.
+ * @return Status: 0 on successful execution, -1 on failure.
  */
-std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateWarpedWallVertices(
+int updateWarpedWallVertices(
     const cv::Mat &,
-    const std::array<std::array<cv::Point2f, 4>, 4> &);
+    const std::array<std::array<cv::Point2f, 4>, 4> &,
+    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &);
 
 /**
  * @brief Prints the coordinates of a quadrilateral's vertices.

@@ -33,7 +33,7 @@ std::string formatCoordinatesFilePathXML(int mon_id_ind, int mode_cal_ind, std::
     return file_path;
 }
 
-int loadCoordinatesXML(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> &r_ctrl_point_params, std::string full_path, int verbose_level)
+int loadCoordinatesXML(std::string full_path, int verbose_level, cv::Mat &r_h_mat, std::array<std::array<float, 6>, 4> &r_ctrl_point_params)
 {
     // Get file name from path
     std::string file_name = full_path.substr(full_path.find_last_of('/') + 1);
@@ -85,9 +85,9 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> &
     }
 
     // Retrieve homography matrix
-    std::vector<std::vector<float>> hom_mat_temp;
-    pugi::xml_node hom_mat_node = doc.child("config").child("hom_mat");
-    for (pugi::xml_node row_node = hom_mat_node.child("row"); row_node; row_node = row_node.next_sibling("row"))
+    std::vector<std::vector<float>> h_mat_temp;
+    pugi::xml_node h_mat_node = doc.child("config").child("h_mat");
+    for (pugi::xml_node row_node = h_mat_node.child("row"); row_node; row_node = row_node.next_sibling("row"))
     {
         std::vector<float> row;
         for (pugi::xml_node cell_node = row_node.child("cell"); cell_node; cell_node = cell_node.next_sibling("cell"))
@@ -95,16 +95,16 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> &
             float value = std::stof(cell_node.child_value());
             row.push_back(value);
         }
-        hom_mat_temp.push_back(row);
+        h_mat_temp.push_back(row);
     }
 
     // Check the dimensions of homography matrix
-    if (hom_mat_temp.size() != 3)
+    if (h_mat_temp.size() != 3)
     {
-        ROS_ERROR("[LOAD XML] Homography Matrix from XML has Wrong Number of Rows[%zu] File[%s]", hom_mat_temp.size(), file_name.c_str());
+        ROS_ERROR("[LOAD XML] Homography Matrix from XML has Wrong Number of Rows[%zu] File[%s]", h_mat_temp.size(), file_name.c_str());
         return -1;
     }
-    for (const auto &row : hom_mat_temp)
+    for (const auto &row : h_mat_temp)
     {
         if (row.size() != 3)
         {
@@ -118,7 +118,7 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> &
     {
         for (int j = 0; j < 3; j++)
         {
-            r_hom_mat.at<float>(i, j) = hom_mat_temp[i][j];
+            r_h_mat.at<float>(i, j) = h_mat_temp[i][j];
         }
     }
 
@@ -150,7 +150,7 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> &
         {
             std::ostringstream oss;
             oss << "[LOAD XML] Homography Matrix:\n";
-            for (const auto &row : hom_mat_temp)
+            for (const auto &row : h_mat_temp)
             {
                 for (const auto &value : row)
                 {
@@ -165,7 +165,7 @@ int loadCoordinatesXML(cv::Mat &r_hom_mat, std::array<std::array<float, 6>, 4> &
     return 0;
 }
 
-void saveCoordinatesXML(cv::Mat hom_mat, std::array<std::array<float, 6>, 4> ctrl_point_params, std::string full_path)
+void saveCoordinatesXML(cv::Mat h_mat, std::array<std::array<float, 6>, 4> ctrl_point_params, std::string full_path)
 {
     // Create an XML document object
     pugi::xml_document doc;
@@ -199,17 +199,17 @@ void saveCoordinatesXML(cv::Mat hom_mat, std::array<std::array<float, 6>, 4> ctr
     {
         for (int j = 0; j < 3; j++)
         {
-            hom_arr_2d[i][j] = hom_mat.at<float>(i, j);
+            hom_arr_2d[i][j] = h_mat.at<float>(i, j);
         }
     }
 
     // Create a child node for storing the homography matrix
-    pugi::xml_node arrayNode2 = root.append_child("hom_mat");
+    pugi::xml_node arrayNode2 = root.append_child("h_mat");
 
     // Iterate over the rows of the 2D array 'array2'
     for (const auto &row : hom_arr_2d)
     {
-        // Create a row element under "hom_mat"
+        // Create a row element under "h_mat"
         pugi::xml_node row_node = arrayNode2.append_child("row");
 
         // Iterate over the elements in the row
@@ -433,7 +433,7 @@ int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &r_img_merge_id)
         return -1;
     }
 
-    // No need for manual delete[] here, as we used std::vector
+    // Return success
     return 0;
 }
 
@@ -533,11 +533,11 @@ float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, 
 //     return h_mat;
 // }
 
-cv::Mat computeHomography(int origin_width, int origin_height, const std::array<cv::Point2f, 4> &target_plane_vertices)
+int computeHomography(int origin_width, int origin_height, const std::array<cv::Point2f, 4> &target_plane_vertices, cv::Mat &r_h_mat)
 {
-    return computeHomography(origin_width, origin_height, quadArr2Vec(target_plane_vertices));
+    return computeHomography(origin_width, origin_height, quadArr2Vec(target_plane_vertices), r_h_mat);
 }
-cv::Mat computeHomography(int origin_width, int origin_height, const std::vector<cv::Point2f> &target_plane_vertices)
+int computeHomography(int origin_width, int origin_height, const std::vector<cv::Point2f> &target_plane_vertices, cv::Mat &r_h_mat)
 {
     // // Define the corners of the texture based on the given dimensions
     // std::vector<cv::Point2f> origin_plane_vertices = {
@@ -558,22 +558,29 @@ cv::Mat computeHomography(int origin_width, int origin_height, const std::vector
     if (target_plane_vertices.size() != 4)
     {
         ROS_WARN("[BAD ARG] Vertices Must have 4 Points for Homography Calculation");
-        return cv::Mat();
+        return -1;
     }
 
     // Use OpenCV's findHomography function to compute
     // the homography matrix
-    cv::Mat h_mat = cv::findHomography(origin_plane_vertices, target_plane_vertices);
+    r_h_mat = cv::findHomography(origin_plane_vertices, target_plane_vertices);
+
+    // Check for valid homography matrix
+    if (r_h_mat.empty())
+    {
+        ROS_ERROR("[COMPUTE HOMOGRAPHY] Failed to Compute Homography Matrix");
+        return -1;
+    }
 
     // TEMP
     ROS_INFO("[COMPUTE HOMOGRAPHY] Origin Plane Vertices:");
     dbLogQuadVertices(origin_plane_vertices);
     ROS_INFO("[COMPUTE HOMOGRAPHY] Target Plane Vertices:");
     dbLogQuadVertices(target_plane_vertices);
-    dbLogHomMat(h_mat);
+    dbLogHomMat(r_h_mat);
 
-    // Return the homography matrix
-    return h_mat;
+    // Return success
+    return 0;
 }
 
 cv::Size getBoundaryDims(const std::array<cv::Point2f, 4> &quad_vertices)
@@ -598,10 +605,11 @@ cv::Size getBoundaryDims(const std::array<cv::Point2f, 4> &quad_vertices)
     return cv::Size(outputWidth, outputHeight);
 }
 
-ILuint perspectiveWarpTexture(
+int perspectiveWarpTexture(
     ILuint source_texture_id,
     const cv::Mat &h_mat,
-    const std::array<cv::Point2f, 4> &target_plane_vertices)
+    const std::array<cv::Point2f, 4> &target_plane_vertices,
+    ILuint &r_warped_texture_id)
 {
     // Compute output/target image size
     cv::Size warped_texture_size = getBoundaryDims(target_plane_vertices);
@@ -628,9 +636,8 @@ ILuint perspectiveWarpTexture(
         warped_texture_size);
 
     // Convert the warped cv::Mat back to an ILuint image
-    ILuint warped_texture_id;
-    ilGenImages(1, &warped_texture_id);
-    ilBindImage(warped_texture_id);
+    ilGenImages(1, &r_warped_texture_id);
+    ilBindImage(r_warped_texture_id);
     ilTexImage(
         warped_texture_mat.cols,
         warped_texture_mat.rows,
@@ -638,10 +645,10 @@ ILuint perspectiveWarpTexture(
         IL_RGB, IL_UNSIGNED_BYTE,
         warped_texture_mat.data);
 
-    return warped_texture_id;
+    return 0;
 }
 
-cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat h_mat)
+int perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat h_mat, cv::Point2f &r_p_warped)
 {
     // Convert to 3x1 homogeneous coordinate matrix
     float data[] = {p_unwarped.x, p_unwarped.y, 1}; // Column matrix with the vertex's homogeneous coordinates [x, y, 1].
@@ -659,12 +666,12 @@ cv::Point2f perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat h_mat)
     ptMat /= ptMat.at<float>(2); // Divide first two elements by the third element (w)
 
     // Update/overwrite original vertex coordinates with the warped coordinates
-    cv::Point2f v_warped(
-        ptMat.at<float>(0, 0),  // x
-        ptMat.at<float>(0, 1)); // y
+    r_p_warped.x = ptMat.at<float>(0, 0); // x
+    r_p_warped.y = ptMat.at<float>(0, 1); // y
 
-    return v_warped;
+    return 0;
 }
+
 std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates()
 {
     // Create a 2D array to store the control point coordinates
@@ -708,12 +715,11 @@ std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates()
     return CTRL_PNT_WALL_COORDS;
 }
 
-std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateWarpedWallVertices(
+int updateWarpedWallVertices(
     const cv::Mat &r_h_mat,
-    const std::array<std::array<cv::Point2f, 4>, 4> &r_CTRL_PNT_WALL_COORDS)
+    const std::array<std::array<cv::Point2f, 4>, 4> &r_CTRL_PNT_WALL_COORDS,
+    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &r_WARP_WALL_COORDS)
 {
-    // Initialize the warped wall coordinates array
-    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> warp_wall_coords;
 
     // Iterate trough grid/wall rows
     for (float grow_i = 0; grow_i < MAZE_SIZE; grow_i++) // image bottom to top
@@ -742,17 +748,17 @@ std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> updateW
                 cv::Point2f p_warped = p_interp;
 
                 // Store the warped vertex coordinates
-                warp_wall_coords[grow_i][gcol_i][p_i] = p_warped;
+                r_WARP_WALL_COORDS[grow_i][gcol_i][p_i] = p_warped;
             }
         }
     }
 
     // TEMP
     // dbLogCtrlPointCoordinates(r_CTRL_PNT_WALL_COORDS);
-    // dbLogWallVerticesCoordinates(warp_wall_coords);
+    // dbLogWallVerticesCoordinates(r_WARP_WALL_COORDS);
 
-    // Return the warped wall coordinates for use in other libraries
-    return warp_wall_coords;
+    // Return success
+    return 0;
 }
 
 void dbLogCtrlPointParams(std::array<std::array<float, 6>, 4> ctrl_point_params)

@@ -57,7 +57,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
-    checkErrorGL(__LINE__, __FILE__);
+    checkErrorOpenGL(__LINE__, __FILE__);
 }
 
 static void callbackErrorGLFW(int error, const char *description)
@@ -65,7 +65,7 @@ static void callbackErrorGLFW(int error, const char *description)
     ROS_ERROR("[GLFW] Error Flagged: Error[%d] Description[%s]", error, description);
 }
 
-int checkErrorGL(int line, const char *file_str, const char *msg_str)
+int checkErrorOpenGL(int line, const char *file_str, const char *msg_str)
 {
     GLenum gl_err;
     while ((gl_err = glGetError()) != GL_NO_ERROR)
@@ -154,7 +154,7 @@ int setupProjGLFW(
     }
 
     // Check for GL errors
-    checkErrorGL(__LINE__, __FILE__);
+    checkErrorOpenGL(__LINE__, __FILE__);
 
     return 0;
 }
@@ -258,7 +258,7 @@ int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
     glEnd();
 
     // Check and return GL status
-    return checkErrorGL(__LINE__, __FILE__);
+    return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
 // int updateWallImages(
