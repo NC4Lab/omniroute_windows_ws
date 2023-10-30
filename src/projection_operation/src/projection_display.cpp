@@ -261,7 +261,7 @@ int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-// int updateWallImages(
+// int drawWallImages(
 //     int proj_ind,
 //     int mon_id_ind,
 //     GLFWwindow *p_window_id,
@@ -443,7 +443,7 @@ int main(int argc, char **argv)
     //             glClear(GL_COLOR_BUFFER_BIT);
 
     //             // Draw the walls
-    //             if (updateWallImages(proj_i, projMonIndArr[proj_i], p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec) != 0)
+    //             if (drawWallImages(proj_i, projMonIndArr[proj_i], p_windowIDVec[proj_i], fboTextureIDVec[proj_i], imgWallIDVec) != 0)
     //             {
     //                 ROS_ERROR("[MAIN] Failed to Draw Walls for Window[%d]", proj_i);
     //                 is_err_thrown = true;

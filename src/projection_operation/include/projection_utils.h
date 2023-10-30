@@ -62,6 +62,14 @@
 
 // ================================================== VARIABLES ==================================================
 
+// Directory paths for configuration files
+extern const std::string package_path = ros::package::getPath("projection_operation");
+extern const std::string workspace_path = package_path.substr(0, package_path.rfind("/src"));
+extern const std::string CONFIG_DIR_PATH = workspace_path + "/data/proj_cfg";
+
+// Directory paths for configuration images
+extern const std::string IMAGE_TOP_DIR_PATH = workspace_path + "/data/proj_img";
+
 /**
  * @brief 4D array of hardcoded image indices to display.
  *
@@ -197,25 +205,21 @@ int IMG_PROJ_MAP[4][3][3][3] = {
 //     },
 // };
 
-// Spricify window resolution: 4K resolution (3840x2160)
+// Number of rows and columns in the maze
+extern const int MAZE_SIZE = 3;
+
+// Sprecify window resolution: 4K resolution (3840x2160)
 extern const int PROJ_WIN_WIDTH_PXL = 3840;
 extern const int PROJ_WIN_HEIGHT_PXL = 2160;
 extern const float PROJ_WIN_ASPECT_RATIO = (float)PROJ_WIN_WIDTH_PXL / (float)PROJ_WIN_HEIGHT_PXL;
 
-// Directory paths for configuration files
-extern const std::string package_path = ros::package::getPath("projection_operation");
-extern const std::string workspace_path = package_path.substr(0, package_path.rfind("/src"));
-extern const std::string CONFIG_DIR_PATH = workspace_path + "/data/proj_cfg";
-
-// Directory paths for configuration images
-extern const std::string IMAGE_TOP_DIR_PATH = workspace_path + "/data/proj_img";
-
-// Number of rows and columns in the maze
-extern const int MAZE_SIZE = 3;
-
-// Wall image size and spacing (pixels)
+// Wall image size (pixels)
 extern const int WALL_WIDTH_PXL = 300;
 extern const int WALL_HEIGHT_PXL = 540;
+
+// // Wall image size (NDC)
+// extern const float WALL_WIDTH_NDC = (static_cast<float>(WALL_WIDTH_PXL) / static_cast<float>(PROJ_WIN_WIDTH_PXL)) * 2;
+// extern const float WALL_HEIGHT_NDC = (static_cast<float>(WALL_HEIGHT_PXL) / static_cast<float>(PROJ_WIN_HEIGHT_PXL)) * 2;
 
 // // Specify the origin plane width and height (NDC)
 // const float ORIGIN_PLANE_WIDTH_NDC = 0.3f;
@@ -249,7 +253,7 @@ extern const float WALL_HEIGHT_NDC = 2 * WALL_SPACE_VERT_NDC / (1 + std::sqrt(2)
  * @param file_str File name where the function is called.
  * @param msg_str Optional message to provide additional context (default to nullptr).
  *
-* @return Integer status code [0:successful, -1:error].
+ * @return Integer status code [0:successful, -1:error].
  */
 int checkErrorDevIL(int, const char *, const char * = nullptr);
 
@@ -276,10 +280,10 @@ std::string formatCoordinatesFilePathXML(int, int, std::string);
  *
  * @param full_path Path to the XML file.
  * @param verbose_level Level of verbosity for printing loaded data (0:nothing, 1:file name, 2:control point parameters, 3:homography matrix).
- * @param[out] out_H_MAT Reference to the homography matrix to populate.
+ * @param[out] out_HMAT Reference to the homography matrix to populate.
  * @param[out] out_ctrl_point_params Reference to a 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
  *
-* @return Integer status code [0:successful, -1:error].
+ * @return Integer status code [0:successful, -1:error].
  */
 int loadCoordinatesXML(std::string, int, cv::Mat &, std::array<std::array<float, 6>, 4> &);
 
@@ -357,7 +361,7 @@ int deleteImgTextures(std::vector<ILuint> &);
  *
  * @warning The dimensions of img1 and img2 must match.
  */
-int mergeImages(ILuint, ILuint, ILuint &);
+int generateMergedTexture(ILuint, ILuint, ILuint &);
 
 /**
  * @brief Converts quadrilateral vertices vector of cv::Point2f to an array of cv::Point2f
@@ -378,11 +382,11 @@ std::array<cv::Point2f, 4> quadVec2Arr(const std::vector<cv::Point2f> &);
 std::vector<cv::Point2f> quadArr2Vec(const std::array<cv::Point2f, 4> &);
 
 /**
- * @brief Checks if a given set of vertices defines a valid quadrilateral.       
- * 
+ * @brief Checks if a given set of vertices defines a valid quadrilateral.
+ *
  * @param quad_vertices std:arr or std:vector of the four vertices defining a quadrilateral.
- *  
-* @return Integer status code [0:valid, 1:wrong size, 2:wrong shape].
+ *
+ * @return Integer status code [0:valid, 1:wrong size, 2:wrong shape].
  */
 int checkQuadVertices(const std::array<cv::Point2f, 4> &);
 int checkQuadVertices(const std::vector<cv::Point2f> &);
@@ -422,14 +426,14 @@ cv::Size getBoundaryDims(std::array<cv::Point2f, 4>);
 float bilinearInterpolation(float, float, float, float, int, int, int);
 
 /**
- * @brief Computes the homography matrix based on target plane vertices
+ * @brief Computes the homography matrix based on target plane vertices.
  *
  * @param origin_width Width of the origin plane.
  * @param origin_height Height of the origin plane.
  * @param target_plane_vertices Four vertices defining the target plane.
- * @param[out] out_H_MAT Reference to the homography matrix.
+ * @param[out] out_HMAT Reference to the homography matrix.
  *
-* @return Integer status code [0:successful, -1:error].
+ * @return Integer status code [0:successful, -1:error].
  */
 int computeHomography(float, float, std::array<cv::Point2f, 4>, cv::Mat &);
 int computeHomography(float, float, std::vector<cv::Point2f>, cv::Mat &);
@@ -438,13 +442,13 @@ int computeHomography(float, float, std::vector<cv::Point2f>, cv::Mat &);
  * @brief Applies a given homography matrix to a texture image and returns the transformed texture.
  *
  * @param source_texture_id DevIL image ID of the source texture.
- * @param _H_MAT Homography matrix.
+ * @param _HMAT Homography matrix.
  * @param target_plane_vertices Vertices of the target plane.
  * @param[out] out_warped_texture_id Reference to the DevIL image ID of the outputed warped texture.
  *
-* @return Integer status code [0:successful, -1:error].
+ * @return Integer status code [0:successful, -1:error].
  */
-int perspectiveWarpTexture(ILuint, cv::Mat, std::array<cv::Point2f, 4>, ILuint &);
+int generateWarpedTexture(ILuint, cv::Mat, std::array<cv::Point2f, 4>, ILuint &);
 
 /**
  * @brief Computes the perspective warp of a given coordinate point using a homography matrix.
@@ -454,7 +458,7 @@ int perspectiveWarpTexture(ILuint, cv::Mat, std::array<cv::Point2f, 4>, ILuint &
  *
  *
  * @details
- * 
+ *
  * - The function converts the translated piont to homogeneous coordinates, which allows for a unified
  *    representation that can undergo linear transformations including projective warps.
  *
@@ -471,10 +475,10 @@ int perspectiveWarpTexture(ILuint, cv::Mat, std::array<cv::Point2f, 4>, ILuint &
  *        (ptMat /= ptMat.at<float>(2)) to get back to cartisian x, y coordinates.
  *
  * @param p_unwarped The unwarped cv::Point2f values.
- * @param _H_MAT The 3x3 homography matrix used to perform the projective transformation.
+ * @param _HMAT The 3x3 homography matrix used to perform the projective transformation.
  * @param[out] out_p_warped Reference to cv::Point2f containing the new Cartesian coordinates of the warped vertex position.
  *
-* @return Integer status code [0:successful, -1:error].
+ * @return Integer status code [0:successful, -1:error].
  */
 int perspectiveWarpPoint(cv::Point2f, cv::Mat, cv::Point2f &);
 
@@ -486,27 +490,39 @@ int perspectiveWarpPoint(cv::Point2f, cv::Mat, cv::Point2f &);
  * The vertices for the entire projected image are calculated based on the dimensions that enclose
  * all control points (i.e., boundary dimensions in the control point plane).
  *
- * @param[out] out_CTRL_PNT_WALL_COORDS Reference to the 4x4 array containing the coordinates of the corner wall's vertices.
+ * @param[out] out_CTRL_PNT_DATA Reference to the 4x4 array containing the coordinates of the corner wall's vertices.
  */
-void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4>&);
+void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &);
 
 /**
  * @brief Updates the stored warped wall image vertices based on the control point array.
  *
- * @param _H_MAT The homography matrix used to warp the wall image.
- * @param _CTRL_PNT_WALL_COORDS The control point coordinates used to warp the wall image.
- * @param[out] out_WARP_WALL_COORDS updated 3x3x4 warped wall image vertices array.
+ * @param _CTRL_PNT_DATA The control point coordinates used to warp the wall image.
+ * @param[out] out_WALL_VERT_DATA updated 3x3x4 warped wall image vertices array.
  *
-* @return Integer status code [0:successful, -1:error].
+ * @return Integer status code [0:successful, -1:error].
  */
-int updateWarpedWallVertices(
-    cv::Mat,
+int updateWallVertices(
     const std::array<std::array<cv::Point2f, 4>, 4> &,
     std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &);
 
 /**
+* @brief Recomputes the homography matrix for each wall.
+ *
+ * @param _CTRL_PNT_DATA The control point coordinates used to warp the wall image.
+ * @param _WALL_VERT_DATA The 3x3x4 warped wall image vertices array.
+ * @param[out] out_WALL_HMAT_DATA updated 3x3 array of Homography matrices used to warp the wall image.
+ *
+ * @return Integer status code [0:successful, -1:error].
+ */
+int updateWallHomography(
+    const std::array<std::array<cv::Point2f, 4>, 4> &,
+     const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &,
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
+
+/**
  * @brief Prints the coordinates of a quadrilateral's vertices.
- * 
+ *
  * @param quad_vertices The quadrilateral's vertices.
  */
 void dbLogQuadVertices(const std::vector<cv::Point2f> &);
@@ -519,15 +535,15 @@ void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &
 
 /**
  * @brief Prints the coordinates of all entries in the warped wall vertices array.
- * 
- * @param _WARP_WALL_COORDS Reference to the warped wall vertices array.
+ *
+ * @param _WALL_VERT_DATA Reference to the warped wall vertices array.
  */
 void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &);
 
 /**
  * @brief Prints the coordinates of all entries in the homography matrix.
- * 
- * @param _H_MAT The homography matrix.
+ *
+ * @param _HMAT The homography matrix.
  */
 void dbLogHomMat(const cv::Mat &);
 

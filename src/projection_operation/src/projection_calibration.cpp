@@ -182,32 +182,32 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.0005f;
 
             // Store current origin
-            cv::Point2f cp_origin_save = CTRL_PNT_WALL_COORDS[cpWallSelectedInd][2];
+            cv::Point2f cp_origin_save = CTRL_PNT_DATA[cpWallSelectedInd][2];
 
             // Listen for arrow key input to move selected control point
             if (key == GLFW_KEY_LEFT)
             {
-                CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].x -= pos_inc; // Move left
-                F.updateWarpedWallVertices = true;
+                CTRL_PNT_DATA[cpWallSelectedInd][cpVertSelectedInd].x -= pos_inc; // Move left
+                F.updateWallDatasets = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].x += pos_inc; // Move right
-                F.updateWarpedWallVertices = true;
+                CTRL_PNT_DATA[cpWallSelectedInd][cpVertSelectedInd].x += pos_inc; // Move right
+                F.updateWallDatasets = true;
             }
             else if (key == GLFW_KEY_UP)
             {
-                CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].y += pos_inc; // Move up
-                F.updateWarpedWallVertices = true;
+                CTRL_PNT_DATA[cpWallSelectedInd][cpVertSelectedInd].y += pos_inc; // Move up
+                F.updateWallDatasets = true;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].y -= pos_inc; // Move down
-                F.updateWarpedWallVertices = true;
+                CTRL_PNT_DATA[cpWallSelectedInd][cpVertSelectedInd].y -= pos_inc; // Move down
+                F.updateWallDatasets = true;
             }
 
             // Shift all control points if origin moved
-            cv::Point2f cp_origin_new = CTRL_PNT_WALL_COORDS[cpWallSelectedInd][2];
+            cv::Point2f cp_origin_new = CTRL_PNT_DATA[cpWallSelectedInd][2];
 
             // Calculate the change in x and y for the origin
             float delta_x = cp_origin_new.x - cp_origin_save.x;
@@ -221,8 +221,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 {
                     if (i != 2) // Skip the origin vertex itself
                     {
-                        CTRL_PNT_WALL_COORDS[cpWallSelectedInd][i].x += delta_x;
-                        CTRL_PNT_WALL_COORDS[cpWallSelectedInd][i].y += delta_y;
+                        CTRL_PNT_DATA[cpWallSelectedInd][i].x += delta_x;
+                        CTRL_PNT_DATA[cpWallSelectedInd][i].y += delta_y;
                     }
                 }
             }
@@ -238,12 +238,12 @@ void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
 
 static void callbackErrorOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
 {
-    ROS_ERROR("[OpenGL] Debug Callback: Type[0x%x] ID[%d] Severity[0x%x] Message[%s]", type, id, severity, message);
+    ROS_ERROR("[OpenGL ERROR CALLBACK] Type[0x%x] ID[%d] Severity[0x%x] Message[%s]", type, id, severity, message);
 }
 
 static void callbackErrorGLFW(int error, const char *description)
 {
-    ROS_ERROR("[GLFW] Error Callback: Error[%d] Description[%s]", error, description);
+    ROS_ERROR("[GLFW ERROR CALLBACK] Error[%d] Description[%s]", error, description);
 }
 
 int checkErrorOpenGL(int line, const char *file_str, const char *msg_str)
@@ -252,9 +252,9 @@ int checkErrorOpenGL(int line, const char *file_str, const char *msg_str)
     while ((gl_err = glGetError()) != GL_NO_ERROR)
     {
         if (msg_str)
-            ROS_INFO("[OpenGL] Error Flagged: Message[%s] Error Number[%u] File[%s] Line[%d]", msg_str, gl_err, file_str, line);
+            ROS_INFO("[OpenGL ERROR CHECK] Message[%s] Error Number[%u] File[%s] Line[%d]", msg_str, gl_err, file_str, line);
         else
-            ROS_INFO("[OpenGL] Error Flagged: Error Number[%u] File[%s] Line[%d]", gl_err, file_str, line);
+            ROS_INFO("[OpenGL ERROR CHECK] Error Number[%u] File[%s] Line[%d]", gl_err, file_str, line);
         return -1;
     }
     return 0;
@@ -267,9 +267,9 @@ int checkErrorGLFW(int line, const char *file_str, const char *msg_str)
     if (glfw_err != GLFW_NO_ERROR)
     {
         if (msg_str)
-            ROS_ERROR("[GLFW] Error Flagged: Message[%s] Description[%s] File[%s] Line[%d]", msg_str, description, file_str, line);
+            ROS_ERROR("[GLFW ERROR CHECK] Message[%s] Description[%s] File[%s] Line[%d]", msg_str, description, file_str, line);
         else
-            ROS_ERROR("[GLFW] Error Flagged: Description[%s] File[%s] Line[%d]", description, file_str, line);
+            ROS_ERROR("[GLFW ERROR CHECK] Description[%s] File[%s] Line[%d]", description, file_str, line);
         return -1;
     }
     return 0;
@@ -402,10 +402,10 @@ int updateControlPointMarkers()
 
             // Warp the vertex
             cv::Point2f p_warped;
-            perspectiveWarpPoint(CTRL_PNT_WALL_COORDS[cp_i][v_i], H_MAT, p_warped);
+            perspectiveWarpPoint(CTRL_PNT_DATA[cp_i][v_i], HMAT, p_warped);
 
             // TEMP
-            p_warped = CTRL_PNT_WALL_COORDS[cp_i][v_i];
+            p_warped = CTRL_PNT_DATA[cp_i][v_i];
 
             // Draw the control point
             if (drawColoredCircle(p_warped.x, p_warped.y, cp_rad, cp_col) != 0)
@@ -499,7 +499,7 @@ int drawBarycentricImage(std::array<cv::Point2f, 4> quad_vertices_arr)
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-int updateWallImages(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_cal_id)
+int drawWallImages(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_mon_id, ILuint img_mode_cal_id)
 {
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
@@ -520,37 +520,39 @@ int updateWallImages(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_
                 (cpWallSelectedInd == 2 && grow_i == MAZE_SIZE - 1 && gcol_i == 0) ||
                 (cpWallSelectedInd == 3 && grow_i == MAZE_SIZE - 1 && gcol_i == MAZE_SIZE - 1))
             {
+                // Merge test pattern and active monitor image
+                ILuint img_merge_id;
+                if (generateMergedTexture(img_wall_id, img_mode_mon_id, img_merge_id) != 0)
+                    return -1;
 
-                // TEMP
-                // // Merge test pattern and active monitor image
-                // ILuint img_merge_id;
-                // if (mergeImages(img_wall_id, img_mode_mon_id, img_merge_id) != 0)
-                //     return -1;
+                // Merge previous image and active calibration image
+                if (generateMergedTexture(img_merge_id, img_mode_cal_id, img_draw_id) != 0)
+                    return -1;
 
-                // // Merge previous image and active calibration image
-                // if (mergeImages(img_merge_id, img_mode_cal_id, img_draw_id) != 0)
-                //     return -1;
+                // Delete the merged image
+                ilDeleteImages(1, &img_merge_id);
             }
             if (checkErrorDevIL(__LINE__, __FILE__) != 0)
                 return -1;
 
-            // Get warped vertices for this wall as a vector
-            std::array<cv::Point2f, 4> quad_vertices_warped = WARP_WALL_COORDS[grow_i][gcol_i];
+            // Get warped vertices for this wall
+            std::array<cv::Point2f, 4> quad_vertices_warped = WALL_VERT_DATA[grow_i][gcol_i];
 
-            // Compute homography matrix for this wall's texture
-            cv::Mat h_mat;
-            if (computeHomography(WALL_WIDTH_PXL, WALL_HEIGHT_PXL, quad_vertices_warped, h_mat) != 0)
-                return -1;
+            // Get homography matrix for this wall's texture
+            cv::Mat _HMAT = WALL_HMAT_DATA[grow_i][gcol_i];
 
             // Warp the texture
             ILuint img_wall_warp;
-            if (perspectiveWarpTexture(img_wall_id, h_mat, quad_vertices_warped, img_wall_warp) != 0)
+            if (generateWarpedTexture(img_draw_id, _HMAT, quad_vertices_warped, img_wall_warp) != 0)
                 return -1;
 
             // Bind warped image
             ilBindImage(img_wall_warp); // show test pattern
             if (checkErrorDevIL(__LINE__, __FILE__) != 0)
+            {
+                ilDeleteImages(1, &img_wall_warp);
                 return -1;
+            }
 
             // Set texture image
             glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
@@ -559,6 +561,9 @@ int updateWallImages(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_
 
             // Bind texture to framebuffer object
             glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
+
+            // Delete the warped image
+            ilDeleteImages(1, &img_wall_warp);
 
             // TEMP
             if (gcol_i != 0 || grow_i != 0)
@@ -597,22 +602,21 @@ int main(int argc, char **argv)
     // --------------- VARIABLE SETUP ---------------
 
     // Initialze control points
-    initControlPointCoordinates(CTRL_PNT_WALL_COORDS);
+    initControlPointCoordinates(CTRL_PNT_DATA);
 
-    // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
-    std::vector<cv::Point2f> target_plane_vertices;
-    target_plane_vertices.push_back(cv::Point2f(CTRL_PNT_WALL_COORDS[0][2].x, CTRL_PNT_WALL_COORDS[0][2].y)); // top-left
-    target_plane_vertices.push_back(cv::Point2f(CTRL_PNT_WALL_COORDS[1][2].x, CTRL_PNT_WALL_COORDS[1][2].y)); // top-right
-    target_plane_vertices.push_back(cv::Point2f(CTRL_PNT_WALL_COORDS[2][2].x, CTRL_PNT_WALL_COORDS[2][2].y)); // bottom-left
-    target_plane_vertices.push_back(cv::Point2f(CTRL_PNT_WALL_COORDS[3][2].x, CTRL_PNT_WALL_COORDS[3][2].y)); // bottom-right
-
-    // Compute homography matrix once
-    if (computeHomography(ORIGIN_PLANE_WIDTH_NDC, ORIGIN_PLANE_HEIGHT_NDC, target_plane_vertices, H_MAT) != 0)
+    // Initialize wall parameter datasets
+    if (updateWallVertices(CTRL_PNT_DATA, WALL_VERT_DATA) != 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Initalize the Wall Vertices Dataset");
         return -1;
+    }
 
-    // Initialize warped wall vertices
-    if (updateWarpedWallVertices(H_MAT, CTRL_PNT_WALL_COORDS, WARP_WALL_COORDS) != 0)
+    // Initialize homography matrix dataset
+    if (updateWallHomography(CTRL_PNT_DATA, WALL_VERT_DATA, WALL_HMAT_DATA) != 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Initalize the Wall Homography Dataset");
         return -1;
+    }
 
     // --------------- OpenGL SETUP ---------------
 
@@ -656,7 +660,7 @@ int main(int argc, char **argv)
 
     // Enable OpenGL debugging context
     glEnable(GL_DEBUG_OUTPUT);
-    glDebugMessageCallback(callbackErrorOpenGL, 0); 
+    glDebugMessageCallback(callbackErrorOpenGL, 0);
 
     // Set GLFW callbacks for keyboard and framebuffer size events
     glfwSetKeyCallback(p_windowID, callbackKeyBinding);
@@ -795,20 +799,27 @@ int main(int argc, char **argv)
         // Initialize/reinitialize control point coordinate dataset
         if (F.initControlPointMarkers)
         {
-            initControlPointCoordinates(CTRL_PNT_WALL_COORDS);
+            initControlPointCoordinates(CTRL_PNT_DATA);
             F.initControlPointMarkers = false;
         }
 
-        // Recompute warped wall vertices dataset
-        if (F.updateWarpedWallVertices)
+        // Recompute wall vertices and homography matrices
+        if (F.updateWallDatasets)
         {
-            if (updateWarpedWallVertices(H_MAT, CTRL_PNT_WALL_COORDS, WARP_WALL_COORDS) != 0)
+            // Initialize wall parameter datasets
+            if (updateWallVertices(CTRL_PNT_DATA, WALL_VERT_DATA) != 0)
             {
-                ROS_ERROR("[MAIN] Update Warped Wall Vertices Threw Error");
-                is_error = true;
-                break;
+                ROS_ERROR("[MAIN] Update of Wall Vertices Datasets Failed");
+                return -1;
             }
-            F.updateWarpedWallVertices = false;
+
+            // Initialize homography matrix dataset
+            if (updateWallHomography(CTRL_PNT_DATA, WALL_VERT_DATA, WALL_HMAT_DATA) != 0)
+            {
+                ROS_ERROR("[MAIN] Update of Wall Homography Datasets Failed");
+                return -1;
+            }
+            F.updateWallDatasets = false;
         }
 
         // --------------- Handle Image Processing for Next Frame ---------------
@@ -822,12 +833,14 @@ int main(int argc, char **argv)
         }
 
         // Draw/update wall images
-        if (updateWallImages(fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgCalIDVec[calModeInd]) != 0)
+        if (drawWallImages(fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgCalIDVec[calModeInd]) != 0)
         {
             ROS_ERROR("[MAIN] Draw Walls Threw Error");
             is_error = true;
             break;
         }
+
+        // Draw/update control point markers
         if (updateControlPointMarkers() != 0)
         {
             ROS_ERROR("[MAIN] Draw Control Point Threw Error");

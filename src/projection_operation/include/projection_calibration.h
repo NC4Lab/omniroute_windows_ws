@@ -35,16 +35,16 @@
  *  - 2: Bottom-left  (quadrilateral vertex)
  *  - 3: Bottom-right  (quadrilateral vertex)
  */
-std::array<std::array<cv::Point2f, 4>, 4> CTRL_PNT_WALL_COORDS;
+std::array<std::array<cv::Point2f, 4>, 4> CTRL_PNT_DATA;
 
 /**
- * @brief  3x3x4 data container for storing the final warped wall vertex coordinates in Normalized Device Coordinates (NDC)
+ * @brief  MAZE_SIZExMAZE_SIZEx4 data container for storing the final warped wall vertex coordinates in Normalized Device Coordinates (NDC)
  *
  * The array stores the all wall verteces as OpenGL's Normalized Device Coordinates (NDC), which range from [-1, 1]
  * with the origin at the center of the screen.
  *
  * @details
- * [3][3][4] = [row][col][vertex]
+ * [MAZE_SIZE][MAZE_SIZE][4] = [row][col][vertex]
  *
  * - Dimension 1: Rows [0-MAZE_SIZE-1]:
  *  - Top to Bottom
@@ -58,19 +58,26 @@ std::array<std::array<cv::Point2f, 4>, 4> CTRL_PNT_WALL_COORDS;
  *  - 2: Bottom-left  (quadrilateral vertex)
  *  - 3: Bottom-right  (quadrilateral vertex)
  */
-std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WARP_WALL_COORDS;
+std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WALL_VERT_DATA;
+
+/**
+ * @brief  3x3 data contianer for storing the 3x3 homography matrix for each wall image
+ */
+std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> WALL_HMAT_DATA;
+
 
 // The 3x3 homography matrix of 32-bit floating-point numbers used to warp perspective.
-cv::Mat H_MAT = cv::Mat::eye(3, 3, CV_32F);
+cv::Mat HMAT = cv::Mat::eye(3, 3, CV_32F);
 
 // Struct primarely used for tracking flags set in the keyboard callback
 static struct FlagStruct
 {
+    bool dbRun = false;                    // Flag to indicate if something should be run for debugging
     bool loadXML = false;                  // Flag to indicate if the XML file needs to be loaded
     bool saveXML = false;                  // Flag to indicate if the XML file needs to be saved
     bool updateWindowMonMode = false;      // Flag to indicate if the window mode needs to be updated
     bool initControlPointMarkers = false;  // Flag to indicate if the control point markers need to be reinitialized
-    bool updateWarpedWallVertices = false; // Flag to indicate if the warped wall vertices need to be updated
+    bool updateWallDatasets = false; // Flag to indicate if the warped wall vertices need to be updated
 } F;
 
 // Specify the window name
@@ -307,9 +314,9 @@ int drawBarycentricImage(std::array<cv::Point2f, 4>);
  * @param img_mode_mon_id DevIL image ID for the monitor mode image.
  * @param img_mode_cal_id DevIL image ID for the calibration image.
  *
-  * @return Integer status code  [0:successful, -1:error].
+ * @return Integer status code  [0:successful, -1:error].
  */
-int updateWallImages(GLuint, ILuint, ILuint, ILuint);
+int drawWallImages(GLuint, ILuint, ILuint, ILuint);
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.
