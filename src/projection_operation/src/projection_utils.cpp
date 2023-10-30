@@ -33,7 +33,7 @@ std::string formatCoordinatesFilePathXML(int mon_id_ind, int mode_cal_ind, std::
     return file_path;
 }
 
-int loadCoordinatesXML(std::string full_path, int verbose_level, cv::Mat &out_h_mat, std::array<std::array<float, 6>, 4> &out_ctrl_point_params)
+int loadCoordinatesXML(std::string full_path, int verbose_level, cv::Mat &out_H_MAT, std::array<std::array<float, 6>, 4> &out_ctrl_point_params)
 {
     // Get file name from path
     std::string file_name = full_path.substr(full_path.find_last_of('/') + 1);
@@ -118,7 +118,7 @@ int loadCoordinatesXML(std::string full_path, int verbose_level, cv::Mat &out_h_
     {
         for (int j = 0; j < 3; j++)
         {
-            out_h_mat.at<float>(i, j) = h_mat_temp[i][j];
+            out_H_MAT.at<float>(i, j) = h_mat_temp[i][j];
         }
     }
 
@@ -437,37 +437,6 @@ int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &out_img_merge_id)
     return 0;
 }
 
-// // Function to compute the homography matrix for texture mapping
-// cv::Mat computeHomography(
-//     ILuint textureID,
-//     const std::vector<cv::Point2f> &quad_vertices)
-// {
-//     // Bind the DevIL image
-//     ilBindImage(textureID);
-
-//     // Get the dimensions of the texture image
-//     int width = ilGetInteger(IL_IMAGE_WIDTH);
-//     int height = ilGetInteger(IL_IMAGE_HEIGHT);
-
-//     // Define the corners of the texture
-//     std::vector<cv::Point2f> texture_vertices = {
-//         cv::Point2f(0, 0),          // Top-left
-//         cv::Point2f(width, 0),      // Top-right
-//         cv::Point2f(0, height),     // Bottom-left
-//         cv::Point2f(width, height)  // Bottom-right
-//     };
-
-//     // Ensure quad_vertices is also in the same order as
-//     // texture_vertices for a correct 1-to-1 mapping
-//     if (quad_vertices.size() != 4) {
-//         throw std::invalid_argument("quad_vertices must contain exactly 4 points");
-//     }
-
-//     // Use OpenCV's findHomography function to compute the homography matrix
-//     cv::Mat h_mat = cv::findHomography(texture_vertices, quad_vertices);
-//     return h_mat;
-// }
-
 std::array<cv::Point2f, 4> quadVec2Arr(const std::vector<cv::Point2f> &quad_vert_vec)
 {
     std::array<cv::Point2f, 4> quad_vert_arr{0, 0, 0, 0};
@@ -491,99 +460,31 @@ std::vector<cv::Point2f> quadArr2Vec(const std::array<cv::Point2f, 4> &quad_vert
     return quad_vert_vec;
 }
 
-float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size)
+int checkQuadVertices(const std::array<cv::Point2f, 4> &quad_vertices)
 {
-    // Calculate the relative position within the grid.
-    float x = static_cast<float>(grid_col_i) / (grid_size - 1);
-    float y = static_cast<float>(grid_row_i) / (grid_size - 1);
-
-    // Perform bilinear interpolation using the formula.
-    float interp_val = (1 - x) * (1 - y) * a +
-                       x * (1 - y) * b +
-                       (1 - x) * y * c +
-                       x * y * d;
-
-    // Return the final interpolated value.
-    return interp_val;
+    return checkQuadVertices(quadArr2Vec(quad_vertices));
 }
-
-// cv::Mat computeHomographyV1(const std::array<std::array<cv::Point2f, 4>, 4> &r_CTRL_PNT_WALL_COORDS)
-// {
-//     // Calculate the vertices for based on the initial control point boundary dimensions.
-//     // These vertices will be used as points for the 'origin' or source' when computing the homography matrix.
-//     std::vector<cv::Point2f> origin_plane_vertices = {
-//         cv::Point2f(0.0f, ORIGIN_PLANE_HEIGHT_NDC),                   // top-left
-//         cv::Point2f(ORIGIN_PLANE_WIDTH_NDC, ORIGIN_PLANE_HEIGHT_NDC), // top-right
-//         cv::Point2f(0.0f, 0.0f),                                      // bottom-left
-//         cv::Point2f(ORIGIN_PLANE_WIDTH_NDC, 0.0f)};                   // bottom-right
-
-//     // Create a vector containing teh x and y cordinates of the 4 control points, whoe's origin is the center of the image.
-//     // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
-//     std::vector<cv::Point2f> target_plane_vertices;
-//     target_plane_vertices.push_back(cv::Point2f(r_CTRL_PNT_WALL_COORDS[0][2].x, r_CTRL_PNT_WALL_COORDS[0][2].y)); // top-left
-//     target_plane_vertices.push_back(cv::Point2f(r_CTRL_PNT_WALL_COORDS[1][2].x, r_CTRL_PNT_WALL_COORDS[1][2].y)); // top-right
-//     target_plane_vertices.push_back(cv::Point2f(r_CTRL_PNT_WALL_COORDS[2][2].x, r_CTRL_PNT_WALL_COORDS[2][2].y)); // bottom-left
-//     target_plane_vertices.push_back(cv::Point2f(r_CTRL_PNT_WALL_COORDS[3][2].x, r_CTRL_PNT_WALL_COORDS[3][2].y)); // bottom-right
-
-//     // Use OpenCV's findHomography function to compute the homography matrix.
-//     // This matrix will map the coordinates of the image (origin/source) plane the control point (target/destination) plane.
-//     cv::Mat h_mat = findHomography(origin_plane_vertices, target_plane_vertices);
-
-//     // Return the homography matrix for use in other libraries
-//     return h_mat;
-// }
-
-int computeHomography(int origin_width, int origin_height, const std::array<cv::Point2f, 4> &target_plane_vertices, cv::Mat &r_h_mat)
+int checkQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
 {
-    return computeHomography(origin_width, origin_height, quadArr2Vec(target_plane_vertices), r_h_mat);
-}
-int computeHomography(int origin_width, int origin_height, const std::vector<cv::Point2f> &target_plane_vertices, cv::Mat &r_h_mat)
-{
-    // // Define the corners of the texture based on the given dimensions
-    // std::vector<cv::Point2f> origin_plane_vertices = {
-    //     cv::Point2f(0, 0),                       // Top-left
-    //     cv::Point2f(origin_width, 0),            // Top-right
-    //     cv::Point2f(0, origin_height),           // Bottom-left
-    //     cv::Point2f(origin_width, origin_height) // Bottom-right
-    // };
 
-    std::vector<cv::Point2f> origin_plane_vertices = {
-        cv::Point2f(0.0f, origin_height),         // top-left
-        cv::Point2f(origin_width, origin_height), // top-right
-        cv::Point2f(0.0f, 0.0f),                  // bottom-left
-        cv::Point2f(origin_width, 0.0f)};         // bottom-right
+    // Check if the input vector has exactly 4 vertices
+    if (quad_vertices.size() != 4)
+        return 1;
 
-    // Ensure quad_vertices is in the same order as
-    // texture_vertices for a correct 1-to-1 mapping
-    if (target_plane_vertices.size() != 4)
+    // Check if any three points are collinear; for a valid quadrilateral, no three points should be collinear
+    for (int i = 0; i < 4; ++i)
     {
-        ROS_WARN("[BAD ARG] Vertices Must have 4 Points for Homography Calculation");
-        return -1;
+        cv::Point2f p1 = quad_vertices[i];
+        cv::Point2f p2 = quad_vertices[(i + 1) % 4];
+        cv::Point2f p3 = quad_vertices[(i + 2) % 4];
+        float area = p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y);
+        if (std::abs(area) < 1e-5)
+            return 2; // The points are collinear
     }
-
-    // Use OpenCV's findHomography function to compute
-    // the homography matrix
-    r_h_mat = cv::findHomography(origin_plane_vertices, target_plane_vertices);
-
-    // Check for valid homography matrix
-    if (r_h_mat.empty())
-    {
-        ROS_ERROR("[COMPUTE HOMOGRAPHY] Failed to Compute Homography Matrix");
-        return -1;
-    }
-
-    // TEMP
-    ROS_INFO("[COMPUTE HOMOGRAPHY] Origin Plane Vertices:");
-    dbLogQuadVertices(origin_plane_vertices);
-    ROS_INFO("[COMPUTE HOMOGRAPHY] Target Plane Vertices:");
-    dbLogQuadVertices(target_plane_vertices);
-    dbLogHomMat(r_h_mat);
-
-    // Return success
     return 0;
 }
 
-cv::Size getBoundaryDims(const std::array<cv::Point2f, 4> &quad_vertices)
+cv::Size getBoundaryDims(std::array<cv::Point2f, 4> quad_vertices)
 {
     float max_width = 0.0;
     float max_height = 0.0;
@@ -605,10 +506,76 @@ cv::Size getBoundaryDims(const std::array<cv::Point2f, 4> &quad_vertices)
     return cv::Size(outputWidth, outputHeight);
 }
 
+float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size)
+{
+    // Calculate the relative position within the grid.
+    float x = static_cast<float>(grid_col_i) / (grid_size - 1);
+    float y = static_cast<float>(grid_row_i) / (grid_size - 1);
+
+    // Perform bilinear interpolation using the formula.
+    float interp_val = (1 - x) * (1 - y) * a +
+                       x * (1 - y) * b +
+                       (1 - x) * y * c +
+                       x * y * d;
+
+    // Return the final interpolated value.
+    return interp_val;
+}
+
+int computeHomography(float origin_width, float origin_height, std::array<cv::Point2f, 4> target_plane_vertices, cv::Mat &out_H_MAT)
+{
+    return computeHomography(origin_width, origin_height, quadArr2Vec(target_plane_vertices), out_H_MAT);
+}
+
+int computeHomography(float origin_width, float origin_height, std::vector<cv::Point2f> target_plane_vertices, cv::Mat &out_H_MAT)
+{
+    // // Define the corners of the texture based on the given dimensions
+    // std::vector<cv::Point2f> origin_plane_vertices = {
+    //     cv::Point2f(0, 0),                         // Top-left
+    //     cv::Point2f(origin_width, 0),              // Top-right
+    //     cv::Point2f(0, origin_height),             // Bottom-left
+    //     cv::Point2f(origin_width, origin_height)}; // Bottom-right
+
+    std::vector<cv::Point2f> origin_plane_vertices = {
+        cv::Point2f(0.0f, origin_height),         // top-left
+        cv::Point2f(origin_width, origin_height), // top-right
+        cv::Point2f(0.0f, 0.0f),                  // bottom-left
+        cv::Point2f(origin_width, 0.0f)};         // bottom-right
+
+    // Check that the target plane vertices are valid
+    if (checkQuadVertices(target_plane_vertices) != 0)
+    {
+        ROS_WARN("[COMPUTE HOMOGRAPHY] Target Plane Vertices Invalid: Reason[%s]",
+                 checkQuadVertices(target_plane_vertices) == 1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
+        return -1;
+    }
+
+    // Use OpenCV's findHomography function to compute
+    // the homography matrix
+    out_H_MAT = cv::findHomography(origin_plane_vertices, target_plane_vertices);
+
+    // TEMP
+    ROS_INFO("[COMPUTE HOMOGRAPHY] Origin Plane Vertices:");
+    dbLogQuadVertices(origin_plane_vertices);
+    ROS_INFO("[COMPUTE HOMOGRAPHY] Target Plane Vertices:");
+    dbLogQuadVertices(target_plane_vertices);
+    dbLogHomMat(out_H_MAT);
+
+    // Check for valid homography matrix
+    if (out_H_MAT.empty())
+    {
+        ROS_ERROR("[COMPUTE HOMOGRAPHY] Failed to Compute Homography Matrix");
+        return -1;
+    }
+
+    // Return success
+    return 0;
+}
+
 int perspectiveWarpTexture(
     ILuint source_texture_id,
-    const cv::Mat &h_mat,
-    const std::array<cv::Point2f, 4> &target_plane_vertices,
+    cv::Mat _H_MAT,
+    std::array<cv::Point2f, 4> target_plane_vertices,
     ILuint &out_warped_texture_id)
 {
     // Compute output/target image size
@@ -632,7 +599,7 @@ int perspectiveWarpTexture(
     cv::warpPerspective(
         source_texture_mat,
         warped_texture_mat,
-        h_mat,
+        _H_MAT,
         warped_texture_size);
 
     // Convert the warped cv::Mat back to an ILuint image
@@ -648,19 +615,19 @@ int perspectiveWarpTexture(
     return 0;
 }
 
-int perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat h_mat, cv::Point2f &out_p_warped)
+int perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat _H_MAT, cv::Point2f &out_p_warped)
 {
     // Convert to 3x1 homogeneous coordinate matrix
     float data[] = {p_unwarped.x, p_unwarped.y, 1}; // Column matrix with the vertex's homogeneous coordinates [x, y, 1].
     cv::Mat ptMat(3, 1, CV_32F, data);              // Point's homogeneous coordinates stored as a 3x1 matrix of type CV_32F (32-bit float)
 
     // Homography Matrix Type Conversion (for later matrix multiplication)
-    h_mat.convertTo(h_mat, ptMat.type());
+    _H_MAT.convertTo(_H_MAT, ptMat.type());
 
     // Apply Homography Matrix to Warp Perspective
     // Multiply the homography matrix with the point's homogeneous coordinates.
     // This results in a new column matrix representing the point's warped coordinates.
-    ptMat = h_mat * ptMat;
+    ptMat = _H_MAT * ptMat;
 
     // Convert back to Cartesian Coordinates
     ptMat /= ptMat.at<float>(2); // Divide first two elements by the third element (w)
@@ -672,7 +639,7 @@ int perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat h_mat, cv::Point2f &out
     return 0;
 }
 
-void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4>& out_CTRL_PNT_WALL_COORDS)
+void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &out_CTRL_PNT_WALL_COORDS)
 {
 
     // Specify the control point limits
@@ -711,8 +678,8 @@ void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4>& out_
 }
 
 int updateWarpedWallVertices(
-    const cv::Mat &h_mat,
-    const std::array<std::array<cv::Point2f, 4>, 4> &CTRL_PNT_WALL_COORDS,
+    cv::Mat _H_MAT,
+    const std::array<std::array<cv::Point2f, 4>, 4> &_CTRL_PNT_WALL_COORDS,
     std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &out_WARP_WALL_COORDS)
 {
 
@@ -727,10 +694,10 @@ int updateWarpedWallVertices(
             {
                 // Get the corner values for the interpolation function
                 ///@note that y values must be flipped to account for the image origin being in the top-left corner
-                cv::Point2f p_a = CTRL_PNT_WALL_COORDS[0][p_i]; // bottom-left interp == top left NDC
-                cv::Point2f p_b = CTRL_PNT_WALL_COORDS[1][p_i]; // bottom-right interp == top right NDC
-                cv::Point2f p_c = CTRL_PNT_WALL_COORDS[2][p_i]; // top-left interp == bottom left NDC
-                cv::Point2f p_d = CTRL_PNT_WALL_COORDS[3][p_i]; // top-right interp == bottom right NDC
+                cv::Point2f p_a = _CTRL_PNT_WALL_COORDS[0][p_i]; // bottom-left interp == top left NDC
+                cv::Point2f p_b = _CTRL_PNT_WALL_COORDS[1][p_i]; // bottom-right interp == top right NDC
+                cv::Point2f p_c = _CTRL_PNT_WALL_COORDS[2][p_i]; // top-left interp == bottom left NDC
+                cv::Point2f p_d = _CTRL_PNT_WALL_COORDS[3][p_i]; // top-right interp == bottom right NDC
 
                 // Get the interpolated vertex x-coordinate
                 cv::Point2f p_interp(
@@ -739,7 +706,7 @@ int updateWarpedWallVertices(
 
                 // TEMP
                 // Get the warped vertex coordinates
-                // cv::Point2f p_warped = perspectiveWarpPoint(p_interp, h_mat);
+                // cv::Point2f p_warped = perspectiveWarpPoint(p_interp, r_H_MAT);
                 cv::Point2f p_warped = p_interp;
 
                 // Store the warped vertex coordinates
@@ -780,7 +747,7 @@ void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
     dbLogQuadVertices(quadVec2Arr(quad_vertices));
 }
 
-void dbLogQuadVertices(const std::array<cv::Point2f, 4> &vertices)
+void dbLogQuadVertices(const std::array<cv::Point2f, 4> &quad_vertices)
 {
     ROS_INFO("         Quad Vertices               ");
     ROS_INFO("=====================================");
@@ -792,16 +759,16 @@ void dbLogQuadVertices(const std::array<cv::Point2f, 4> &vertices)
 
     // Print the top row coordinates
     ROS_INFO(" Top | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
-             vertices[0].x, vertices[0].y, vertices[1].x, vertices[1].y);
+             quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
 
     // Print the bottom row coordinates
     ROS_INFO(" Btm | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
-             vertices[2].x, vertices[2].y, vertices[3].x, vertices[3].y);
+             quad_vertices[2].x, quad_vertices[2].y, quad_vertices[3].x, quad_vertices[3].y);
 
     ROS_INFO("=====================================");
 }
 
-void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &r_warp_wall_coords)
+void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &_WARP_WALL_COORDS)
 {
     ROS_INFO("                                       Warped Wall Coordinates                                               ");
     ROS_INFO("=============================================================================================================");
@@ -822,7 +789,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
         for (int col = 0; col < MAZE_SIZE; ++col)
         {
             // Fetch the quad vertices for the current [row][col]
-            auto &quad = r_warp_wall_coords[row][col];
+            auto &quad = _WARP_WALL_COORDS[row][col];
             snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
                      quad[0].x, quad[0].y, quad[1].x, quad[1].y);
         }
@@ -833,7 +800,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
         for (int col = 0; col < MAZE_SIZE; ++col)
         {
             // Fetch the quad vertices for the current [row][col]
-            auto &quad = r_warp_wall_coords[row][col];
+            auto &quad = _WARP_WALL_COORDS[row][col];
             snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
                      quad[2].x, quad[2].y, quad[3].x, quad[3].y);
         }
@@ -843,10 +810,10 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
     }
 }
 
-void dbLogHomMat(const cv::Mat &r_h_mat)
+void dbLogHomMat(const cv::Mat &r_H_MAT)
 {
     // Check if the input matrix is 3x3
-    if (r_h_mat.rows != 3 || r_h_mat.cols != 3)
+    if (r_H_MAT.rows != 3 || r_H_MAT.cols != 3)
     {
         ROS_WARN("The input matrix is not 3x3. Cannot print.");
         return;
@@ -860,9 +827,9 @@ void dbLogHomMat(const cv::Mat &r_h_mat)
     for (int i = 0; i < 3; ++i)
     {
         ROS_INFO("R%d        | %+5.2f | %+5.2f | %+5.2f |", i,
-                 r_h_mat.at<float>(i, 0),
-                 r_h_mat.at<float>(i, 1),
-                 r_h_mat.at<float>(i, 2));
+                 r_H_MAT.at<float>(i, 0),
+                 r_H_MAT.at<float>(i, 1),
+                 r_H_MAT.at<float>(i, 2));
     }
 
     // Separator line

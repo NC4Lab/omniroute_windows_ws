@@ -211,7 +211,7 @@ static void callbackErrorGLFW(int, const char *);
  * @param file_str File name where the function is called.
  * @param msg_str Optional message to provide additional context (default to nullptr).
  *
- * @return 0 if no errors, -1 if error.
+ * @return Integer status code  [0:successful, -1:error].
  */
 int checkErrorOpenGL(int, const char *, const char * = nullptr);
 
@@ -225,7 +225,7 @@ int checkErrorOpenGL(int, const char *, const char * = nullptr);
  * @param file_str File name where the function is called.
  * @param msg_str Optional message to provide additional context (default to nullptr).
  *
- * @return 0 if no errors, -1 if error.
+ * @return Integer status code  [0:successful, -1:error].
  */
 int checkErrorGLFW(int, const char *, const char * = nullptr);
 
@@ -249,7 +249,7 @@ int checkErrorGLFW(int, const char *, const char * = nullptr);
  * @param mon_id_ind Index of the monitor to move the window to.
  * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
  *
- * @return 0 if no errors, -1 if error.
+ * @return Integer status code  [0:successful, -1:error].
  */
 int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
 
@@ -264,7 +264,7 @@ int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
  * @param radius The radius of the control point.
  * @param rgb_arr Array of rgb values to color the marker.
  *
- * @return 0 if no errors, -1 if error.
+ * @return Integer status code  [0:successful, -1:error].
  */
 int drawColoredCircle(float, float, float, std::array<float, 3>);
 
@@ -279,7 +279,7 @@ int updateControlPointMarkers();
  *
  * @param quad_vertices_vec Array of vertex/corner points for a quadrilateral image.
  *
- * @return 0 if no errors, -1 if error.
+ * @return Integer status code  [0:successful, -1:error].
  */
 int drawQuadImage(std::array<cv::Point2f, 4>);
 
@@ -288,7 +288,7 @@ int drawQuadImage(std::array<cv::Point2f, 4>);
  *
  * @param quad_vertices_vec Array of vertex/corner points for a quadrilateral image.
  *
- * @return 0 if no errors, -1 if error.
+ * @return Integer status code  [0:successful, -1:error].
  */
 int drawBarycentricImage(std::array<cv::Point2f, 4>);
 
@@ -307,7 +307,7 @@ int drawBarycentricImage(std::array<cv::Point2f, 4>);
  * @param img_mode_mon_id DevIL image ID for the monitor mode image.
  * @param img_mode_cal_id DevIL image ID for the calibration image.
  *
- * @return Integer status code: 0 if successful, -1 if an error occurred.
+  * @return Integer status code  [0:successful, -1:error].
  */
 int updateWallImages(GLuint, ILuint, ILuint, ILuint);
 

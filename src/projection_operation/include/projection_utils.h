@@ -249,7 +249,7 @@ extern const float WALL_HEIGHT_NDC = 2 * WALL_SPACE_VERT_NDC / (1 + std::sqrt(2)
  * @param file_str File name where the function is called.
  * @param msg_str Optional message to provide additional context (default to nullptr).
  *
- * @return 0 if no errors, -1 if error.
+* @return Integer status code [0:successful, -1:error].
  */
 int checkErrorDevIL(int, const char *, const char * = nullptr);
 
@@ -276,10 +276,10 @@ std::string formatCoordinatesFilePathXML(int, int, std::string);
  *
  * @param full_path Path to the XML file.
  * @param verbose_level Level of verbosity for printing loaded data (0:nothing, 1:file name, 2:control point parameters, 3:homography matrix).
- * @param[out] out_h_mat Reference to the homography matrix to populate.
+ * @param[out] out_H_MAT Reference to the homography matrix to populate.
  * @param[out] out_ctrl_point_params Reference to a 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
  *
- * @return 0 on successful execution, -1 on failure.
+* @return Integer status code [0:successful, -1:error].
  */
 int loadCoordinatesXML(std::string, int, cv::Mat &, std::array<std::array<float, 6>, 4> &);
 
@@ -329,16 +329,16 @@ void saveCoordinatesXML(cv::Mat, std::array<std::array<float, 6>, 4>, std::strin
  * @param img_paths_vec A vector of file paths to the images to be loaded.
  * @param[out] out_image_id_vec Reference to a vector of ILuint where the IDs of the loaded images will be stored.
  *
- * @return DevIL status: 0 on successful execution, -1 on failure.
+ * @return Integer status code [0:successful, -1:error].
  */
 int loadImgTextures(std::vector<std::string>, std::vector<ILuint> &);
 
 /**
  * @brief Deletes DevIL images from a given vector of image IDs.
  *
- * @param r_image_id_vec Vector containing DevIL image IDs.
+ * @param r_image_id_vec Reference to the cector containing DevIL image IDs.
  *
- * @return DevIL status: 0 on successful execution, -1 on failure.
+ * @return Integer status code [0:successful, -1:error].
  */
 int deleteImgTextures(std::vector<ILuint> &);
 
@@ -353,7 +353,7 @@ int deleteImgTextures(std::vector<ILuint> &);
  * @param img2_id The ILuint ID of the mask image.
  * @param[out] out_img_merge_id Reference to an ILuint where the ID of the merged image will be stored.
  *
- * @return DevIL status: 0 on successful execution, -1 on failure.
+ * @return Integer status code [0:successful, -1:error].
  *
  * @warning The dimensions of img1 and img2 must match.
  */
@@ -376,6 +376,25 @@ std::array<cv::Point2f, 4> quadVec2Arr(const std::vector<cv::Point2f> &);
  * @return quadrilateral vertices vector of cv::Point2f
  */
 std::vector<cv::Point2f> quadArr2Vec(const std::array<cv::Point2f, 4> &);
+
+/**
+ * @brief Checks if a given set of vertices defines a valid quadrilateral.       
+ * 
+ * @param quad_vertices std:arr or std:vector of the four vertices defining a quadrilateral.
+ *  
+* @return Integer status code [0:valid, 1:wrong size, 2:wrong shape].
+ */
+int checkQuadVertices(const std::array<cv::Point2f, 4> &);
+int checkQuadVertices(const std::vector<cv::Point2f> &);
+
+/**
+ * @brief Calculates the bounding dimensions based on a given set of vertices.
+ *
+ * @param quad_vertices std:arr of four vertices defining a quadrilateral.
+ *
+ * @return Size object containing the maximum dimensions.
+ */
+cv::Size getBoundaryDims(std::array<cv::Point2f, 4>);
 
 /**
  * @brief Performs bilinear interpolation.
@@ -408,34 +427,24 @@ float bilinearInterpolation(float, float, float, float, int, int, int);
  * @param origin_width Width of the origin plane.
  * @param origin_height Height of the origin plane.
  * @param target_plane_vertices Four vertices defining the target plane.
- * @param[out] r_h_mat Reference to the homography matrix.
+ * @param[out] out_H_MAT Reference to the homography matrix.
  *
- *
- * @return Status: 0 on successful execution, -1 on failure.
+* @return Integer status code [0:successful, -1:error].
  */
-int computeHomography(int, int, const std::array<cv::Point2f, 4> &, cv::Mat &);
-int computeHomography(int, int, const std::vector<cv::Point2f> &, cv::Mat &);
-
-/**
- * @brief Calculates the bounding dimensions based on a given set of vertices.
- *
- * @param quad_vertices std:arr of four vertices defining a quadrilateral.
- *
- * @return Size object containing the maximum dimensions.
- */
-cv::Size getBoundaryDims(const std::array<cv::Point2f, 4> &);
+int computeHomography(float, float, std::array<cv::Point2f, 4>, cv::Mat &);
+int computeHomography(float, float, std::vector<cv::Point2f>, cv::Mat &);
 
 /**
  * @brief Applies a given homography matrix to a texture image and returns the transformed texture.
  *
  * @param source_texture_id DevIL image ID of the source texture.
- * @param h_mat Homography matrix.
+ * @param _H_MAT Homography matrix.
  * @param target_plane_vertices Vertices of the target plane.
  * @param[out] out_warped_texture_id Reference to the DevIL image ID of the outputed warped texture.
  *
- * @return Status: 0 on successful execution, -1 on failure.
+* @return Integer status code [0:successful, -1:error].
  */
-int perspectiveWarpTexture(ILuint, const cv::Mat &, const std::array<cv::Point2f, 4> &, ILuint &);
+int perspectiveWarpTexture(ILuint, cv::Mat, std::array<cv::Point2f, 4>, ILuint &);
 
 /**
  * @brief Computes the perspective warp of a given coordinate point using a homography matrix.
@@ -462,10 +471,10 @@ int perspectiveWarpTexture(ILuint, const cv::Mat &, const std::array<cv::Point2f
  *        (ptMat /= ptMat.at<float>(2)) to get back to cartisian x, y coordinates.
  *
  * @param p_unwarped The unwarped cv::Point2f values.
- * @param h_mat Reference to the 3x3 homography matrix used to perform the projective transformation.
+ * @param _H_MAT The 3x3 homography matrix used to perform the projective transformation.
  * @param[out] out_p_warped Reference to cv::Point2f containing the new Cartesian coordinates of the warped vertex position.
  *
- * @return Status: 0 on successful execution, -1 on failure.
+* @return Integer status code [0:successful, -1:error].
  */
 int perspectiveWarpPoint(cv::Point2f, cv::Mat, cv::Point2f &);
 
@@ -484,19 +493,21 @@ void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4>&);
 /**
  * @brief Updates the stored warped wall image vertices based on the control point array.
  *
- * @param r_h_mat The homography matrix used to warp the wall image.
- * @param r_CTRL_PNT_WALL_COORDS The control point coordinates used to warp the wall image.
+ * @param _H_MAT The homography matrix used to warp the wall image.
+ * @param _CTRL_PNT_WALL_COORDS The control point coordinates used to warp the wall image.
  * @param[out] out_WARP_WALL_COORDS updated 3x3x4 warped wall image vertices array.
  *
- * @return Status: 0 on successful execution, -1 on failure.
+* @return Integer status code [0:successful, -1:error].
  */
 int updateWarpedWallVertices(
-    const cv::Mat &,
+    cv::Mat,
     const std::array<std::array<cv::Point2f, 4>, 4> &,
     std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &);
 
 /**
  * @brief Prints the coordinates of a quadrilateral's vertices.
+ * 
+ * @param quad_vertices The quadrilateral's vertices.
  */
 void dbLogQuadVertices(const std::vector<cv::Point2f> &);
 void dbLogQuadVertices(const std::array<cv::Point2f, 4> &);
@@ -508,11 +519,15 @@ void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &
 
 /**
  * @brief Prints the coordinates of all entries in the warped wall vertices array.
+ * 
+ * @param _WARP_WALL_COORDS Reference to the warped wall vertices array.
  */
 void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &);
 
 /**
  * @brief Prints the coordinates of all entries in the homography matrix.
+ * 
+ * @param _H_MAT The homography matrix.
  */
 void dbLogHomMat(const cv::Mat &);
 
