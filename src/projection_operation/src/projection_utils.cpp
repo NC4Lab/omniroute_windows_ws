@@ -657,8 +657,8 @@ int updateWallHomography(
             std::vector<cv::Point2f> target_vertices = quadArr2Vec(_WALL_VERT_DATA[grow_i][gcol_i]);
 
             // Convert to pixel coordinates for OpenCV's findHomography function
-            std::vector<cv::Point2f> target_vertices_pxl =  quadVertNdc2Pxl(target_vertices, WALL_WIDTH_PXL, WALL_HEIGHT_PXL, MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
-            std::vector<cv::Point2f> origin_vertices_pxl =  quadVertNdc2Pxl(origin_vertices, WALL_WIDTH_PXL, WALL_HEIGHT_PXL, MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
+            std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices, WALL_WIDTH_PXL, WALL_HEIGHT_PXL, MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
+            std::vector<cv::Point2f> origin_vertices_pxl = quadVertNdc2Pxl(origin_vertices, WALL_WIDTH_PXL, WALL_HEIGHT_PXL, MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
 
             // Check that the target plane vertices are valid
             if (checkQuadVertices(target_vertices_pxl) != 0)
@@ -729,13 +729,21 @@ void dbLogQuadVertices(const std::array<cv::Point2f, 4> &quad_vertices)
     ROS_INFO("    |   X   ,   Y   |   X   ,   Y   |");
     ROS_INFO("-------------------------------------");
 
-    // Print the top row coordinates
-    ROS_INFO(" Top | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
-             quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
-
-    // Print the bottom row coordinates
-    ROS_INFO(" Btm | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
-             quad_vertices[2].x, quad_vertices[2].y, quad_vertices[3].x, quad_vertices[3].y);
+    if (std::any_of(quad_vertices.begin(), quad_vertices.end(), [](const cv::Point2f &point)
+                    { return point.x > 1.0f || point.y > 1.0f; }))
+    {
+        ROS_INFO("Top | %+5.0f , %+5.0f | %+5.0f , %+5.0f |",
+                 quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
+        ROS_INFO("Btm | %+5.0f , %+5.0f | %+5.0f , %+5.0f |",
+                 quad_vertices[2].x, quad_vertices[2].y, quad_vertices[3].x, quad_vertices[3].y);
+    }
+    else
+    {
+        ROS_INFO("Top | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
+                 quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
+        ROS_INFO("Btm | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
+                 quad_vertices[2].x, quad_vertices[2].y, quad_vertices[3].x, quad_vertices[3].y);
+    }
 
     ROS_INFO("=====================================");
 }

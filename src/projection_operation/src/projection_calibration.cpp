@@ -1011,6 +1011,34 @@ int main(int argc, char **argv)
     // --------------- Convert to pixel coordinates ---------------
 
     // Function to convert NDC to Pixel Coordinates
+    // auto convertToPixelCoords = [](std::vector<cv::Point2f> &quad_vertices, int width_pxl, int height_pxl, float width_ndc, float height_ndc)
+    // {
+    //     float min_x = std::numeric_limits<float>::max();
+    //     float min_y = std::numeric_limits<float>::max();
+
+    //     // First pass: Convert from NDC [-1, 1] to pixel [0, width or height] and find minimum x and y
+    //     for (auto &point : quad_vertices)
+    //     {
+    //         point.x = ((point.x / width_ndc) + 0.5f) * width_pxl;
+    //         point.y = ((-point.y / height_ndc) + 0.5f) * height_pxl; // Invert y to match OpenCV's top-left origin
+
+    //         min_x = std::min(min_x, point.x);
+    //         min_y = std::min(-min_y, point.y);
+    //     }
+
+    //     // Calculate the shifts needed to make all coordinates non-negative
+    //     float x_shift = (min_x < 0) ? -min_x : 0;
+    //     float y_shift = (min_y < 0) ? -min_y : 0;
+
+    //     // Second pass: Shift all points by the calculated shifts
+    //     for (auto &point : quad_vertices)
+    //     {
+    //         point.x += x_shift;
+    //         point.y += y_shift;
+    //     }
+    // };
+
+        // Function to convert NDC to Pixel Coordinates
     auto convertToPixelCoords = [](std::vector<cv::Point2f> &quad_vertices, int width_pxl, int height_pxl, float width_ndc, float height_ndc)
     {
         float min_x = std::numeric_limits<float>::max();
@@ -1038,33 +1066,49 @@ int main(int argc, char **argv)
         }
     };
 
-        // Function to convert NDC to Pixel Coordinates
-    auto convertToTexCoords = [](std::vector<cv::Point2f> &quad_vertices, float width_ndc, float height_ndc)
+    auto scaleQuadVert2UnitSquare = [](std::vector<cv::Point2f> &quad_vertices)
     {
-        float min_x = std::numeric_limits<float>::max();
-        float min_y = std::numeric_limits<float>::max();
+        // Initialze max to type min and min to type max
+        cv::Point2f p_min(std::numeric_limits<float>::max(), std::numeric_limits<float>::max());
+        cv::Point2f p_max(std::numeric_limits<float>::min(), std::numeric_limits<float>::min());
 
-        // First pass: Convert from NDC [-1, 1] to [0, 1] and find minimum x and y
+        // Find the min/max values
         for (const auto &point : quad_vertices)
         {
-            float x_pxl = ((point.x / width_ndc) + 0.5f);
-            float y_pxl = ((point.y / height_ndc) + 0.5f); // Invert y to match OpenCV's top-left origin
-
-            min_x = std::min(min_x, x_pxl);
-            min_y = std::min(min_y, y_pxl);
+            p_min.x = std::min(p_min.x, point.x);
+            p_max.x = std::max(p_max.x, point.x);
+            p_min.y = std::min(p_min.y, point.y);
+            p_max.y = std::max(p_max.y, point.y);
         }
 
-        // Calculate the shifts needed to make all coordinates non-negative
-        float x_shift = (min_x < 0) ? -min_x : 0;
-        float y_shift = (min_y < 0) ? -min_y : 0;
+        // Specify range
+        float s_min = 0.0f;
+        float s_max = 1.0f;
 
-        // Second pass: Shift all points by the calculated shifts
+        // Scale the values to the new range
         for (auto &point : quad_vertices)
         {
-            point.x = ((point.x / width_ndc) + 0.5f) + x_shift;
-            point.y = ((point.y / height_ndc) + 0.5f) + y_shift;
+            point.x = s_min + (point.x - p_min.x) * (s_max - s_min) / (p_max.x - p_min.x);
+            point.y = s_min + (point.y - p_min.y) * (s_max - s_min) / (p_max.y - p_min.y);
         }
     };
+
+    // std::vector<cv::Point2f> convertOpenGLToOpenCV(const std::vector<cv::Point2f> &vertices, int imageHeight)
+    // {
+    //     std::vector<cv::Point2f> convertedVertices;
+
+    //     for (const cv::Point2f &vertex : vertices)
+    //     {
+    //         // Flip the y-coordinate to change from OpenGL to OpenCV
+    //         cv::Point2f convertedVertex(vertex.x, imageHeight - vertex.y);
+
+    //         convertedVertices.push_back(convertedVertex);
+    //     }
+
+    //     return convertedVertices;
+    // };
+
+     // --------------- Old Pixel Conversion ---------------
 
     // Convert origin_vertices to pixel coordinates
     std::vector<cv::Point2f> origin_vertices_pixel = origin_vertices_ndc;
@@ -1078,15 +1122,6 @@ int main(int argc, char **argv)
     cv::Rect targ_bounding_rec = cv::boundingRect(target_vertices_pixel);
     cv::Size targ_img_size(targ_bounding_rec.width, targ_bounding_rec.height);
 
-    // Print bounding rectangle information using ROS_INFO()
-    ROS_INFO("Bounding Rectangle Information:");
-    ROS_INFO("X: %d", targ_bounding_rec.x);
-    ROS_INFO("Y: %d", targ_bounding_rec.y);
-    ROS_INFO("Width: %d", targ_bounding_rec.width);
-    ROS_INFO("Height: %d", targ_bounding_rec.height);
-    ROS_INFO("Top Left (x, y): (%d, %d)", targ_bounding_rec.tl().x, targ_bounding_rec.tl().y);
-    ROS_INFO("Bottom Right (x, y): (%d, %d)", targ_bounding_rec.br().x, targ_bounding_rec.br().y);
-
     // --------------- Warp the Image ---------------
 
     // Find Homography and Warp Image
@@ -1094,15 +1129,8 @@ int main(int argc, char **argv)
     cv::Mat H = cv::findHomography(origin_vertices_pixel, target_vertices_pixel);
     cv::warpPerspective(img_rgb, img_warped, H, targ_img_size);
 
-    // Calculate the translation and scaling factors for x and y
-    float x_translation = -target_vertices_ndc[0].x;
-    float y_translation = -target_vertices_ndc[0].y;
-    float x_scale = 1.0 / (target_vertices_ndc[1].x - target_vertices_ndc[0].x);
-    float y_scale = 1.0 / (target_vertices_ndc[2].y - target_vertices_ndc[0].y);
-
     // Convert target vertices to texture coordinates
     std::vector<cv::Point2f> target_vertices_uv = target_vertices_ndc;
-    convertToTexCoords(target_vertices_uv, img_width_ndc, img_height_ndc);
 
     // --------------- Debugging ---------------
 
@@ -1113,14 +1141,55 @@ int main(int argc, char **argv)
 
     // Log the homography matrix and vertices
     ROS_INFO("[COMPUTE HOMOGRAPHY] target_vertices_pixel:");
-    dbLogQuadVertices(target_vertices_ndc);
-    ROS_INFO("[COMPUTE HOMOGRAPHY] target_vertices_ndc:");
-    dbLogQuadVertices(target_vertices_ndc);
-    ROS_INFO("[COMPUTE HOMOGRAPHY] target_vertices_uv:");
-    dbLogQuadVertices(target_vertices_uv);
-    dbLogHomMat(H);
+    dbLogQuadVertices(target_vertices_pixel);
+    // ROS_INFO("[COMPUTE HOMOGRAPHY] target_vertices_ndc:");
+    // dbLogQuadVertices(target_vertices_ndc);
+    // ROS_INFO("[COMPUTE HOMOGRAPHY] target_vertices_uv:");
+    // dbLogQuadVertices(target_vertices_uv);
+    // dbLogHomMat(H);
 
-    // --------------- Draw the image ---------------
+    // Log targ_img_size
+    ROS_INFO("PIXEL BOUNDING BOX: Width[%d] Height[%d]", targ_img_size.width, targ_img_size.height);
+
+    // --------------- Draw Maker setup ---------------
+
+    // Colors for markers
+    std::array<float, 3> rgb_green = {0.0f, 1.0f, 0.0f};
+    std::array<float, 3> rgb_red = {1.0f, 0.0f, 0.0f};
+    std::array<float, 3> rgb_blue = {0.0f, 0.0f, 1.0f};
+    std::array<float, 3> rgb_cyan = {0.0f, 1.0f, 1.0f};
+    float cp_rad = 0.05f;
+
+    auto drawMaker = [](float x, float y, float radius, std::array<float, 3> rgb_arr)
+    {
+        const int segments = 100; // Number of segments to approximate a circle
+
+        // Begin drawing a filled circle
+        glBegin(GL_TRIANGLE_FAN);
+
+        // Set the color to green
+        glColor3f(rgb_arr[0], rgb_arr[1], rgb_arr[2]);
+
+        // Center of the circle
+        glVertex2f(x, y);
+
+        // Calculate and draw the vertices of the circle
+        for (int i = 0; i <= segments; i++)
+        {
+            float theta = 2.0f * 3.1415926f * float(i) / float(segments);
+            float px = x + radius * cosf(theta);
+            float py = y + (radius * PROJ_WIN_ASPECT_RATIO) * sinf(theta);
+            glVertex2f(px, py);
+        }
+
+        // End drawing
+        glEnd();
+
+        // Return GL status
+        return checkErrorOpenGL(__LINE__, __FILE__);
+    };
+
+    // --------------- Draw the wall image ---------------
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -1168,6 +1237,12 @@ int main(int argc, char **argv)
 
         // End drawing
         glEnd();
+
+        // // Draw markers
+        // drawMaker(-0.5f, 0.5f, cp_rad, rgb_green); // Top-left
+        // drawMaker(0.5f, 0.5f, cp_rad, rgb_red);    // Top-right
+        // drawMaker(-0.5f, -0.5f, cp_rad, rgb_blue); // Bottom-left
+        // drawMaker(0.5f, -0.5f, cp_rad, rgb_cyan);  // Bottom-right
 
         // Swap buffers and poll events
         glfwSwapBuffers(window);
