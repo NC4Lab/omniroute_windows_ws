@@ -266,7 +266,7 @@ int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
 //     int mon_id_ind,
 //     GLFWwindow *p_window_id,
 //     GLuint fbo_texture_id,
-//     std::vector<ILuint> &r_image_id_vec)
+//     std::vector<ILuint> &r_tex_id_vec)
 // {
 
 //     // Enable OpenGL texture mapping
@@ -302,7 +302,7 @@ int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
 //                 int img_ind = IMG_PROJ_MAP[proj_ind][wall_row][wall_col][cal_i];
 
 //                 // Bind image
-//                 ilBindImage(r_image_id_vec[img_ind]); // show test pattern
+//                 ilBindImage(r_tex_id_vec[img_ind]); // show test pattern
 
 //                 // Calculate width, height and shear for the current wall
 //                 float width = bilinearInterpolationFull(ctrl_point_params, 2, grid_row_i, grid_col_i, MAZE_SIZE);   // wall width

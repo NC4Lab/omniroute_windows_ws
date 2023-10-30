@@ -108,7 +108,7 @@ std::string image_wall_dir_path = IMAGE_TOP_DIR_PATH + "/calibration_images";
 std::string image_state_dir_path = IMAGE_TOP_DIR_PATH + "/ui_state_images";
 
 // Test image variables
-std::vector<ILuint> imgWallIDVec; // Container to hold the loaded images
+std::vector<ILuint> texWallIDVec; // Container to hold the loaded images
 std::vector<std::string> imgWallPathVec = {
     // List of image file paths
     image_wall_dir_path + "/1_test_pattern.bmp",
@@ -119,7 +119,7 @@ std::vector<std::string> imgWallPathVec = {
 int imgWallInd = 0; // Index of the image to be loaded
 
 // Monitor variables
-std::vector<ILuint> imgMonIDVec; // Container to hold the loaded images for ui
+std::vector<ILuint> texMonIDVec; // Container to hold the loaded images for ui
 std::vector<std::string> imgMonPathVec = {
     // List of monitor number image file paths
     image_state_dir_path + "/m0.bmp",
@@ -134,7 +134,7 @@ int nMonitors;             // Number of monitors connected to the system
 bool isFullScreen = false; // Flag to indicate if the window is in full screen mode
 
 // Callibration image variables for ui
-std::vector<ILuint> imgCalIDVec; // Container to hold the loaded images for ui
+std::vector<ILuint> texCalIDVec; // Container to hold the loaded images for ui
 std::vector<std::string> imgCalPathVec = {
     // List of mode image file paths
     image_state_dir_path + "/c-wl.bmp", // left walls
@@ -310,13 +310,15 @@ int drawBarycentricImage(std::array<cv::Point2f, 4>);
  * 4. Optional overlay of status images for cells corresponding to selected control points.
  *
  * @param fbo_texture_id OpenGL framebuffer object's texture ID.
- * @param img_wall_id DevIL image ID for the base wall image.
- * @param img_mode_mon_id DevIL image ID for the monitor mode image.
- * @param img_mode_cal_id DevIL image ID for the calibration image.
+ * @param tex_wall_id DevIL image ID for the base wall image.
+ * @param tex_mode_mon_id DevIL image ID for the monitor mode image.
+ * @param tex_mode_cal_id DevIL image ID for the calibration image.
  *
  * @return Integer status code  [0:successful, -1:error].
  */
 int drawWallImages(GLuint, ILuint, ILuint, ILuint);
+
+void testFindHomography();
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.

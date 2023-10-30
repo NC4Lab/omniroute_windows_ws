@@ -221,25 +221,25 @@ extern const int WALL_HEIGHT_PXL = 540;
 // extern const float WALL_WIDTH_NDC = (static_cast<float>(WALL_WIDTH_PXL) / static_cast<float>(PROJ_WIN_WIDTH_PXL)) * 2;
 // extern const float WALL_HEIGHT_NDC = (static_cast<float>(WALL_HEIGHT_PXL) / static_cast<float>(PROJ_WIN_HEIGHT_PXL)) * 2;
 
-// // Specify the origin plane width and height (NDC)
-// const float ORIGIN_PLANE_WIDTH_NDC = 0.3f;
-// const float ORIGIN_PLANE_HEIGHT_NDC = 0.6f;
+// // Specify the maze width and height (NDC)
+// const float MAZE_WIDTH_NDC = 0.3f;
+// const float MAZE_HEIGHT_NDC = 0.6f;
 
 // // Wall spacing (NDC)
-// extern const float WALL_SPACE_HORZ_NDC = ORIGIN_PLANE_WIDTH_NDC / (float(MAZE_SIZE) - 1);  // Wall spacing on X axis NDC
-// extern const float WALL_SPACE_VERT_NDC = ORIGIN_PLANE_HEIGHT_NDC / (float(MAZE_SIZE) - 1); // Wall spacing on Y axis NDC
+// extern const float WALL_SPACE_HORZ_NDC = PROJ_WIN_WIDTH_PXL / (float(MAZE_SIZE) - 1);  // Wall spacing on X axis NDC
+// extern const float WALL_SPACE_VERT_NDC = MAZE_HEIGHT_NDC / (float(MAZE_SIZE) - 1); // Wall spacing on Y axis NDC
 
 // // Default wall width and height (NDC)
 // extern const float WALL_WIDTH_NDC = WALL_SPACE_HORZ_NDC / (1 + std::sqrt(2)); // Wall width based on octogonal geometry in NDC
 // extern const float WALL_HEIGHT_NDC = WALL_SPACE_VERT_NDC / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
 
 // TEMP
-const float ORIGIN_PLANE_WIDTH_NDC = 0.5;
-const float ORIGIN_PLANE_HEIGHT_NDC = 1.0f;
-extern const float WALL_SPACE_HORZ_NDC = ORIGIN_PLANE_WIDTH_NDC / (float(MAZE_SIZE) - 1);  // Wall spacing on X axis NDC
-extern const float WALL_SPACE_VERT_NDC = ORIGIN_PLANE_HEIGHT_NDC / (float(MAZE_SIZE) - 1); // Wall spacing on Y axis NDC
-extern const float WALL_WIDTH_NDC = 2 * WALL_SPACE_HORZ_NDC / (1 + std::sqrt(2));          // Wall width based on octogonal geometry in NDC
-extern const float WALL_HEIGHT_NDC = 2 * WALL_SPACE_VERT_NDC / (1 + std::sqrt(2));         // Wall height based on octogonal geometry in NDC
+const float MAZE_WIDTH_NDC = 0.5;
+const float MAZE_HEIGHT_NDC = 1.0f;
+extern const float WALL_SPACE_HORZ_NDC = MAZE_WIDTH_NDC / (float(MAZE_SIZE) - 1);  // Wall spacing on X axis NDC
+extern const float WALL_SPACE_VERT_NDC = MAZE_HEIGHT_NDC / (float(MAZE_SIZE) - 1); // Wall spacing on Y axis NDC
+extern const float WALL_WIDTH_NDC = 2 * WALL_SPACE_HORZ_NDC / (1 + std::sqrt(2));  // Wall width based on octogonal geometry in NDC
+extern const float WALL_HEIGHT_NDC = 2 * WALL_SPACE_VERT_NDC / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -331,7 +331,7 @@ void saveCoordinatesXML(cv::Mat, std::array<std::array<float, 6>, 4>, std::strin
  * in a reference vector.
  *
  * @param img_paths_vec A vector of file paths to the images to be loaded.
- * @param[out] out_image_id_vec Reference to a vector of ILuint where the IDs of the loaded images will be stored.
+ * @param[out] out_tex_id_vec Reference to a vector of ILuint where the IDs of the loaded images will be stored.
  *
  * @return Integer status code [0:successful, -1:error].
  */
@@ -340,7 +340,7 @@ int loadImgTextures(std::vector<std::string>, std::vector<ILuint> &);
 /**
  * @brief Deletes DevIL images from a given vector of image IDs.
  *
- * @param r_image_id_vec Reference to the cector containing DevIL image IDs.
+ * @param r_tex_id_vec Reference to the vector containing DevIL image IDs.
  *
  * @return Integer status code [0:successful, -1:error].
  */
@@ -349,19 +349,17 @@ int deleteImgTextures(std::vector<ILuint> &);
 /**
  * @brief Merges two images by overlaying non-white pixels from the second image onto the first.
  *
- * This function takes two images, img1 and img2, represented as ILuint IDs. It overlays img2 onto img1,
- * replacing pixels in img1 with corresponding non-white pixels from img2. The resulting merged image is
- * returned as a new ILuint ID.
+ * This function overlays a mask image onto a base image, replacing pixels in the base image with
+ * the corresponding non-white pixels from mask image.
  *
- * @param img1_id The ILuint ID of the baseline image.
- * @param img2_id The ILuint ID of the mask image.
- * @param[out] out_img_merge_id Reference to an ILuint where the ID of the merged image will be stored.
+ * @param tex_mask_id The ILuint ID of the mask image.
+ * @param[out] out_tex_base_id Reference to the ILuint ID of the baseline image that will be modified.
  *
  * @return Integer status code [0:successful, -1:error].
  *
  * @warning The dimensions of img1 and img2 must match.
  */
-int generateMergedTexture(ILuint, ILuint, ILuint &);
+int textureMerge(ILuint tex_mask_id, ILuint &out_tex_base_id);
 
 /**
  * @brief Converts quadrilateral vertices vector of cv::Point2f to an array of cv::Point2f
@@ -390,6 +388,32 @@ std::vector<cv::Point2f> quadArr2Vec(const std::array<cv::Point2f, 4> &);
  */
 int checkQuadVertices(const std::array<cv::Point2f, 4> &);
 int checkQuadVertices(const std::vector<cv::Point2f> &);
+
+/**
+ * @brief Converts the units of the quadrilateral from NDC to pixels.
+ *
+ * Convert from NDC [-1, 1] to pixel [0, width or height] and
+ * inverts the y to match OpenCV's top-left origin
+ *
+ * @param quad_vertices_ndc The quadrilateral vertices in NDC
+ * @param width_pxl The width of the image in pixels
+ * @param height_pxl The height of the image in pixels
+ * @param width_ndc The width of the image in NDC
+ * @param height_ndc The height of the image in NDC
+ *
+ * @return Vector of quadrilateral vertices in pixels
+ */
+std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &quad_vertices_ndc, int width_pxl, int height_pxl, float width_ndc, float height_ndc)
+{
+    std::vector<cv::Point2f> quad_vertices_pxl;
+    for (const auto &point : quad_vertices_ndc)
+    {
+        float pixel_x = ((point.x / width_ndc) + 0.5f) * width_pxl;
+        float pixel_y = ((-point.y / height_ndc) + 0.5f) * height_pxl; 
+        quad_vertices_pxl.push_back(cv::Point2f(pixel_x, pixel_y));
+    }
+    return quad_vertices_pxl;
+}
 
 /**
  * @brief Calculates the bounding dimensions based on a given set of vertices.
@@ -426,61 +450,15 @@ cv::Size getBoundaryDims(std::array<cv::Point2f, 4>);
 float bilinearInterpolation(float, float, float, float, int, int, int);
 
 /**
- * @brief Computes the homography matrix based on target plane vertices.
- *
- * @param origin_width Width of the origin plane.
- * @param origin_height Height of the origin plane.
- * @param target_plane_vertices Four vertices defining the target plane.
- * @param[out] out_HMAT Reference to the homography matrix.
- *
- * @return Integer status code [0:successful, -1:error].
- */
-int computeHomography(float, float, std::array<cv::Point2f, 4>, cv::Mat &);
-int computeHomography(float, float, std::vector<cv::Point2f>, cv::Mat &);
-
-/**
  * @brief Applies a given homography matrix to a texture image and returns the transformed texture.
  *
- * @param source_texture_id DevIL image ID of the source texture.
  * @param _HMAT Homography matrix.
  * @param target_plane_vertices Vertices of the target plane.
- * @param[out] out_warped_texture_id Reference to the DevIL image ID of the outputed warped texture.
+ * @param[out] out_tex_source_id Reference to DevIL image ID of the source texture to warp.
  *
  * @return Integer status code [0:successful, -1:error].
  */
-int generateWarpedTexture(ILuint, cv::Mat, std::array<cv::Point2f, 4>, ILuint &);
-
-/**
- * @brief Computes the perspective warp of a given coordinate point using a homography matrix.
- *
- * This function takes a cv::Point2f point vertices and applies a projective transformation to each vertex.
- * The transformation is governed by a given homography matrix.
- *
- *
- * @details
- *
- * - The function converts the translated piont to homogeneous coordinates, which allows for a unified
- *    representation that can undergo linear transformations including projective warps.
- *
- * - The homography matrix is then applied to these homogeneous coordinates to produce the
- *    new coordinates of the point in the warped perspective.
- *
- * - Finally, the function converts these new homogeneous coordinates back to Cartesian coordinates.
- *
- * @note: Homogeneous Coordinates: are a mathematical trick used to simplify
- *        complex transformations like translation, rotation, and shearing.
- *        Cartesian coordinates (x, y) are converted to [x, y, 1] for the
- *        transformation. The third value (ptMat.at<float>(2)) may change
- *        post-transformation so we divide the new x and y by this value
- *        (ptMat /= ptMat.at<float>(2)) to get back to cartisian x, y coordinates.
- *
- * @param p_unwarped The unwarped cv::Point2f values.
- * @param _HMAT The 3x3 homography matrix used to perform the projective transformation.
- * @param[out] out_p_warped Reference to cv::Point2f containing the new Cartesian coordinates of the warped vertex position.
- *
- * @return Integer status code [0:successful, -1:error].
- */
-int perspectiveWarpPoint(cv::Point2f, cv::Mat, cv::Point2f &);
+int textureWarp(cv::Mat, std::array<cv::Point2f, 4>, ILuint &);
 
 /**
  * @brief Initializes values for the verteces of the coner walls which will be used as calibraton control points.
@@ -507,7 +485,7 @@ int updateWallVertices(
     std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &);
 
 /**
-* @brief Recomputes the homography matrix for each wall.
+ * @brief Computes/recomputes the homography matrix for each wall.
  *
  * @param _CTRL_PNT_DATA The control point coordinates used to warp the wall image.
  * @param _WALL_VERT_DATA The 3x3x4 warped wall image vertices array.
@@ -517,7 +495,7 @@ int updateWallVertices(
  */
 int updateWallHomography(
     const std::array<std::array<cv::Point2f, 4>, 4> &,
-     const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &,
+    const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &,
     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
 
 /**

@@ -235,10 +235,10 @@ void saveCoordinatesXML(cv::Mat h_mat, std::array<std::array<float, 6>, 4> ctrl_
     }
 }
 
-int loadImgTextures(std::vector<std::string> img_paths_vec, std::vector<ILuint> &out_image_id_vec)
+int loadImgTextures(std::vector<std::string> img_paths_vec, std::vector<ILuint> &out_tex_id_vec)
 {
     int img_i = 0;
-    int n_img = (int)out_image_id_vec.size();
+    int n_img = (int)out_tex_id_vec.size();
 
     // Iterate through img file paths
     for (const std::string &img_path : img_paths_vec)
@@ -300,7 +300,7 @@ int loadImgTextures(std::vector<std::string> img_paths_vec, std::vector<ILuint> 
             }
 
             // Add image ID to vector
-            out_image_id_vec.push_back(img_id);
+            out_tex_id_vec.push_back(img_id);
             ROS_INFO("[DevIL] Loaded Image: Ind[%d/%d] ID[%u] File[%s] Size[%d,%d]",
                      img_i, n_img - 1, img_id, file_name.c_str(), width, height);
         }
@@ -320,15 +320,15 @@ int loadImgTextures(std::vector<std::string> img_paths_vec, std::vector<ILuint> 
     return 0;
 }
 
-int deleteImgTextures(std::vector<ILuint> &r_image_id_vec)
+int deleteImgTextures(std::vector<ILuint> &r_tex_id_vec)
 {
     int status = 0;
     int img_i = 0;
-    int n_img = (int)r_image_id_vec.size();
+    int n_img = (int)r_tex_id_vec.size();
     char msg_str[128];
 
     // Iterate through image IDs
-    for (ILuint img_id : r_image_id_vec)
+    for (ILuint img_id : r_tex_id_vec)
     {
         // Delete image
         ilDeleteImages(1, &img_id);
@@ -341,30 +341,30 @@ int deleteImgTextures(std::vector<ILuint> &r_image_id_vec)
     }
 
     // Clear the vector after deleting the images.
-    r_image_id_vec.clear();
+    r_tex_id_vec.clear();
 
     // Return DevIL status
     return status;
 }
 
-int generateMergedTexture(ILuint img1_id, ILuint img2_id, ILuint &out_img_merge_id)
+int textureMerge(ILuint tex_mask_id, ILuint &out_tex_base_id)
 {
-    // Bind and get dimensions of img1 (baseline image)
-    ilBindImage(img1_id);
+    // Bind and get dimensions of the baseline image
+    ilBindImage(out_tex_base_id);
     if (checkErrorDevIL(__LINE__, __FILE__) != 0)
     {
-        ROS_ERROR("[MERGE TEX] Error Binding Image1: ID[%u]", img1_id);
+        ROS_ERROR("[MERGE TEX] Error Binding Base Image: ID[%u]", out_tex_base_id);
         return -1;
     }
     int width1 = ilGetInteger(IL_IMAGE_WIDTH);
     int height1 = ilGetInteger(IL_IMAGE_HEIGHT);
     ILubyte *data1 = ilGetData();
 
-    // Bind and get dimensions of img2 (mask image)
-    ilBindImage(img2_id);
+    // Bind and get dimensions of the mask image
+    ilBindImage(tex_mask_id);
     if (checkErrorDevIL(__LINE__, __FILE__) != 0)
     {
-        ROS_ERROR("[MERGE TEX] Error Binding Image2: ID[%u]", img2_id);
+        ROS_ERROR("[MERGE TEX] Error Binding Mask Image: ID[%u]", tex_mask_id);
         return -1;
     }
     int width2 = ilGetInteger(IL_IMAGE_WIDTH);
@@ -374,45 +374,29 @@ int generateMergedTexture(ILuint img1_id, ILuint img2_id, ILuint &out_img_merge_
     // Check for dimension match
     if (width1 != width2 || height1 != height2)
     {
-        ROS_ERROR("[MERGE TEX] Dimensions Do Not Match: Image1: ID[%u] W/H(%d, %d); Image2: ID[%u] W/H(%d, %d)",
-                  img1_id, width1, height1, img2_id, width2, height2);
+        ROS_ERROR("[MERGE TEX] Dimensions Do Not Match: Base Image: ID[%u] W/H(%d, %d); Mask Image: ID[%u] W/H(%d, %d)",
+                  out_tex_base_id, width1, height1, tex_mask_id, width2, height2);
         return -1;
     }
-
-    // Create merged image
-    ilGenImages(1, &out_img_merge_id);
-    ilBindImage(out_img_merge_id);
-    ilTexImage(width1, height1, 1, 4, IL_RGBA, IL_UNSIGNED_BYTE, NULL);
-    if (checkErrorDevIL(__LINE__, __FILE__) != 0)
-    {
-        ROS_ERROR("[MERGE TEX] Error Creating Merged Texture: ID[%u]", out_img_merge_id);
-        ilDeleteImages(1, &out_img_merge_id);
-        return -1;
-    }
-
-    // Specify number of pixels x color channels in the image
-    int n_pxl_rbga = width1 * height1 * 4;
-
-    // Initialize merged_img_data vector
-    std::vector<ILubyte> merged_img_data;
-    merged_img_data.resize(n_pxl_rbga);
 
     // Check for null pointers or zero dimensions
-    if (!data1 || !data2 || merged_img_data.empty())
+    if (!data1 || !data2 || width1 == 0 || height1 == 0)
     {
-        ROS_ERROR("[MERGE TEX] Null data pointer detected.");
+        ROS_ERROR("[MERGE TEX] Null data pointer or zero dimension detected.");
         if (!data1)
             ROS_ERROR("[MERGE TEX] data1 is null.");
         if (!data2)
             ROS_ERROR("[MERGE TEX] data2 is null.");
-        if (n_pxl_rbga == 0)
-            ROS_ERROR("[MERGE TEX] n_pxl_rbga is zero.");
-        ilDeleteImages(1, &out_img_merge_id);
+        if (width1 == 0 || height1 == 0)
+            ROS_ERROR("[MERGE TEX] Zero dimension detected.");
         return -1;
     }
 
-    // Loop to overlay non-white pixels from img2 onto img1
-    for (int i = 0; i < n_pxl_rbga; i += 4)
+    // Initialize merged_img_data vector
+    std::vector<ILubyte> merged_img_data(width1 * height1 * 4);
+
+    // Loop to overlay non-white pixels from mask onto base
+    for (int i = 0; i < width1 * height1 * 4; i += 4)
     {
         if (data2[i] != 255 || data2[i + 1] != 255 || data2[i + 2] != 255)
         {
@@ -426,13 +410,12 @@ int generateMergedTexture(ILuint img1_id, ILuint img2_id, ILuint &out_img_merge_
         }
     }
 
-    // Set merge image data to the new image
-    ilBindImage(out_img_merge_id);
+    // Set merged image data to out_tex_base_id
+    ilBindImage(out_tex_base_id);
     ilSetPixels(0, 0, 0, width1, height1, 1, IL_RGBA, IL_UNSIGNED_BYTE, merged_img_data.data());
     if (checkErrorDevIL(__LINE__, __FILE__) != 0)
     {
-        ROS_ERROR("[MERGE TEX] Error Setting Pixels for Merged Texture: ID[%u]", out_img_merge_id);
-        ilDeleteImages(1, &out_img_merge_id);
+        ROS_ERROR("[MERGE TEX] Error Setting Pixels for Merged Texture: ID[%u]", out_tex_base_id);
         return -1;
     }
 
@@ -506,10 +489,10 @@ cv::Size getBoundaryDims(std::array<cv::Point2f, 4> quad_vertices)
         }
     }
 
-    int outputWidth = static_cast<int>(max_width);
-    int outputHeight = static_cast<int>(max_height);
+    int bound_width = static_cast<int>(max_width);
+    int bound_height = static_cast<int>(max_height);
 
-    return cv::Size(outputWidth, outputHeight);
+    return cv::Size(bound_width, bound_height);
 }
 
 float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size)
@@ -528,61 +511,13 @@ float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, 
     return interp_val;
 }
 
-int computeHomography(float origin_width, float origin_height, std::array<cv::Point2f, 4> target_plane_vertices, cv::Mat &out_HMAT)
-{
-    return computeHomography(origin_width, origin_height, quadArr2Vec(target_plane_vertices), out_HMAT);
-}
-
-int computeHomography(float origin_width, float origin_height, std::vector<cv::Point2f> target_vertices, cv::Mat &out_HMAT)
-{
-    // Specify the origin plane vertices
-    std::vector<cv::Point2f> origin_vertices = {
-        cv::Point2f(0.0f, origin_height),         // Top-left
-        cv::Point2f(origin_width, origin_height), // Top-right
-        cv::Point2f(0.0f, 0.0f),                  // Bottom-left
-        cv::Point2f(origin_width, 0.0f)};         // Bottom-right
-
-    // Check that the target plane vertices are valid
-    if (checkQuadVertices(target_vertices) != 0)
-    {
-        ROS_WARN("[COMPUTE HOMOGRAPHY] Target Plane Vertices Invalid: Reason[%s]",
-                 checkQuadVertices(target_vertices) == 1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
-        return -1;
-    }
-
-    // Use OpenCV's findHomography function to compute
-    // the homography matrix
-    out_HMAT = cv::findHomography(origin_vertices, target_vertices);
-
-    // TEMP
-    ROS_INFO("[COMPUTE HOMOGRAPHY] Origin Plane Vertices:");
-    dbLogQuadVertices(origin_vertices);
-    ROS_INFO("[COMPUTE HOMOGRAPHY] Target Plane Vertices:");
-    dbLogQuadVertices(target_vertices);
-    dbLogHomMat(out_HMAT);
-
-    // Check for valid homography matrix
-    if (out_HMAT.empty())
-    {
-        ROS_ERROR("[COMPUTE HOMOGRAPHY] Failed to Compute Homography Matrix");
-        return -1;
-    }
-
-    // Return success
-    return 0;
-}
-
-int generateWarpedTexture(
-    ILuint source_texture_id,
-    cv::Mat _HMAT,
-    std::array<cv::Point2f, 4> target_plane_vertices,
-    ILuint &out_warped_texture_id)
+int textureWarp(cv::Mat _HMAT, std::array<cv::Point2f, 4> target_plane_vertices, ILuint &out_tex_source_id)
 {
     // Compute output/target image size
     cv::Size warped_texture_size = getBoundaryDims(target_plane_vertices);
 
     // Bind the DevIL image
-    ilBindImage(source_texture_id);
+    ilBindImage(out_tex_source_id);
 
     // Get the dimensions and data of the texture image
     int source_width = ilGetInteger(IL_IMAGE_WIDTH);
@@ -602,9 +537,7 @@ int generateWarpedTexture(
         _HMAT,
         warped_texture_size);
 
-    // Convert the warped cv::Mat back to an ILuint image
-    ilGenImages(1, &out_warped_texture_id);
-    ilBindImage(out_warped_texture_id);
+    // Update the original image data with the new warped data
     ilTexImage(
         warped_texture_mat.cols,
         warped_texture_mat.rows,
@@ -613,8 +546,7 @@ int generateWarpedTexture(
         warped_texture_mat.data);
     if (checkErrorDevIL(__LINE__, __FILE__) != 0)
     {
-        ROS_ERROR("[WARP TEX] Error Creating Warped Texture: ID[%u]", out_warped_texture_id);
-        ilDeleteImages(1, &out_warped_texture_id);
+        ROS_ERROR("[WARP TEX] Error Updating Warped Texture: ID[%u]", out_tex_source_id);
         return -1;
     }
 
@@ -625,36 +557,12 @@ int generateWarpedTexture(
     return 0;
 }
 
-int perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat _HMAT, cv::Point2f &out_p_warped)
-{
-    // Convert to 3x1 homogeneous coordinate matrix
-    float data[] = {p_unwarped.x, p_unwarped.y, 1}; // Column matrix with the vertex's homogeneous coordinates [x, y, 1].
-    cv::Mat ptMat(3, 1, CV_32F, data);              // Point's homogeneous coordinates stored as a 3x1 matrix of type CV_32F (32-bit float)
-
-    // Homography Matrix Type Conversion (for later matrix multiplication)
-    _HMAT.convertTo(_HMAT, ptMat.type());
-
-    // Apply Homography Matrix to Warp Perspective
-    // Multiply the homography matrix with the point's homogeneous coordinates.
-    // This results in a new column matrix representing the point's warped coordinates.
-    ptMat = _HMAT * ptMat;
-
-    // Convert back to Cartesian Coordinates
-    ptMat /= ptMat.at<float>(2); // Divide first two elements by the third element (w)
-
-    // Update/overwrite original vertex coordinates with the warped coordinates
-    out_p_warped.x = ptMat.at<float>(0, 0); // x
-    out_p_warped.y = ptMat.at<float>(0, 1); // y
-
-    return 0;
-}
-
 void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &out_CTRL_PNT_DATA)
 {
 
     // Specify the control point limits
-    const float cp_x = ORIGIN_PLANE_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
-    const float cp_y = ORIGIN_PLANE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates
+    const float cp_x = MAZE_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
+    const float cp_y = MAZE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates
 
     // Iterate through control points
     for (float cp_i = 0; cp_i < 4; cp_i++) // image bottom to top
@@ -746,18 +654,21 @@ int updateWallHomography(
         for (float gcol_i = 0; gcol_i < MAZE_SIZE; gcol_i++) // image left to right
         {
             // Get warped vertices for this wall to use as target
-            std::array<cv::Point2f, 4> target_vertices = _WALL_VERT_DATA[grow_i][gcol_i];
+            std::vector<cv::Point2f> target_vertices = quadArr2Vec(_WALL_VERT_DATA[grow_i][gcol_i]);
+
+            // Convert to pixel coordinates for OpenCV's findHomography function
+            std::vector<cv::Point2f> target_vertices_pxl =  quadVertNdc2Pxl(target_vertices, WALL_WIDTH_PXL, WALL_HEIGHT_PXL, MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
+            std::vector<cv::Point2f> origin_vertices_pxl =  quadVertNdc2Pxl(origin_vertices, WALL_WIDTH_PXL, WALL_HEIGHT_PXL, MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
 
             // Check that the target plane vertices are valid
-            if (checkQuadVertices(target_vertices) != 0)
+            if (checkQuadVertices(target_vertices_pxl) != 0)
             {
                 ROS_WARN("[COMPUTE HOMOGRAPHY] Target Plane Vertices Invalid: Reason[%s]",
-                         checkQuadVertices(target_vertices) == 1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
+                         checkQuadVertices(target_vertices_pxl) == 1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
                 return -1;
             }
-
             // Use OpenCV's findHomography function to compute the homography matrix
-            cv::Mat _HMAT = cv::findHomography(origin_vertices, target_vertices);
+            cv::Mat _HMAT = cv::findHomography(origin_vertices_pxl, target_vertices_pxl);
 
             // Check for valid homography matrix
             if (_HMAT.empty())
@@ -773,9 +684,9 @@ int updateWallHomography(
             if (gcol_i == 0 && grow_i == 0)
             {
                 ROS_INFO("[COMPUTE HOMOGRAPHY] Origin Plane Vertices:");
-                dbLogQuadVertices(origin_vertices);
+                dbLogQuadVertices(origin_vertices_pxl);
                 ROS_INFO("[COMPUTE HOMOGRAPHY] Target Plane Vertices:");
-                dbLogQuadVertices(target_vertices);
+                dbLogQuadVertices(target_vertices_pxl);
                 dbLogHomMat(_HMAT);
             }
         }
@@ -888,9 +799,9 @@ void dbLogHomMat(const cv::Mat &r_HMAT)
     for (int i = 0; i < 3; ++i)
     {
         ROS_INFO("R%d        | %+5.2f | %+5.2f | %+5.2f |", i,
-                 r_HMAT.at<float>(i, 0),
-                 r_HMAT.at<float>(i, 1),
-                 r_HMAT.at<float>(i, 2));
+                 r_HMAT.at<double>(i, 0),
+                 r_HMAT.at<double>(i, 1),
+                 r_HMAT.at<double>(i, 2));
     }
 
     // Separator line

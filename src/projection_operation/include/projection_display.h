@@ -21,7 +21,7 @@ std::string image_wall_dir_path = IMAGE_TOP_DIR_PATH + "/runtime_images/shapes_n
 std::vector<ILuint> imgMazeIDVec(4);
 
 // Wall image file variables
-std::vector<ILuint> imgWallIDVec; // Container to hold the loaded images for ui
+std::vector<ILuint> texWallIDVec; // Container to hold the loaded images for ui
 std::vector<std::string> imgWallPathVec = {
     // List of image file paths
     image_wall_dir_path + "/blank.bmp",    // [0] Blank image
@@ -189,7 +189,7 @@ int drawQuadImage(std::vector<cv::Point2f>);
 //  * @param mon_iind Index of the projector monitor being used.
 //  * @param p_window_id Pointer to the GLFW window.
 //  * @param fbo_texture_id Framebuffer Object's texture ID.
-//  * @param r_image_id_vec Reference to the vector containing image IDs.
+//  * @param r_tex_id_vec Reference to the vector containing image IDs.
 //  *
 //  * @return Returns 0 on success, -1 otherwise.
 //  */
