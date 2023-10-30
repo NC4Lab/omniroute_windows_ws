@@ -63,14 +63,14 @@ std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WARP_WA
 // The 3x3 homography matrix of 32-bit floating-point numbers used to warp perspective.
 cv::Mat H_MAT = cv::Mat::eye(3, 3, CV_32F);
 
-// Struct for tracking flags set in the keyboard callback
+// Struct primarely used for tracking flags set in the keyboard callback
 static struct FlagStruct
 {
-    bool doLoadXML = false;                   // Flag to indicate if the XML file needs to be loaded
-    bool doSaveXML = false;                   // Flag to indicate if the XML file needs to be saved
-    bool doUpdateWindowMonMode = false;       // Flag to indicate if the window mode needs to be updated
-    bool doReinitControlPointMarkers = false; // Flag to indicate if the control point markers need to be reinitialized
-    bool doUpdateWarpedWallVertices = false;  // Flag to indicate if the warped wall vertices need to be updated
+    bool loadXML = false;                  // Flag to indicate if the XML file needs to be loaded
+    bool saveXML = false;                  // Flag to indicate if the XML file needs to be saved
+    bool updateWindowMonMode = false;      // Flag to indicate if the window mode needs to be updated
+    bool initControlPointMarkers = false;  // Flag to indicate if the control point markers need to be reinitialized
+    bool updateWarpedWallVertices = false; // Flag to indicate if the warped wall vertices need to be updated
 } F;
 
 // Specify the window name
@@ -173,6 +173,22 @@ void callbackKeyBinding(GLFWwindow *, int, int, int, int);
  * @param height The new height of the framebuffer.
  */
 void callbackFrameBufferSizeGLFW(GLFWwindow *, int, int);
+
+/**
+ * @brief Callback function for handling OpenGL errors.
+ *
+ * This function is called whenever an error occurs in the OpenGL context.
+ * It logs the error message using ROS_ERROR.
+ *
+ * @param source The source of the error.
+ * @param type The type of the error.
+ * @param id The error ID.
+ * @param severity The severity of the error.
+ * @param length The length of the error message.
+ * @param message The error message.
+ * @param userParam User-defined parameter.
+ */
+static void callbackErrorOpenGL(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar *, const void *);
 
 /**
  * @brief Callback function for handling errors.

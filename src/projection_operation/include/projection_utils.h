@@ -276,8 +276,8 @@ std::string formatCoordinatesFilePathXML(int, int, std::string);
  *
  * @param full_path Path to the XML file.
  * @param verbose_level Level of verbosity for printing loaded data (0:nothing, 1:file name, 2:control point parameters, 3:homography matrix).
- * @param[out] r_h_mat Reference to the homography matrix to populate.
- * @param[out] r_ctrl_point_params Reference to a 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
+ * @param[out] out_h_mat Reference to the homography matrix to populate.
+ * @param[out] out_ctrl_point_params Reference to a 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
  *
  * @return 0 on successful execution, -1 on failure.
  */
@@ -327,7 +327,7 @@ void saveCoordinatesXML(cv::Mat, std::array<std::array<float, 6>, 4>, std::strin
  * in a reference vector.
  *
  * @param img_paths_vec A vector of file paths to the images to be loaded.
- * @param[out] r_image_id_vec A reference to a vector of ILuint where the IDs of the loaded images will be stored.
+ * @param[out] out_image_id_vec Reference to a vector of ILuint where the IDs of the loaded images will be stored.
  *
  * @return DevIL status: 0 on successful execution, -1 on failure.
  */
@@ -351,7 +351,7 @@ int deleteImgTextures(std::vector<ILuint> &);
  *
  * @param img1_id The ILuint ID of the baseline image.
  * @param img2_id The ILuint ID of the mask image.
- * @param[out] r_img_merge_id Reference to an ILuint where the ID of the merged image will be stored.
+ * @param[out] out_img_merge_id Reference to an ILuint where the ID of the merged image will be stored.
  *
  * @return DevIL status: 0 on successful execution, -1 on failure.
  *
@@ -431,11 +431,11 @@ cv::Size getBoundaryDims(const std::array<cv::Point2f, 4> &);
  * @param source_texture_id DevIL image ID of the source texture.
  * @param h_mat Homography matrix.
  * @param target_plane_vertices Vertices of the target plane.
- * @param[out] r_warped_texture_id Reference to the DevIL image ID of the outputed warped texture.
+ * @param[out] out_warped_texture_id Reference to the DevIL image ID of the outputed warped texture.
  *
  * @return Status: 0 on successful execution, -1 on failure.
  */
-int perspectiveWarpTexture(ILuint, const cv::Mat &, const std::array<cv::Point2f, 4> &, ILuint &r_warped_texture_id);
+int perspectiveWarpTexture(ILuint, const cv::Mat &, const std::array<cv::Point2f, 4> &, ILuint &);
 
 /**
  * @brief Computes the perspective warp of a given coordinate point using a homography matrix.
@@ -445,15 +445,14 @@ int perspectiveWarpTexture(ILuint, const cv::Mat &, const std::array<cv::Point2f
  *
  *
  * @details
- * 1. Each vertex undergoes a translation operation defined by `x_translate` and `y_translate`.
- *
- * 2. The function converts the translated vertices to homogeneous coordinates, which allows for a unified
+ * 
+ * - The function converts the translated piont to homogeneous coordinates, which allows for a unified
  *    representation that can undergo linear transformations including projective warps.
  *
- * 3. The homography matrix `r_h_mat` is then applied to these homogeneous coordinates to produce the
- *    new coordinates of each vertex in the warped perspective.
+ * - The homography matrix is then applied to these homogeneous coordinates to produce the
+ *    new coordinates of the point in the warped perspective.
  *
- * 4. Finally, the function converts these new homogeneous coordinates back to Cartesian coordinates.
+ * - Finally, the function converts these new homogeneous coordinates back to Cartesian coordinates.
  *
  * @note: Homogeneous Coordinates: are a mathematical trick used to simplify
  *        complex transformations like translation, rotation, and shearing.
@@ -463,8 +462,8 @@ int perspectiveWarpTexture(ILuint, const cv::Mat &, const std::array<cv::Point2f
  *        (ptMat /= ptMat.at<float>(2)) to get back to cartisian x, y coordinates.
  *
  * @param p_unwarped The unwarped cv::Point2f values.
- * @param r_h_mat Reference to the 3x3 homography matrix used to perform the projective transformation.
- * @param[out] r_p_warped Reference to cv::Point2f containing the new Cartesian coordinates of the warped vertex position.
+ * @param h_mat Reference to the 3x3 homography matrix used to perform the projective transformation.
+ * @param[out] out_p_warped Reference to cv::Point2f containing the new Cartesian coordinates of the warped vertex position.
  *
  * @return Status: 0 on successful execution, -1 on failure.
  */
@@ -478,16 +477,16 @@ int perspectiveWarpPoint(cv::Point2f, cv::Mat, cv::Point2f &);
  * The vertices for the entire projected image are calculated based on the dimensions that enclose
  * all control points (i.e., boundary dimensions in the control point plane).
  *
- * @return The 4x4 array containing the coordinates of the corner wall's vertices.
+ * @param[out] out_CTRL_PNT_WALL_COORDS Reference to the 4x4 array containing the coordinates of the corner wall's vertices.
  */
-std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates();
+void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4>&);
 
 /**
  * @brief Updates the stored warped wall image vertices based on the control point array.
  *
  * @param r_h_mat The homography matrix used to warp the wall image.
  * @param r_CTRL_PNT_WALL_COORDS The control point coordinates used to warp the wall image.
- * @param[out] r_WARP_WALL_COORDS updated 3x3x4 warped wall image vertices array.
+ * @param[out] out_WARP_WALL_COORDS updated 3x3x4 warped wall image vertices array.
  *
  * @return Status: 0 on successful execution, -1 on failure.
  */

@@ -26,39 +26,39 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         if (key == GLFW_KEY_F)
         {
             isFullScreen = !isFullScreen;
-            F.doUpdateWindowMonMode = true;
+            F.updateWindowMonMode = true;
         }
 
         // Move the window to another monitor
         else if (key == GLFW_KEY_0)
         {
             winMonInd = 0;
-            F.doUpdateWindowMonMode = true;
+            F.updateWindowMonMode = true;
         }
         else if (key == GLFW_KEY_1 && nMonitors > 1)
         {
             winMonInd = 1;
-            F.doUpdateWindowMonMode = true;
+            F.updateWindowMonMode = true;
         }
         else if (key == GLFW_KEY_2 && nMonitors > 2)
         {
             winMonInd = 2;
-            F.doUpdateWindowMonMode = true;
+            F.updateWindowMonMode = true;
         }
         else if (key == GLFW_KEY_3 && nMonitors > 3)
         {
             winMonInd = 3;
-            F.doUpdateWindowMonMode = true;
+            F.updateWindowMonMode = true;
         }
         else if (key == GLFW_KEY_4 && nMonitors > 4)
         {
             winMonInd = 4;
-            F.doUpdateWindowMonMode = true;
+            F.updateWindowMonMode = true;
         }
         else if (key == GLFW_KEY_5 && nMonitors > 5)
         {
             winMonInd = 5;
-            F.doUpdateWindowMonMode = true;
+            F.updateWindowMonMode = true;
         }
 
         // ---------- XML Handling [ENTER, L] ----------
@@ -66,13 +66,13 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // Save coordinates to XML
         else if (key == GLFW_KEY_ENTER)
         {
-            F.doSaveXML = true;
+            F.saveXML = true;
         }
 
         // Load coordinates from XML
         else if (key == GLFW_KEY_L)
         {
-            F.doLoadXML = true;
+            F.loadXML = true;
         }
 
         // ---------- Image selector keys [F1-F4] ----------
@@ -98,7 +98,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         else if (key == GLFW_KEY_R)
         {
-            F.doReinitControlPointMarkers = true;
+            F.initControlPointMarkers = true;
         }
     }
 
@@ -114,12 +114,12 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             if (key == GLFW_KEY_LEFT)
             {
                 calModeInd = (calModeInd > 0) ? calModeInd - 1 : (int)nCalModes - 1;
-                F.doReinitControlPointMarkers = true;
+                F.initControlPointMarkers = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
                 calModeInd = (calModeInd < nCalModes - 1) ? calModeInd + 1 : 0;
-                F.doReinitControlPointMarkers = true;
+                F.initControlPointMarkers = true;
             }
         }
 
@@ -188,22 +188,22 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             if (key == GLFW_KEY_LEFT)
             {
                 CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].x -= pos_inc; // Move left
-                F.doUpdateWarpedWallVertices = true;
+                F.updateWarpedWallVertices = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
                 CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].x += pos_inc; // Move right
-                F.doUpdateWarpedWallVertices = true;
+                F.updateWarpedWallVertices = true;
             }
             else if (key == GLFW_KEY_UP)
             {
                 CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].y += pos_inc; // Move up
-                F.doUpdateWarpedWallVertices = true;
+                F.updateWarpedWallVertices = true;
             }
             else if (key == GLFW_KEY_DOWN)
             {
                 CTRL_PNT_WALL_COORDS[cpWallSelectedInd][cpVertSelectedInd].y -= pos_inc; // Move down
-                F.doUpdateWarpedWallVertices = true;
+                F.updateWarpedWallVertices = true;
             }
 
             // Shift all control points if origin moved
@@ -234,6 +234,11 @@ void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
     checkErrorOpenGL(__LINE__, __FILE__);
+}
+
+static void callbackErrorOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
+{
+    ROS_ERROR("[OpenGL] Debug Callback: Type[0x%x] ID[%d] Severity[0x%x] Message[%s]", type, id, severity, message);
 }
 
 static void callbackErrorGLFW(int error, const char *description)
@@ -516,6 +521,7 @@ int updateWallImages(GLuint fbo_texture_id, ILuint img_wall_id, ILuint img_mode_
                 (cpWallSelectedInd == 3 && grow_i == MAZE_SIZE - 1 && gcol_i == MAZE_SIZE - 1))
             {
 
+                // TEMP
                 // // Merge test pattern and active monitor image
                 // ILuint img_merge_id;
                 // if (mergeImages(img_wall_id, img_mode_mon_id, img_merge_id) != 0)
@@ -591,7 +597,7 @@ int main(int argc, char **argv)
     // --------------- VARIABLE SETUP ---------------
 
     // Initialze control points
-    CTRL_PNT_WALL_COORDS = initControlPointCoordinates();
+    initControlPointCoordinates(CTRL_PNT_WALL_COORDS);
 
     // These vertices will be used as points for the 'target' or 'destination' plane when computing the homography matrix.
     std::vector<cv::Point2f> target_plane_vertices;
@@ -610,7 +616,7 @@ int main(int argc, char **argv)
 
     // --------------- OpenGL SETUP ---------------
 
-    // Initialize GLFW
+    // Initialize GLFW and set error callback
     glfwSetErrorCallback(callbackErrorGLFW);
     if (!glfwInit())
     {
@@ -619,11 +625,16 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    // Get the list of available monitors and their count
+    // Discover available monitors
     pp_monitorIDVec = glfwGetMonitors(&nMonitors);
+    if (!pp_monitorIDVec || nMonitors == 0) // Added this check
+    {
+        ROS_ERROR("[GLFW] No monitors found");
+        return -1;
+    }
     ROS_INFO("[GLFW] Found %d monitors", nMonitors);
 
-    // Create GLFW window
+    // Create a new GLFW window
     p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
     checkErrorGLFW(__LINE__, __FILE__);
     if (!p_windowID)
@@ -633,45 +644,89 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    // Set OpenGL context and callbacks
+    // Set the GLFW window as the current OpenGL context
     glfwMakeContextCurrent(p_windowID);
-    gladLoadGL();
+
+    // Load OpenGL extensions using GLAD
+    if (!gladLoadGL()) // Added this check
+    {
+        ROS_ERROR("[GLAD] Failed to initialize GLAD");
+        return -1;
+    }
+
+    // Enable OpenGL debugging context
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(callbackErrorOpenGL, 0); 
+
+    // Set GLFW callbacks for keyboard and framebuffer size events
     glfwSetKeyCallback(p_windowID, callbackKeyBinding);
     glfwSetFramebufferSizeCallback(p_windowID, callbackFrameBufferSizeGLFW);
 
-    // Initialize FBO and texture
-    GLuint fbo_id;
-    GLuint fbo_texture_id;
+    // Initialize Framebuffer Object (FBO) and its texture
+    GLuint fbo_id = 0;
+    GLuint fbo_texture_id = 0;
 
-    // Generate and set up the FBO
+    // Generate an FBO and bind it
     glGenFramebuffers(1, &fbo_id);
     glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
-    checkErrorOpenGL(__LINE__, __FILE__);
+    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+    {
+        ROS_ERROR("[OpenGL] Failed to Generate FBO");
+        return -1;
+    }
 
-    // Generate and set up the texture
+    // Generate a texture for the FBO
     glGenTextures(1, &fbo_texture_id);
     glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
+    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+    {
+        ROS_ERROR("[OpenGL] Failed to Generate FBO Texture");
+        return -1;
+    }
+
+    // Allocate storage for the texture on the GPU
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    checkErrorOpenGL(__LINE__, __FILE__);
+
+    // Set the texture's MIN and MAG filter to linear interpolation.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Handles sampling when the texture is scaled down
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Handles sampling when the texture is scaled up
+    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+    {
+        ROS_ERROR("[OpenGL] Failed to Set FBO Texture Parameters");
+        return -1;
+    }
 
     // Attach the texture to the FBO
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture_id, 0);
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    checkErrorOpenGL(__LINE__, __FILE__);
 
-    // Update the window monitor and mode
+    // Check FBO completeness
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE)
+    {
+        // Handle incomplete FBO, possibly log an error or exit
+        ROS_ERROR("[OpenGL] FBO is not complete");
+        return -1;
+    }
+
+    // Unbind the FBO (bind to default framebuffer)
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+    {
+        ROS_ERROR("[OpenGL] Failed to Unbind FBO");
+        return -1;
+    }
+
+    // Update monitor and window mode settings
     updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
 
-    // Get OpenGL version
+    // Log OpenGL versions
     const GLubyte *opengl_version = glGetString(GL_VERSION);
-    ROS_INFO("[OpenGL] Intitalized: Version [%s]", opengl_version);
+    ROS_INFO("[OpenGL] Initialized: Version [%s]", opengl_version);
 
-    // Get GLFW version
+    // Log GLFW versions
     int glfw_major, glfw_minor, glfw_rev;
     glfwGetVersion(&glfw_major, &glfw_minor, &glfw_rev);
-    ROS_INFO("[GLFW] Intitalized: Version: %d.%d.%d", glfw_major, glfw_minor, glfw_rev);
+    ROS_INFO("[GLFW] Initialized: Version: %d.%d.%d", glfw_major, glfw_minor, glfw_rev);
 
     // --------------- DevIL SETUP ---------------
 
@@ -679,6 +734,8 @@ int main(int argc, char **argv)
     ilInit();
     if (checkErrorDevIL(__LINE__, __FILE__) != 0)
         return -1;
+
+    // Log the DevIL version
     ILint version = ilGetInteger(IL_VERSION_NUM);
     ROS_INFO("[DevIL] Intitalized: Version[%d]", version);
 
@@ -701,53 +758,57 @@ int main(int argc, char **argv)
 
     // _______________ MAIN LOOP _______________
 
+    bool is_error = false;
     while (!glfwWindowShouldClose(p_windowID) && ros::ok())
     {
 
         // --------------- Check Kayboard Callback Flags ---------------
 
         // Load XML file
-        if (F.doLoadXML)
+        if (F.loadXML)
         {
             std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
             loadCoordinatesXML(file_path, 3, homMat, ctrlPointParams);
-            F.doLoadXML = false;
+            F.loadXML = false;
         }
 
-         // Save XML file
-        if (F.doSaveXML)
+        // Save XML file
+        if (F.saveXML)
         {
             std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
             saveCoordinatesXML(homMat, ctrlPointParams, file_path);
-            F.doSaveXML = false;
+            F.saveXML = false;
         }
 
         // Update the window monitor and mode
-        if (F.doUpdateWindowMonMode)
+        if (F.updateWindowMonMode)
         {
             if (updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen) != 0)
             {
                 ROS_ERROR("[MAIN] Update Window Monitor Mode Threw Error");
-                return -1;
+                is_error = true;
+                break;
             }
+            F.updateWindowMonMode = false;
         }
 
-        // Recompute warped wall vertices
-        if (F.doReinitControlPointMarkers)
+        // Initialize/reinitialize control point coordinate dataset
+        if (F.initControlPointMarkers)
         {
-            CTRL_PNT_WALL_COORDS = initControlPointCoordinates();
-            F.doReinitControlPointMarkers = false;
+            initControlPointCoordinates(CTRL_PNT_WALL_COORDS);
+            F.initControlPointMarkers = false;
         }
 
-        // Recompute warped wall vertices
-        if (F.doUpdateWarpedWallVertices)
+        // Recompute warped wall vertices dataset
+        if (F.updateWarpedWallVertices)
         {
             if (updateWarpedWallVertices(H_MAT, CTRL_PNT_WALL_COORDS, WARP_WALL_COORDS) != 0)
             {
                 ROS_ERROR("[MAIN] Update Warped Wall Vertices Threw Error");
-                return -1;
+                is_error = true;
+                break;
             }
-            F.doUpdateWarpedWallVertices = false;
+            F.updateWarpedWallVertices = false;
         }
 
         // --------------- Handle Image Processing for Next Frame ---------------
@@ -755,26 +816,34 @@ int main(int argc, char **argv)
         // Clear back buffer for new frame
         glClear(GL_COLOR_BUFFER_BIT);
         if (checkErrorOpenGL(__LINE__, __FILE__))
+        {
+            is_error = true;
             break;
+        }
 
         // Draw/update wall images
         if (updateWallImages(fbo_texture_id, imgWallIDVec[imgWallInd], imgMonIDVec[winMonInd], imgCalIDVec[calModeInd]) != 0)
         {
             ROS_ERROR("[MAIN] Draw Walls Threw Error");
-            return -1;
+            is_error = true;
+            break;
         }
         if (updateControlPointMarkers() != 0)
         {
             ROS_ERROR("[MAIN] Draw Control Point Threw Error");
-            return -1;
+            is_error = true;
+            break;
         }
 
         // Swap buffers and poll events
         glfwSwapBuffers(p_windowID);
-        if (checkErrorGLFW(__LINE__, __FILE__))
+        if (
+            checkErrorGLFW(__LINE__, __FILE__) ||
+            checkErrorOpenGL(__LINE__, __FILE__))
+        {
+            is_error = true;
             break;
-        if (checkErrorOpenGL(__LINE__, __FILE__))
-            break;
+        }
 
         // Poll events
         glfwPollEvents();
@@ -794,30 +863,57 @@ int main(int argc, char **argv)
         ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
     else if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         ROS_INFO("[LOOP TERMINATION] Escape Key was Pressed");
+    else if (is_error)
+        ROS_INFO("[LOOP TERMINATION] Error Thrown");
     else
         ROS_INFO("[LOOP TERMINATION] Reason Unknown");
 
-    // Delete FBO and textures
-    glDeleteFramebuffers(1, &fbo_id);
-    checkErrorOpenGL(__LINE__, __FILE__);
-    glDeleteTextures(1, &fbo_texture_id);
-    checkErrorOpenGL(__LINE__, __FILE__);
-    ROS_INFO("[SHUTDOWN] Deleted FBO and textures");
+    // Delete FBO
+    if (fbo_id != 0)
+    {
+        glDeleteFramebuffers(1, &fbo_id);
+        if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+            ROS_WARN("[SHUTDOWN] Failed to Delete FBO");
+        else
+            ROS_INFO("[SHUTDOWN] Deleted FBO");
+    }
+    else
+        ROS_WARN("[SHUTDOWN] No FBO to Delete");
+
+    // Delete FBO texture
+    if (fbo_texture_id != 0)
+    {
+        glDeleteTextures(1, &fbo_texture_id);
+        if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+            ROS_WARN("[SHUTDOWN] Failed to Delete FBO Texture");
+        else
+            ROS_INFO("[SHUTDOWN] Deleted FBO Texture");
+    }
+    else
+        ROS_WARN("[SHUTDOWN] No FBO Texture to Delete");
 
     // Delete DevIL images
-    deleteImgTextures(imgWallIDVec);
-    deleteImgTextures(imgMonIDVec);
-    deleteImgTextures(imgCalIDVec);
-    ROS_INFO("[SHUTDOWN] Deleted DevIL images");
+    if (deleteImgTextures(imgWallIDVec) == 0)
+        ROS_INFO("[SHUTDOWN] Deleted DevIL Wall Images");
+    if (deleteImgTextures(imgMonIDVec) == 0)
+        ROS_INFO("[SHUTDOWN] Deleted DevIL Monitor Images");
+    if (deleteImgTextures(imgCalIDVec) == 0)
+        ROS_INFO("[SHUTDOWN] Deleted DevIL Calibration Images");
 
     // Destroy GLFW window
     if (p_windowID)
     {
         glfwDestroyWindow(p_windowID);
         p_windowID = nullptr;
+        if (checkErrorGLFW(__LINE__, __FILE__) != 0)
+            ROS_WARN("[SHUTDOWN] Failed to Destroy GLFW Window");
+        else
+            ROS_INFO("[SHUTDOWN] Destroyed GLFW Window");
     }
-    checkErrorGLFW(__LINE__, __FILE__);
-    ROS_INFO("[SHUTDOWN] Destroyed GLFW windows");
+    else
+    {
+        ROS_WARN("[SHUTDOWN] No GLFW window to destroy");
+    }
 
     // Shutdown DevIL
     ilShutDown();
@@ -830,5 +926,5 @@ int main(int argc, char **argv)
     ROS_INFO("[SHUTDOWN] Terminated GLFW");
 
     // Return success
-    return 0;
+    return is_error ? -1 : 0;
 }

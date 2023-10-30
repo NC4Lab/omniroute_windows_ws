@@ -33,7 +33,7 @@ std::string formatCoordinatesFilePathXML(int mon_id_ind, int mode_cal_ind, std::
     return file_path;
 }
 
-int loadCoordinatesXML(std::string full_path, int verbose_level, cv::Mat &r_h_mat, std::array<std::array<float, 6>, 4> &r_ctrl_point_params)
+int loadCoordinatesXML(std::string full_path, int verbose_level, cv::Mat &out_h_mat, std::array<std::array<float, 6>, 4> &out_ctrl_point_params)
 {
     // Get file name from path
     std::string file_name = full_path.substr(full_path.find_last_of('/') + 1);
@@ -80,7 +80,7 @@ int loadCoordinatesXML(std::string full_path, int verbose_level, cv::Mat &r_h_ma
     {
         for (int j = 0; j < 6; j++)
         {
-            r_ctrl_point_params[i][j] = ctrl_point_params_vec_temp[i][j];
+            out_ctrl_point_params[i][j] = ctrl_point_params_vec_temp[i][j];
         }
     }
 
@@ -118,7 +118,7 @@ int loadCoordinatesXML(std::string full_path, int verbose_level, cv::Mat &r_h_ma
     {
         for (int j = 0; j < 3; j++)
         {
-            r_h_mat.at<float>(i, j) = h_mat_temp[i][j];
+            out_h_mat.at<float>(i, j) = h_mat_temp[i][j];
         }
     }
 
@@ -235,10 +235,10 @@ void saveCoordinatesXML(cv::Mat h_mat, std::array<std::array<float, 6>, 4> ctrl_
     }
 }
 
-int loadImgTextures(std::vector<std::string> img_paths_vec, std::vector<ILuint> &r_image_id_vec)
+int loadImgTextures(std::vector<std::string> img_paths_vec, std::vector<ILuint> &out_image_id_vec)
 {
     int img_i = 0;
-    int n_img = (int)r_image_id_vec.size();
+    int n_img = (int)out_image_id_vec.size();
 
     // Iterate through img file paths
     for (const std::string &img_path : img_paths_vec)
@@ -300,7 +300,7 @@ int loadImgTextures(std::vector<std::string> img_paths_vec, std::vector<ILuint> 
             }
 
             // Add image ID to vector
-            r_image_id_vec.push_back(img_id);
+            out_image_id_vec.push_back(img_id);
             ROS_INFO("[DevIL] Loaded Image: Ind[%d/%d] ID[%u] File[%s] Size[%d,%d]",
                      img_i, n_img - 1, img_id, file_name.c_str(), width, height);
         }
@@ -347,7 +347,7 @@ int deleteImgTextures(std::vector<ILuint> &r_image_id_vec)
     return status;
 }
 
-int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &r_img_merge_id)
+int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &out_img_merge_id)
 {
     // Bind and get dimensions of img1 (baseline image)
     ilBindImage(img1_id);
@@ -380,12 +380,12 @@ int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &r_img_merge_id)
     }
 
     // Create merged image
-    ilGenImages(1, &r_img_merge_id);
-    ilBindImage(r_img_merge_id);
+    ilGenImages(1, &out_img_merge_id);
+    ilBindImage(out_img_merge_id);
     ilTexImage(width1, height1, 1, 4, IL_RGBA, IL_UNSIGNED_BYTE, NULL);
     if (checkErrorDevIL(__LINE__, __FILE__, "Creating Merged Image") != 0)
     {
-        ROS_ERROR("[MERGE IMAGE] Error Creating Merged Image: ID[%u]", r_img_merge_id);
+        ROS_ERROR("[MERGE IMAGE] Error Creating Merged Image: ID[%u]", out_img_merge_id);
         return -1;
     }
 
@@ -425,11 +425,11 @@ int mergeImages(ILuint img1_id, ILuint img2_id, ILuint &r_img_merge_id)
     }
 
     // Set merge image data to the new image
-    ilBindImage(r_img_merge_id);
+    ilBindImage(out_img_merge_id);
     ilSetPixels(0, 0, 0, width1, height1, 1, IL_RGBA, IL_UNSIGNED_BYTE, merged_img_data.data());
     if (checkErrorDevIL(__LINE__, __FILE__, "Setting Pixels for Merged Image") != 0)
     {
-        ROS_ERROR("[MERGE IMAGE] Error Setting Pixels for Merged Image: ID[%u]", r_img_merge_id);
+        ROS_ERROR("[MERGE IMAGE] Error Setting Pixels for Merged Image: ID[%u]", out_img_merge_id);
         return -1;
     }
 
@@ -609,7 +609,7 @@ int perspectiveWarpTexture(
     ILuint source_texture_id,
     const cv::Mat &h_mat,
     const std::array<cv::Point2f, 4> &target_plane_vertices,
-    ILuint &r_warped_texture_id)
+    ILuint &out_warped_texture_id)
 {
     // Compute output/target image size
     cv::Size warped_texture_size = getBoundaryDims(target_plane_vertices);
@@ -636,8 +636,8 @@ int perspectiveWarpTexture(
         warped_texture_size);
 
     // Convert the warped cv::Mat back to an ILuint image
-    ilGenImages(1, &r_warped_texture_id);
-    ilBindImage(r_warped_texture_id);
+    ilGenImages(1, &out_warped_texture_id);
+    ilBindImage(out_warped_texture_id);
     ilTexImage(
         warped_texture_mat.cols,
         warped_texture_mat.rows,
@@ -648,7 +648,7 @@ int perspectiveWarpTexture(
     return 0;
 }
 
-int perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat h_mat, cv::Point2f &r_p_warped)
+int perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat h_mat, cv::Point2f &out_p_warped)
 {
     // Convert to 3x1 homogeneous coordinate matrix
     float data[] = {p_unwarped.x, p_unwarped.y, 1}; // Column matrix with the vertex's homogeneous coordinates [x, y, 1].
@@ -666,16 +666,14 @@ int perspectiveWarpPoint(cv::Point2f p_unwarped, cv::Mat h_mat, cv::Point2f &r_p
     ptMat /= ptMat.at<float>(2); // Divide first two elements by the third element (w)
 
     // Update/overwrite original vertex coordinates with the warped coordinates
-    r_p_warped.x = ptMat.at<float>(0, 0); // x
-    r_p_warped.y = ptMat.at<float>(0, 1); // y
+    out_p_warped.x = ptMat.at<float>(0, 0); // x
+    out_p_warped.y = ptMat.at<float>(0, 1); // y
 
     return 0;
 }
 
-std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates()
+void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4>& out_CTRL_PNT_WALL_COORDS)
 {
-    // Create a 2D array to store the control point coordinates
-    std::array<std::array<cv::Point2f, 4>, 4> CTRL_PNT_WALL_COORDS;
 
     // Specify the control point limits
     const float cp_x = ORIGIN_PLANE_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
@@ -703,22 +701,19 @@ std::array<std::array<cv::Point2f, 4>, 4> initControlPointCoordinates()
             p_org = cv::Point2f(+cp_x, -cp_y);
 
         // Set x y values for each vertex
-        CTRL_PNT_WALL_COORDS[cp_i] = {
+        out_CTRL_PNT_WALL_COORDS[cp_i] = {
             cv::Point2f(p_org.x, p_org.y + WALL_HEIGHT_NDC),                  // top left
             cv::Point2f(p_org.x + WALL_WIDTH_NDC, p_org.y + WALL_HEIGHT_NDC), // top right
             cv::Point2f(p_org.x, p_org.y),                                    // bottom left
             cv::Point2f(p_org.x + WALL_WIDTH_NDC, p_org.y),                   // bottom right
         };
     }
-
-    // Return the data container for use in other libraries
-    return CTRL_PNT_WALL_COORDS;
 }
 
 int updateWarpedWallVertices(
-    const cv::Mat &r_h_mat,
-    const std::array<std::array<cv::Point2f, 4>, 4> &r_CTRL_PNT_WALL_COORDS,
-    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &r_WARP_WALL_COORDS)
+    const cv::Mat &h_mat,
+    const std::array<std::array<cv::Point2f, 4>, 4> &CTRL_PNT_WALL_COORDS,
+    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &out_WARP_WALL_COORDS)
 {
 
     // Iterate trough grid/wall rows
@@ -732,10 +727,10 @@ int updateWarpedWallVertices(
             {
                 // Get the corner values for the interpolation function
                 ///@note that y values must be flipped to account for the image origin being in the top-left corner
-                cv::Point2f p_a = r_CTRL_PNT_WALL_COORDS[0][p_i]; // bottom-left interp == top left NDC
-                cv::Point2f p_b = r_CTRL_PNT_WALL_COORDS[1][p_i]; // bottom-right interp == top right NDC
-                cv::Point2f p_c = r_CTRL_PNT_WALL_COORDS[2][p_i]; // top-left interp == bottom left NDC
-                cv::Point2f p_d = r_CTRL_PNT_WALL_COORDS[3][p_i]; // top-right interp == bottom right NDC
+                cv::Point2f p_a = CTRL_PNT_WALL_COORDS[0][p_i]; // bottom-left interp == top left NDC
+                cv::Point2f p_b = CTRL_PNT_WALL_COORDS[1][p_i]; // bottom-right interp == top right NDC
+                cv::Point2f p_c = CTRL_PNT_WALL_COORDS[2][p_i]; // top-left interp == bottom left NDC
+                cv::Point2f p_d = CTRL_PNT_WALL_COORDS[3][p_i]; // top-right interp == bottom right NDC
 
                 // Get the interpolated vertex x-coordinate
                 cv::Point2f p_interp(
@@ -744,11 +739,11 @@ int updateWarpedWallVertices(
 
                 // TEMP
                 // Get the warped vertex coordinates
-                // cv::Point2f p_warped = perspectiveWarpPoint(p_interp, r_h_mat);
+                // cv::Point2f p_warped = perspectiveWarpPoint(p_interp, h_mat);
                 cv::Point2f p_warped = p_interp;
 
                 // Store the warped vertex coordinates
-                r_WARP_WALL_COORDS[grow_i][gcol_i][p_i] = p_warped;
+                out_WARP_WALL_COORDS[grow_i][gcol_i][p_i] = p_warped;
             }
         }
     }
