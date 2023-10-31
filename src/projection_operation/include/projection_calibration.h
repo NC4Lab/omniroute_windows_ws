@@ -27,7 +27,7 @@
 * - `out vec2 Texcoord;`: Declares an output variable that will be passed to the fragment shader.
 * - `void main() { ... }`: Main function where the vertex shader performs its work.
 */
-extern const char* vertexSource;
+const char* vertexSource;
 
 /**
 * @var const GLchar* fragmentSource
@@ -41,7 +41,7 @@ extern const char* vertexSource;
 * - `uniform sampler2D tex;`: Declares a uniform variable representing a 2D texture.
 * - `void main() { ... }`: Main function of the fragment shader, samples the texture at the given coordinates and sets the output color.
 */
-extern const char* fragmentSource;
+const char* fragmentSource;
 
 /**
  * @brief Shader program IDs for wall image and circle rendering.
