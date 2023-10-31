@@ -58,3 +58,49 @@
 *             \ ________ /      \ ________ /      \ ________ /
 */
 
+
+/** 
+* @var const GLchar* vertexSource
+* @brief Vertex shader source code.
+
+* @details
+* This is a GLSL (OpenGL Shading Language) vertex shader source code stored as a C++ raw string literal.
+* - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
+* - `in vec2 position;`: Declares an input vertex attribute called `position`. Receives vertex coordinates from the application.
+* - `in vec2 texcoord;`: Declares another input vertex attribute called `texcoord`. Receives texture coordinates from the application.
+* - `out vec2 Texcoord;`: Declares an output variable that will be passed to the fragment shader.
+* - `void main() { ... }`: Main function where the vertex shader performs its work.
+*/
+const GLchar *vertexSource = R"glsl(
+const GLchar *vertexSource = R"glsl(
+    #version 330 core
+    in vec2 position;
+    in vec2 texcoord;
+    out vec2 Texcoord;
+    void main() {
+        Texcoord = texcoord;
+        gl_Position = vec4(position, 0.0, 1.0);
+    }
+)glsl";
+
+/**
+* @var const GLchar* fragmentSource
+* @brief Fragment shader source code.
+*
+* @details
+* This is a GLSL (OpenGL Shading Language) fragment shader source code also stored as a C++ raw string literal.
+* - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
+* - `in vec2 Texcoord;`: Receives the texture coordinates from the vertex shader.
+* - `out vec4 outColor;`: Declares an output variable for storing the color to be used for the fragment.
+* - `uniform sampler2D tex;`: Declares a uniform variable representing a 2D texture.
+* - `void main() { ... }`: Main function of the fragment shader, samples the texture at the given coordinates and sets the output color.
+*/
+const GLchar *fragmentSource = R"glsl(
+    #version 330 core
+    in vec2 Texcoord;
+    out vec4 outColor;
+    uniform sampler2D tex;
+    void main() {
+        outColor = texture(tex, Texcoord);
+    }
+)glsl";

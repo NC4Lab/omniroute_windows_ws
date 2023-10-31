@@ -14,6 +14,64 @@
 
 // ================================================== VARIABLES ==================================================
 
+
+/** 
+* @var const GLchar* vertexSource
+* @brief Vertex shader source code.
+
+* @details
+* This is a GLSL (OpenGL Shading Language) vertex shader source code stored as a C++ raw string literal.
+* - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
+* - `in vec2 position;`: Declares an input vertex attribute called `position`. Receives vertex coordinates from the application.
+* - `in vec2 texcoord;`: Declares another input vertex attribute called `texcoord`. Receives texture coordinates from the application.
+* - `out vec2 Texcoord;`: Declares an output variable that will be passed to the fragment shader.
+* - `void main() { ... }`: Main function where the vertex shader performs its work.
+*/
+extern const char* vertexSource;
+
+/**
+* @var const GLchar* fragmentSource
+* @brief Fragment shader source code.
+*
+* @details
+* This is a GLSL (OpenGL Shading Language) fragment shader source code also stored as a C++ raw string literal.
+* - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
+* - `in vec2 Texcoord;`: Receives the texture coordinates from the vertex shader.
+* - `out vec4 outColor;`: Declares an output variable for storing the color to be used for the fragment.
+* - `uniform sampler2D tex;`: Declares a uniform variable representing a 2D texture.
+* - `void main() { ... }`: Main function of the fragment shader, samples the texture at the given coordinates and sets the output color.
+*/
+extern const char* fragmentSource;
+
+/**
+ * @brief  4x4 data container for tracking the paramaters related to the plotted control point markers  asscicated with the 
+ * vertex coordinates for the corner wall images 
+ *
+ * @details
+ *[4][4] = [conrol point][vertex]
+ *
+ * - Dimension 1: Control Point [0, 1, 2, 3]
+ * - Vetices are with respect to the overall viewport
+ *      - 0: Top-left
+ *      - 1: Top-right
+ *      - 2: Bottom-left
+ *      - 3: Bottom-right
+ *
+ * - Dimension 2: Vertex(x, y) [0, 1, 2, 3]
+ * - Vetices are with respect to the wall image vertex
+ *      - 0: Top-left 
+ *      - 1: Top-right
+ *      - 2: Bottom-right 
+ *      - 3: Bottom-left
+ */
+struct CpMarkers {
+    float x, y;
+    float radius;
+    std::array<float, 3> color;
+};
+std::array<std::array<CpMarkers, 4>, 4> CPm;
+
+
 /**
  * @brief  4x4 data container for tracking the vertex coordinates for the corner wall images which are used as control point
  *
@@ -309,11 +367,9 @@ int drawQuadImage(std::array<cv::Point2f, 4>);
  */
 int drawWallImages(GLuint, ILuint, ILuint, ILuint);
 
-void testFindHomography();
-int main_v1();
-
 GLuint loadTexture(cv::Mat image);
 void setupOpenGL();
+bool textureMerge(const std::string &base_img_path, const std::string &mask_img_path, const std::string &output_img_path, cv::Mat &out_merg_img);
 int main_v2();
 
 

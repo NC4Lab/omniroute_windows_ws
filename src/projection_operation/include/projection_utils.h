@@ -12,8 +12,15 @@
  *
  * @section dependencies Dependencies
  * This library depends on the following libraries:
+ * 
  * - OpenGL for rendering graphics
+ * 
  * - OpenCV for image processing
+ * 
+ * - DevIL for image loading and manipulation
+ *      - The Developer's Image Library (DevIL) is a cross-platform image processing library that provides a simple and
+ *           easy-to-use API for developers. It is written in C and aims to facilitate various image file operations, including loading, 
+ *          saving, conversion, and manipulation. 
  *
  * @section introduction Introduction
  * Detailed library description.
