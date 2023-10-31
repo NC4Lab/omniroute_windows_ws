@@ -291,15 +291,6 @@ int updateControlPointMarkers();
 int drawQuadImage(std::array<cv::Point2f, 4>);
 
 /**
- * @brief Draws a texture using barycentric coordinates texture mapping
- *
- * @param quad_vertices_vec Array of vertex/corner points for a quadrilateral image.
- *
- * @return Integer status code  [0:successful, -1:error].
- */
-int drawBarycentricImage(std::array<cv::Point2f, 4>);
-
-/**
  * @brief Renders a 2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
  *
  * This function is a core part of the maze visualization pipeline. It utilizes the OpenGL graphics library for rendering,
@@ -309,7 +300,7 @@ int drawBarycentricImage(std::array<cv::Point2f, 4>);
  * 3. Shear and height adjustments based on control point calibration.
  * 4. Optional overlay of status images for cells corresponding to selected control points.
  *
- * @param fbo_texture_id OpenGL framebuffer object's texture ID.
+ * @param fbo_texture_id OpenGL framebuffer object's (FBO) texture ID.
  * @param tex_wall_id DevIL image ID for the base wall image.
  * @param tex_mode_mon_id DevIL image ID for the monitor mode image.
  * @param tex_mode_cal_id DevIL image ID for the calibration image.
@@ -319,6 +310,12 @@ int drawBarycentricImage(std::array<cv::Point2f, 4>);
 int drawWallImages(GLuint, ILuint, ILuint, ILuint);
 
 void testFindHomography();
+int main_v1();
+
+GLuint loadTexture(cv::Mat image);
+void setupOpenGL();
+int main_v2();
+
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.

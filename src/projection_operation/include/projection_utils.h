@@ -4,6 +4,166 @@
 
 // ####################################################################################################
 
+/**
+ * @file projection_utils.h
+ * @author Adam Lester
+ * @date   Summer 2023
+ * @brief @todo
+ *
+ * @section dependencies Dependencies
+ * This library depends on the following libraries:
+ * - OpenGL for rendering graphics
+ * - OpenCV for image processing
+ *
+ * @section introduction Introduction
+ * Detailed library description.
+ *
+ * @section usage Usage
+ * How to use this library.
+ *
+ * @section license License
+ * Licensing information.
+ *
+ * @details Omniroute Chamber and Wall Image Layout
+ *
+ * - The 3x3 verstion of the maze consitsts of 9 octogonal 'Chambers' arranged in a 3x3 grid.
+ * 
+ * - Each chamber is a is composed of 8 movable wall pannels measuring [W, H] [17cm, 10cm].
+ *
+ * - There are 4 projecors arrayed around the outside of the maze.
+ *      - Mi 4K Laser Projector 150" Specifications
+ *          - Display Technology: 0.47" DMD
+ *          - Light Source: ALPD
+ *          - Resolution: 4K (3840 × 2160)
+ *          - Throw Ratio: 0.233
+ *          - Screen Size: 80" to 150"
+ *          - Frame Rate: 60 fps @todo check this
+ * 
+ * 
+ *                                          ______
+ *                                         |  p1  |   
+ *                                         |______| 
+ *                                           /__\
+ * 
+ *                       ________          ________          ________
+ *                     /    w2    \      /          \      /          \
+ *                   / w1        w3 \  /              \  /              \
+ *                  |                ||                ||                |
+ *                  |w0    [c0]    w4||      [c1]      ||      [c2]      |
+ *                  |                ||                ||                |
+ *                   \  w7       w5 /  \              /  \              /
+ *                     \ ___w6___ /      \ ________ /      \ ________ /
+ *                     /          \      /          \      /          \               
+ *   ____            /              \  /              \  /              \            ____
+ *  |    |/|        |                ||                ||                |        |\|    |
+ *  | p0 | |        |      [c3]      ||      [c4]      ||      [c5]      |        | | p2  |
+ *  |____|\|        |                ||                ||                |        |/|____|
+ *                   \              /  \              /  \              /
+ *                     \ ________ /      \ ________ /      \ ________ /
+ *                     /          \      /          \      /          \
+ *                   /              \  /              \  /              \
+ *                  |                |                 ||                |
+ *                  |      [c6]      ||      [c7]      ||      [c8]      |
+ *                  |                ||                ||                |
+ *                   \              /  \              /  \              /
+ *                     \ ________ /      \ ________ /      \ ________ /
+ *
+ *                                            __   
+ *                                          _\__/_
+ *                                         |  p3  |   
+ *                                         |______| 
+ * 
+ * 
+ * 
+ *  @details Omniroute Wall Projection Geometry
+ * 
+ * - The walls requre 3 seperatate callibrations for each projector:
+ * 
+ *      - Left wall calibration (Lc)
+ * 
+ *      - Middle wall calibration (Mc) 
+ * 
+ *      - Right wall calibration (Rc)
+ 
+ * - For each calibration, 9 wall images are created. 
+ * 
+ *
+ *                     
+ *                  ________          ___Mc___          ________
+ *                /          \   Lc /          \ Rc   /          \
+ *               /   (0, 0)   \    /   (0, 1)   \    /   (0, 2)   \
+ *
+ * 
+ *                  ________          ________          ________  
+ *                /          \      /          \      /          \          
+ *               /   (1, 0)   \    /   (1, 1)   \    /   (1, 2)   \        
+ *
+ *
+ *                   ________          ________         ________  
+ *                 /          \      /          \     /          \
+ *                /   (2, 0)   \    /   (2, 1)   \   /   (2, 2)   \
+ *
+ *
+ *                          
+ *                                        __   
+ *                                      _\__/_
+ *                                     |      |   
+ *                                     |______| 
+ * 
+ *
+ * 
+ *  @details Omniroute Wall Image Processing Parameters 
+ * 
+ * - Wall Vertices: 
+ * 
+ *      - Indexed clockwise for the top left.
+ * 
+ * - Calibration procedure:
+ * 
+ *      - For the calibration opperatin, only one GLFWwindow window is used, but it can be moved between monitors.
+ * 
+ *      - A test pattern image with the same aspect ration as the walls is read in (currently using DevIL). 
+ *      
+ *      - This image is tesselated  uniformly over a 3x3 grid in the in the graphics window 
+ * 
+ *      - The window is moved to the desired projector and set to fullscreen. 
+ * 
+ *      - Corner wall vertices are visible in the projected image displayed during calibration. 
+ * 
+ *      - Each corner wall vertex acts as a 'control points'.
+ *      
+ *      - These control point vertices are independently positioned to the physical corners using a keyboard.
+ * 
+ *      - This process continues until all four vertices from all four corrner wall have been positioned 
+ * 
+ *      - These values are then used to interpolate all other non-corner wall vertices. 
+ * 
+ *      - All 3x3x4 warped wall vertices are tehn saved.
+ * 
+ *      - This continues until all 3 calibrations have been performed for all 4 projectors.
+ * 
+ * 
+ *
+ *                   C(0)           C(1)          C(2)
+ *
+ *                 0-----1        0-----1        0-----1
+ *          R(0)   | CP0 |        |     |        | CP1 |
+ *                 |     |        |     |        |     |
+ *                 3-----2        3-----2        3-----2
+ *
+ *                 0-----1        0-----1        0-----1
+ *          R(1)   |     |        |     |        |     |
+ *                 |     |        |     |        |     |
+ *                 3-----2        3-----2        3-----2
+ *
+ *                 0-----1        0-----1        0-----1
+ *          R(2)   | CP3 |        |     |        | CP2 |
+ *                 |     |        |     |        |     |
+ *                 3-----2        3-----2        3-----2
+ *
+ *
+ */
+
 #ifndef _PROJECTION_UTILS_H
 #define _PROJECTION_UTILS_H
 
@@ -409,7 +569,7 @@ std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &quad_ve
     for (const auto &point : quad_vertices_ndc)
     {
         float pixel_x = ((point.x / width_ndc) + 0.5f) * width_pxl;
-        float pixel_y = ((-point.y / height_ndc) + 0.5f) * height_pxl; 
+        float pixel_y = ((-point.y / height_ndc) + 0.5f) * height_pxl;
         quad_vertices_pxl.push_back(cv::Point2f(pixel_x, pixel_y));
     }
     return quad_vertices_pxl;
@@ -502,6 +662,9 @@ int updateWallHomography(
  * @brief Prints the coordinates of a quadrilateral's vertices.
  *
  * @param quad_vertices The quadrilateral's vertices.
+ *
+ * @note Use this regular expression to find the ros info and time stamp:
+ *   \[\s*([A-Z]+)\]\s*\[([\d\.]+)\]:
  */
 void dbLogQuadVertices(const std::vector<cv::Point2f> &);
 void dbLogQuadVertices(const std::array<cv::Point2f, 4> &);

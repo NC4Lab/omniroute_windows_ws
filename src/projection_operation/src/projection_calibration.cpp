@@ -446,55 +446,6 @@ int drawQuadImage(std::array<cv::Point2f, 4> quad_vertices_arr)
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-int drawBarycentricImage(std::array<cv::Point2f, 4> quad_vertices_arr)
-{
-    // Divide the quadrilateral into two triangles
-    // Triangle 1: [0, 1, 2]
-    // Triangle 2: [2, 3, 0]
-
-    // Start drawing the triangles
-    glBegin(GL_TRIANGLES);
-
-    // Set the color to white for texture mapping
-    glColor3f(1.0f, 1.0f, 1.0f);
-
-    // --------------- First Triangle -----------------
-    // Triangle formed by vertices [0, 1, 2]
-
-    // Top-left corner of texture (Vertex 0)
-    glTexCoord2f(0.0f, 1.0f);
-    glVertex2f(quad_vertices_arr[0].x, quad_vertices_arr[0].y);
-
-    // Top-right corner of texture (Vertex 1)
-    glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(quad_vertices_arr[1].x, quad_vertices_arr[1].y);
-
-    // Bottom-left corner of texture (Vertex 2)
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(quad_vertices_arr[2].x, quad_vertices_arr[2].y);
-
-    // --------------- Second Triangle -----------------
-    // Triangle formed by vertices [2, 1, 3]
-
-    // Bottom-left corner of texture (Vertex 2)
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(quad_vertices_arr[2].x, quad_vertices_arr[2].y);
-
-    // Top-right corner of texture (Vertex 1)
-    glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(quad_vertices_arr[1].x, quad_vertices_arr[1].y);
-
-    // Bottom-right corner of texture (Vertex 3)
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(quad_vertices_arr[3].x, quad_vertices_arr[3].y);
-
-    // End drawing
-    glEnd();
-
-    // Check and return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__);
-}
-
 int drawWallImages(GLuint fbo_texture_id, ILuint tex_wall_id, ILuint tex_mode_mon_id, ILuint tex_mode_cal_id)
 {
     // Enable OpenGL texture mapping
@@ -644,32 +595,32 @@ void testFindHomography()
 //     // --------------- VARIABLE SETUP ---------------
 
 //     // Sprecify window resolution: 4K resolution (3840x2160)
-//     const int win_height_pxl = 1000;
-//     const int win_width_pxl = 1000;
-//     const float win_aspect_ratio = (float)win_width_pxl / (float)win_height_pxl;
+//     const int win_ht_pxl = 1000;
+//     const int win_wd_pxl = 1000;
+//     const float win_aspect_ratio = (float)win_wd_pxl / (float)win_ht_pxl;
 
 //     // Image size (pixels)
-//     const int img_width_pxl = 300;
-//     const int img_height_pxl = 540;
+//     const int im_wd_pxl = 300;
+//     const int im_ht_pxl = 540;
 
 //     // Image size (NDC)
-//     const float img_width_ndc = (static_cast<float>(img_width_pxl) / static_cast<float>(win_width_pxl)) * 2;
-//     const float img_height_ndc = (static_cast<float>(img_height_pxl) / static_cast<float>(win_height_pxl)) * 2;
+//     const float im_wd_ndc = (static_cast<float>(im_wd_pxl) / static_cast<float>(win_wd_pxl)) * 2;
+//     const float im_ht_ndc = (static_cast<float>(im_ht_pxl) / static_cast<float>(win_ht_pxl)) * 2;
 
 //     // --------------- Specify Transform ---------------
 
 //     // Define origin plane vertices
 //     std::vector<cv::Point2f> origin_vertices = {
-//         cv::Point2f(0.0f, img_height_ndc),          // Top-left
-//         cv::Point2f(img_width_ndc, img_height_ndc), // Top-right
+//         cv::Point2f(0.0f, im_ht_ndc),          // Top-left
+//         cv::Point2f(im_wd_ndc, im_ht_ndc), // Top-right
 //         cv::Point2f(0.0f, 0.0f),                    // Bottom-left
-//         cv::Point2f(img_width_ndc, 0.0f)};          // Bottom-right
+//         cv::Point2f(im_wd_ndc, 0.0f)};          // Bottom-right
 
 //     // Center the image
 //     for (int i = 0; i < 4; ++i)
 //     {
-//         origin_vertices[i].x -= img_width_ndc / 2.0f;
-//         origin_vertices[i].y -= img_height_ndc / 2.0f;
+//         origin_vertices[i].x -= im_wd_ndc / 2.0f;
+//         origin_vertices[i].y -= im_ht_ndc / 2.0f;
 //     }
 
 //     // Copy the origin plane vertices
@@ -687,10 +638,10 @@ void testFindHomography()
 //     // --------------- Convert to pixel coordinates ---------------
 
 //     // Function to convert NDC to Pixel Coordinates
-//     auto convertToPixelCoords = [](const cv::Point2f &ndc_point, int img_width, int img_height)
+//     auto convertToPixelCoords = [](const cv::Point2f &ndc_point, int im_wd, int im_ht)
 //     {
-//         float pixel_x = (ndc_point.x + 1.0f) / 2.0f * img_width;
-//         float pixel_y = (ndc_point.y + 1.0f) / 2.0f * img_height;
+//         float pixel_x = (ndc_point.x + 1.0f) / 2.0f * im_wd;
+//         float pixel_y = (ndc_point.y + 1.0f) / 2.0f * im_ht;
 //         return cv::Point2f(pixel_x, pixel_y);
 //     };
 
@@ -698,14 +649,14 @@ void testFindHomography()
 //     std::vector<cv::Point2f> origin_vertices_pixel;
 //     for (const auto &point : origin_vertices)
 //     {
-//         origin_vertices_pixel.push_back(convertToPixelCoords(point, img_width_pxl, img_height_pxl));
+//         origin_vertices_pixel.push_back(convertToPixelCoords(point, im_wd_pxl, im_ht_pxl));
 //     }
 
 //     // Convert target_vertices to pixel coordinates
 //     std::vector<cv::Point2f> target_vertices_pixel;
 //     for (const auto &point : target_vertices)
 //     {
-//         target_vertices_pixel.push_back(convertToPixelCoords(point, img_width_pxl, img_height_pxl));
+//         target_vertices_pixel.push_back(convertToPixelCoords(point, im_wd_pxl, im_ht_pxl));
 //     }
 
 //     // --------------- OpenGL SETUP ---------------
@@ -714,7 +665,7 @@ void testFindHomography()
 //     glfwInit();
 
 //     // Create a new GLFW window
-//     GLFWwindow *p_window_id = glfwCreateWindow(win_width_pxl, win_height_pxl, "", NULL, NULL);
+//     GLFWwindow *p_window_id = glfwCreateWindow(win_wd_pxl, win_ht_pxl, "", NULL, NULL);
 
 //     // Set the GLFW window as the current OpenGL context
 //     glfwMakeContextCurrent(p_window_id);
@@ -735,7 +686,7 @@ void testFindHomography()
 //     glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
 
 //     // Allocate storage for the texture on the GPU
-//     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, win_width_pxl, win_height_pxl, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+//     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, win_wd_pxl, win_ht_pxl, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
 //     // Set the texture's MIN and MAG filter to linear interpolation.
 //     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -902,42 +853,284 @@ void testFindHomography()
 //     return 0;
 // }
 
-int main(int argc, char **argv)
+// Function to load and setup texture
+GLuint loadTexture(cv::Mat image)
 {
-    // ROS Initialization
-    ros::init(argc, argv, "projection_calibration");
-    ros::NodeHandle n;
-    ros::NodeHandle nh("~");
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.cols,
+                 image.rows, 0, GL_BGR, GL_UNSIGNED_BYTE,
+                 image.data);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER,
+                    GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER,
+                    GL_LINEAR);
+    return textureID;
+}
+
+// OpenGL initialization and setup
+void setupOpenGL()
+{
+    /**
+     * @brief Vertex data for rendering the textured rectangle.
+     *
+     * The array contains 4 vertices, each with 4 floats. The first two floats
+     * represent the vertex coordinates, and the last two represent the texture
+     * coordinates. The vertices are defined in normalized device coordinates (NDC).
+     *
+     * @details 
+     * | Index  | Description      | NDC X  | NDC Y  | Tex X  | Tex Y  |
+     * |--------|------------------|--------|--------|--------|--------|
+     * | 1      | Top-left vertex  | -1.0f  |  1.0f  |  0.0f  |  0.0f  |
+     * | 0      | Top-right vertex |  1.0f  |  1.0f  |  1.0f  |  0.0f  |
+     * | 2      | Bottom-right     |  1.0f  | -1.0f  |  1.0f  |  1.0f  |
+     * | 3      | Bottom-left      | -1.0f  | -1.0f  |  0.0f  |  1.0f  |
+     *
+     * The texture coordinates are flipped vertically to align with OpenCV's top-left origin.
+     */
+    float vertices[] = {
+        -1.0f, 1.0f, 0.0f, 0.0f, // Top-left
+        1.0f, 1.0f, 1.0f, 0.0f,  // Top-right
+        1.0f, -1.0f, 1.0f, 1.0f, // Bottom-right
+        -1.0f, -1.0f, 0.0f, 1.0f // Bottom-left
+    };
+
+    /**
+     * @brief Index data for rendering the textured rectangle using triangles.
+     *
+     * @details
+     *
+     *   Vertices        Triangles
+     *   0-----1          0-----1
+     *   |     |          | \   |
+     *   |     |  ====>   |  \  |
+     *   |     |          |   \ |
+     *   3-----2          3-----2
+     *
+     * This array uses index buffering to specify which vertices from the `vertices`
+     * array form each of the two triangles that make up the rectangle. This technique
+     * allows for the re-use of vertices, thus reducing the amount of data sent to the GPU.
+     */
+    unsigned int indices[] = {
+        0, 1, 2, // First Triangle
+        0, 2, 3  // Second Triangle
+    };
+
+    // Create and bind a Vertex Array Object (VAO)
+    // VAOs store the configuration of multiple Vertex Buffer Objects (VBOs)
+    GLuint VAO, VBO, EBO;
+    glGenVertexArrays(1, &VAO);
+
+    // Generate a Vertex Buffer Object (VBO)
+    // VBOs store vertex data, such as position or color
+    glGenBuffers(1, &VBO);
+
+    // Generate an Element Buffer Object (EBO)
+    // EBOs store index data to avoid duplicating vertex data
+    glGenBuffers(1, &EBO);
+
+    // Bind the VAO to configure the VBOs and their attributes
+    glBindVertexArray(VAO);
+
+    // Bind and initialize the VBO with vertex data
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices),
+                 vertices, GL_STATIC_DRAW);
+
+    // Bind and initialize the EBO with index data
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices),
+                 indices, GL_STATIC_DRAW);
+
+    // Define how OpenGL should interpret the vertex data
+    // Parameters: attribute index, size, type, normalize, stride, offset
+    // This sets up the first attribute (position)
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0);
+
+    // This sets up the second attribute (texture coordinates)
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+}
+
+// Shader sources
+const GLchar *vertexSource = R"glsl(
+    #version 330 core
+    in vec2 position;
+    in vec2 texcoord;
+    out vec2 Texcoord;
+    void main() {
+        Texcoord = texcoord;
+        gl_Position = vec4(position, 0.0, 1.0);
+    }
+)glsl";
+const GLchar *fragmentSource = R"glsl(
+    #version 330 core
+    in vec2 Texcoord;
+    out vec4 outColor;
+    uniform sampler2D tex;
+    void main() {
+        outColor = texture(tex, Texcoord);
+    }
+)glsl";
+
+int main_v2()
+{
+
+    // Specify window resolution size
+    const int win_wd_pxl = 1000;
+    const int win_ht_pxl = 1000;
+
+    // Image size (pixels)
+    const int im_wd_pxl = 300;
+    const int im_ht_pxl = 540;
+
+    // Image size (NDC)
+    const float im_wd_ndc = (static_cast<float>(im_wd_pxl) / static_cast<float>(win_wd_pxl)) * 2;
+    const float im_ht_ndc = (static_cast<float>(im_ht_pxl) / static_cast<float>(win_ht_pxl)) * 2;
+
+    // Initialize GLFW
+    if (!glfwInit())
+    {
+        std::cerr << "Failed to initialize GLFW\n";
+        return -1;
+    }
+    GLFWwindow *window = glfwCreateWindow(win_wd_pxl, win_ht_pxl, "OpenGL", NULL, NULL);
+    if (!window)
+    {
+        std::cerr << "Failed to create window\n";
+        return -1;
+    }
+    glfwMakeContextCurrent(window);
+    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+
+    // Load image using OpenCV
+    std::string img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/1_test_pattern.bmp";
+    // std::string img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/2_manu_pirate.bmp";
+    cv::Mat image = cv::imread(img_path.c_str());
+    if (image.empty())
+    {
+        std::cerr << "Failed to load image\n";
+        return -1;
+    }
+
+    // Populate the source correspondence points
+    /// @note Assumes Y-axis points down
+    std::vector<cv::Point2f> srcPoints = {
+        cv::Point2f(0, 0),                 // Top-left (0,0)
+        cv::Point2f(im_wd_pxl, 0),         // Top-right (1,0)
+        cv::Point2f(im_wd_pxl, im_ht_pxl), // Bottom-right (1,1)
+        cv::Point2f(0, im_ht_pxl)};        // Bottom-left (0,1)
+
+    // Populate the destination correspondence points
+    std::vector<cv::Point2f> dstPoints = {
+        cv::Point2f(375, 230),
+        cv::Point2f(675, 205),
+        cv::Point2f(600, 695),
+        cv::Point2f(350, 770)};
+
+    // Find Homography
+    cv::Mat H = cv::findHomography(srcPoints, dstPoints);
+
+    // Warp Perspective
+    cv::Mat warpedImage;
+    cv::warpPerspective(image, warpedImage, H, cv::Size(win_wd_pxl, win_ht_pxl));
+
+    // Load warpedImage as a texture
+    GLuint texture = loadTexture(warpedImage);
+
+    // Create and compile the vertex shader
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexSource, NULL);
+    glCompileShader(vertexShader);
+
+    // Create and compile the fragment shader
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
+    glCompileShader(fragmentShader);
+
+    // Link the vertex and fragment shader into a shader program
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    glUseProgram(shaderProgram);
+
+    // Print params
+    ROS_INFO("IMAGE DIMS: Rows[%d] Cols[%d]", image.rows, image.cols);
+    ROS_INFO("srcPoints:");
+    dbLogQuadVertices(srcPoints);
+    ROS_INFO("dstPoints:");
+    dbLogQuadVertices(dstPoints);
+    dbLogHomMat(H);
+
+    // Setup OpenGL (unchanged)
+    setupOpenGL();
+
+    // Main loop (unchanged)
+    while (!glfwWindowShouldClose(window))
+    {
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // Use the shader program
+        glUseProgram(shaderProgram);
+
+        // Bind the texture
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
+
+        // Draw the rectangle (2 triangles)
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+        // Swap buffers and check for events
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    // Cleanup
+    glDeleteProgram(shaderProgram);
+    glDeleteShader(fragmentShader);
+    glDeleteShader(vertexShader);
+
+    // Cleanup
+    glfwDestroyWindow(window);
+    glfwTerminate();
+    return 0;
+}
+
+int main_v1()
+{
 
     // --------------- VARIABLE SETUP ---------------
 
     // Sprecify window resolution: 4K resolution (3840x2160)
-    const int win_height_pxl = 1000;
-    const int win_width_pxl = 1000;
-    const float win_aspect_ratio = (float)win_width_pxl / (float)win_height_pxl;
+    const int win_ht_pxl = 1000;
+    const int win_wd_pxl = 1000;
+    const float win_aspect_ratio = (float)win_wd_pxl / (float)win_ht_pxl;
 
     // Image size (pixels)
-    const int img_width_pxl = 300;
-    const int img_height_pxl = 540;
+    const int im_wd_pxl = 300;
+    const int im_ht_pxl = 540;
 
     // Image size (NDC)
-    const float img_width_ndc = (static_cast<float>(img_width_pxl) / static_cast<float>(win_width_pxl)) * 2;
-    const float img_height_ndc = (static_cast<float>(img_height_pxl) / static_cast<float>(win_height_pxl)) * 2;
+    const float im_wd_ndc = (static_cast<float>(im_wd_pxl) / static_cast<float>(win_wd_pxl)) * 2;
+    const float im_ht_ndc = (static_cast<float>(im_ht_pxl) / static_cast<float>(win_ht_pxl)) * 2;
 
     // --------------- Specify Transform ---------------
 
     // Define origin plane vertices
     std::vector<cv::Point2f> origin_vertices_ndc = {
-        cv::Point2f(0.0f, img_height_ndc),          // Top-left
-        cv::Point2f(img_width_ndc, img_height_ndc), // Top-right
-        cv::Point2f(0.0f, 0.0f),                    // Bottom-left
-        cv::Point2f(img_width_ndc, 0.0f)};          // Bottom-right
+        cv::Point2f(0.0f, im_ht_ndc),      // Top-left
+        cv::Point2f(im_wd_ndc, im_ht_ndc), // Top-right
+        cv::Point2f(0.0f, 0.0f),           // Bottom-left
+        cv::Point2f(im_wd_ndc, 0.0f)};     // Bottom-right
 
     // Center the image
     for (int i = 0; i < 4; ++i)
     {
-        origin_vertices_ndc[i].x -= img_width_ndc / 2.0f;
-        origin_vertices_ndc[i].y -= img_height_ndc / 2.0f;
+        origin_vertices_ndc[i].x -= im_wd_ndc / 2.0f;
+        origin_vertices_ndc[i].y -= im_ht_ndc / 2.0f;
     }
 
     // Copy the origin plane vertices
@@ -964,7 +1157,7 @@ int main(int argc, char **argv)
     }
 
     // Create a GLFW window
-    GLFWwindow *window = glfwCreateWindow(win_height_pxl, win_width_pxl, "Projection Calibration", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(win_ht_pxl, win_wd_pxl, "Projection Calibration", NULL, NULL);
     if (window == NULL)
     {
         ROS_ERROR("Failed to create GLFW window");
@@ -985,7 +1178,7 @@ int main(int argc, char **argv)
     glGenTextures(1, &warped_texture_id);
 
     // OpenGL setup
-    glViewport(0, 0, win_width_pxl, win_height_pxl);
+    glViewport(0, 0, win_wd_pxl, win_ht_pxl);
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glOrtho(-1, 1, -1, 1, -1, 1);
@@ -997,49 +1190,30 @@ int main(int argc, char **argv)
     // Load an image using OpenCV
     std::string img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/1_test_pattern.bmp";
     // std::string img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/2_manu_pirate.bmp";
-    cv::Mat img = cv::imread(img_path.c_str());
-    if (img.empty())
+    cv::Mat img_raw = cv::imread(img_path.c_str());
+    if (img_raw.empty())
     {
         ROS_ERROR("Failed to load image");
         return -1;
     }
+    if (img_raw.type() == CV_8UC3)
+    {
+        ROS_INFO("Color format is RGB (BGR order)");
+    }
+    else if (img_raw.type() == CV_8UC1)
+    {
+        ROS_INFO("Color format is grayscale");
+    }
+    else
+    {
+        ROS_INFO("Color format is not RGB (BGR order) or grayscale");
+    }
+    ROS_INFO("Number of channels in the image: %d", img_raw.channels());
 
-    // Convert BGR to RGB
-    cv::Mat img_rgb;
-    cv::cvtColor(img, img_rgb, cv::COLOR_BGR2RGB);
-
-    // --------------- Convert to pixel coordinates ---------------
+    // --------------- Get pixel coordinates ---------------
 
     // Function to convert NDC to Pixel Coordinates
-    // auto convertToPixelCoords = [](std::vector<cv::Point2f> &quad_vertices, int width_pxl, int height_pxl, float width_ndc, float height_ndc)
-    // {
-    //     float min_x = std::numeric_limits<float>::max();
-    //     float min_y = std::numeric_limits<float>::max();
-
-    //     // First pass: Convert from NDC [-1, 1] to pixel [0, width or height] and find minimum x and y
-    //     for (auto &point : quad_vertices)
-    //     {
-    //         point.x = ((point.x / width_ndc) + 0.5f) * width_pxl;
-    //         point.y = ((-point.y / height_ndc) + 0.5f) * height_pxl; // Invert y to match OpenCV's top-left origin
-
-    //         min_x = std::min(min_x, point.x);
-    //         min_y = std::min(-min_y, point.y);
-    //     }
-
-    //     // Calculate the shifts needed to make all coordinates non-negative
-    //     float x_shift = (min_x < 0) ? -min_x : 0;
-    //     float y_shift = (min_y < 0) ? -min_y : 0;
-
-    //     // Second pass: Shift all points by the calculated shifts
-    //     for (auto &point : quad_vertices)
-    //     {
-    //         point.x += x_shift;
-    //         point.y += y_shift;
-    //     }
-    // };
-
-        // Function to convert NDC to Pixel Coordinates
-    auto convertToPixelCoords = [](std::vector<cv::Point2f> &quad_vertices, int width_pxl, int height_pxl, float width_ndc, float height_ndc)
+    auto convertToPixelCoords = [](std::vector<cv::Point2f> &quad_vertices, int wd_pxl, int ht_pxl, float width_ndc, float height_ndc)
     {
         float min_x = std::numeric_limits<float>::max();
         float min_y = std::numeric_limits<float>::max();
@@ -1047,8 +1221,8 @@ int main(int argc, char **argv)
         // First pass: Convert from NDC [-1, 1] to pixel [0, width or height] and find minimum x and y
         for (const auto &point : quad_vertices)
         {
-            float x_pxl = ((point.x / width_ndc) + 0.5f) * width_pxl;
-            float y_pxl = ((-point.y / height_ndc) + 0.5f) * height_pxl; // Invert y to match OpenCV's top-left origin
+            float x_pxl = ((point.x / width_ndc) + 0.5f) * wd_pxl;
+            float y_pxl = ((-point.y / height_ndc) + 0.5f) * ht_pxl; // Invert y to match OpenCV's top-left origin
 
             min_x = std::min(min_x, x_pxl);
             min_y = std::min(min_y, y_pxl);
@@ -1061,10 +1235,31 @@ int main(int argc, char **argv)
         // Second pass: Shift all points by the calculated shifts
         for (auto &point : quad_vertices)
         {
-            point.x = ((point.x / width_ndc) + 0.5f) * width_pxl + x_shift;
-            point.y = ((-point.y / height_ndc) + 0.5f) * height_pxl + y_shift;
+            point.x = ((point.x / width_ndc) + 0.5f) * wd_pxl + x_shift;
+            point.y = ((-point.y / height_ndc) + 0.5f) * ht_pxl + y_shift;
         }
     };
+
+    // Convert origin_vertices to pixel coordinates
+    std::vector<cv::Point2f> origin_vertices_pixel = origin_vertices_ndc;
+    convertToPixelCoords(origin_vertices_pixel, im_wd_pxl, im_ht_pxl, im_wd_ndc, im_ht_ndc);
+
+    // Convert target_vertices to pixel coordinates
+    std::vector<cv::Point2f> target_vertices_pixel = target_vertices_ndc;
+    convertToPixelCoords(target_vertices_pixel, im_wd_pxl, im_ht_pxl, im_wd_ndc, im_ht_ndc);
+
+    // --------------- Warp the Image ---------------
+
+    // Find the bounding rectangle for the target vertices
+    cv::Rect targ_bounding_rec = cv::boundingRect(target_vertices_pixel);
+    cv::Size targ_img_size(targ_bounding_rec.width, targ_bounding_rec.height);
+
+    // Find Homography and Warp Image
+    cv::Mat img_warped;
+    cv::Mat H = cv::findHomography(origin_vertices_pixel, target_vertices_pixel);
+    cv::warpPerspective(img_raw, img_warped, H, targ_img_size);
+
+    // --------------- Get texture coordinates ---------------
 
     auto scaleQuadVert2UnitSquare = [](std::vector<cv::Point2f> &quad_vertices)
     {
@@ -1093,44 +1288,19 @@ int main(int argc, char **argv)
         }
     };
 
-    // std::vector<cv::Point2f> convertOpenGLToOpenCV(const std::vector<cv::Point2f> &vertices, int imageHeight)
-    // {
-    //     std::vector<cv::Point2f> convertedVertices;
-
-    //     for (const cv::Point2f &vertex : vertices)
-    //     {
-    //         // Flip the y-coordinate to change from OpenGL to OpenCV
-    //         cv::Point2f convertedVertex(vertex.x, imageHeight - vertex.y);
-
-    //         convertedVertices.push_back(convertedVertex);
-    //     }
-
-    //     return convertedVertices;
-    // };
-
-     // --------------- Old Pixel Conversion ---------------
-
-    // Convert origin_vertices to pixel coordinates
-    std::vector<cv::Point2f> origin_vertices_pixel = origin_vertices_ndc;
-    convertToPixelCoords(origin_vertices_pixel, img_width_pxl, img_height_pxl, img_width_ndc, img_height_ndc);
-
-    // Convert target_vertices to pixel coordinates
-    std::vector<cv::Point2f> target_vertices_pixel = target_vertices_ndc;
-    convertToPixelCoords(target_vertices_pixel, img_width_pxl, img_height_pxl, img_width_ndc, img_height_ndc);
-
-    // Find the bounding rectangle for the target vertices
-    cv::Rect targ_bounding_rec = cv::boundingRect(target_vertices_pixel);
-    cv::Size targ_img_size(targ_bounding_rec.width, targ_bounding_rec.height);
-
-    // --------------- Warp the Image ---------------
-
-    // Find Homography and Warp Image
-    cv::Mat img_warped;
-    cv::Mat H = cv::findHomography(origin_vertices_pixel, target_vertices_pixel);
-    cv::warpPerspective(img_rgb, img_warped, H, targ_img_size);
+    // Flip the y-coordinate to change from OpenGL to OpenCV
+    auto invertQuadVertYAxis = [](std::vector<cv::Point2f> &quad_vertices, float y_max)
+    {
+        for (cv::Point2f &point : quad_vertices)
+            point.y = y_max - point.y;
+    };
 
     // Convert target vertices to texture coordinates
     std::vector<cv::Point2f> target_vertices_uv = target_vertices_ndc;
+    scaleQuadVert2UnitSquare(target_vertices_uv);
+
+    // Flip the y-axis
+    // invertQuadVertYAxis(target_vertices_uv);
 
     // --------------- Debugging ---------------
 
@@ -1142,14 +1312,23 @@ int main(int argc, char **argv)
     // Log the homography matrix and vertices
     ROS_INFO("[COMPUTE HOMOGRAPHY] target_vertices_pixel:");
     dbLogQuadVertices(target_vertices_pixel);
-    // ROS_INFO("[COMPUTE HOMOGRAPHY] target_vertices_ndc:");
-    // dbLogQuadVertices(target_vertices_ndc);
-    // ROS_INFO("[COMPUTE HOMOGRAPHY] target_vertices_uv:");
-    // dbLogQuadVertices(target_vertices_uv);
+    ROS_INFO("[COMPUTE HOMOGRAPHY] target_vertices_ndc:");
+    dbLogQuadVertices(target_vertices_ndc);
+    ROS_INFO("[COMPUTE HOMOGRAPHY] target_vertices_uv:");
+    dbLogQuadVertices(target_vertices_uv);
     // dbLogHomMat(H);
 
     // Log targ_img_size
     ROS_INFO("PIXEL BOUNDING BOX: Width[%d] Height[%d]", targ_img_size.width, targ_img_size.height);
+
+    // Define origin plane vertices
+    std::vector<cv::Point2f> temp_vertices = {
+        cv::Point2f(50.0f, 300.0f),  // Top-left
+        cv::Point2f(150.0f, 350.0f), // Top-right
+        cv::Point2f(0.0f, 0.0f),     // Bottom-left
+        cv::Point2f(100.0f, 50.0f)}; // Bottom-right
+    ROS_INFO("[COMPUTE HOMOGRAPHY] Example Vertices:");
+    dbLogQuadVertices(temp_vertices);
 
     // --------------- Draw Maker setup ---------------
 
@@ -1260,363 +1439,367 @@ int main(int argc, char **argv)
     return 0;
 }
 
-// int main(int argc, char **argv)
-// {
+int main(int argc, char **argv)
+{
 
-//     //  _______________ SETUP _______________
+    //  _______________ SETUP _______________
 
-//     // ROS Initialization
-//     ros::init(argc, argv, "projection_calibration", ros::init_options::AnonymousName);
-//     ros::NodeHandle n;
-//     ros::NodeHandle nh("~");
-//     ROS_INFO("RUNNING MAIN");
+    // ROS Initialization
+    ros::init(argc, argv, "projection_calibration", ros::init_options::AnonymousName);
+    ros::NodeHandle n;
+    ros::NodeHandle nh("~");
+    ROS_INFO("RUNNING MAIN");
 
-//     // Log setup parameters
-//     ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
-//     ROS_INFO("[SETUP] Display: Width[%d] Height[%d] AR[%0.2f]", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
-//     ROS_INFO("[SETUP] Wall (Pxl): Width[%d] Height[%d]", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
-//     ROS_INFO("[SETUP] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_WIDTH_NDC, WALL_HEIGHT_NDC, WALL_SPACE_HORZ_NDC, WALL_SPACE_VERT_NDC);
-//     ROS_INFO("[SETUP] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", PROJ_WIN_WIDTH_PXL, MAZE_HEIGHT_NDC);
+    // Log setup parameters
+    ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
+    ROS_INFO("[SETUP] Display: Width[%d] Height[%d] AR[%0.2f]", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
+    ROS_INFO("[SETUP] Wall (Pxl): Width[%d] Height[%d]", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
+    ROS_INFO("[SETUP] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_WIDTH_NDC, WALL_HEIGHT_NDC, WALL_SPACE_HORZ_NDC, WALL_SPACE_VERT_NDC);
+    ROS_INFO("[SETUP] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", PROJ_WIN_WIDTH_PXL, MAZE_HEIGHT_NDC);
 
-//     // --------------- VARIABLE SETUP ---------------
+    // TEMP
+    main_v2();
+    return 0;
 
-//     // Initialze control points
-//     initControlPointCoordinates(CTRL_PNT_DATA);
+    // --------------- VARIABLE SETUP ---------------
 
-//     // Initialize wall parameter datasets
-//     if (updateWallVertices(CTRL_PNT_DATA, WALL_VERT_DATA) != 0)
-//     {
-//         ROS_ERROR("[SETUP] Failed to Initalize the Wall Vertices Dataset");
-//         return -1;
-//     }
+    // Initialze control points
+    initControlPointCoordinates(CTRL_PNT_DATA);
 
-//     // Initialize homography matrix dataset
-//     if (updateWallHomography(CTRL_PNT_DATA, WALL_VERT_DATA, WALL_HMAT_DATA) != 0)
-//     {
-//         ROS_ERROR("[SETUP] Failed to Initalize the Wall Homography Dataset");
-//         return -1;
-//     }
+    // Initialize wall parameter datasets
+    if (updateWallVertices(CTRL_PNT_DATA, WALL_VERT_DATA) != 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Initalize the Wall Vertices Dataset");
+        return -1;
+    }
 
-//     // --------------- OpenGL SETUP ---------------
+    // Initialize homography matrix dataset
+    if (updateWallHomography(CTRL_PNT_DATA, WALL_VERT_DATA, WALL_HMAT_DATA) != 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Initalize the Wall Homography Dataset");
+        return -1;
+    }
 
-//     // Initialize GLFW and set error callback
-//     glfwSetErrorCallback(callbackErrorGLFW);
-//     if (!glfwInit())
-//     {
-//         checkErrorGLFW(__LINE__, __FILE__);
-//         ROS_ERROR("[GLFW] Initialization Failed");
-//         return -1;
-//     }
+    // --------------- OpenGL SETUP ---------------
 
-//     // Discover available monitors
-//     pp_monitorIDVec = glfwGetMonitors(&nMonitors);
-//     if (!pp_monitorIDVec || nMonitors == 0) // Added this check
-//     {
-//         ROS_ERROR("[GLFW] No monitors found");
-//         return -1;
-//     }
-//     ROS_INFO("[GLFW] Found %d monitors", nMonitors);
+    // Initialize GLFW and set error callback
+    glfwSetErrorCallback(callbackErrorGLFW);
+    if (!glfwInit())
+    {
+        checkErrorGLFW(__LINE__, __FILE__);
+        ROS_ERROR("[GLFW] Initialization Failed");
+        return -1;
+    }
 
-//     // Create a new GLFW window
-//     p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
-//     checkErrorGLFW(__LINE__, __FILE__);
-//     if (!p_windowID)
-//     {
-//         glfwTerminate();
-//         ROS_ERROR("[GLFW] Create Window Failed");
-//         return -1;
-//     }
+    // Discover available monitors
+    pp_monitorIDVec = glfwGetMonitors(&nMonitors);
+    if (!pp_monitorIDVec || nMonitors == 0) // Added this check
+    {
+        ROS_ERROR("[GLFW] No monitors found");
+        return -1;
+    }
+    ROS_INFO("[GLFW] Found %d monitors", nMonitors);
 
-//     // Set the GLFW window as the current OpenGL context
-//     glfwMakeContextCurrent(p_windowID);
+    // Create a new GLFW window
+    p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
+    checkErrorGLFW(__LINE__, __FILE__);
+    if (!p_windowID)
+    {
+        glfwTerminate();
+        ROS_ERROR("[GLFW] Create Window Failed");
+        return -1;
+    }
 
-//     // Load OpenGL extensions using GLAD
-//     if (!gladLoadGL()) // Added this check
-//     {
-//         ROS_ERROR("[GLAD] Failed to initialize GLAD");
-//         return -1;
-//     }
+    // Set the GLFW window as the current OpenGL context
+    glfwMakeContextCurrent(p_windowID);
 
-//     // Enable OpenGL debugging context
-//     glEnable(GL_DEBUG_OUTPUT);
-//     glDebugMessageCallback(callbackErrorOpenGL, 0);
+    // Load OpenGL extensions using GLAD
+    if (!gladLoadGL()) // Added this check
+    {
+        ROS_ERROR("[GLAD] Failed to initialize GLAD");
+        return -1;
+    }
 
-//     // Set GLFW callbacks for keyboard and framebuffer size events
-//     glfwSetKeyCallback(p_windowID, callbackKeyBinding);
-//     glfwSetFramebufferSizeCallback(p_windowID, callbackFrameBufferSizeGLFW);
+    // Enable OpenGL debugging context
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(callbackErrorOpenGL, 0);
 
-//     // Initialize Framebuffer Object (FBO) and its texture
-//     GLuint fbo_id = 0;
-//     GLuint fbo_texture_id = 0;
+    // Set GLFW callbacks for keyboard and framebuffer size events
+    glfwSetKeyCallback(p_windowID, callbackKeyBinding);
+    glfwSetFramebufferSizeCallback(p_windowID, callbackFrameBufferSizeGLFW);
 
-//     // Generate an FBO and bind it
-//     glGenFramebuffers(1, &fbo_id);
-//     glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
-//     if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
-//     {
-//         ROS_ERROR("[OpenGL] Failed to Generate FBO");
-//         return -1;
-//     }
+    // Initialize Framebuffer Object (FBO) and its texture
+    GLuint fbo_id = 0;
+    GLuint fbo_texture_id = 0;
 
-//     // Generate a texture for the FBO
-//     glGenTextures(1, &fbo_texture_id);
-//     glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
-//     if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
-//     {
-//         ROS_ERROR("[OpenGL] Failed to Generate FBO Texture");
-//         return -1;
-//     }
+    // Generate an FBO and bind it
+    glGenFramebuffers(1, &fbo_id);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
+    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+    {
+        ROS_ERROR("[OpenGL] Failed to Generate FBO");
+        return -1;
+    }
 
-//     // Allocate storage for the texture on the GPU
-//     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    // Generate a texture for the FBO
+    glGenTextures(1, &fbo_texture_id);
+    glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
+    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+    {
+        ROS_ERROR("[OpenGL] Failed to Generate FBO Texture");
+        return -1;
+    }
 
-//     // Set the texture's MIN and MAG filter to linear interpolation.
-//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Handles sampling when the texture is scaled down
-//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Handles sampling when the texture is scaled up
-//     if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
-//     {
-//         ROS_ERROR("[OpenGL] Failed to Set FBO Texture Parameters");
-//         return -1;
-//     }
+    // Allocate storage for the texture on the GPU
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
 
-//     // Attach the texture to the FBO
-//     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture_id, 0);
+    // Set the texture's MIN and MAG filter to linear interpolation.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Handles sampling when the texture is scaled down
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Handles sampling when the texture is scaled up
+    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+    {
+        ROS_ERROR("[OpenGL] Failed to Set FBO Texture Parameters");
+        return -1;
+    }
 
-//     // Check FBO completeness
-//     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-//     if (status != GL_FRAMEBUFFER_COMPLETE)
-//     {
-//         // Handle incomplete FBO, possibly log an error or exit
-//         ROS_ERROR("[OpenGL] FBO is not complete");
-//         return -1;
-//     }
+    // Attach the texture to the FBO
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture_id, 0);
 
-//     // Unbind the FBO (bind to default framebuffer)
-//     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-//     if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
-//     {
-//         ROS_ERROR("[OpenGL] Failed to Unbind FBO");
-//         return -1;
-//     }
+    // Check FBO completeness
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE)
+    {
+        // Handle incomplete FBO, possibly log an error or exit
+        ROS_ERROR("[OpenGL] FBO is not complete");
+        return -1;
+    }
 
-//     // Update monitor and window mode settings
-//     updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
+    // Unbind the FBO (bind to default framebuffer)
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+    {
+        ROS_ERROR("[OpenGL] Failed to Unbind FBO");
+        return -1;
+    }
 
-//     // Log OpenGL versions
-//     const GLubyte *opengl_version = glGetString(GL_VERSION);
-//     ROS_INFO("[OpenGL] Initialized: Version [%s]", opengl_version);
+    // Update monitor and window mode settings
+    updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
 
-//     // Log GLFW versions
-//     int glfw_major, glfw_minor, glfw_rev;
-//     glfwGetVersion(&glfw_major, &glfw_minor, &glfw_rev);
-//     ROS_INFO("[GLFW] Initialized: Version: %d.%d.%d", glfw_major, glfw_minor, glfw_rev);
+    // Log OpenGL versions
+    const GLubyte *opengl_version = glGetString(GL_VERSION);
+    ROS_INFO("[OpenGL] Initialized: Version [%s]", opengl_version);
 
-//     // --------------- DevIL SETUP ---------------
+    // Log GLFW versions
+    int glfw_major, glfw_minor, glfw_rev;
+    glfwGetVersion(&glfw_major, &glfw_minor, &glfw_rev);
+    ROS_INFO("[GLFW] Initialized: Version: %d.%d.%d", glfw_major, glfw_minor, glfw_rev);
 
-//     // Initialize DevIL library
-//     ilInit();
-//     if (checkErrorDevIL(__LINE__, __FILE__) != 0)
-//         return -1;
+    // --------------- DevIL SETUP ---------------
 
-//     // Log the DevIL version
-//     ILint version = ilGetInteger(IL_VERSION_NUM);
-//     ROS_INFO("[DevIL] Intitalized: Version[%d]", version);
+    // Initialize DevIL library
+    ilInit();
+    if (checkErrorDevIL(__LINE__, __FILE__) != 0)
+        return -1;
 
-//     // Load images
-//     if (loadImgTextures(imgWallPathVec, texWallIDVec) != 0)
-//     {
-//         ROS_ERROR("[DevIL] Failed to load wall images");
-//         return -1;
-//     }
-//     if (loadImgTextures(imgMonPathVec, texMonIDVec) != 0)
-//     {
-//         ROS_ERROR("[DevIL] Failed to load monitor images");
-//         return -1;
-//     }
-//     if (loadImgTextures(imgCalPathVec, texCalIDVec) != 0)
-//     {
-//         ROS_ERROR("[DevIL] Failed to load calibration images");
-//         return -1;
-//     }
+    // Log the DevIL version
+    ILint version = ilGetInteger(IL_VERSION_NUM);
+    ROS_INFO("[DevIL] Intitalized: Version[%d]", version);
 
-//     // _______________ MAIN LOOP _______________
+    // Load images
+    if (loadImgTextures(imgWallPathVec, texWallIDVec) != 0)
+    {
+        ROS_ERROR("[DevIL] Failed to load wall images");
+        return -1;
+    }
+    if (loadImgTextures(imgMonPathVec, texMonIDVec) != 0)
+    {
+        ROS_ERROR("[DevIL] Failed to load monitor images");
+        return -1;
+    }
+    if (loadImgTextures(imgCalPathVec, texCalIDVec) != 0)
+    {
+        ROS_ERROR("[DevIL] Failed to load calibration images");
+        return -1;
+    }
 
-//     bool is_error = false;
-//     while (!glfwWindowShouldClose(p_windowID) && ros::ok())
-//     {
+    // _______________ MAIN LOOP _______________
 
-//         // --------------- Check Kayboard Callback Flags ---------------
+    bool is_error = false;
+    while (!glfwWindowShouldClose(p_windowID) && ros::ok())
+    {
 
-//         // Load XML file
-//         if (F.loadXML)
-//         {
-//             std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
-//             loadCoordinatesXML(file_path, 3, homMat, ctrlPointParams);
-//             F.loadXML = false;
-//         }
+        // --------------- Check Kayboard Callback Flags ---------------
 
-//         // Save XML file
-//         if (F.saveXML)
-//         {
-//             std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
-//             saveCoordinatesXML(homMat, ctrlPointParams, file_path);
-//             F.saveXML = false;
-//         }
+        // Load XML file
+        if (F.loadXML)
+        {
+            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
+            loadCoordinatesXML(file_path, 3, homMat, ctrlPointParams);
+            F.loadXML = false;
+        }
 
-//         // Update the window monitor and mode
-//         if (F.updateWindowMonMode)
-//         {
-//             if (updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen) != 0)
-//             {
-//                 ROS_ERROR("[MAIN] Update Window Monitor Mode Threw Error");
-//                 is_error = true;
-//                 break;
-//             }
-//             F.updateWindowMonMode = false;
-//         }
+        // Save XML file
+        if (F.saveXML)
+        {
+            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
+            saveCoordinatesXML(homMat, ctrlPointParams, file_path);
+            F.saveXML = false;
+        }
 
-//         // Initialize/reinitialize control point coordinate dataset
-//         if (F.initControlPointMarkers)
-//         {
-//             initControlPointCoordinates(CTRL_PNT_DATA);
-//             F.initControlPointMarkers = false;
-//         }
+        // Update the window monitor and mode
+        if (F.updateWindowMonMode)
+        {
+            if (updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen) != 0)
+            {
+                ROS_ERROR("[MAIN] Update Window Monitor Mode Threw Error");
+                is_error = true;
+                break;
+            }
+            F.updateWindowMonMode = false;
+        }
 
-//         // Recompute wall vertices and homography matrices
-//         if (F.updateWallDatasets)
-//         {
-//             // Initialize wall parameter datasets
-//             if (updateWallVertices(CTRL_PNT_DATA, WALL_VERT_DATA) != 0)
-//             {
-//                 ROS_ERROR("[MAIN] Update of Wall Vertices Datasets Failed");
-//                 return -1;
-//             }
+        // Initialize/reinitialize control point coordinate dataset
+        if (F.initControlPointMarkers)
+        {
+            initControlPointCoordinates(CTRL_PNT_DATA);
+            F.initControlPointMarkers = false;
+        }
 
-//             // Initialize homography matrix dataset
-//             if (updateWallHomography(CTRL_PNT_DATA, WALL_VERT_DATA, WALL_HMAT_DATA) != 0)
-//             {
-//                 ROS_ERROR("[MAIN] Update of Wall Homography Datasets Failed");
-//                 return -1;
-//             }
-//             F.updateWallDatasets = false;
-//         }
+        // Recompute wall vertices and homography matrices
+        if (F.updateWallDatasets)
+        {
+            // Initialize wall parameter datasets
+            if (updateWallVertices(CTRL_PNT_DATA, WALL_VERT_DATA) != 0)
+            {
+                ROS_ERROR("[MAIN] Update of Wall Vertices Datasets Failed");
+                return -1;
+            }
 
-//         // --------------- Handle Image Processing for Next Frame ---------------
+            // Initialize homography matrix dataset
+            if (updateWallHomography(CTRL_PNT_DATA, WALL_VERT_DATA, WALL_HMAT_DATA) != 0)
+            {
+                ROS_ERROR("[MAIN] Update of Wall Homography Datasets Failed");
+                return -1;
+            }
+            F.updateWallDatasets = false;
+        }
 
-//         // Clear back buffer for new frame
-//         glClear(GL_COLOR_BUFFER_BIT);
-//         if (checkErrorOpenGL(__LINE__, __FILE__))
-//         {
-//             is_error = true;
-//             break;
-//         }
+        // --------------- Handle Image Processing for Next Frame ---------------
 
-//         // Draw/update wall images
-//         if (drawWallImages(fbo_texture_id, texWallIDVec[imgWallInd], texMonIDVec[winMonInd], texCalIDVec[calModeInd]) != 0)
-//         {
-//             ROS_ERROR("[MAIN] Draw Walls Threw Error");
-//             is_error = true;
-//             break;
-//         }
+        // Clear back buffer for new frame
+        glClear(GL_COLOR_BUFFER_BIT);
+        if (checkErrorOpenGL(__LINE__, __FILE__))
+        {
+            is_error = true;
+            break;
+        }
 
-//         // Draw/update control point markers
-//         if (updateControlPointMarkers() != 0)
-//         {
-//             ROS_ERROR("[MAIN] Draw Control Point Threw Error");
-//             is_error = true;
-//             break;
-//         }
+        // Draw/update wall images
+        if (drawWallImages(fbo_texture_id, texWallIDVec[imgWallInd], texMonIDVec[winMonInd], texCalIDVec[calModeInd]) != 0)
+        {
+            ROS_ERROR("[MAIN] Draw Walls Threw Error");
+            is_error = true;
+            break;
+        }
 
-//         // Swap buffers and poll events
-//         glfwSwapBuffers(p_windowID);
-//         if (
-//             checkErrorGLFW(__LINE__, __FILE__) ||
-//             checkErrorOpenGL(__LINE__, __FILE__))
-//         {
-//             is_error = true;
-//             break;
-//         }
+        // Draw/update control point markers
+        if (updateControlPointMarkers() != 0)
+        {
+            ROS_ERROR("[MAIN] Draw Control Point Threw Error");
+            is_error = true;
+            break;
+        }
 
-//         // Poll events
-//         glfwPollEvents();
+        // Swap buffers and poll events
+        glfwSwapBuffers(p_windowID);
+        if (
+            checkErrorGLFW(__LINE__, __FILE__) ||
+            checkErrorOpenGL(__LINE__, __FILE__))
+        {
+            is_error = true;
+            break;
+        }
 
-//         // Exit condition
-//         if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_windowID))
-//             break;
-//     }
+        // Poll events
+        glfwPollEvents();
 
-//     // _______________ CLEANUP _______________
-//     ROS_INFO("SHUTTING DOWN");
+        // Exit condition
+        if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_windowID))
+            break;
+    }
 
-//     // Check which condition caused the loop to exit
-//     if (!ros::ok())
-//         ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
-//     else if (glfwWindowShouldClose(p_windowID))
-//         ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
-//     else if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-//         ROS_INFO("[LOOP TERMINATION] Escape Key was Pressed");
-//     else if (is_error)
-//         ROS_INFO("[LOOP TERMINATION] Error Thrown");
-//     else
-//         ROS_INFO("[LOOP TERMINATION] Reason Unknown");
+    // _______________ CLEANUP _______________
+    ROS_INFO("SHUTTING DOWN");
 
-//     // Delete FBO
-//     if (fbo_id != 0)
-//     {
-//         glDeleteFramebuffers(1, &fbo_id);
-//         if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
-//             ROS_WARN("[SHUTDOWN] Failed to Delete FBO");
-//         else
-//             ROS_INFO("[SHUTDOWN] Deleted FBO");
-//     }
-//     else
-//         ROS_WARN("[SHUTDOWN] No FBO to Delete");
+    // Check which condition caused the loop to exit
+    if (!ros::ok())
+        ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
+    else if (glfwWindowShouldClose(p_windowID))
+        ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
+    else if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        ROS_INFO("[LOOP TERMINATION] Escape Key was Pressed");
+    else if (is_error)
+        ROS_INFO("[LOOP TERMINATION] Error Thrown");
+    else
+        ROS_INFO("[LOOP TERMINATION] Reason Unknown");
 
-//     // Delete FBO texture
-//     if (fbo_texture_id != 0)
-//     {
-//         glDeleteTextures(1, &fbo_texture_id);
-//         if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
-//             ROS_WARN("[SHUTDOWN] Failed to Delete FBO Texture");
-//         else
-//             ROS_INFO("[SHUTDOWN] Deleted FBO Texture");
-//     }
-//     else
-//         ROS_WARN("[SHUTDOWN] No FBO Texture to Delete");
+    // Delete FBO
+    if (fbo_id != 0)
+    {
+        glDeleteFramebuffers(1, &fbo_id);
+        if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+            ROS_WARN("[SHUTDOWN] Failed to Delete FBO");
+        else
+            ROS_INFO("[SHUTDOWN] Deleted FBO");
+    }
+    else
+        ROS_WARN("[SHUTDOWN] No FBO to Delete");
 
-//     // Delete DevIL images
-//     if (deleteImgTextures(texWallIDVec) == 0)
-//         ROS_INFO("[SHUTDOWN] Deleted DevIL Wall Images");
-//     if (deleteImgTextures(texMonIDVec) == 0)
-//         ROS_INFO("[SHUTDOWN] Deleted DevIL Monitor Images");
-//     if (deleteImgTextures(texCalIDVec) == 0)
-//         ROS_INFO("[SHUTDOWN] Deleted DevIL Calibration Images");
+    // Delete FBO texture
+    if (fbo_texture_id != 0)
+    {
+        glDeleteTextures(1, &fbo_texture_id);
+        if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+            ROS_WARN("[SHUTDOWN] Failed to Delete FBO Texture");
+        else
+            ROS_INFO("[SHUTDOWN] Deleted FBO Texture");
+    }
+    else
+        ROS_WARN("[SHUTDOWN] No FBO Texture to Delete");
 
-//     // Destroy GLFW window
-//     if (p_windowID)
-//     {
-//         glfwDestroyWindow(p_windowID);
-//         p_windowID = nullptr;
-//         if (checkErrorGLFW(__LINE__, __FILE__) != 0)
-//             ROS_WARN("[SHUTDOWN] Failed to Destroy GLFW Window");
-//         else
-//             ROS_INFO("[SHUTDOWN] Destroyed GLFW Window");
-//     }
-//     else
-//     {
-//         ROS_WARN("[SHUTDOWN] No GLFW window to destroy");
-//     }
+    // Delete DevIL images
+    if (deleteImgTextures(texWallIDVec) == 0)
+        ROS_INFO("[SHUTDOWN] Deleted DevIL Wall Images");
+    if (deleteImgTextures(texMonIDVec) == 0)
+        ROS_INFO("[SHUTDOWN] Deleted DevIL Monitor Images");
+    if (deleteImgTextures(texCalIDVec) == 0)
+        ROS_INFO("[SHUTDOWN] Deleted DevIL Calibration Images");
 
-//     // Shutdown DevIL
-//     ilShutDown();
-//     checkErrorDevIL(__LINE__, __FILE__);
-//     ROS_INFO("[SHUTDOWN] Shutdown DevIL");
+    // Destroy GLFW window
+    if (p_windowID)
+    {
+        glfwDestroyWindow(p_windowID);
+        p_windowID = nullptr;
+        if (checkErrorGLFW(__LINE__, __FILE__) != 0)
+            ROS_WARN("[SHUTDOWN] Failed to Destroy GLFW Window");
+        else
+            ROS_INFO("[SHUTDOWN] Destroyed GLFW Window");
+    }
+    else
+    {
+        ROS_WARN("[SHUTDOWN] No GLFW window to destroy");
+    }
 
-//     // Terminate GLFW
-//     glfwTerminate();
-//     checkErrorGLFW(__LINE__, __FILE__);
-//     ROS_INFO("[SHUTDOWN] Terminated GLFW");
+    // Shutdown DevIL
+    ilShutDown();
+    checkErrorDevIL(__LINE__, __FILE__);
+    ROS_INFO("[SHUTDOWN] Shutdown DevIL");
 
-//     // Return success
-//     return is_error ? -1 : 0;
-// }
+    // Terminate GLFW
+    glfwTerminate();
+    checkErrorGLFW(__LINE__, __FILE__);
+    ROS_INFO("[SHUTDOWN] Terminated GLFW");
+
+    // Return success
+    return is_error ? -1 : 0;
+}

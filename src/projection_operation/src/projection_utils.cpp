@@ -695,25 +695,6 @@ int updateWallHomography(
     return 0;
 }
 
-void dbLogCtrlPointParams(std::array<std::array<float, 6>, 4> ctrl_point_params)
-{
-    ROS_INFO("Control Point Parameters");
-    ROS_INFO("CP  |  X-Org   |  Y-Org   |    Width  |    Height  |  ShearX |  ShearY  |");
-    ROS_INFO("---------------------------------------------------------");
-    for (int i = 0; i < 4; ++i)
-    {
-        ROS_INFO("[%d] |  %6.2f  |  %6.2f  |  %6.2f   |  %6.2f   |  %6.2f",
-                 i,
-                 ctrl_point_params[i][0],
-                 ctrl_point_params[i][1],
-                 ctrl_point_params[i][2],
-                 ctrl_point_params[i][3],
-                 ctrl_point_params[i][4],
-                 ctrl_point_params[i][5]);
-    }
-    ROS_INFO("---------------------------------------------------------");
-}
-
 void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
 {
     dbLogQuadVertices(quadVec2Arr(quad_vertices));
@@ -721,31 +702,68 @@ void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
 
 void dbLogQuadVertices(const std::array<cv::Point2f, 4> &quad_vertices)
 {
-    ROS_INFO("         Quad Vertices               ");
-    ROS_INFO("=====================================");
-    ROS_INFO("    |      Left     |     Right     |");
-
-    ROS_INFO("-------------------------------------");
-    ROS_INFO("    |   X   ,   Y   |   X   ,   Y   |");
-    ROS_INFO("-------------------------------------");
+    ROS_INFO("         Quad Vertices             ");
+    ROS_INFO("===================================");
+    ROS_INFO("    |     Left     |     Right    |");
 
     if (std::any_of(quad_vertices.begin(), quad_vertices.end(), [](const cv::Point2f &point)
-                    { return point.x > 1.0f || point.y > 1.0f; }))
+                    { return point.x > 10.0f || point.y > 10.0f; }))
     {
-        ROS_INFO("Top | %+5.0f , %+5.0f | %+5.0f , %+5.0f |",
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("    |V0  X , Y     |V1  X , Y     |");
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("Top | %+5.0f, %+5.0f | %+5.0f, %+5.0f |",
                  quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
-        ROS_INFO("Btm | %+5.0f , %+5.0f | %+5.0f , %+5.0f |",
-                 quad_vertices[2].x, quad_vertices[2].y, quad_vertices[3].x, quad_vertices[3].y);
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("    |V3  X , Y     |V2  X , Y     |");
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("Btm | %+5.0f, %+5.0f | %+5.0f, %+5.0f |",
+                 quad_vertices[3].x, quad_vertices[3].y, quad_vertices[2].x, quad_vertices[2].y);
     }
     else
     {
-        ROS_INFO("Top | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("    |V0  X , Y     |V1  X , Y     |");
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("Top | %+5.2f, %+5.2f | %+5.2f, %+5.2f |",
                  quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
-        ROS_INFO("Btm | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
-                 quad_vertices[2].x, quad_vertices[2].y, quad_vertices[3].x, quad_vertices[3].y);
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("    |V3  X , Y     |V2  X , Y     |");
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("Btm | %+5.2f, %+5.2f | %+5.2f, %+5.2f |",
+                 quad_vertices[3].x, quad_vertices[3].y, quad_vertices[2].x, quad_vertices[2].y);
     }
 
-    ROS_INFO("=====================================");
+    ROS_INFO("===================================");
+}
+
+void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &r_ctrl_pnt_coords)
+{
+    ROS_INFO("        Control Point Coordinates        ");
+    ROS_INFO("=========================================");
+    ROS_INFO("        |      Left     |     Right     |");
+
+    // Loop through each control point
+    for (int cp = 0; cp < 4; ++cp)
+    {
+        // Fetch the vertices for the current control point
+        auto &quad_vertices = r_ctrl_pnt_coords[cp];
+
+        ROS_INFO("-----------------------------------------");
+        ROS_INFO("        |   X   ,   Y   |   X   ,   Y   |");
+        ROS_INFO("-----------------------------------------");
+
+        // Print the top row coordinates
+        ROS_INFO("[%d] Top | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
+                 cp,
+                 quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
+
+        // Print the bottom row coordinates
+        ROS_INFO("[%d] Btm | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
+                 cp,
+                 quad_vertices[3].x, quad_vertices[3].y, quad_vertices[2].x, quad_vertices[2].y);
+    }
+    ROS_INFO("=========================================");
 }
 
 void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &_WALL_VERT_DATA)
@@ -769,9 +787,9 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
         for (int col = 0; col < MAZE_SIZE; ++col)
         {
             // Fetch the quad vertices for the current [row][col]
-            auto &quad = _WALL_VERT_DATA[row][col];
+            auto &quad_vertices = _WALL_VERT_DATA[row][col];
             snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
-                     quad[0].x, quad[0].y, quad[1].x, quad[1].y);
+                     quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
         }
         ROS_INFO("%s", buffer);
 
@@ -782,7 +800,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
             // Fetch the quad vertices for the current [row][col]
             auto &quad = _WALL_VERT_DATA[row][col];
             snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
-                     quad[2].x, quad[2].y, quad[3].x, quad[3].y);
+                     quad[3].x, quad[3].y, quad[2].x, quad[2].y);
         }
         ROS_INFO("%s", buffer);
 
