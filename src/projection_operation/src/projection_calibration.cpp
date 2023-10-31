@@ -556,31 +556,6 @@ int drawWallImages(GLuint fbo_texture_id, ILuint tex_wall_id, ILuint tex_mode_mo
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-GLuint loadTexture(cv::Mat image)
-{
-    GLuint textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-
-    // Convert image from BGR to RGB
-    cv::Mat image_rgb;
-    cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
-
-    // Handle alignment
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-    // Create texture
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_rgb.cols,
-                 image_rgb.rows, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                 image_rgb.data);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    return textureID;
-}
-
-// OpenGL initialization and setup
 void setupOpenGL()
 {
     /**
@@ -665,15 +640,31 @@ void setupOpenGL()
     glEnableVertexAttribArray(1);
 }
 
-/**
- * @brief Initialize OpenGL resources for control point markers.
- *
- * @details
- * Initializes the vertex buffer, shader program, and default values
- * for control point markers.
- *
- * @return 0 on success, -1 on failure.
- */
+GLuint createShaderProgram(const GLchar *vertexSource, const GLchar *fragmentSource)
+{
+    // Create and compile the vertex shader
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexSource, NULL);
+    glCompileShader(vertexShader);
+
+    // Create and compile the fragment shader
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
+    glCompileShader(fragmentShader);
+
+    // Link the vertex and fragment shader into a shader program
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+
+    // Delete the vertex and fragment shaders as they're now linked into the program
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    return shaderProgram;
+}
+
 int initializeControlPointMarkers()
 {
     // Initialize the 4x4 CPm array with default values.
@@ -681,8 +672,7 @@ int initializeControlPointMarkers()
     {
         for (int j = 0; j < 4; ++j)
         {
-            CPm[i][j].x = 0.0f;
-            CPm[i][j].y = 0.0f;
+            CPm[i][j].point = cv::Point2f(0.0f, 0.0f);
             CPm[i][j].radius = 1.0f;
             CPm[i][j].color = {1.0f, 0.0f, 0.0f}; // Default to red
         }
@@ -696,9 +686,6 @@ int initializeControlPointMarkers()
             gl_Position = vec4(position, 0.0, 1.0);
         }
     )glsl";
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &circleVertexSource, NULL);
-    glCompileShader(vertexShader);
 
     // Create and compile the fragment shader
     const GLchar *circleFragmentSource = R"glsl(
@@ -709,25 +696,68 @@ int initializeControlPointMarkers()
             outColor = vec4(1.0, 0.0, 0.0, 1.0);  // example: solid red circle
         }
     )glsl";
+
+    // Create shader program for circle rendering
+    circleShaderProgram = createShaderProgram(circleVertexSource, circleFragmentSource);
+
+    // Generate a single vertex buffer for all circles.
+    glGenBuffers(1, &circleVertexBuffer);
+    glBindBuffer(GL_ARRAY_BUFFER, circleVertexBuffer);
+
+    // Set the buffer size to hold 16 circles cv::Point2f points.
+    int buffer_bytes = 16 * sizeof(cv::Point2f);
+    glBufferData(GL_ARRAY_BUFFER, buffer_bytes, NULL, GL_DYNAMIC_DRAW);
+}
+
+GLuint createShaderProgram(const GLchar *vertexSource, const GLchar *fragmentSource)
+{
+    // Create and compile the vertex shader
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexSource, NULL);
+    glCompileShader(vertexShader);
+
+    // Create and compile the fragment shader
     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &circleFragmentSource, NULL);
+    glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
     glCompileShader(fragmentShader);
 
     // Link the vertex and fragment shader into a shader program
-    shaderProgram = glCreateProgram();
+    GLuint shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
     glLinkProgram(shaderProgram);
 
-    // Generate a single vertex buffer for all circles.
-    glGenBuffers(1, &vertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-    glBufferData(GL_ARRAY_BUFFER, /* size */, /* initial data */, GL_DYNAMIC_DRAW);
+    // Delete the vertex and fragment shaders as they're now linked into the program
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
 
-    return 0;
+    return shaderProgram;
 }
 
-// Function to merge two images by overlaying non-white pixels from mask onto base
+GLuint loadTexture(cv::Mat image)
+{
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    // Convert image from BGR to RGB
+    cv::Mat image_rgb;
+    cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
+
+    // Handle alignment
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    // Create texture
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_rgb.cols,
+                 image_rgb.rows, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                 image_rgb.data);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    return textureID;
+}
+
 bool textureMerge(const std::string &base_img_path, const std::string &mask_img_path, const std::string &output_img_path, cv::Mat &out_merg_img)
 {
     // Read the base and mask images
@@ -776,7 +806,7 @@ bool textureMerge(const std::string &base_img_path, const std::string &mask_img_
     return true;
 }
 
-int main_v2()
+int warpRenderWallImages()
 {
 
     // Specify window resolution size
@@ -863,22 +893,8 @@ int main_v2()
     // Load warpedImage as a texture
     GLuint texture = loadTexture(im_warp);
 
-    // Create and compile the vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexSource, NULL);
-    glCompileShader(vertexShader);
-
-    // Create and compile the fragment shader
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
-    glCompileShader(fragmentShader);
-
-    // Link the vertex and fragment shader into a shader program
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-    glUseProgram(shaderProgram);
+    // Create shader program for image rendering
+    wallShaderProgram = createShaderProgram(vertexSource, fragmentSource);
 
     // Display image directly through OpenCV
     cv::namedWindow("Warped Image Display", cv::WINDOW_AUTOSIZE);
@@ -890,8 +906,8 @@ int main_v2()
     ROS_INFO("IMAGE DIMS: Rows[%d] Cols[%d]", im_wall.rows, im_wall.cols);
     ROS_INFO("srcPoints:");
     dbLogQuadVertices(srcPoints);
-    ROS_INFO("dstPoints:");
-    dbLogQuadVertices(dstPoints);
+    // ROS_INFO("dstPoints:");
+    // dbLogQuadVertices(dstPoints);
     dbLogHomMat(H);
 
     // Setup OpenGL (unchanged)
@@ -903,7 +919,7 @@ int main_v2()
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Use the shader program
-        glUseProgram(shaderProgram);
+        glUseProgram(wallShaderProgram);
 
         // Bind the texture
         glActiveTexture(GL_TEXTURE0);
@@ -916,11 +932,6 @@ int main_v2()
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
-    // Cleanup
-    glDeleteProgram(shaderProgram);
-    glDeleteShader(fragmentShader);
-    glDeleteShader(vertexShader);
 
     // Cleanup
     glfwDestroyWindow(window);
@@ -947,7 +958,7 @@ int main(int argc, char **argv)
     ROS_INFO("[SETUP] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", PROJ_WIN_WIDTH_PXL, MAZE_HEIGHT_NDC);
 
     // TEMP
-    main_v2();
+    warpRenderWallImages();
     return 0;
 
     // --------------- VARIABLE SETUP ---------------

@@ -44,6 +44,28 @@ extern const char* vertexSource;
 extern const char* fragmentSource;
 
 /**
+ * @brief Shader program IDs for wall image and circle rendering.
+ *
+ * @details
+ * - `wallShaderProgram`: Shader program used for rendering the warped wall images.
+ * - `circleShaderProgram`: Shader program used for rendering the control point markers as circles.
+ */
+GLuint wallShaderProgram, circleShaderProgram;
+
+/**
+ * @brief Global Vertex Buffer Object (VBO) for wall images and control point markers.
+ * 
+ * @details 
+ * - 'wallVertexBuffer': This VBO contains the vertex data for rendering and transforming
+ *      the wall images. It is initialized at the beginning of the program and
+ *      updated as needed.
+ * - 'circleVertexBuffer': This VBO contains the vertex data for rendering the control
+ *      point markers (circles). Like wallVertexBuffer, it is initialized at the start
+ *      and updated as necessary.
+ */
+GLuint wallVertexBuffer, circleVertexBuffer;
+
+/**
  * @brief  4x4 data container for tracking the paramaters related to the plotted control point markers  asscicated with the 
  * vertex coordinates for the corner wall images 
  *
@@ -63,11 +85,13 @@ extern const char* fragmentSource;
  *      - 1: Top-right
  *      - 2: Bottom-right 
  *      - 3: Bottom-left
+ * 
+ * @param point: The x and y coordinates of the vertex
  */
 struct CpMarkers {
-    float x, y;
-    float radius;
-    std::array<float, 3> color;
+    cv::Point2f point; // The x and y coordinates of the vertex
+    float radius; // The radius of the control point
+    std::array<float, 3> color; // The RGB color values for the control point
 };
 std::array<std::array<CpMarkers, 4>, 4> CPm;
 
@@ -367,10 +391,60 @@ int drawQuadImage(std::array<cv::Point2f, 4>);
  */
 int drawWallImages(GLuint, ILuint, ILuint, ILuint);
 
-GLuint loadTexture(cv::Mat image);
 void setupOpenGL();
+
+/**
+ * @brief Creates an OpenGL shader program from vertex and fragment shader source code.
+ *
+ * @param vertexSource Source code for the vertex shader.
+ * @param fragmentSource Source code for the fragment shader.
+ * 
+ * @return GLuint ID of the generated shader program.
+ * 
+ * @details
+ * This function encapsulates the process of creating, compiling, and linking an OpenGL shader program.
+ * The OpenGL shader program is part of the OpenGL graphics pipeline and is essential for rendering graphics.
+ * 
+ * The pipeline can be broken down into the following stages:
+ * 1. Vertex Processing: Vertex shaders manipulate the attributes of vertices. 
+ *    This can include things like transforming the vertex position, normal, texture coordinate, etc.
+ * 2. Primitive Assembly: Vertices are grouped into geometric primitives (points, lines, and triangles).
+ * 3. Rasterization: The primitives are converted into a set of fragments.
+ * 4. Fragment Processing: Fragment shaders manipulate the attributes of fragments, 
+ *    which are essentially potential pixels. Here you might apply textures, calculate lighting, etc.
+ * 5. Output Merging: Fragments are converted into actual framebuffer pixels.
+ * 
+ * The function compiles the vertex and fragment shaders from their source code. 
+ * It then links them into a shader program, which can be activated with glUseProgram().
+ * 
+ * - Vertex Shader: Takes attributes like position, color, texture coordinates, normals, etc., 
+ *   and computes processed values to be used in later pipeline stages.
+ * 
+ * - Fragment Shader: Takes interpolated attributes from the rasterization stage and computes 
+ *   the final color of a pixel. This is the stage where things like texture mapping, 
+ *   lighting calculations, etc., would typically be performed.
+ * 
+ * Once the shader program is created and linked successfully, it returns the GLuint ID of the shader program.
+ * This ID is used to activate the shader program for rendering.
+ */
+GLuint createShaderProgram(const GLchar *vertexSource, const GLchar *fragmentSource);
+
+/**
+ * @brief Initialize OpenGL resources for control point markers.
+ *
+ * @details
+ * Initializes the vertex buffer, shader program, and default values
+ * for control point markers.
+ *
+ * @return 0 on success, -1 on failure.
+ */
+int initializeControlPointMarkers();
+
+GLuint loadTexture(cv::Mat image);
+
 bool textureMerge(const std::string &base_img_path, const std::string &mask_img_path, const std::string &output_img_path, cv::Mat &out_merg_img);
-int main_v2();
+
+int warpRenderWallImages();
 
 
 /**
