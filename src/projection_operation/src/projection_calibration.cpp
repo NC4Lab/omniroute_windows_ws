@@ -543,48 +543,6 @@ int drawWallImages(GLuint fbo_texture_id, ILuint tex_wall_id, ILuint tex_mode_mo
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-// int initializeOpenGLObjects()
-// {
-//     // Your lambda function and the rest of your code remain mostly the same.
-
-//     auto initializeByElement = [](GLuint &vao, GLuint &vbo, GLuint &ebo, float *vertices, size_t size)
-//     {
-//         // Generate and bind a Vertex Array Object (VAO)
-//         glGenVertexArrays(1, &vao);
-//         glBindVertexArray(vao);
-
-//         // Generate and bind a Vertex Buffer Object (VBO)
-//         glGenBuffers(1, &vbo);
-//         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-//         // Initialize the VBO with vertex data
-//         glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
-
-//         // If an EBO is provided, bind it.
-//         if (ebo != 0)
-//         {
-//             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
-//         }
-
-//         // Rest of your lambda remains the same.
-//     };
-
-//     // Generate and bind an Element Buffer Object (EBO) for walls
-//     glGenBuffers(1, &WALL_EBO);
-//     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(WALL_GL_INDICES), WALL_GL_INDICES, GL_DYNAMIC_DRAW);
-
-//     for (int gr_i = 0; gr_i < MAZE_SIZE; gr_i++)
-//     {
-//         for (int gc_i = 0; gc_i < MAZE_SIZE; gc_i++)
-//         {
-//             initializeByElement(WALL_VAO_ARR[gr_i][gc_i], WALL_VBO_ARR[gr_i][gc_i], WALL_EBO, WALL_GL_VERTICES, sizeof(WALL_GL_VERTICES));
-//         }
-//     }
-
-//     // Rest of your initialization code remains the same.
-// }
-
-
 int initializeOpenGLObjects()
 {
     // -------- LAMBDA FUNCTION FOR INITIALIZING VAO AND VBO BY ELEMENT -------
@@ -805,8 +763,8 @@ int main(int argc, char **argv)
     ROS_INFO("[SETUP] Monitors Found: %d", nMonitors);
 
     // Create a new GLFW window
-    // p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
-    p_window_id = glfwCreateWindow(win_wd_pxl, win_ht_pxl, "OpenGL", NULL, NULL);
+    p_window_id = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
+    //p_window_id = glfwCreateWindow(win_wd_pxl, win_ht_pxl, "OpenGL", NULL, NULL);
     if (!p_window_id || checkErrorGLFW(__LINE__, __FILE__))
     {
         glfwTerminate();
@@ -842,17 +800,29 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    // Log OpenGL versions
+    const GLubyte *opengl_version = glGetString(GL_VERSION);
+    ROS_INFO("[OpenGL] Initialized: Version [%s]", opengl_version);
+
+    // Log GLFW versions
+    int glfw_major, glfw_minor, glfw_rev;
+    glfwGetVersion(&glfw_major, &glfw_minor, &glfw_rev);
+    ROS_INFO("[GLFW] Initialized: Version: %d.%d.%d", glfw_major, glfw_minor, glfw_rev);
+
+    // Update monitor and window mode settings
+    updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, winMonInd, isFullScreen);
+
     // --------------- TEST IMAGE SETUP ---------------
 
-    // // Load image using OpenCV
-    // std::string img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/1_test_pattern.bmp";
-    // // std::string img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/2_manu_pirate.bmp";
-    // cv::Mat im_wall = cv::imread(img_path.c_str());
-    // if (im_wall.empty())
-    // {
-    //     ROS_ERROR("Failed to load image);
-    //     return -1;
-    // }
+    // Load image using OpenCV
+    std::string img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/1_test_pattern.bmp";
+    // std::string img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/2_manu_pirate.bmp";
+    cv::Mat im_wall = cv::imread(img_path.c_str());
+    if (im_wall.empty())
+    {
+        ROS_ERROR("Failed to load image");
+        return -1;
+    }
 
     // Test load and merg images
     std::string base_img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/1_test_pattern.bmp";
@@ -918,69 +888,35 @@ int main(int argc, char **argv)
     // Main loop (unchanged)
     while (!glfwWindowShouldClose(p_window_id))
     {
-        // Clear the screen
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        // Use the shader program for wall rendering
-        glUseProgram(WALL_SHADER);
-
-        // Bind the texture for the wall
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
-
-        // Bind the VAO for the first wall
-        glBindVertexArray(WALL_VAO_ARR[0][0]);
-
-        // Bind the EBO for the first wall (if you're using the same EBO for all walls, this step may not be necessary every frame)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
-
-        // Draw the rectangle (2 triangles) for the first wall
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-        // Unbind the VAO to prevent accidental modification
-        glBindVertexArray(0);
-
-        // Swap the front and back buffers
-        glfwSwapBuffers(p_window_id);
-
-        // Poll for events like keyboard input or window closing
-        glfwPollEvents();
-    }
-
-    // Main loop (unchanged)
-    while (!glfwWindowShouldClose(p_window_id))
-    {
 
         // Clear the screen
         glClear(GL_COLOR_BUFFER_BIT);
 
         // Use the shader program for wall rendering
         glUseProgram(WALL_SHADER);
-
-        // Bind the common Element Buffer Object (EBO)
-        // (assuming you are using the same EBO for all walls)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
 
         // Bind the texture for the walls
-        // (assuming you are using the same texture for all walls)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
 
-        // // Loop through all the wall images
-        // for (int gr_i = 0; gr_i < 1; gr_i++)
-        // {
-        //     for (int gc_i = 0; gc_i < 1; gc_i++)
-        //     {
-        // Bind the Vertex Array Object (VAO) specific to the current wall
-        glBindVertexArray(WALL_VAO_ARR[0][0]);
+        // Loop through all the wall images
+        for (int gr_i = 0; gr_i < 1; gr_i++)
+        {
+            for (int gc_i = 0; gc_i < 1; gc_i++)
+            {
+                // Bind the Vertex Array Object(VAO) specific to the current wall
+                glBindVertexArray(WALL_VAO_ARR[gr_i][gr_i]);
 
-        // Draw the rectangle (2 triangles) for the current wall
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+                // Bind the common Element Buffer Object (EBO)
+                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
 
-        // Unbind the VAO to prevent accidental modification
-        glBindVertexArray(0);
-        //     }
-        // }
+                // Draw the rectangle (2 triangles) for the current wall
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+                // Unbind the VAO to prevent accidental modification
+                glBindVertexArray(0);
+            }
+        }
 
         // Swap the front and back buffers
         glfwSwapBuffers(p_window_id);
