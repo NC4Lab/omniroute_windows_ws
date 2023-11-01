@@ -236,9 +236,22 @@ void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
     checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-static void callbackErrorOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
+static void APIENTRY callbackDebugOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
 {
-    ROS_ERROR("[OpenGL ERROR CALLBACK] Type[0x%x] ID[%d] Severity[0x%x] Message[%s]", type, id, severity, message);
+    // Get level of severity
+    int s_level = (severity == GL_DEBUG_SEVERITY_NOTIFICATION) ? 1 : (severity == GL_DEBUG_SEVERITY_LOW)  ? 2
+                                                                 : (severity == GL_DEBUG_SEVERITY_MEDIUM) ? 3
+                                                                 : (severity == GL_DEBUG_SEVERITY_HIGH)   ? 4
+                                                                                                          : 0;
+
+    // Check if the message is below the specified debug level
+    if (s_level < DEBUG_LEVEL_GL)
+    {
+        return;
+    }
+
+    // Log the message
+    ROS_ERROR("[OPENGL DEBUG CALLBACK] Type[0x%x] ID[%d] Severity[0x%x] Message[%s]", type, id, severity, message);
 }
 
 static void callbackErrorGLFW(int error, const char *description)
@@ -383,7 +396,7 @@ int updateControlPointMarkers()
         for (int v_i = 0; v_i < 4; v_i++)
         {
             float cp_rad = cpMakerRadius[0];
-            std::array<float, 3> cp_col = cpUnelectedRGB;
+            std::array<float, 3> cp_col = cpInactiveRGB;
 
             // Set color based on cp selected
             if (c_i == cpSelectedInd[0])
@@ -530,6 +543,48 @@ int drawWallImages(GLuint fbo_texture_id, ILuint tex_wall_id, ILuint tex_mode_mo
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
+// int initializeOpenGLObjects()
+// {
+//     // Your lambda function and the rest of your code remain mostly the same.
+
+//     auto initializeByElement = [](GLuint &vao, GLuint &vbo, GLuint &ebo, float *vertices, size_t size)
+//     {
+//         // Generate and bind a Vertex Array Object (VAO)
+//         glGenVertexArrays(1, &vao);
+//         glBindVertexArray(vao);
+
+//         // Generate and bind a Vertex Buffer Object (VBO)
+//         glGenBuffers(1, &vbo);
+//         glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+//         // Initialize the VBO with vertex data
+//         glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
+
+//         // If an EBO is provided, bind it.
+//         if (ebo != 0)
+//         {
+//             glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+//         }
+
+//         // Rest of your lambda remains the same.
+//     };
+
+//     // Generate and bind an Element Buffer Object (EBO) for walls
+//     glGenBuffers(1, &WALL_EBO);
+//     glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(WALL_GL_INDICES), WALL_GL_INDICES, GL_DYNAMIC_DRAW);
+
+//     for (int gr_i = 0; gr_i < MAZE_SIZE; gr_i++)
+//     {
+//         for (int gc_i = 0; gc_i < MAZE_SIZE; gc_i++)
+//         {
+//             initializeByElement(WALL_VAO_ARR[gr_i][gc_i], WALL_VBO_ARR[gr_i][gc_i], WALL_EBO, WALL_GL_VERTICES, sizeof(WALL_GL_VERTICES));
+//         }
+//     }
+
+//     // Rest of your initialization code remains the same.
+// }
+
+
 int initializeOpenGLObjects()
 {
     // -------- LAMBDA FUNCTION FOR INITIALIZING VAO AND VBO BY ELEMENT -------
@@ -593,8 +648,8 @@ int initializeOpenGLObjects()
     // Create the shader program for control point rendering
     CTRL_PT_SHADER = createShaderProgram(vertexSource, fragmentSource);
 
-    // Return success
-    return 0;
+    // Return GL status
+    return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
 GLuint createShaderProgram(const GLchar *vertex_source, const GLchar *fragment_source)
@@ -694,8 +749,25 @@ bool textureMerge(const std::string &base_img_path, const std::string &mask_img_
     return true;
 }
 
-int warpRenderWallImages()
+int main(int argc, char **argv)
 {
+
+    //  _______________ SETUP _______________
+
+    // ROS Initialization
+    ros::init(argc, argv, "projection_calibration", ros::init_options::AnonymousName);
+    ros::NodeHandle n;
+    ros::NodeHandle nh("~");
+    ROS_INFO("RUNNING MAIN");
+
+    // Log setup parameters
+    ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
+    ROS_INFO("[SETUP] Display: Width[%d] Height[%d] AR[%0.2f]", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
+    ROS_INFO("[SETUP] Wall (Pxl): Width[%d] Height[%d]", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
+    ROS_INFO("[SETUP] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_WIDTH_NDC, WALL_HEIGHT_NDC, WALL_SPACE_HORZ_NDC, WALL_SPACE_VERT_NDC);
+    ROS_INFO("[SETUP] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", PROJ_WIN_WIDTH_PXL, MAZE_HEIGHT_NDC);
+
+    // --------------- VARIABLE SETUP ---------------
 
     // Specify window resolution size
     const int win_wd_pxl = 1000;
@@ -709,27 +781,68 @@ int warpRenderWallImages()
     const float im_wd_ndc = (static_cast<float>(im_wd_pxl) / static_cast<float>(win_wd_pxl)) * 2;
     const float im_ht_ndc = (static_cast<float>(im_ht_pxl) / static_cast<float>(win_ht_pxl)) * 2;
 
-    // Initialize GLFW
+    // --------------- OpenGL SETUP ---------------
+
+    // Declare GLFW variables
+    GLFWwindow *p_window_id = nullptr;
+    GLFWmonitor **pp_monitor_id_Vec = nullptr;
+
+    // Initialize GLFW and set error callback
+    glfwSetErrorCallback(callbackErrorGLFW);
     if (!glfwInit())
     {
-        ROS_ERROR("Failed to initialize GLFW");
+        ROS_ERROR("[SETUP] GLFW Initialization Failed");
         return -1;
     }
-    GLFWwindow *window = glfwCreateWindow(win_wd_pxl, win_ht_pxl, "OpenGL", NULL, NULL);
-    if (!window)
+
+    // Discover available monitors
+    pp_monitor_id_Vec = glfwGetMonitors(&nMonitors);
+    if (!pp_monitor_id_Vec || nMonitors == 0)
     {
-        ROS_ERROR("Failed to create window");
+        ROS_ERROR("[SETUP] Monitors Found: None");
         return -1;
     }
-    glfwMakeContextCurrent(window);
+    ROS_INFO("[SETUP] Monitors Found: %d", nMonitors);
+
+    // Create a new GLFW window
+    // p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
+    p_window_id = glfwCreateWindow(win_wd_pxl, win_ht_pxl, "OpenGL", NULL, NULL);
+    if (!p_window_id || checkErrorGLFW(__LINE__, __FILE__))
+    {
+        glfwTerminate();
+        ROS_ERROR("[SETUP] GLFW Failed to Create Window");
+        return -1;
+    }
+
+    // Set the GLFW window as the current OpenGL context
+    glfwMakeContextCurrent(p_window_id);
+
+    // Load OpenGL extensions using GLAD
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+
+    // Load OpenGL extensions using GLAD
+    if (!gladLoadGL()) // Added this check
+    {
+        ROS_ERROR("[SETUP] GLAD Failed to Load OpenGL");
+        return -1;
+    }
+
+    // Set GLFW callbacks for keyboard and framebuffer size events
+    glfwSetKeyCallback(p_window_id, callbackKeyBinding);
+    glfwSetFramebufferSizeCallback(p_window_id, callbackFrameBufferSizeGLFW);
+
+    // Enable OpenGL debugging context and associate callback
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(callbackDebugOpenGL, 0);
 
     // Initialize OpenGL objects
     if (initializeOpenGLObjects() != 0)
     {
-        ROS_ERROR("Failed to initialize OpenGL objects");
+        ROS_ERROR("[SETUP] Failed to Initialize OpenGL Objects");
         return -1;
     }
+
+    // --------------- TEST IMAGE SETUP ---------------
 
     // // Load image using OpenCV
     // std::string img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/1_test_pattern.bmp";
@@ -802,40 +915,40 @@ int warpRenderWallImages()
     // dbLogQuadVertices(dstPoints);
     dbLogHomMat(H);
 
-    // // Main loop (unchanged)
-    // while (!glfwWindowShouldClose(window))
-    // {
-    //     // Clear the screen
-    //     glClear(GL_COLOR_BUFFER_BIT);
+    // Main loop (unchanged)
+    while (!glfwWindowShouldClose(p_window_id))
+    {
+        // Clear the screen
+        glClear(GL_COLOR_BUFFER_BIT);
 
-    //     // Use the shader program for wall rendering
-    //     glUseProgram(WALL_SHADER);
+        // Use the shader program for wall rendering
+        glUseProgram(WALL_SHADER);
 
-    //     // Bind the texture for the wall
-    //     glActiveTexture(GL_TEXTURE0);
-    //     glBindTexture(GL_TEXTURE_2D, texture);
+        // Bind the texture for the wall
+        glActiveTexture(GL_TEXTURE0);
+        glBindTexture(GL_TEXTURE_2D, texture);
 
-    //     // Bind the VAO for the first wall
-    //     glBindVertexArray(WALL_VAO_ARR[0][0]);
+        // Bind the VAO for the first wall
+        glBindVertexArray(WALL_VAO_ARR[0][0]);
 
-    //     // Bind the EBO for the first wall (if you're using the same EBO for all walls, this step may not be necessary every frame)
-    //     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
+        // Bind the EBO for the first wall (if you're using the same EBO for all walls, this step may not be necessary every frame)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
 
-    //     // Draw the rectangle (2 triangles) for the first wall
-    //     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // Draw the rectangle (2 triangles) for the first wall
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-    //     // Unbind the VAO to prevent accidental modification
-    //     glBindVertexArray(0);
+        // Unbind the VAO to prevent accidental modification
+        glBindVertexArray(0);
 
-    //     // Swap the front and back buffers
-    //     glfwSwapBuffers(window);
+        // Swap the front and back buffers
+        glfwSwapBuffers(p_window_id);
 
-    //     // Poll for events like keyboard input or window closing
-    //     glfwPollEvents();
-    // }
+        // Poll for events like keyboard input or window closing
+        glfwPollEvents();
+    }
 
     // Main loop (unchanged)
-    while (!glfwWindowShouldClose(window))
+    while (!glfwWindowShouldClose(p_window_id))
     {
 
         // Clear the screen
@@ -853,396 +966,31 @@ int warpRenderWallImages()
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
 
-        // Loop through all the wall images
-        for (int gr_i = 0; gr_i < 1; gr_i++)
-        {
-            for (int gc_i = 0; gc_i < 1; gc_i++)
-            {
-                // Bind the Vertex Array Object (VAO) specific to the current wall
-                glBindVertexArray(WALL_VAO_ARR[gr_i][gc_i]);
+        // // Loop through all the wall images
+        // for (int gr_i = 0; gr_i < 1; gr_i++)
+        // {
+        //     for (int gc_i = 0; gc_i < 1; gc_i++)
+        //     {
+        // Bind the Vertex Array Object (VAO) specific to the current wall
+        glBindVertexArray(WALL_VAO_ARR[0][0]);
 
-                // Draw the rectangle (2 triangles) for the current wall
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // Draw the rectangle (2 triangles) for the current wall
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-                // Unbind the VAO to prevent accidental modification
-                glBindVertexArray(0);
-            }
-        }
+        // Unbind the VAO to prevent accidental modification
+        glBindVertexArray(0);
+        //     }
+        // }
+
+        // Swap the front and back buffers
+        glfwSwapBuffers(p_window_id);
+
+        // Poll for events like keyboard input or window closing
+        glfwPollEvents();
     }
-
-    // Swap the front and back buffers
-    glfwSwapBuffers(window);
-
-    // Poll for events like keyboard input or window closing
-    glfwPollEvents();
 
     // Cleanup
-    glfwDestroyWindow(window);
+    glfwDestroyWindow(p_window_id);
     glfwTerminate();
     return 0;
-}
-
-int main(int argc, char **argv)
-{
-
-    //  _______________ SETUP _______________
-
-    // ROS Initialization
-    ros::init(argc, argv, "projection_calibration", ros::init_options::AnonymousName);
-    ros::NodeHandle n;
-    ros::NodeHandle nh("~");
-    ROS_INFO("RUNNING MAIN");
-
-    // Log setup parameters
-    ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
-    ROS_INFO("[SETUP] Display: Width[%d] Height[%d] AR[%0.2f]", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
-    ROS_INFO("[SETUP] Wall (Pxl): Width[%d] Height[%d]", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
-    ROS_INFO("[SETUP] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_WIDTH_NDC, WALL_HEIGHT_NDC, WALL_SPACE_HORZ_NDC, WALL_SPACE_VERT_NDC);
-    ROS_INFO("[SETUP] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", PROJ_WIN_WIDTH_PXL, MAZE_HEIGHT_NDC);
-
-    // TEMP
-    warpRenderWallImages();
-    return 0;
-
-    // --------------- VARIABLE SETUP ---------------
-
-    // Initialze control points
-    initControlPointCoordinates(CTRL_PT_COORDS);
-
-    // Initialize wall parameter datasets
-    if (updateWallVertices(CTRL_PT_COORDS, WALL_WARP_COORDS) != 0)
-    {
-        ROS_ERROR("[SETUP] Failed to Initalize the Wall Vertices Dataset");
-        return -1;
-    }
-
-    // Initialize homography matrix dataset
-    if (updateWallHomography(CTRL_PT_COORDS, WALL_WARP_COORDS, WALL_HMAT_DATA) != 0)
-    {
-        ROS_ERROR("[SETUP] Failed to Initalize the Wall Homography Dataset");
-        return -1;
-    }
-
-    // --------------- OpenGL SETUP ---------------
-
-    // Initialize GLFW and set error callback
-    glfwSetErrorCallback(callbackErrorGLFW);
-    if (!glfwInit())
-    {
-        checkErrorGLFW(__LINE__, __FILE__);
-        ROS_ERROR("[GLFW] Initialization Failed");
-        return -1;
-    }
-
-    // Discover available monitors
-    pp_monitorIDVec = glfwGetMonitors(&nMonitors);
-    if (!pp_monitorIDVec || nMonitors == 0) // Added this check
-    {
-        ROS_ERROR("[GLFW] No monitors found");
-        return -1;
-    }
-    ROS_INFO("[GLFW] Found %d monitors", nMonitors);
-
-    // Create a new GLFW window
-    p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
-    checkErrorGLFW(__LINE__, __FILE__);
-    if (!p_windowID)
-    {
-        glfwTerminate();
-        ROS_ERROR("[GLFW] Create Window Failed");
-        return -1;
-    }
-
-    // Set the GLFW window as the current OpenGL context
-    glfwMakeContextCurrent(p_windowID);
-
-    // Load OpenGL extensions using GLAD
-    if (!gladLoadGL()) // Added this check
-    {
-        ROS_ERROR("[GLAD] Failed to initialize GLAD");
-        return -1;
-    }
-
-    // Enable OpenGL debugging context
-    glEnable(GL_DEBUG_OUTPUT);
-    glDebugMessageCallback(callbackErrorOpenGL, 0);
-
-    // Set GLFW callbacks for keyboard and framebuffer size events
-    glfwSetKeyCallback(p_windowID, callbackKeyBinding);
-    glfwSetFramebufferSizeCallback(p_windowID, callbackFrameBufferSizeGLFW);
-
-    // Initialize Framebuffer Object (FBO) and its texture
-    GLuint fbo_id = 0;
-    GLuint fbo_texture_id = 0;
-
-    // Generate an FBO and bind it
-    glGenFramebuffers(1, &fbo_id);
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
-    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
-    {
-        ROS_ERROR("[OpenGL] Failed to Generate FBO");
-        return -1;
-    }
-
-    // Generate a texture for the FBO
-    glGenTextures(1, &fbo_texture_id);
-    glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
-    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
-    {
-        ROS_ERROR("[OpenGL] Failed to Generate FBO Texture");
-        return -1;
-    }
-
-    // Allocate storage for the texture on the GPU
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-
-    // Set the texture's MIN and MAG filter to linear interpolation.
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Handles sampling when the texture is scaled down
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Handles sampling when the texture is scaled up
-    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
-    {
-        ROS_ERROR("[OpenGL] Failed to Set FBO Texture Parameters");
-        return -1;
-    }
-
-    // Attach the texture to the FBO
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture_id, 0);
-
-    // Check FBO completeness
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (status != GL_FRAMEBUFFER_COMPLETE)
-    {
-        // Handle incomplete FBO, possibly log an error or exit
-        ROS_ERROR("[OpenGL] FBO is not complete");
-        return -1;
-    }
-
-    // Unbind the FBO (bind to default framebuffer)
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
-    {
-        ROS_ERROR("[OpenGL] Failed to Unbind FBO");
-        return -1;
-    }
-
-    // Update monitor and window mode settings
-    updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
-
-    // Log OpenGL versions
-    const GLubyte *opengl_version = glGetString(GL_VERSION);
-    ROS_INFO("[OpenGL] Initialized: Version [%s]", opengl_version);
-
-    // Log GLFW versions
-    int glfw_major, glfw_minor, glfw_rev;
-    glfwGetVersion(&glfw_major, &glfw_minor, &glfw_rev);
-    ROS_INFO("[GLFW] Initialized: Version: %d.%d.%d", glfw_major, glfw_minor, glfw_rev);
-
-    // --------------- DevIL SETUP ---------------
-
-    // Initialize DevIL library
-    ilInit();
-    if (checkErrorDevIL(__LINE__, __FILE__) != 0)
-        return -1;
-
-    // Log the DevIL version
-    ILint version = ilGetInteger(IL_VERSION_NUM);
-    ROS_INFO("[DevIL] Intitalized: Version[%d]", version);
-
-    // Load images
-    if (loadImgTextures(imgWallPathVec, texWallIDVec) != 0)
-    {
-        ROS_ERROR("[DevIL] Failed to load wall images");
-        return -1;
-    }
-    if (loadImgTextures(imgMonPathVec, texMonIDVec) != 0)
-    {
-        ROS_ERROR("[DevIL] Failed to load monitor images");
-        return -1;
-    }
-    if (loadImgTextures(imgCalPathVec, texCalIDVec) != 0)
-    {
-        ROS_ERROR("[DevIL] Failed to load calibration images");
-        return -1;
-    }
-
-    // _______________ MAIN LOOP _______________
-
-    bool is_error = false;
-    while (!glfwWindowShouldClose(p_windowID) && ros::ok())
-    {
-
-        // --------------- Check Kayboard Callback Flags ---------------
-
-        // Load XML file
-        if (F.loadXML)
-        {
-            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
-            /// @todo Ad save xml back in
-            F.loadXML = false;
-        }
-
-        // Save XML file
-        if (F.saveXML)
-        {
-            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
-            /// @todo Ad save xml back in
-            F.saveXML = false;
-        }
-
-        // Update the window monitor and mode
-        if (F.updateWindowMonMode)
-        {
-            if (updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen) != 0)
-            {
-                ROS_ERROR("[MAIN] Update Window Monitor Mode Threw Error");
-                is_error = true;
-                break;
-            }
-            F.updateWindowMonMode = false;
-        }
-
-        // Initialize/reinitialize control point coordinate dataset
-        if (F.initControlPointMarkers)
-        {
-            initControlPointCoordinates(CTRL_PT_COORDS);
-            F.initControlPointMarkers = false;
-        }
-
-        // Recompute wall vertices and homography matrices
-        if (F.updateWallDatasets)
-        {
-            // Initialize wall parameter datasets
-            if (updateWallVertices(CTRL_PT_COORDS, WALL_WARP_COORDS) != 0)
-            {
-                ROS_ERROR("[MAIN] Update of Wall Vertices Datasets Failed");
-                return -1;
-            }
-
-            // Initialize homography matrix dataset
-            if (updateWallHomography(CTRL_PT_COORDS, WALL_WARP_COORDS, WALL_HMAT_DATA) != 0)
-            {
-                ROS_ERROR("[MAIN] Update of Wall Homography Datasets Failed");
-                return -1;
-            }
-            F.updateWallDatasets = false;
-        }
-
-        // --------------- Handle Image Processing for Next Frame ---------------
-
-        // Clear back buffer for new frame
-        glClear(GL_COLOR_BUFFER_BIT);
-        if (checkErrorOpenGL(__LINE__, __FILE__))
-        {
-            is_error = true;
-            break;
-        }
-
-        // Draw/update wall images
-        if (drawWallImages(fbo_texture_id, texWallIDVec[imgWallInd], texMonIDVec[winMonInd], texCalIDVec[calModeInd]) != 0)
-        {
-            ROS_ERROR("[MAIN] Draw Walls Threw Error");
-            is_error = true;
-            break;
-        }
-
-        // Draw/update control point markers
-        if (updateControlPointMarkers() != 0)
-        {
-            ROS_ERROR("[MAIN] Draw Control Point Threw Error");
-            is_error = true;
-            break;
-        }
-
-        // Swap buffers and poll events
-        glfwSwapBuffers(p_windowID);
-        if (
-            checkErrorGLFW(__LINE__, __FILE__) ||
-            checkErrorOpenGL(__LINE__, __FILE__))
-        {
-            is_error = true;
-            break;
-        }
-
-        // Poll events
-        glfwPollEvents();
-
-        // Exit condition
-        if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_windowID))
-            break;
-    }
-
-    // _______________ CLEANUP _______________
-    ROS_INFO("SHUTTING DOWN");
-
-    // Check which condition caused the loop to exit
-    if (!ros::ok())
-        ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
-    else if (glfwWindowShouldClose(p_windowID))
-        ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
-    else if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        ROS_INFO("[LOOP TERMINATION] Escape Key was Pressed");
-    else if (is_error)
-        ROS_INFO("[LOOP TERMINATION] Error Thrown");
-    else
-        ROS_INFO("[LOOP TERMINATION] Reason Unknown");
-
-    // Delete FBO
-    if (fbo_id != 0)
-    {
-        glDeleteFramebuffers(1, &fbo_id);
-        if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
-            ROS_WARN("[SHUTDOWN] Failed to Delete FBO");
-        else
-            ROS_INFO("[SHUTDOWN] Deleted FBO");
-    }
-    else
-        ROS_WARN("[SHUTDOWN] No FBO to Delete");
-
-    // Delete FBO texture
-    if (fbo_texture_id != 0)
-    {
-        glDeleteTextures(1, &fbo_texture_id);
-        if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
-            ROS_WARN("[SHUTDOWN] Failed to Delete FBO Texture");
-        else
-            ROS_INFO("[SHUTDOWN] Deleted FBO Texture");
-    }
-    else
-        ROS_WARN("[SHUTDOWN] No FBO Texture to Delete");
-
-    // Delete DevIL images
-    if (deleteImgTextures(texWallIDVec) == 0)
-        ROS_INFO("[SHUTDOWN] Deleted DevIL Wall Images");
-    if (deleteImgTextures(texMonIDVec) == 0)
-        ROS_INFO("[SHUTDOWN] Deleted DevIL Monitor Images");
-    if (deleteImgTextures(texCalIDVec) == 0)
-        ROS_INFO("[SHUTDOWN] Deleted DevIL Calibration Images");
-
-    // Destroy GLFW window
-    if (p_windowID)
-    {
-        glfwDestroyWindow(p_windowID);
-        p_windowID = nullptr;
-        if (checkErrorGLFW(__LINE__, __FILE__) != 0)
-            ROS_WARN("[SHUTDOWN] Failed to Destroy GLFW Window");
-        else
-            ROS_INFO("[SHUTDOWN] Destroyed GLFW Window");
-    }
-    else
-    {
-        ROS_WARN("[SHUTDOWN] No GLFW window to destroy");
-    }
-
-    // Shutdown DevIL
-    ilShutDown();
-    checkErrorDevIL(__LINE__, __FILE__);
-    ROS_INFO("[SHUTDOWN] Shutdown DevIL");
-
-    // Terminate GLFW
-    glfwTerminate();
-    checkErrorGLFW(__LINE__, __FILE__);
-    ROS_INFO("[SHUTDOWN] Terminated GLFW");
-
-    // Return success
-    return is_error ? -1 : 0;
 }

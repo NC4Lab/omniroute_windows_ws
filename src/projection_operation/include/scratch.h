@@ -1,106 +1,364 @@
-//  srcPoints:
-//           Quad Vertices
-//  ===================================
-//      |     Left     |     Right    |
-//  -----------------------------------
-//      |V0  X , Y     |V1  X , Y     |
-//  -----------------------------------
-//  Top |    +0,    +0 |  +300,    +0 |
-//  -----------------------------------
-//      |V3  X , Y     |V2  X , Y     |
-//  -----------------------------------
-//  Btm |    +0,  +540 |  +300,  +540 |
-//  =====================================
-//  dstPoints:
-//           Quad Vertices
-//  ===================================
-//      |     Left     |     Right    |
-//  -----------------------------------
-//      |V0  X , Y     |V1  X , Y     |
-//  -----------------------------------
-//  Top |  +375,  +230 |  +675,  +205 |
-//  -----------------------------------
-//      |V3  X , Y     |V2  X , Y     |
-//  -----------------------------------
-//  Btm |  +350,  +770 |  +600,  +695 |
-//  ===================================
-//           Homography Matrix
-//  ==================================
-//            |  C0   |  C1   |  C2   |
-//  ----------------------------------
-//  R0        | +1.31 | +0.11 | +375.00 |
-//  R1        | +0.01 | +1.34 | +230.00 |
-//  R2        | +0.00 | +0.00 | +1.00 |
-//  ==================================
+int main(int argc, char **argv)
+{
 
-/**
-*               ________          ________          ________
-*             /   (w2)   \      /          \      /          \
-*           / (w1)     (w3)\  /              \  /              \
-*          |                ||                ||                |
-*          |(w0)  [c0]  (w4)||      [c1]      ||      [c2]      |
-*          |                ||                ||                |
-*           \ (w7)    (w5) /  \              /  \              /
-*             \ __(w6)__ /      \ ________ /      \ ________ /
-*             /          \      /          \      /          \
-*           /              \  /              \  /              \
-*          |                ||                ||                |
-*          |      [c3]      ||      [c4]      ||      [c5]      |
-*          |                ||                ||                |
-*           \              /  \              /  \              /
-*             \ ________ /      \ ________ /      \ ________ /
-*             /          \      /          \      /          \
-*           /              \  /              \  /              \
-*          |                |                 ||                |
-*          |      [c6]      ||      [c7]      ||      [c8]      |
-*          |                ||                ||                |
-*           \              /  \              /  \              /
-*             \ ________ /      \ ________ /      \ ________ /
-*/
+    //  _______________ SETUP _______________
 
+    // ROS Initialization
+    ros::init(argc, argv, "projection_calibration", ros::init_options::AnonymousName);
+    ros::NodeHandle n;
+    ros::NodeHandle nh("~");
+    ROS_INFO("RUNNING MAIN");
 
-/** 
-* @var const GLchar* vertexSource
-* @brief Vertex shader source code.
+    // Log setup parameters
+    ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
+    ROS_INFO("[SETUP] Display: Width[%d] Height[%d] AR[%0.2f]", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
+    ROS_INFO("[SETUP] Wall (Pxl): Width[%d] Height[%d]", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
+    ROS_INFO("[SETUP] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_WIDTH_NDC, WALL_HEIGHT_NDC, WALL_SPACE_HORZ_NDC, WALL_SPACE_VERT_NDC);
+    ROS_INFO("[SETUP] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", PROJ_WIN_WIDTH_PXL, MAZE_HEIGHT_NDC);
 
-* @details
-* This is a GLSL (OpenGL Shading Language) vertex shader source code stored as a C++ raw string literal.
-* - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
-* - `in vec2 position;`: Declares an input vertex attribute called `position`. Receives vertex coordinates from the application.
-* - `in vec2 texcoord;`: Declares another input vertex attribute called `texcoord`. Receives texture coordinates from the application.
-* - `out vec2 Texcoord;`: Declares an output variable that will be passed to the fragment shader.
-* - `void main() { ... }`: Main function where the vertex shader performs its work.
-*/
-const GLchar *vertexSource = R"glsl(
-const GLchar *vertexSource = R"glsl(
-    #version 330 core
-    in vec2 position;
-    in vec2 texcoord;
-    out vec2 Texcoord;
-    void main() {
-        Texcoord = texcoord;
-        gl_Position = vec4(position, 0.0, 1.0);
+    // TEMP
+    warpRenderWallImages();
+    return 0;
+
+    // --------------- VARIABLE SETUP ---------------
+
+    // Initialze control points
+    initControlPointCoordinates(CTRL_PT_COORDS);
+
+    // Initialize wall parameter datasets
+    if (updateWallVertices(CTRL_PT_COORDS, WALL_WARP_COORDS) != 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Initalize the Wall Vertices Dataset");
+        return -1;
     }
-)glsl";
 
-/**
-* @var const GLchar* fragmentSource
-* @brief Fragment shader source code.
-*
-* @details
-* This is a GLSL (OpenGL Shading Language) fragment shader source code also stored as a C++ raw string literal.
-* - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
-* - `in vec2 Texcoord;`: Receives the texture coordinates from the vertex shader.
-* - `out vec4 outColor;`: Declares an output variable for storing the color to be used for the fragment.
-* - `uniform sampler2D tex;`: Declares a uniform variable representing a 2D texture.
-* - `void main() { ... }`: Main function of the fragment shader, samples the texture at the given coordinates and sets the output color.
-*/
-const GLchar *fragmentSource = R"glsl(
-    #version 330 core
-    in vec2 Texcoord;
-    out vec4 outColor;
-    uniform sampler2D tex;
-    void main() {
-        outColor = texture(tex, Texcoord);
+    // Initialize homography matrix dataset
+    if (updateWallHomography(CTRL_PT_COORDS, WALL_WARP_COORDS, WALL_HMAT_DATA) != 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Initalize the Wall Homography Dataset");
+        return -1;
     }
-)glsl";
+
+    // --------------- OpenGL SETUP ---------------
+
+    // Initialize GLFW and set error callback
+    glfwSetErrorCallback(callbackErrorGLFW);
+    if (!glfwInit())
+    {
+        checkErrorGLFW(__LINE__, __FILE__);
+        ROS_ERROR("[GLFW] Initialization Failed");
+        return -1;
+    }
+
+    // Discover available monitors
+    pp_monitorIDVec = glfwGetMonitors(&nMonitors);
+    if (!pp_monitorIDVec || nMonitors == 0) // Added this check
+    {
+        ROS_ERROR("[GLFW] No monitors found");
+        return -1;
+    }
+    ROS_INFO("[GLFW] Found %d monitors", nMonitors);
+
+    // Create a new GLFW window
+    p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
+    checkErrorGLFW(__LINE__, __FILE__);
+    if (!p_windowID)
+    {
+        glfwTerminate();
+        ROS_ERROR("[GLFW] Create Window Failed");
+        return -1;
+    }
+
+    // Set the GLFW window as the current OpenGL context
+    glfwMakeContextCurrent(p_windowID);
+
+    // Load OpenGL extensions using GLAD
+    if (!gladLoadGL()) // Added this check
+    {
+        ROS_ERROR("[GLAD] Failed to initialize GLAD");
+        return -1;
+    }
+
+    // Enable OpenGL debugging context
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(callbackErrorOpenGL, 0);
+
+    // Set GLFW callbacks for keyboard and framebuffer size events
+    glfwSetKeyCallback(p_windowID, callbackKeyBinding);
+    glfwSetFramebufferSizeCallback(p_windowID, callbackFrameBufferSizeGLFW);
+
+    // Initialize Framebuffer Object (FBO) and its texture
+    GLuint fbo_id = 0;
+    GLuint fbo_texture_id = 0;
+
+    // Generate an FBO and bind it
+    glGenFramebuffers(1, &fbo_id);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo_id);
+    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+    {
+        ROS_ERROR("[OpenGL] Failed to Generate FBO");
+        return -1;
+    }
+
+    // Generate a texture for the FBO
+    glGenTextures(1, &fbo_texture_id);
+    glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
+    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+    {
+        ROS_ERROR("[OpenGL] Failed to Generate FBO Texture");
+        return -1;
+    }
+
+    // Allocate storage for the texture on the GPU
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+
+    // Set the texture's MIN and MAG filter to linear interpolation.
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR); // Handles sampling when the texture is scaled down
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); // Handles sampling when the texture is scaled up
+    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+    {
+        ROS_ERROR("[OpenGL] Failed to Set FBO Texture Parameters");
+        return -1;
+    }
+
+    // Attach the texture to the FBO
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fbo_texture_id, 0);
+
+    // Check FBO completeness
+    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+    if (status != GL_FRAMEBUFFER_COMPLETE)
+    {
+        // Handle incomplete FBO, possibly log an error or exit
+        ROS_ERROR("[OpenGL] FBO is not complete");
+        return -1;
+    }
+
+    // Unbind the FBO (bind to default framebuffer)
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+    {
+        ROS_ERROR("[OpenGL] Failed to Unbind FBO");
+        return -1;
+    }
+
+    // Update monitor and window mode settings
+    updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
+
+    // Log OpenGL versions
+    const GLubyte *opengl_version = glGetString(GL_VERSION);
+    ROS_INFO("[OpenGL] Initialized: Version [%s]", opengl_version);
+
+    // Log GLFW versions
+    int glfw_major, glfw_minor, glfw_rev;
+    glfwGetVersion(&glfw_major, &glfw_minor, &glfw_rev);
+    ROS_INFO("[GLFW] Initialized: Version: %d.%d.%d", glfw_major, glfw_minor, glfw_rev);
+
+    // --------------- DevIL SETUP ---------------
+
+    // Initialize DevIL library
+    ilInit();
+    if (checkErrorDevIL(__LINE__, __FILE__) != 0)
+        return -1;
+
+    // Log the DevIL version
+    ILint version = ilGetInteger(IL_VERSION_NUM);
+    ROS_INFO("[DevIL] Intitalized: Version[%d]", version);
+
+    // Load images
+    if (loadImgTextures(imgWallPathVec, texWallIDVec) != 0)
+    {
+        ROS_ERROR("[DevIL] Failed to load wall images");
+        return -1;
+    }
+    if (loadImgTextures(imgMonPathVec, texMonIDVec) != 0)
+    {
+        ROS_ERROR("[DevIL] Failed to load monitor images");
+        return -1;
+    }
+    if (loadImgTextures(imgCalPathVec, texCalIDVec) != 0)
+    {
+        ROS_ERROR("[DevIL] Failed to load calibration images");
+        return -1;
+    }
+
+    // _______________ MAIN LOOP _______________
+
+    bool is_error = false;
+    while (!glfwWindowShouldClose(p_windowID) && ros::ok())
+    {
+
+        // --------------- Check Kayboard Callback Flags ---------------
+
+        // Load XML file
+        if (F.loadXML)
+        {
+            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
+            /// @todo Ad save xml back in
+            F.loadXML = false;
+        }
+
+        // Save XML file
+        if (F.saveXML)
+        {
+            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
+            /// @todo Ad save xml back in
+            F.saveXML = false;
+        }
+
+        // Update the window monitor and mode
+        if (F.updateWindowMonMode)
+        {
+            if (updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen) != 0)
+            {
+                ROS_ERROR("[MAIN] Update Window Monitor Mode Threw Error");
+                is_error = true;
+                break;
+            }
+            F.updateWindowMonMode = false;
+        }
+
+        // Initialize/reinitialize control point coordinate dataset
+        if (F.initControlPointMarkers)
+        {
+            initControlPointCoordinates(CTRL_PT_COORDS);
+            F.initControlPointMarkers = false;
+        }
+
+        // Recompute wall vertices and homography matrices
+        if (F.updateWallDatasets)
+        {
+            // Initialize wall parameter datasets
+            if (updateWallVertices(CTRL_PT_COORDS, WALL_WARP_COORDS) != 0)
+            {
+                ROS_ERROR("[MAIN] Update of Wall Vertices Datasets Failed");
+                return -1;
+            }
+
+            // Initialize homography matrix dataset
+            if (updateWallHomography(CTRL_PT_COORDS, WALL_WARP_COORDS, WALL_HMAT_DATA) != 0)
+            {
+                ROS_ERROR("[MAIN] Update of Wall Homography Datasets Failed");
+                return -1;
+            }
+            F.updateWallDatasets = false;
+        }
+
+        // --------------- Handle Image Processing for Next Frame ---------------
+
+        // Clear back buffer for new frame
+        glClear(GL_COLOR_BUFFER_BIT);
+        if (checkErrorOpenGL(__LINE__, __FILE__))
+        {
+            is_error = true;
+            break;
+        }
+
+        // Draw/update wall images
+        if (drawWallImages(fbo_texture_id, texWallIDVec[imgWallInd], texMonIDVec[winMonInd], texCalIDVec[calModeInd]) != 0)
+        {
+            ROS_ERROR("[MAIN] Draw Walls Threw Error");
+            is_error = true;
+            break;
+        }
+
+        // Draw/update control point markers
+        if (updateControlPointMarkers() != 0)
+        {
+            ROS_ERROR("[MAIN] Draw Control Point Threw Error");
+            is_error = true;
+            break;
+        }
+
+        // Swap buffers and poll events
+        glfwSwapBuffers(p_windowID);
+        if (
+            checkErrorGLFW(__LINE__, __FILE__) ||
+            checkErrorOpenGL(__LINE__, __FILE__))
+        {
+            is_error = true;
+            break;
+        }
+
+        // Poll events
+        glfwPollEvents();
+
+        // Exit condition
+        if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_windowID))
+            break;
+    }
+
+    // _______________ CLEANUP _______________
+    ROS_INFO("SHUTTING DOWN");
+
+    // Check which condition caused the loop to exit
+    if (!ros::ok())
+        ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
+    else if (glfwWindowShouldClose(p_windowID))
+        ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
+    else if (glfwGetKey(p_windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        ROS_INFO("[LOOP TERMINATION] Escape Key was Pressed");
+    else if (is_error)
+        ROS_INFO("[LOOP TERMINATION] Error Thrown");
+    else
+        ROS_INFO("[LOOP TERMINATION] Reason Unknown");
+
+    // Delete FBO
+    if (fbo_id != 0)
+    {
+        glDeleteFramebuffers(1, &fbo_id);
+        if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+            ROS_WARN("[SHUTDOWN] Failed to Delete FBO");
+        else
+            ROS_INFO("[SHUTDOWN] Deleted FBO");
+    }
+    else
+        ROS_WARN("[SHUTDOWN] No FBO to Delete");
+
+    // Delete FBO texture
+    if (fbo_texture_id != 0)
+    {
+        glDeleteTextures(1, &fbo_texture_id);
+        if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+            ROS_WARN("[SHUTDOWN] Failed to Delete FBO Texture");
+        else
+            ROS_INFO("[SHUTDOWN] Deleted FBO Texture");
+    }
+    else
+        ROS_WARN("[SHUTDOWN] No FBO Texture to Delete");
+
+    // Delete DevIL images
+    if (deleteImgTextures(texWallIDVec) == 0)
+        ROS_INFO("[SHUTDOWN] Deleted DevIL Wall Images");
+    if (deleteImgTextures(texMonIDVec) == 0)
+        ROS_INFO("[SHUTDOWN] Deleted DevIL Monitor Images");
+    if (deleteImgTextures(texCalIDVec) == 0)
+        ROS_INFO("[SHUTDOWN] Deleted DevIL Calibration Images");
+
+    // Destroy GLFW window
+    if (p_windowID)
+    {
+        glfwDestroyWindow(p_windowID);
+        p_windowID = nullptr;
+        if (checkErrorGLFW(__LINE__, __FILE__) != 0)
+            ROS_WARN("[SHUTDOWN] Failed to Destroy GLFW Window");
+        else
+            ROS_INFO("[SHUTDOWN] Destroyed GLFW Window");
+    }
+    else
+    {
+        ROS_WARN("[SHUTDOWN] No GLFW window to destroy");
+    }
+
+    // Shutdown DevIL
+    ilShutDown();
+    checkErrorDevIL(__LINE__, __FILE__);
+    ROS_INFO("[SHUTDOWN] Shutdown DevIL");
+
+    // Terminate GLFW
+    glfwTerminate();
+    checkErrorGLFW(__LINE__, __FILE__);
+    ROS_INFO("[SHUTDOWN] Terminated GLFW");
+
+    // Return success
+    return is_error ? -1 : 0;
+}

@@ -202,6 +202,9 @@ std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WALL_WA
  */
 std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> WALL_HMAT_DATA;
 
+// Global variable to set the OpenGL debug level.
+int DEBUG_LEVEL_GL = 3;  // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
+
 // Struct primarely used for tracking flags set in the keyboard callback
 static struct FlagStruct
 {
@@ -219,7 +222,7 @@ std::array<int, 2> cpSelectedInd = {0, 0}; // Index: maze_corner[0,1] wall_verte
 // Control point graphics
 std::array<float, 3> cpVertSelectedRGB = {0.0f, 1.0f, 0.0f}; // Select control point marker color (green)
 std::array<float, 3> cpWallSelectedRGB = {1.0f, 0.0f, 0.0f}; // Selected control point wall color (red)
-std::array<float, 3> cpUnelectedRGB = {0.0f, 0.0f, 1.0f};    // Inactive control point marker color (blue)
+std::array<float, 3> cpInactiveRGB = {0.0f, 0.0f, 1.0f};    // Inactive control point marker color (blue)
 
 // Control point image radius
 const std::array<float, 2> cpMakerRadius = {0.0025f, 0.005f};
@@ -320,7 +323,7 @@ void callbackFrameBufferSizeGLFW(GLFWwindow *, int, int);
  * This function is called whenever an error occurs in the OpenGL context.
  * It logs the error message using ROS_ERROR.
  */
-static void callbackErrorOpenGL(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar *, const void *);
+static void APIENTRY callbackDebugOpenGL(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar *, const void *);
 
 /**
  * @brief Callback function for handling errors.
@@ -525,8 +528,6 @@ GLuint loadTexture(cv::Mat);
  */
 
 bool textureMerge(const std::string &, const std::string &, const std::string &, cv::Mat &);
-
-int warpRenderWallImages();
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.
