@@ -33,208 +33,6 @@ std::string formatCoordinatesFilePathXML(int mon_id_ind, int mode_cal_ind, std::
     return file_path;
 }
 
-int loadCoordinatesXML(std::string full_path, int verbose_level, cv::Mat &out_HMAT, std::array<std::array<float, 6>, 4> &out_ctrl_point_params)
-{
-    // Get file name from path
-    std::string file_name = full_path.substr(full_path.find_last_of('/') + 1);
-
-    // Create an XML document object
-    pugi::xml_document doc;
-    if (!doc.load_file(full_path.c_str()))
-    {
-        ROS_ERROR("[LOAD XML] Could Not Load XML: File[%s]", file_name.c_str());
-        return -1;
-    }
-
-    // Retrieve control point parameters
-    std::vector<std::vector<float>> ctrl_point_params_vec_temp;
-    pugi::xml_node ctrl_point_params_node = doc.child("config").child("ctrl_point_params");
-    for (pugi::xml_node row_node = ctrl_point_params_node.child("row"); row_node; row_node = row_node.next_sibling("row"))
-    {
-        std::vector<float> row;
-        for (pugi::xml_node cell_node = row_node.child("cell"); cell_node; cell_node = cell_node.next_sibling("cell"))
-        {
-            float value = std::stof(cell_node.child_value());
-            row.push_back(value);
-        }
-        ctrl_point_params_vec_temp.push_back(row);
-    }
-
-    // Check the dimensions of control pount array
-    if (ctrl_point_params_vec_temp.size() != 4)
-    {
-        ROS_ERROR("[LOAD XML] Control Point Data from XML has Wrong Number of Rows[%zu] File[%s]", ctrl_point_params_vec_temp.size(), file_name.c_str());
-        return -1;
-    }
-    for (const auto &row : ctrl_point_params_vec_temp)
-    {
-        if (row.size() != 6)
-        {
-            ROS_ERROR("[LOAD XML] Control Point Data from XML has Wrong Number of Columns[%zu] File[%s]", row.size(), file_name.c_str());
-            return -1;
-        }
-    }
-
-    // Copy data from temporary array to reference array
-    for (int i = 0; i < 4; i++)
-    {
-        for (int j = 0; j < 6; j++)
-        {
-            out_ctrl_point_params[i][j] = ctrl_point_params_vec_temp[i][j];
-        }
-    }
-
-    // Retrieve homography matrix
-    std::vector<std::vector<float>> h_mat_temp;
-    pugi::xml_node h_mat_node = doc.child("config").child("h_mat");
-    for (pugi::xml_node row_node = h_mat_node.child("row"); row_node; row_node = row_node.next_sibling("row"))
-    {
-        std::vector<float> row;
-        for (pugi::xml_node cell_node = row_node.child("cell"); cell_node; cell_node = cell_node.next_sibling("cell"))
-        {
-            float value = std::stof(cell_node.child_value());
-            row.push_back(value);
-        }
-        h_mat_temp.push_back(row);
-    }
-
-    // Check the dimensions of homography matrix
-    if (h_mat_temp.size() != 3)
-    {
-        ROS_ERROR("[LOAD XML] Homography Matrix from XML has Wrong Number of Rows[%zu] File[%s]", h_mat_temp.size(), file_name.c_str());
-        return -1;
-    }
-    for (const auto &row : h_mat_temp)
-    {
-        if (row.size() != 3)
-        {
-            ROS_ERROR("[LOAD XML] Homography Matrix from XML has Wrong Number of Columns[%zu] File[%s]", row.size(), file_name.c_str());
-            return -1;
-        }
-    }
-
-    // Copy data from temporary array to reference matrix
-    for (int i = 0; i < 3; i++)
-    {
-        for (int j = 0; j < 3; j++)
-        {
-            out_HMAT.at<float>(i, j) = h_mat_temp[i][j];
-        }
-    }
-
-    // Print the loaded data
-    if (verbose_level > 0)
-    {
-        // Print the file name
-        if (verbose_level == 1)
-        {
-            ROS_INFO("[LOAD XML] Loaded XML: File[%s]", file_name.c_str());
-        }
-        // Print the control point array
-        if (verbose_level == 1 || verbose_level == 2)
-        {
-            std::ostringstream oss;
-            oss << "[LOAD XML] Control Point Array:\n";
-            for (const auto &row : ctrl_point_params_vec_temp)
-            {
-                for (const auto &value : row)
-                {
-                    oss << value << "\t";
-                }
-                oss << "\n";
-            }
-            ROS_INFO("%s", oss.str().c_str());
-        }
-        // Print the homography matrix
-        if (verbose_level == 1 || verbose_level == 3)
-        {
-            std::ostringstream oss;
-            oss << "[LOAD XML] Homography Matrix:\n";
-            for (const auto &row : h_mat_temp)
-            {
-                for (const auto &value : row)
-                {
-                    oss << value << "\t";
-                }
-                oss << "\n";
-            }
-            ROS_INFO("%s", oss.str().c_str());
-        }
-    }
-
-    return 0;
-}
-
-void saveCoordinatesXML(cv::Mat h_mat, std::array<std::array<float, 6>, 4> ctrl_point_params, std::string full_path)
-{
-    // Create an XML document object
-    pugi::xml_document doc;
-
-    // Create the root element "config"
-    pugi::xml_node root = doc.append_child("config");
-
-    // Create a child node for storing control point positions
-    pugi::xml_node arr_node = root.append_child("ctrl_point_params");
-
-    // Iterate over the rows of the 2D array 'ctrl_point_params'
-    for (int i = 0; i < 4; ++i)
-    {
-        // Create a row element under "ctrl_point_params"
-        pugi::xml_node rowNode = arr_node.append_child("row");
-
-        // Iterate over the elements in the row
-        for (int j = 0; j < 6; ++j)
-        {
-            // Create a cell element under the row
-            pugi::xml_node cellNode = rowNode.append_child("cell");
-            cellNode.append_child(pugi::node_pcdata).set_value(std::to_string(ctrl_point_params[i][j]).c_str());
-        }
-    }
-
-    // Create a 2D array to store the homography matrix
-    float hom_arr_2d[3][3];
-
-    // Copy data from cv::Mat homology matrix to the 2D array 'array2'
-    for (int i = 0; i < 3; i++)
-    {
-        for (int j = 0; j < 3; j++)
-        {
-            hom_arr_2d[i][j] = h_mat.at<float>(i, j);
-        }
-    }
-
-    // Create a child node for storing the homography matrix
-    pugi::xml_node arrayNode2 = root.append_child("h_mat");
-
-    // Iterate over the rows of the 2D array 'array2'
-    for (const auto &row : hom_arr_2d)
-    {
-        // Create a row element under "h_mat"
-        pugi::xml_node row_node = arrayNode2.append_child("row");
-
-        // Iterate over the elements in the row
-        for (const auto &value : row)
-        {
-            // Create a cell element under the row
-            pugi::xml_node cell_node = row_node.append_child("cell");
-            cell_node.append_child(pugi::node_pcdata).set_value(std::to_string(value).c_str());
-        }
-    }
-
-    // Get file name from path
-    std::string file_name = full_path.substr(full_path.find_last_of('/') + 1);
-
-    // Save the XML document to a file specified by 'configPath'
-    if (doc.save_file(full_path.c_str()))
-    {
-        ROS_INFO("[SAVE XML] File Saved Successfully: File[%s]", file_name.c_str());
-    }
-    else
-    {
-        ROS_ERROR("[SAVE XML] Failed to Save XML: File[%s]", file_name.c_str());
-    }
-}
-
 int loadImgTextures(std::vector<std::string> img_paths_vec, std::vector<ILuint> &out_tex_id_vec)
 {
     int img_i = 0;
@@ -557,7 +355,7 @@ int textureWarp(cv::Mat _HMAT, std::array<cv::Point2f, 4> target_plane_vertices,
     return 0;
 }
 
-void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &out_CTRL_PNT_DATA)
+void initControlPointCoordinates(std::array<std::array<std::array<cv::Point2f, 4>, 2>, 2> &out_CTRL_PT_COORDS)
 {
 
     // Specify the control point limits
@@ -586,18 +384,18 @@ void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &out_
             p_org = cv::Point2f(+cp_x, -cp_y);
 
         // Set x y values for each vertex
-        out_CTRL_PNT_DATA[cp_i] = {
+        out_CTRL_PT_COORDS[cp_i] = {
             cv::Point2f(p_org.x, p_org.y + WALL_HEIGHT_NDC),                  // top left
             cv::Point2f(p_org.x + WALL_WIDTH_NDC, p_org.y + WALL_HEIGHT_NDC), // top right
-            cv::Point2f(p_org.x, p_org.y),                                    // bottom left
-            cv::Point2f(p_org.x + WALL_WIDTH_NDC, p_org.y),                   // bottom right
+            cv::Point2f(p_org.x + WALL_WIDTH_NDC, p_org.y),                   // bottom left
+            cv::Point2f(p_org.x, p_org.y),                                    // bottom right
         };
     }
 }
 
 int updateWallVertices(
-    const std::array<std::array<cv::Point2f, 4>, 4> &_CTRL_PNT_DATA,
-    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &out_WALL_VERT_DATA)
+    const std::array<std::array<cv::Point2f, 4>, 4> &_CTRL_PT_COORDS,
+    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &out_WALL_WARP_COORDS)
 {
 
     // Iterate trough grid/wall rows
@@ -611,10 +409,10 @@ int updateWallVertices(
             {
                 // Get the corner values for the interpolation function
                 ///@note that y values must be flipped to account for the image origin being in the top-left corner
-                cv::Point2f p_a = _CTRL_PNT_DATA[0][p_i]; // bottom-left interp == top left NDC
-                cv::Point2f p_b = _CTRL_PNT_DATA[1][p_i]; // bottom-right interp == top right NDC
-                cv::Point2f p_c = _CTRL_PNT_DATA[2][p_i]; // top-left interp == bottom left NDC
-                cv::Point2f p_d = _CTRL_PNT_DATA[3][p_i]; // top-right interp == bottom right NDC
+                cv::Point2f p_a = _CTRL_PT_COORDS[0][p_i]; // bottom-left interp == top left NDC
+                cv::Point2f p_b = _CTRL_PT_COORDS[1][p_i]; // bottom-right interp == top right NDC
+                cv::Point2f p_c = _CTRL_PT_COORDS[3][p_i]; // top-left interp == bottom left NDC
+                cv::Point2f p_d = _CTRL_PT_COORDS[2][p_i]; // top-right interp == bottom right NDC
 
                 // Get the interpolated vertex x-coordinate
                 cv::Point2f p_interp(
@@ -622,22 +420,22 @@ int updateWallVertices(
                     bilinearInterpolation(p_a.y, p_b.y, p_c.y, p_d.y, grow_i, gcol_i, MAZE_SIZE)); // y
 
                 // Store the warped vertex coordinates
-                out_WALL_VERT_DATA[grow_i][gcol_i][p_i] = p_interp;
+                out_WALL_WARP_COORDS[grow_i][gcol_i][p_i] = p_interp;
             }
         }
     }
 
     // TEMP
-    // dbLogCtrlPointCoordinates(r_CTRL_PNT_DATA);
-    // dbLogWallVerticesCoordinates(r_WALL_VERT_DATA);
+    // dbLogCtrlPointCoordinates(r_CTRL_PT_COORDS);
+    // dbLogWallVerticesCoordinates(r_WALL_WARP_COORDS);
 
     // Return success
     return 0;
 }
 
 int updateWallHomography(
-    const std::array<std::array<cv::Point2f, 4>, 4> &_CTRL_PNT_DATA,
-    const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &_WALL_VERT_DATA,
+    const std::array<std::array<cv::Point2f, 4>, 4> &_CTRL_PT_COORDS,
+    const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &_WALL_WARP_COORDS,
     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &out_WALL_HMAT_DATA)
 {
     // Define origin plane vertices
@@ -654,7 +452,7 @@ int updateWallHomography(
         for (float gcol_i = 0; gcol_i < MAZE_SIZE; gcol_i++) // image left to right
         {
             // Get warped vertices for this wall to use as target
-            std::vector<cv::Point2f> target_vertices = quadArr2Vec(_WALL_VERT_DATA[grow_i][gcol_i]);
+            std::vector<cv::Point2f> target_vertices = quadArr2Vec(_WALL_WARP_COORDS[grow_i][gcol_i]);
 
             // Convert to pixel coordinates for OpenCV's findHomography function
             std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices, WALL_WIDTH_PXL, WALL_HEIGHT_PXL, MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
@@ -766,7 +564,7 @@ void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &
     ROS_INFO("=========================================");
 }
 
-void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &_WALL_VERT_DATA)
+void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &_WALL_WARP_COORDS)
 {
     ROS_INFO("                                       Warped Wall Coordinates                                               ");
     ROS_INFO("=============================================================================================================");
@@ -787,7 +585,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
         for (int col = 0; col < MAZE_SIZE; ++col)
         {
             // Fetch the quad vertices for the current [row][col]
-            auto &quad_vertices = _WALL_VERT_DATA[row][col];
+            auto &quad_vertices = _WALL_WARP_COORDS[row][col];
             snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
                      quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
         }
@@ -798,7 +596,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
         for (int col = 0; col < MAZE_SIZE; ++col)
         {
             // Fetch the quad vertices for the current [row][col]
-            auto &quad = _WALL_VERT_DATA[row][col];
+            auto &quad = _WALL_WARP_COORDS[row][col];
             snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
                      quad[3].x, quad[3].y, quad[2].x, quad[2].y);
         }

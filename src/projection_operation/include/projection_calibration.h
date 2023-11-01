@@ -14,87 +14,140 @@
 
 // ================================================== VARIABLES ==================================================
 
-
-/** 
-* @var const GLchar* vertexSource
-* @brief Vertex shader source code.
-
-* @details
-* This is a GLSL (OpenGL Shading Language) vertex shader source code stored as a C++ raw string literal.
-* - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
-* - `in vec2 position;`: Declares an input vertex attribute called `position`. Receives vertex coordinates from the application.
-* - `in vec2 texcoord;`: Declares another input vertex attribute called `texcoord`. Receives texture coordinates from the application.
-* - `out vec2 Texcoord;`: Declares an output variable that will be passed to the fragment shader.
-* - `void main() { ... }`: Main function where the vertex shader performs its work.
-*/
-const char* vertexSource;
-
 /**
-* @var const GLchar* fragmentSource
-* @brief Fragment shader source code.
-*
-* @details
-* This is a GLSL (OpenGL Shading Language) fragment shader source code also stored as a C++ raw string literal.
-* - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
-* - `in vec2 Texcoord;`: Receives the texture coordinates from the vertex shader.
-* - `out vec4 outColor;`: Declares an output variable for storing the color to be used for the fragment.
-* - `uniform sampler2D tex;`: Declares a uniform variable representing a 2D texture.
-* - `void main() { ... }`: Main function of the fragment shader, samples the texture at the given coordinates and sets the output color.
-*/
-const char* fragmentSource;
-
-/**
- * @brief Shader program IDs for wall image and circle rendering.
+ * @brief Shader program IDs for wall image and control point marker rendering.
  *
  * @details
- * - `wallShaderProgram`: Shader program used for rendering the warped wall images.
- * - `circleShaderProgram`: Shader program used for rendering the control point markers as circles.
+ * - `WALL_SHADER`: Shader program used for rendering the warped wall images.
+ * - `CTRL_PT_SHADER`: Shader program used for rendering the control point markers as circles.
  */
-GLuint wallShaderProgram, circleShaderProgram;
+GLuint WALL_SHADER;
+GLuint CTRL_PT_SHADER;
 
 /**
- * @brief Global Vertex Buffer Object (VBO) for wall images and control point markers.
- * 
- * @details 
- * - 'wallVertexBuffer': This VBO contains the vertex data for rendering and transforming
+ * @brief Global Element Buffer Object (EBO) for wall images and control point markers.
+ *
+ * @details
+ * - 'WALL_EBO': Element Buffer Object (EBO) containing the index data for rendering the wall images.
+ *      Initialized at the beginning of the program and remains constant.
+ * - 'CTRL_PT_EBO': Element Buffer Object (EBO) containing the index data for rendering the control point markers.
+ *      Initialized at the beginning of the program and remains constant.
+ */
+GLuint WALL_EBO;
+GLuint CTRL_PT_EBO;
+
+/**
+ * @brief Global Vertex Array Object (VAO) arrays for wall images and control point markers.
+ *
+ * @details
+ * - 'WALL_VAO_ARR': 2D array of Vertex Array Objects (VAOs) that manage vertex attributes for each wall image.
+ *      Each VAO is initialized at the beginning of the program.
+ * - 'CTRL_PT_VAO_ARR': 2D array of Vertex Array Objects (VAOs) that manage vertex attributes for each control point marker.
+ *      Each VAO is initialized at the beginning of the program.
+ */
+std::array<std::array<GLuint, MAZE_SIZE>, MAZE_SIZE> WALL_VAO_ARR;
+std::array<std::array<GLuint, 4>, 4> CTRL_PT_VAO_ARR;
+
+/**
+ * @brief Global Vertex Buffer Object (VBO) arrays for wall images and control point markers.
+ *
+ * @details
+ * - 'WALL_VBO_ARR': Array of VBO that contain the vertex data for rendering and transforming
  *      the wall images. It is initialized at the beginning of the program and
  *      updated as needed.
- * - 'circleVertexBuffer': This VBO contains the vertex data for rendering the control
- *      point markers (circles). Like wallVertexBuffer, it is initialized at the start
+ * - 'CTRL_PT_VBO_ARR':  Array of VBO that contain the vertex data for rendering the control
+ *      point markers (circles). Like WALL_VBO_ARR, it is initialized at the start
  *      and updated as necessary.
  */
-GLuint wallVertexBuffer, circleVertexBuffer;
+std::array<std::array<GLuint, MAZE_SIZE>, MAZE_SIZE> WALL_VBO_ARR;
+std::array<std::array<GLuint, 4>, 4> CTRL_PT_VBO_ARR;
 
 /**
- * @brief  4x4 data container for tracking the paramaters related to the plotted control point markers  asscicated with the 
- * vertex coordinates for the corner wall images 
+ * @brief Vertex data for rendering the textured rectangle.
+ *
+ * The array contains 4 vertices, each with 4 floats. The first two floats
+ * represent the vertex coordinates, and the last two represent the texture
+ * coordinates. The vertices are defined in normalized device coordinates (NDC).
  *
  * @details
- *[4][4] = [conrol point][vertex]
+ * | Index  | Description      | NDC X  | NDC Y  | Tex X  | Tex Y  |
+ * |--------|------------------|--------|--------|--------|--------|
+ * | 1      | Top-left vertex  | -1.0f  |  1.0f  |  0.0f  |  0.0f  |
+ * | 0      | Top-right vertex |  1.0f  |  1.0f  |  1.0f  |  0.0f  |
+ * | 2      | Bottom-right     |  1.0f  | -1.0f  |  1.0f  |  1.0f  |
+ * | 3      | Bottom-left      | -1.0f  | -1.0f  |  0.0f  |  1.0f  |
  *
- * - Dimension 1: Control Point [0, 1, 2, 3]
- * - Vetices are with respect to the overall viewport
- *      - 0: Top-left
- *      - 1: Top-right
- *      - 2: Bottom-left
- *      - 3: Bottom-right
- *
- * - Dimension 2: Vertex(x, y) [0, 1, 2, 3]
- * - Vetices are with respect to the wall image vertex
- *      - 0: Top-left 
- *      - 1: Top-right
- *      - 2: Bottom-right 
- *      - 3: Bottom-left
- * 
- * @param point: The x and y coordinates of the vertex
+ * The texture coordinates are flipped vertically to align with OpenCV's top-left origin.
  */
-struct CpMarkers {
-    cv::Point2f point; // The x and y coordinates of the vertex
-    float radius; // The radius of the control point
-    std::array<float, 3> color; // The RGB color values for the control point
+float WALL_GL_VERTICES[] = {
+    -1.0f, 1.0f, 0.0f, 0.0f, // Top-left
+    1.0f, 1.0f, 1.0f, 0.0f,  // Top-right
+    1.0f, -1.0f, 1.0f, 1.0f, // Bottom-right
+    -1.0f, -1.0f, 0.0f, 1.0f // Bottom-left
 };
-std::array<std::array<CpMarkers, 4>, 4> CPm;
 
+/**
+ * @brief Index data for rendering the textured rectangle using triangles.
+ *
+ * @details
+ *
+ *   Vertices        Triangles
+ *   0-----1          0-----1
+ *   |     |          | \   |
+ *   |     |  ====>   |  \  |
+ *   |     |          |   \ |
+ *   3-----2          3-----2
+ *
+ * This array uses index buffering to specify which vertices from the `vertices`
+ * array form each of the two triangles that make up the rectangle. This technique
+ * allows for the re-use of vertices, thus reducing the amount of data sent to the GPU.
+ */
+unsigned int WALL_GL_INDICES[] = {
+    0, 1, 2, // First Triangle
+    0, 2, 3  // Second Triangle
+};
+
+/**
+ *
+ * @details
+ * This is a GLSL (OpenGL Shading Language) vertex shader source code stored as a C++ raw string literal.
+ * - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
+ * - `in vec2 position;`: Declares an input vertex attribute called `position`. Receives vertex coordinates from the application.
+ * - `in vec2 texcoord;`: Declares another input vertex attribute called `texcoord`. Receives texture coordinates from the application.
+ * - `out vec2 Texcoord;`: Declares an output variable that will be passed to the fragment shader.
+ * - `void main() { ... }`: Main function where the vertex shader performs its work.
+ */
+const char *vertexSource = R"glsl(
+    #version 330 core
+    in vec2 position;
+    in vec2 texcoord;
+    out vec2 Texcoord;
+    void main() {
+        Texcoord = texcoord;
+        gl_Position = vec4(position, 0.0, 1.0);
+    }
+)glsl";
+
+/**
+ * @brief Fragment shader source code.
+ *
+ * @details
+ * This is a GLSL (OpenGL Shading Language) fragment shader source code also stored as a C++ raw string literal.
+ * - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
+ * - `in vec2 Texcoord;`: Receives the texture coordinates from the vertex shader.
+ * - `out vec4 outColor;`: Declares an output variable for storing the color to be used for the fragment.
+ * - `uniform sampler2D tex;`: Declares a uniform variable representing a 2D texture.
+ * - `void main() { ... }`: Main function of the fragment shader, samples the texture at the given coordinates and sets the output color.
+ */
+const char *fragmentSource = R"glsl(
+    #version 330 core
+    in vec2 Texcoord;
+    out vec4 outColor;
+    uniform sampler2D tex;
+    void main() {
+        outColor = texture(tex, Texcoord);
+    }
+)glsl";
 
 /**
  * @brief  4x4 data container for tracking the vertex coordinates for the corner wall images which are used as control point
@@ -106,18 +159,20 @@ std::array<std::array<CpMarkers, 4>, 4> CPm;
  *[4][4] = [conrol point][vertex]
  *
  * - Dimension 1: Control Point [0, 1, 2, 3]
- *  - 0: Top-left (image vertex)
- *  - 1: Top-right (image vertex)
- *  - 2: Bottom-left (image vertex)
- *  - 3: Bottom-right (image vertex)
+ * - Index with respect to the overall maze verteces
+ *      - 0: Top-left
+ *      - 1: Top-right
+ *      - 2: Bottom-right
+ *      - 3: Bottom-left
  *
  * - Dimension 2: Vertex(x, y) [0, 1, 2, 3]
- *  - 0: Top-left  (quadrilateral vertex)
- *  - 1: Top-right  (quadrilateral vertex)
- *  - 2: Bottom-left  (quadrilateral vertex)
- *  - 3: Bottom-right  (quadrilateral vertex)
+ * - Index with respect to the wall image verteces
+ *      - 0: Top-left
+ *      - 1: Top-right
+ *      - 2: Bottom-right
+ *      - 3: Bottom-left
  */
-std::array<std::array<cv::Point2f, 4>, 4> CTRL_PNT_DATA;
+std::array<std::array<cv::Point2f, 4>, 4> CTRL_PT_COORDS;
 
 /**
  * @brief  MAZE_SIZExMAZE_SIZEx4 data container for storing the final warped wall vertex coordinates in Normalized Device Coordinates (NDC)
@@ -128,62 +183,46 @@ std::array<std::array<cv::Point2f, 4>, 4> CTRL_PNT_DATA;
  * @details
  * [MAZE_SIZE][MAZE_SIZE][4] = [row][col][vertex]
  *
- * - Dimension 1: Rows [0-MAZE_SIZE-1]:
+ * - Dimension 1: Row in maze grid [0-MAZE_SIZE-1]:
  *  - Top to Bottom
  *
- * - Dimension 2: Column [0-MAZE_SIZE-1]:
+ * - Dimension 2: Column in maze grid [0-MAZE_SIZE-1]:
  *  - Left to Right
  *
  * - Dimension 3: Vertex(x, y) [0, 1, 2, 3]
  *  - 0: Top-left  (quadrilateral vertex)
  *  - 1: Top-right  (quadrilateral vertex)
- *  - 2: Bottom-left  (quadrilateral vertex)
- *  - 3: Bottom-right  (quadrilateral vertex)
+ *  - 2: Bottom-right  (quadrilateral vertex)
+ *  - 3: Bottom-left  (quadrilateral vertex)
  */
-std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WALL_VERT_DATA;
+std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WALL_WARP_COORDS;
 
 /**
  * @brief  3x3 data contianer for storing the 3x3 homography matrix for each wall image
  */
 std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> WALL_HMAT_DATA;
 
-
-// The 3x3 homography matrix of 32-bit floating-point numbers used to warp perspective.
-cv::Mat HMAT = cv::Mat::eye(3, 3, CV_32F);
-
 // Struct primarely used for tracking flags set in the keyboard callback
 static struct FlagStruct
 {
-    bool dbRun = false;                    // Flag to indicate if something should be run for debugging
-    bool loadXML = false;                  // Flag to indicate if the XML file needs to be loaded
-    bool saveXML = false;                  // Flag to indicate if the XML file needs to be saved
-    bool updateWindowMonMode = false;      // Flag to indicate if the window mode needs to be updated
-    bool initControlPointMarkers = false;  // Flag to indicate if the control point markers need to be reinitialized
-    bool updateWallDatasets = false; // Flag to indicate if the warped wall vertices need to be updated
+    bool dbRun = false;                   // Flag to indicate if something should be run for debugging
+    bool loadXML = false;                 // Flag to indicate if the XML file needs to be loaded
+    bool saveXML = false;                 // Flag to indicate if the XML file needs to be saved
+    bool updateWindowMonMode = false;     // Flag to indicate if the window mode needs to be updated
+    bool initControlPointMarkers = false; // Flag to indicate if the control point markers need to be reinitialized
+    bool updateWallDatasets = false;      // Flag to indicate if the warped wall vertices need to be updated
 } F;
 
-// Specify the window name
-std::string windowName = "Projection Calibration";
-
-// Dynamic control point parameter arrays
-std::array<std::array<float, 6>, 4> ctrlPointParams;
-int cpSelectedInd = 0;
-std::string calModeStr = "position"; // Parmeter being modified [position, dimension, shear]
+// Selected control point
+std::array<int, 2> cpSelectedInd = {0, 0}; // Index: maze_corner[0,1] wall_vertex[0,1,2,3]
 
 // Control point graphics
 std::array<float, 3> cpVertSelectedRGB = {0.0f, 1.0f, 0.0f}; // Select control point marker color (green)
 std::array<float, 3> cpWallSelectedRGB = {1.0f, 0.0f, 0.0f}; // Selected control point wall color (red)
 std::array<float, 3> cpUnelectedRGB = {0.0f, 0.0f, 1.0f};    // Inactive control point marker color (blue)
 
-// Contorl point user interface
-int cpWallSelectedInd = 0; // Selected control point wall index [0,1,2,3]
-int cpVertSelectedInd = 2; // Selected control point wall vertex index [0,1,2,3]
-
 // Control point image radius
 const std::array<float, 2> cpMakerRadius = {0.0025f, 0.005f};
-
-// The 3x3 homography matrix of 32-bit floating-point numbers used to warp perspective.
-cv::Mat homMat = cv::Mat::eye(3, 3, CV_32F);
 
 // Directory paths
 std::string image_wall_dir_path = IMAGE_TOP_DIR_PATH + "/calibration_images";
@@ -237,37 +276,36 @@ GLFWmonitor **pp_monitorIDVec = nullptr;
 /**
  * @brief GLFW key callback function to handle key events and execute corresponding actions.
  *
- * This function is set as the GLFW key callback and gets called whenever a key event occurs.
- * It handles various key events for control points, monitor handling, XML operations, and more.
- *
- * ## Keybindings:
- * @see README.md
- *
  * @param window Pointer to the GLFW window that received the event.
  * @param key The keyboard key that was pressed or released.
  * @param scancode The system-specific scancode of the key.
  * @param action GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT.
  * @param mods Bit field describing which modifier keys were held down.
+ *
+ * @details
+ * This function is set as the GLFW key callback and gets called whenever a key event occurs.
+ * It handles various key events for control points, monitor handling, XML operations, and more.
+ *
+ * ## Keybindings:
+ * @see README.md
  */
 void callbackKeyBinding(GLFWwindow *, int, int, int, int);
 
 /**
  * @brief Callback function for handling framebuffer size changes.
  *
- * This function is called whenever the framebuffer size changes,
- * and it updates the OpenGL viewport to match the new dimensions.
- *
  * @param window Pointer to the GLFW window.
  * @param width The new width of the framebuffer.
  * @param height The new height of the framebuffer.
+ *
+ * @details
+ * This function is called whenever the framebuffer size changes,
+ * and it updates the OpenGL viewport to match the new dimensions.
  */
 void callbackFrameBufferSizeGLFW(GLFWwindow *, int, int);
 
 /**
  * @brief Callback function for handling OpenGL errors.
- *
- * This function is called whenever an error occurs in the OpenGL context.
- * It logs the error message using ROS_ERROR.
  *
  * @param source The source of the error.
  * @param type The type of the error.
@@ -276,17 +314,23 @@ void callbackFrameBufferSizeGLFW(GLFWwindow *, int, int);
  * @param length The length of the error message.
  * @param message The error message.
  * @param userParam User-defined parameter.
+ *
+ *
+ * @details
+ * This function is called whenever an error occurs in the OpenGL context.
+ * It logs the error message using ROS_ERROR.
  */
 static void callbackErrorOpenGL(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar *, const void *);
 
 /**
  * @brief Callback function for handling errors.
  *
- * This function is called whenever an error occurs in the GLFW context.
- * It logs the error message using ROS_ERROR.
- *
  * @param error The error code.
  * @param description The error description.
+ *
+ * @details
+ * This function is called whenever an error occurs in the GLFW context.
+ * It logs the error message using ROS_ERROR.
  */
 static void callbackErrorGLFW(int, const char *);
 
@@ -294,13 +338,14 @@ static void callbackErrorGLFW(int, const char *);
  * @brief Checks for OpenGL errors and logs them.
  * Should be called after OpenGL API calls.
  *
- * @example checkErrorGL(__LINE__, __FILE__);
- *
  * @param line Line number where the function is called.
  * @param file_str File name where the function is called.
  * @param msg_str Optional message to provide additional context (default to nullptr).
  *
  * @return Integer status code  [0:successful, -1:error].
+ *
+ *
+ * @example checkErrorGL(__LINE__, __FILE__);
  */
 int checkErrorOpenGL(int, const char *, const char * = nullptr);
 
@@ -308,19 +353,29 @@ int checkErrorOpenGL(int, const char *, const char * = nullptr);
  * @brief Checks for GLFW errors and logs them.
  * Should be called after GLFW API calls.
  *
- * @example checkErrorGLFW(__LINE__, __FILE__);
- *
  * @param line Line number where the function is called.
  * @param file_str File name where the function is called.
  * @param msg_str Optional message to provide additional context (default to nullptr).
  *
  * @return Integer status code  [0:successful, -1:error].
+ * *
+ * @example checkErrorGLFW(__LINE__, __FILE__);
  */
 int checkErrorGLFW(int, const char *, const char * = nullptr);
 
 /**
  * @brief Changes the display mode and monitor of the application window.
  *
+ *
+ * @param p_window_id Pointer to the GLFWwindow pointer that will be updated.
+ * @param win_ind Index of the window for which the setup is to be done.
+ * @param pp_r_monitor_id Reference to the GLFWmonitor pointer array.
+ * @param mon_id_ind Index of the monitor to move the window to.
+ * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
+ *
+ * @return Integer status code  [0:successful, -1:error].
+ *
+ * @details
  * This function switches the application window between full-screen and windowed modes
  * and moves it to the monitor specified by the global variable imgMonNumInd.
  *
@@ -331,22 +386,15 @@ int checkErrorGLFW(int, const char *, const char * = nullptr);
  * @note The global variables monitor, monitors, imgMonNumInd, window, and isFullScreen are
  *       used to control the behavior of this function.
  *       Will only exicute if monotor parameters have changed.
- *
- * @param p_window_id Pointer to the GLFWwindow pointer that will be updated.
- * @param win_ind Index of the window for which the setup is to be done.
- * @param pp_r_monitor_id Reference to the GLFWmonitor pointer array.
- * @param mon_id_ind Index of the monitor to move the window to.
- * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
- *
- * @return Integer status code  [0:successful, -1:error].
  */
 int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
 
 /**
  * @brief Draws a control point as a quadrilateral using OpenGL.
  *
+ * @details
  * This function uses OpenGL to draw a quadrilateral that represents a control point.
- * The control point is drawn as a colored circle.
+ * The control point is drawn as a colored control point marker.
  *
  * @param x The control point x-coordinate.
  * @param y The control point y-coordinate.
@@ -375,88 +423,123 @@ int drawQuadImage(std::array<cv::Point2f, 4>);
 /**
  * @brief Renders a 2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
  *
- * This function is a core part of the maze visualization pipeline. It utilizes the OpenGL graphics library for rendering,
- * and the DevIL library for image handling. The function performs several key operations:
- * 1. Texture mapping of the wall images.
- * 2. Perspective warping based on a precomputed homography matrix.
- * 3. Shear and height adjustments based on control point calibration.
- * 4. Optional overlay of status images for cells corresponding to selected control points.
- *
  * @param fbo_texture_id OpenGL framebuffer object's (FBO) texture ID.
  * @param tex_wall_id DevIL image ID for the base wall image.
  * @param tex_mode_mon_id DevIL image ID for the monitor mode image.
  * @param tex_mode_cal_id DevIL image ID for the calibration image.
  *
  * @return Integer status code  [0:successful, -1:error].
+ *
+ * @details
+ * This function is a core part of the maze visualization pipeline. It utilizes the OpenGL graphics library for rendering,
+ * and the DevIL library for image handling. The function performs several key operations:
+ * 1. Texture mapping of the wall images.
+ * 2. Perspective warping based on a precomputed homography matrix.
+ * 3. Shear and height adjustments based on control point calibration.
+ * 4. Optional overlay of status images for cells corresponding to selected control points.
  */
 int drawWallImages(GLuint, ILuint, ILuint, ILuint);
 
-void setupOpenGL();
+/**
+ * @brief Initialize OpenGL resources for render objects (wall images and control point markers).
+ *
+ * @return Integer status code [0:successful, -1:error].
+ *
+ * @details
+ * Initializes the vertex buffer, shader program, and default values
+ * for the wall images and control point markers.
+ */
+int initializeOpenGLObjects();
 
 /**
  * @brief Creates an OpenGL shader program from vertex and fragment shader source code.
  *
- * @param vertexSource Source code for the vertex shader.
- * @param fragmentSource Source code for the fragment shader.
- * 
+ * @param vertex_source Source code for the vertex shader.
+ * @param fragment_source Source code for the fragment shader.
+ *
  * @return GLuint ID of the generated shader program.
- * 
+ *
  * @details
  * This function encapsulates the process of creating, compiling, and linking an OpenGL shader program.
  * The OpenGL shader program is part of the OpenGL graphics pipeline and is essential for rendering graphics.
- * 
+ *
  * The pipeline can be broken down into the following stages:
- * 1. Vertex Processing: Vertex shaders manipulate the attributes of vertices. 
+ * 1. Vertex Processing: Vertex shaders manipulate the attributes of vertices.
  *    This can include things like transforming the vertex position, normal, texture coordinate, etc.
  * 2. Primitive Assembly: Vertices are grouped into geometric primitives (points, lines, and triangles).
  * 3. Rasterization: The primitives are converted into a set of fragments.
- * 4. Fragment Processing: Fragment shaders manipulate the attributes of fragments, 
+ * 4. Fragment Processing: Fragment shaders manipulate the attributes of fragments,
  *    which are essentially potential pixels. Here you might apply textures, calculate lighting, etc.
  * 5. Output Merging: Fragments are converted into actual framebuffer pixels.
- * 
- * The function compiles the vertex and fragment shaders from their source code. 
+ *
+ * The function compiles the vertex and fragment shaders from their source code.
  * It then links them into a shader program, which can be activated with glUseProgram().
- * 
- * - Vertex Shader: Takes attributes like position, color, texture coordinates, normals, etc., 
+ *
+ * - Vertex Shader: Takes attributes like position, color, texture coordinates, normals, etc.,
  *   and computes processed values to be used in later pipeline stages.
- * 
- * - Fragment Shader: Takes interpolated attributes from the rasterization stage and computes 
- *   the final color of a pixel. This is the stage where things like texture mapping, 
+ *
+ * - Fragment Shader: Takes interpolated attributes from the rasterization stage and computes
+ *   the final color of a pixel. This is the stage where things like texture mapping,
  *   lighting calculations, etc., would typically be performed.
- * 
+ *
  * Once the shader program is created and linked successfully, it returns the GLuint ID of the shader program.
  * This ID is used to activate the shader program for rendering.
  */
-GLuint createShaderProgram(const GLchar *vertexSource, const GLchar *fragmentSource);
+GLuint createShaderProgram(const GLchar *, const GLchar *);
 
 /**
- * @brief Initialize OpenGL resources for control point markers.
+ * @brief Converts an OpenCV Mat image into an OpenGL texture and returns the texture ID.
+ *
+ * @param image The cv::Mat image that needs to be converted.
+ *
+ * @return GLuint ID of the generated texture.
  *
  * @details
- * Initializes the vertex buffer, shader program, and default values
- * for control point markers.
+ * This function takes an OpenCV Mat image as input and converts it into an OpenGL texture.
+ * The OpenCV image is first converted from BGR to RGB format. Then, a new OpenGL texture is
+ * generated and the converted image data is stored in this texture.
  *
- * @return 0 on success, -1 on failure.
+ * The texture parameters for minification and magnification filters are set to GL_LINEAR.
+ *
+ * Note: This function assumes that the input image is of type CV_8UC3 and has no alpha channel.
  */
-int initializeControlPointMarkers();
 
-GLuint loadTexture(cv::Mat image);
+GLuint loadTexture(cv::Mat);
 
-bool textureMerge(const std::string &base_img_path, const std::string &mask_img_path, const std::string &output_img_path, cv::Mat &out_merg_img);
+/**
+ * @brief Merges a mask image over a base image and stores the result in an output image.
+ *
+ * @param base_img_path Path to the base image.
+ * @param mask_img_path Path to the mask image.
+ * @param output_img_path Path where the merged image will be saved.
+ * @param out_merg_img Output cv::Mat containing the merged image.
+ *
+ * @return true on successful merge, false otherwise.
+ *
+ * @details
+ * This function merges a mask image over a base image. Both images are read from
+ * their respective paths. The function then overlays the mask image on top of the
+ * base image. If the mask pixel is not white, it is overlaid onto the base image.
+ * The merged image is stored in an output cv::Mat. The function returns true if
+ * the merge operation is successful and false otherwise.
+ */
+
+bool textureMerge(const std::string &, const std::string &, const std::string &, cv::Mat &);
 
 int warpRenderWallImages();
-
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.
  *
- * This program initializes ROS, DevIL, and GLFW, and then enters a main loop
- * to handle image projection and calibration tasks.
  *
  * @param  argc  Number of command-line arguments.
  * @param  argv  Array of command-line arguments.
  *
- * @return 0 on successful execution, -1 on failure.
+ * @return Integer status code [0:successful, -1:error].
+ *
+ * @details
+ * This program initializes ROS, DevIL, and GLFW, and then enters a main loop
+ * to handle image projection and calibration tasks.
  */
 int main(int, char **);
 

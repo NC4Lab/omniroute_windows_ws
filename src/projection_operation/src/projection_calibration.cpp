@@ -8,31 +8,6 @@
 
 #include "projection_calibration.h"
 
-// ================================================== VARIABLES ==================================================
-
-//  Vertex shader source code for GLSL (OpenGL Shading Language)
-const GLchar *vertexSource = R"glsl(
-    #version 330 core
-    in vec2 position;
-    in vec2 texcoord;
-    out vec2 Texcoord;
-    void main() {
-        Texcoord = texcoord;
-        gl_Position = vec4(position, 0.0, 1.0);
-    }
-)glsl";
-
-// Fragment shader source code for GLSL (OpenGL Shading Language)
-const GLchar *fragmentSource = R"glsl(
-    #version 330 core
-    in vec2 Texcoord;
-    out vec4 outColor;
-    uniform sampler2D tex;
-    void main() {
-        outColor = texture(tex, Texcoord);
-    }
-)glsl";
-
 // ================================================== FUNCTIONS ==================================================
 
 void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -155,22 +130,22 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             if (key == GLFW_KEY_UP)
             {
                 // Move to the top row, keeping the horizontal position
-                cpWallSelectedInd = (cpWallSelectedInd % 2); // Result will be 0 or 1
+                cpSelectedInd[0] = (cpSelectedInd[0] % 2); // Result will be 0 or 1
             }
             else if (key == GLFW_KEY_DOWN)
             {
                 // Move to the bottom row, keeping the horizontal position
-                cpWallSelectedInd = 2 + (cpWallSelectedInd % 2); // Result will be 2 or 3
+                cpSelectedInd[0] = 2 + (cpSelectedInd[0] % 2); // Result will be 2 or 3
             }
             else if (key == GLFW_KEY_LEFT)
             {
                 // Move to the left column, keeping the vertical position
-                cpWallSelectedInd = (cpWallSelectedInd >= 2) ? 2 : 0; // Result will be 0 or 2
+                cpSelectedInd[0] = (cpSelectedInd[0] >= 2) ? 2 : 0; // Result will be 0 or 2
             }
             else if (key == GLFW_KEY_RIGHT)
             {
                 // Move to the right column, keeping the vertical position
-                cpWallSelectedInd = (cpWallSelectedInd >= 2) ? 3 : 1; // Result will be 1 or 3
+                cpSelectedInd[0] = (cpSelectedInd[0] >= 2) ? 3 : 1; // Result will be 1 or 3
             }
         }
 
@@ -181,22 +156,22 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             if (key == GLFW_KEY_UP)
             {
                 // Move to the top row, keeping the horizontal position
-                cpVertSelectedInd = (cpVertSelectedInd % 2); // Result will be 0 or 1
+                cpSelectedInd[1] = (cpSelectedInd[1] % 2); // Result will be 0 or 1
             }
             else if (key == GLFW_KEY_DOWN)
             {
                 // Move to the bottom row, keeping the horizontal position
-                cpVertSelectedInd = 2 + (cpVertSelectedInd % 2); // Result will be 2 or 3
+                cpSelectedInd[1] = 2 + (cpSelectedInd[1] % 2); // Result will be 2 or 3
             }
             else if (key == GLFW_KEY_LEFT)
             {
                 // Move to the left column, keeping the vertical position
-                cpVertSelectedInd = (cpVertSelectedInd >= 2) ? 2 : 0; // Result will be 0 or 2
+                cpSelectedInd[1] = (cpSelectedInd[1] >= 2) ? 2 : 0; // Result will be 0 or 2
             }
             else if (key == GLFW_KEY_RIGHT)
             {
                 // Move to the right column, keeping the vertical position
-                cpVertSelectedInd = (cpVertSelectedInd >= 2) ? 3 : 1; // Result will be 1 or 3
+                cpSelectedInd[1] = (cpSelectedInd[1] >= 2) ? 3 : 1; // Result will be 1 or 3
             }
         }
 
@@ -207,47 +182,47 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.0005f;
 
             // Store current origin
-            cv::Point2f cp_origin_save = CTRL_PNT_DATA[cpWallSelectedInd][2];
+            cv::Point2f cp_origin_save = CTRL_PT_COORDS[cpSelectedInd[0]][2];
 
             // Listen for arrow key input to move selected control point
             if (key == GLFW_KEY_LEFT)
             {
-                CTRL_PNT_DATA[cpWallSelectedInd][cpVertSelectedInd].x -= pos_inc; // Move left
+                CTRL_PT_COORDS[cpSelectedInd[0]][cpSelectedInd[1]].x -= pos_inc; // Move left
                 F.updateWallDatasets = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                CTRL_PNT_DATA[cpWallSelectedInd][cpVertSelectedInd].x += pos_inc; // Move right
+                CTRL_PT_COORDS[cpSelectedInd[0]][cpSelectedInd[1]].x += pos_inc; // Move right
                 F.updateWallDatasets = true;
             }
             else if (key == GLFW_KEY_UP)
             {
-                CTRL_PNT_DATA[cpWallSelectedInd][cpVertSelectedInd].y += pos_inc; // Move up
+                CTRL_PT_COORDS[cpSelectedInd[0]][cpSelectedInd[1]].y += pos_inc; // Move up
                 F.updateWallDatasets = true;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                CTRL_PNT_DATA[cpWallSelectedInd][cpVertSelectedInd].y -= pos_inc; // Move down
+                CTRL_PT_COORDS[cpSelectedInd[0]][cpSelectedInd[1]].y -= pos_inc; // Move down
                 F.updateWallDatasets = true;
             }
 
             // Shift all control points if origin moved
-            cv::Point2f cp_origin_new = CTRL_PNT_DATA[cpWallSelectedInd][2];
+            cv::Point2f cp_origin_new = CTRL_PT_COORDS[cpSelectedInd[0]][2];
 
             // Calculate the change in x and y for the origin
             float delta_x = cp_origin_new.x - cp_origin_save.x;
             float delta_y = cp_origin_new.y - cp_origin_save.y;
 
             // Check if the origin vertex was moved
-            if (cpVertSelectedInd == 2)
+            if (cpSelectedInd[1] == 2)
             {
                 // Update all other vertices based on the change in the origin
                 for (int i = 0; i < 4; ++i) // Assuming there are 4 vertices
                 {
                     if (i != 2) // Skip the origin vertex itself
                     {
-                        CTRL_PNT_DATA[cpWallSelectedInd][i].x += delta_x;
-                        CTRL_PNT_DATA[cpWallSelectedInd][i].y += delta_y;
+                        CTRL_PT_COORDS[cpSelectedInd[0]][i].x += delta_x;
+                        CTRL_PT_COORDS[cpSelectedInd[0]][i].y += delta_y;
                     }
                 }
             }
@@ -401,8 +376,8 @@ int drawColoredCircle(float x, float y, float radius, std::array<float, 3> rgb_a
 int updateControlPointMarkers()
 {
 
-    // Itterate through control points
-    for (int cp_i = 0; cp_i < 4; cp_i++)
+    // Itterate through maze cornerss
+    for (int c_i = 0; c_i < 4; c_i++)
     {
         // Itterate through verteces
         for (int v_i = 0; v_i < 4; v_i++)
@@ -411,9 +386,9 @@ int updateControlPointMarkers()
             std::array<float, 3> cp_col = cpUnelectedRGB;
 
             // Set color based on cp selected
-            if (cp_i == cpWallSelectedInd)
+            if (c_i == cpSelectedInd[0])
             {
-                if (cpVertSelectedInd == v_i)
+                if (cpSelectedInd[1] == v_i)
                 {
                     cp_col = cpVertSelectedRGB;
                 }
@@ -426,7 +401,7 @@ int updateControlPointMarkers()
                 cp_rad = cpMakerRadius[1];
 
             // Get the control point coordinates
-            cv::Point2f p_cp = CTRL_PNT_DATA[cp_i][v_i];
+            cv::Point2f p_cp = CTRL_PT_COORDS[c_i][v_i];
 
             // Draw the control point
             if (drawColoredCircle(p_cp.x, p_cp.y, cp_rad, cp_col) != 0)
@@ -476,10 +451,9 @@ int drawWallImages(GLuint fbo_texture_id, ILuint tex_wall_id, ILuint tex_mode_mo
     // Enable OpenGL texture mapping
     glEnable(GL_TEXTURE_2D);
 
-    // Iterate through the maze grid rows
+    // Iterate through the wall grid rows and columns
     for (float grow_i = 0; grow_i < MAZE_SIZE; grow_i++) // image bottom to top
     {
-        // Iterate through each column in the maze row
         for (float gcol_i = 0; gcol_i < MAZE_SIZE; gcol_i++) // image left to right
         {
             // Create a copy of the wall image
@@ -491,10 +465,10 @@ int drawWallImages(GLuint fbo_texture_id, ILuint tex_wall_id, ILuint tex_mode_mo
 
             //  Create merged image for the wall corresponding to the selected control point
             if (
-                (cpWallSelectedInd == 0 && grow_i == 0 && gcol_i == 0) ||
-                (cpWallSelectedInd == 1 && grow_i == 0 && gcol_i == MAZE_SIZE - 1) ||
-                (cpWallSelectedInd == 2 && grow_i == MAZE_SIZE - 1 && gcol_i == 0) ||
-                (cpWallSelectedInd == 3 && grow_i == MAZE_SIZE - 1 && gcol_i == MAZE_SIZE - 1))
+                (cpSelectedInd[0] == 0 && grow_i == 0 && gcol_i == 0) ||
+                (cpSelectedInd[0] == 1 && grow_i == 0 && gcol_i == MAZE_SIZE - 1) ||
+                (cpSelectedInd[0] == 2 && grow_i == MAZE_SIZE - 1 && gcol_i == 0) ||
+                (cpSelectedInd[0] == 3 && grow_i == MAZE_SIZE - 1 && gcol_i == MAZE_SIZE - 1))
             {
                 // // Merge test pattern and active monitor image
                 // if (textureMerge(tex_mode_mon_id, copy_tex_wall_id) != 0)
@@ -511,7 +485,7 @@ int drawWallImages(GLuint fbo_texture_id, ILuint tex_wall_id, ILuint tex_mode_mo
             }
 
             // Get warped vertices for this wall
-            std::array<cv::Point2f, 4> quad_vertices_warped = WALL_VERT_DATA[grow_i][gcol_i];
+            std::array<cv::Point2f, 4> quad_vertices_warped = WALL_WARP_COORDS[grow_i][gcol_i];
 
             // Get homography matrix for this wall's texture
             cv::Mat _HMAT = WALL_HMAT_DATA[grow_i][gcol_i];
@@ -556,182 +530,96 @@ int drawWallImages(GLuint fbo_texture_id, ILuint tex_wall_id, ILuint tex_mode_mo
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-void setupOpenGL()
+int initializeOpenGLObjects()
 {
-    /**
-     * @brief Vertex data for rendering the textured rectangle.
-     *
-     * The array contains 4 vertices, each with 4 floats. The first two floats
-     * represent the vertex coordinates, and the last two represent the texture
-     * coordinates. The vertices are defined in normalized device coordinates (NDC).
-     *
-     * @details
-     * | Index  | Description      | NDC X  | NDC Y  | Tex X  | Tex Y  |
-     * |--------|------------------|--------|--------|--------|--------|
-     * | 1      | Top-left vertex  | -1.0f  |  1.0f  |  0.0f  |  0.0f  |
-     * | 0      | Top-right vertex |  1.0f  |  1.0f  |  1.0f  |  0.0f  |
-     * | 2      | Bottom-right     |  1.0f  | -1.0f  |  1.0f  |  1.0f  |
-     * | 3      | Bottom-left      | -1.0f  | -1.0f  |  0.0f  |  1.0f  |
-     *
-     * The texture coordinates are flipped vertically to align with OpenCV's top-left origin.
-     */
-    float vertices[] = {
-        -1.0f, 1.0f, 0.0f, 0.0f, // Top-left
-        1.0f, 1.0f, 1.0f, 0.0f,  // Top-right
-        1.0f, -1.0f, 1.0f, 1.0f, // Bottom-right
-        -1.0f, -1.0f, 0.0f, 1.0f // Bottom-left
-    };
-
-    /**
-     * @brief Index data for rendering the textured rectangle using triangles.
-     *
-     * @details
-     *
-     *   Vertices        Triangles
-     *   0-----1          0-----1
-     *   |     |          | \   |
-     *   |     |  ====>   |  \  |
-     *   |     |          |   \ |
-     *   3-----2          3-----2
-     *
-     * This array uses index buffering to specify which vertices from the `vertices`
-     * array form each of the two triangles that make up the rectangle. This technique
-     * allows for the re-use of vertices, thus reducing the amount of data sent to the GPU.
-     */
-    unsigned int indices[] = {
-        0, 1, 2, // First Triangle
-        0, 2, 3  // Second Triangle
-    };
-
-    // Create and bind a Vertex Array Object (VAO)
-    // VAOs store the configuration of multiple Vertex Buffer Objects (VBOs)
-    GLuint VAO, VBO, EBO;
-    glGenVertexArrays(1, &VAO);
-
-    // Generate a Vertex Buffer Object (VBO)
-    // VBOs store vertex data, such as position or color
-    glGenBuffers(1, &VBO);
-
-    // Generate an Element Buffer Object (EBO)
-    // EBOs store index data to avoid duplicating vertex data
-    glGenBuffers(1, &EBO);
-
-    // Bind the VAO to configure the VBOs and their attributes
-    glBindVertexArray(VAO);
-
-    // Bind and initialize the VBO with vertex data
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices),
-                 vertices, GL_STATIC_DRAW);
-
-    // Bind and initialize the EBO with index data
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices),
-                 indices, GL_STATIC_DRAW);
-
-    // Define how OpenGL should interpret the vertex data
-    // Parameters: attribute index, size, type, normalize, stride, offset
-    // This sets up the first attribute (position)
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0);
-
-    // This sets up the second attribute (texture coordinates)
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1);
-}
-
-GLuint createShaderProgram(const GLchar *vertexSource, const GLchar *fragmentSource)
-{
-    // Create and compile the vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexSource, NULL);
-    glCompileShader(vertexShader);
-
-    // Create and compile the fragment shader
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
-    glCompileShader(fragmentShader);
-
-    // Link the vertex and fragment shader into a shader program
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
-
-    // Delete the vertex and fragment shaders as they're now linked into the program
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
-
-    return shaderProgram;
-}
-
-int initializeControlPointMarkers()
-{
-    // Initialize the 4x4 CPm array with default values.
-    for (int i = 0; i < 4; ++i)
+    // -------- LAMBDA FUNCTION FOR INITIALIZING VAO AND VBO BY ELEMENT -------
+    auto initializeByElement = [](GLuint &vao, GLuint &vbo, float *vertices, size_t size)
     {
-        for (int j = 0; j < 4; ++j)
+        // Generate and bind a Vertex Array Object (VAO)
+        glGenVertexArrays(1, &vao);
+        glBindVertexArray(vao);
+
+        // Generate and bind a Vertex Buffer Object (VBO)
+        glGenBuffers(1, &vbo);
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+        // Initialize the VBO with vertex data
+        glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
+
+        // Specify the format of the vertex data for the position attribute
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+        glEnableVertexAttribArray(0); // Enable the position attribute
+
+        // Specify the format of the vertex data for the texture coordinate attribute
+        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+        glEnableVertexAttribArray(1); // Enable the texture coordinate attribute
+
+        // Unbind the VAO to prevent accidental modification
+        glBindVertexArray(0);
+    };
+
+    // --------------- SETUP FOR WALL IMAGE RENDERING ---------------
+
+    // Generate and bind an Element Buffer Object (EBO)
+    glGenBuffers(1, &WALL_EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
+
+    // Initialize the EBO with index data
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(WALL_GL_INDICES), WALL_GL_INDICES, GL_DYNAMIC_DRAW);
+
+    // Iterate through the wall grid to initialize each element's VAO and VBO
+    for (int gr_i = 0; gr_i < MAZE_SIZE; gr_i++)
+    {
+        for (int gc_i = 0; gc_i < MAZE_SIZE; gc_i++)
         {
-            CPm[i][j].point = cv::Point2f(0.0f, 0.0f);
-            CPm[i][j].radius = 1.0f;
-            CPm[i][j].color = {1.0f, 0.0f, 0.0f}; // Default to red
+            initializeByElement(WALL_VAO_ARR[gr_i][gc_i], WALL_VBO_ARR[gr_i][gc_i], WALL_GL_VERTICES, sizeof(WALL_GL_VERTICES));
         }
     }
 
-    // Create and compile the vertex shader
-    const GLchar *circleVertexSource = R"glsl(
-        #version 330 core
-        in vec2 position;
-        void main() {
-            gl_Position = vec4(position, 0.0, 1.0);
+    // Create the shader program for wall image rendering
+    WALL_SHADER = createShaderProgram(vertexSource, fragmentSource);
+
+    // --------------- SETUP FOR CONTROL POINT RENDERING ---------------
+
+    // Iterate through the maze corners to initialize each control point's VAO and VBO
+    for (int c_i = 0; c_i < 4; c_i++)
+    {
+        for (int v_i = 0; v_i < 4; v_i++)
+        {
+            initializeByElement(CTRL_PT_VAO_ARR[c_i][v_i], CTRL_PT_VBO_ARR[c_i][v_i], NULL, sizeof(cv::Point2f));
         }
-    )glsl";
+    }
 
-    // Create and compile the fragment shader
-    const GLchar *circleFragmentSource = R"glsl(
-        #version 330 core
-        out vec4 outColor;
-        void main() {
-            // logic to color a circle
-            outColor = vec4(1.0, 0.0, 0.0, 1.0);  // example: solid red circle
-        }
-    )glsl";
+    // Create the shader program for control point rendering
+    CTRL_PT_SHADER = createShaderProgram(vertexSource, fragmentSource);
 
-    // Create shader program for circle rendering
-    circleShaderProgram = createShaderProgram(circleVertexSource, circleFragmentSource);
-
-    // Generate a single vertex buffer for all circles.
-    glGenBuffers(1, &circleVertexBuffer);
-    glBindBuffer(GL_ARRAY_BUFFER, circleVertexBuffer);
-
-    // Set the buffer size to hold 16 circles cv::Point2f points.
-    int buffer_bytes = 16 * sizeof(cv::Point2f);
-    glBufferData(GL_ARRAY_BUFFER, buffer_bytes, NULL, GL_DYNAMIC_DRAW);
+    // Return success
+    return 0;
 }
 
-GLuint createShaderProgram(const GLchar *vertexSource, const GLchar *fragmentSource)
+GLuint createShaderProgram(const GLchar *vertex_source, const GLchar *fragment_source)
 {
     // Create and compile the vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexSource, NULL);
-    glCompileShader(vertexShader);
+    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertex_shader, 1, &vertex_source, NULL);
+    glCompileShader(vertex_shader);
 
     // Create and compile the fragment shader
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentSource, NULL);
-    glCompileShader(fragmentShader);
+    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragment_shader, 1, &fragment_source, NULL);
+    glCompileShader(fragment_shader);
 
     // Link the vertex and fragment shader into a shader program
-    GLuint shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, vertexShader);
-    glAttachShader(shaderProgram, fragmentShader);
-    glLinkProgram(shaderProgram);
+    GLuint shader_program = glCreateProgram();
+    glAttachShader(shader_program, vertex_shader);
+    glAttachShader(shader_program, fragment_shader);
+    glLinkProgram(shader_program);
 
     // Delete the vertex and fragment shaders as they're now linked into the program
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    glDeleteShader(vertex_shader);
+    glDeleteShader(fragment_shader);
 
-    return shaderProgram;
+    return shader_program;
 }
 
 GLuint loadTexture(cv::Mat image)
@@ -836,6 +724,13 @@ int warpRenderWallImages()
     glfwMakeContextCurrent(window);
     gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
 
+    // Initialize OpenGL objects
+    if (initializeOpenGLObjects() != 0)
+    {
+        ROS_ERROR("Failed to initialize OpenGL objects");
+        return -1;
+    }
+
     // // Load image using OpenCV
     // std::string img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/1_test_pattern.bmp";
     // // std::string img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/2_manu_pirate.bmp";
@@ -893,12 +788,9 @@ int warpRenderWallImages()
     // Load warpedImage as a texture
     GLuint texture = loadTexture(im_warp);
 
-    // Create shader program for image rendering
-    wallShaderProgram = createShaderProgram(vertexSource, fragmentSource);
-
-    // Display image directly through OpenCV
-    cv::namedWindow("Warped Image Display", cv::WINDOW_AUTOSIZE);
-    cv::imshow("Warped Image Display", im_warp);
+    // // Display image directly through OpenCV
+    // cv::namedWindow("Warped Image Display", cv::WINDOW_AUTOSIZE);
+    // cv::imshow("Warped Image Display", im_warp);
     // cv::waitKey(0);
     // cv::destroyWindow("Warped Image Display");
 
@@ -910,28 +802,79 @@ int warpRenderWallImages()
     // dbLogQuadVertices(dstPoints);
     dbLogHomMat(H);
 
-    // Setup OpenGL (unchanged)
-    setupOpenGL();
+    // // Main loop (unchanged)
+    // while (!glfwWindowShouldClose(window))
+    // {
+    //     // Clear the screen
+    //     glClear(GL_COLOR_BUFFER_BIT);
+
+    //     // Use the shader program for wall rendering
+    //     glUseProgram(WALL_SHADER);
+
+    //     // Bind the texture for the wall
+    //     glActiveTexture(GL_TEXTURE0);
+    //     glBindTexture(GL_TEXTURE_2D, texture);
+
+    //     // Bind the VAO for the first wall
+    //     glBindVertexArray(WALL_VAO_ARR[0][0]);
+
+    //     // Bind the EBO for the first wall (if you're using the same EBO for all walls, this step may not be necessary every frame)
+    //     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
+
+    //     // Draw the rectangle (2 triangles) for the first wall
+    //     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    //     // Unbind the VAO to prevent accidental modification
+    //     glBindVertexArray(0);
+
+    //     // Swap the front and back buffers
+    //     glfwSwapBuffers(window);
+
+    //     // Poll for events like keyboard input or window closing
+    //     glfwPollEvents();
+    // }
 
     // Main loop (unchanged)
     while (!glfwWindowShouldClose(window))
     {
+
+        // Clear the screen
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // Use the shader program
-        glUseProgram(wallShaderProgram);
+        // Use the shader program for wall rendering
+        glUseProgram(WALL_SHADER);
 
-        // Bind the texture
+        // Bind the common Element Buffer Object (EBO)
+        // (assuming you are using the same EBO for all walls)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
+
+        // Bind the texture for the walls
+        // (assuming you are using the same texture for all walls)
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, texture);
 
-        // Draw the rectangle (2 triangles)
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // Loop through all the wall images
+        for (int gr_i = 0; gr_i < 1; gr_i++)
+        {
+            for (int gc_i = 0; gc_i < 1; gc_i++)
+            {
+                // Bind the Vertex Array Object (VAO) specific to the current wall
+                glBindVertexArray(WALL_VAO_ARR[gr_i][gc_i]);
 
-        // Swap buffers and check for events
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+                // Draw the rectangle (2 triangles) for the current wall
+                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+                // Unbind the VAO to prevent accidental modification
+                glBindVertexArray(0);
+            }
+        }
     }
+
+    // Swap the front and back buffers
+    glfwSwapBuffers(window);
+
+    // Poll for events like keyboard input or window closing
+    glfwPollEvents();
 
     // Cleanup
     glfwDestroyWindow(window);
@@ -964,17 +907,17 @@ int main(int argc, char **argv)
     // --------------- VARIABLE SETUP ---------------
 
     // Initialze control points
-    initControlPointCoordinates(CTRL_PNT_DATA);
+    initControlPointCoordinates(CTRL_PT_COORDS);
 
     // Initialize wall parameter datasets
-    if (updateWallVertices(CTRL_PNT_DATA, WALL_VERT_DATA) != 0)
+    if (updateWallVertices(CTRL_PT_COORDS, WALL_WARP_COORDS) != 0)
     {
         ROS_ERROR("[SETUP] Failed to Initalize the Wall Vertices Dataset");
         return -1;
     }
 
     // Initialize homography matrix dataset
-    if (updateWallHomography(CTRL_PNT_DATA, WALL_VERT_DATA, WALL_HMAT_DATA) != 0)
+    if (updateWallHomography(CTRL_PT_COORDS, WALL_WARP_COORDS, WALL_HMAT_DATA) != 0)
     {
         ROS_ERROR("[SETUP] Failed to Initalize the Wall Homography Dataset");
         return -1;
@@ -1134,7 +1077,7 @@ int main(int argc, char **argv)
         if (F.loadXML)
         {
             std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
-            loadCoordinatesXML(file_path, 3, homMat, ctrlPointParams);
+            /// @todo Ad save xml back in
             F.loadXML = false;
         }
 
@@ -1142,7 +1085,7 @@ int main(int argc, char **argv)
         if (F.saveXML)
         {
             std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
-            saveCoordinatesXML(homMat, ctrlPointParams, file_path);
+            /// @todo Ad save xml back in
             F.saveXML = false;
         }
 
@@ -1161,7 +1104,7 @@ int main(int argc, char **argv)
         // Initialize/reinitialize control point coordinate dataset
         if (F.initControlPointMarkers)
         {
-            initControlPointCoordinates(CTRL_PNT_DATA);
+            initControlPointCoordinates(CTRL_PT_COORDS);
             F.initControlPointMarkers = false;
         }
 
@@ -1169,14 +1112,14 @@ int main(int argc, char **argv)
         if (F.updateWallDatasets)
         {
             // Initialize wall parameter datasets
-            if (updateWallVertices(CTRL_PNT_DATA, WALL_VERT_DATA) != 0)
+            if (updateWallVertices(CTRL_PT_COORDS, WALL_WARP_COORDS) != 0)
             {
                 ROS_ERROR("[MAIN] Update of Wall Vertices Datasets Failed");
                 return -1;
             }
 
             // Initialize homography matrix dataset
-            if (updateWallHomography(CTRL_PNT_DATA, WALL_VERT_DATA, WALL_HMAT_DATA) != 0)
+            if (updateWallHomography(CTRL_PT_COORDS, WALL_WARP_COORDS, WALL_HMAT_DATA) != 0)
             {
                 ROS_ERROR("[MAIN] Update of Wall Homography Datasets Failed");
                 return -1;
