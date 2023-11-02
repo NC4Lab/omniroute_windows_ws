@@ -526,7 +526,6 @@ GLuint loadTexture(cv::Mat);
  * The merged image is stored in an output cv::Mat. The function returns true if
  * the merge operation is successful and false otherwise.
  */
-
 bool textureMerge(const std::string &, const std::string &, const std::string &, cv::Mat &);
 
 /**

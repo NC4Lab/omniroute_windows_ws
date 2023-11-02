@@ -33,6 +33,19 @@ std::string formatCoordinatesFilePathXML(int mon_id_ind, int mode_cal_ind, std::
     return file_path;
 }
 
+/**
+ * @brief Loads images from specified file paths and stores their IDs in a reference vector.
+ *
+ * @param img_paths_vec A vector of file paths to the images to be loaded.
+ * @param[out] out_tex_id_vec Reference to a vector of ILuint where the IDs of the loaded images will be stored.
+ *
+ * @return Integer status code [0:successful, -1:error].
+ *
+ * @details
+ * This function takes a vector of file paths and iteratively loads each image
+ * using the DevIL library. The function then stores the ILuint IDs of successfully loaded images
+ * in a reference vector.
+ */
 int loadImgTextures(std::vector<std::string> img_paths_vec, std::vector<ILuint> &out_tex_id_vec)
 {
     int img_i = 0;

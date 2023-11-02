@@ -659,6 +659,24 @@ GLuint loadTexture(cv::Mat image)
     return textureID;
 }
 
+
+/**
+ * @brief Merges a mask image over a base image and stores the result in an output image.
+ *
+ * @param base_img_path Path to the base image.
+ * @param mask_img_path Path to the mask image.
+ * @param output_img_path Path where the merged image will be saved.
+ * @param out_merg_img Output cv::Mat containing the merged image.
+ *
+ * @return true on successful merge, false otherwise.
+ *
+ * @details
+ * This function merges a mask image over a base image. Both images are read from
+ * their respective paths. The function then overlays the mask image on top of the
+ * base image. If the mask pixel is not white, it is overlaid onto the base image.
+ * The merged image is stored in an output cv::Mat. The function returns true if
+ * the merge operation is successful and false otherwise.
+ */
 bool textureMerge(const std::string &base_img_path, const std::string &mask_img_path, const std::string &output_img_path, cv::Mat &out_merg_img)
 {
     // Read the base and mask images
@@ -814,7 +832,23 @@ int main(int argc, char **argv)
 
     // --------------- TEST IMAGE SETUP ---------------
 
-    // Load image using OpenCV
+    // // Test load and merg images
+    // std::string base_img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/1_test_pattern.bmp";
+    // std::string mask_img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/ui_state_images/m0.bmp";
+    // std::string output_img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/assets/temp/output_image.bmp";
+    // cv::Mat im_wall;
+
+    // // Merge the images
+    // if (textureMerge(base_img_path, mask_img_path, output_img_path, im_wall))
+    // {
+    //     ROS_INFO("Successfully merged images.");
+    // }
+    // else
+    // {
+    //     std::cout << "Failed to merge images." << std::endl;
+    // }
+
+        // Load image using OpenCV
     std::string img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/1_test_pattern.bmp";
     // std::string img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/2_manu_pirate.bmp";
     cv::Mat im_wall = cv::imread(img_path.c_str());
@@ -822,22 +856,6 @@ int main(int argc, char **argv)
     {
         ROS_ERROR("Failed to load image");
         return -1;
-    }
-
-    // Test load and merg images
-    std::string base_img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/1_test_pattern.bmp";
-    std::string mask_img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/ui_state_images/m0.bmp";
-    std::string output_img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/assets/temp/output_image.bmp";
-    cv::Mat im_wall;
-
-    // Merge the images
-    if (textureMerge(base_img_path, mask_img_path, output_img_path, im_wall))
-    {
-        ROS_INFO("Successfully merged images.");
-    }
-    else
-    {
-        std::cout << "Failed to merge images." << std::endl;
     }
 
     // Populate the source correspondence points
