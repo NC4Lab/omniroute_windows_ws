@@ -157,7 +157,7 @@
  *      - These values are then used to interpolate all other non-corner wall vertices.
  *      - All 3x3x4 warped wall vertices are tehn saved.
  *      - This continues until all 3 calibrations have been performed for all 4 projectors.
- * 
+ *
  *  - Example of warping applied to the first row of walls:
  *
  *                   C(0)           C(1)          C(2)
@@ -165,7 +165,7 @@
  *              0-----   1     0-----------1     0--------1
  *       R(0)    \   CW0 |      \         /      | CW1   /
  *                \      |       \       /       |      /
- *                 3-----2        3-----2        3-----2  
+ *                 3-----2        3-----2        3-----2
  *
  */
 
@@ -213,7 +213,8 @@
 #include <array>
 #include <vector>
 #include <string>
-#include <cstring> 
+#include <cstring>
+#include <cmath>
 
 // PugiXML for XML parsing
 #include "pugixml.hpp"
@@ -377,25 +378,21 @@ int IMG_PROJ_MAP[4][3][3][3] = {
 extern const int MAZE_SIZE = 3;
 
 // Sprecify window resolution: 4K resolution (3840x2160)
-extern const int PROJ_WIN_WIDTH_PXL = 3840;
-extern const int PROJ_WIN_HEIGHT_PXL = 2160;
-extern const float PROJ_WIN_ASPECT_RATIO = (float)PROJ_WIN_WIDTH_PXL / (float)PROJ_WIN_HEIGHT_PXL;
-
-// Wall image size (pixels)
-extern const int WALL_WIDTH_PXL = 300;
-extern const int WALL_HEIGHT_PXL = 540;
+extern const int WINDOW_WIDTH_PXL = 3840;
+extern const int WINDOW_HEIGHT_PXL = 2160;
+extern const float WINDOW_ASPECT_RATIO = (float)WINDOW_WIDTH_PXL / (float)WINDOW_HEIGHT_PXL;
 
 // Specify the maze width and height (NDC)
 const float MAZE_WIDTH_NDC = 0.3f;
 const float MAZE_HEIGHT_NDC = 0.6f;
 
-// Wall spacing (NDC)
-extern const float WALL_SPACE_HORZ_NDC = MAZE_WIDTH_NDC / (float(MAZE_SIZE) - 1);  // Wall spacing on X axis NDC
-extern const float WALL_SPACE_VERT_NDC = MAZE_HEIGHT_NDC / (float(MAZE_SIZE) - 1); // Wall spacing on Y axis NDC
+// Wall image size (pixels)
+extern const int WALL_IMAGE_WIDTH_PXL = 300;
+extern const int WALL_IMAGE_HEIGHT_PXL = 540;
 
 // Default wall width and height (NDC)
-extern const float WALL_WIDTH_NDC = WALL_SPACE_HORZ_NDC / (1 + std::sqrt(2)); // Wall width based on octogonal geometry in NDC
-extern const float WALL_HEIGHT_NDC = WALL_SPACE_VERT_NDC / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
+extern const float WALL_IMAGE_WIDTH_NDC = (MAZE_WIDTH_NDC / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));   // Wall width based on octogonal geometry in NDC
+extern const float WALL_IMAGE_HEIGHT_NDC = (MAZE_HEIGHT_NDC / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -499,10 +496,8 @@ int checkQuadVertices(const std::vector<cv::Point2f> &);
  * @brief Converts the units of the quadrilateral from NDC to pixels.
  *
  * @param quad_vertices_ndc The quadrilateral vertices in NDC
- * @param width_pxl The width of the image in pixels
- * @param height_pxl The height of the image in pixels
- * @param width_ndc The width of the image in NDC
- * @param height_ndc The height of the image in NDC
+ * @param window_width_pxl The width of the window in pixels
+ * @param window_height_pxl The height of the window in pixels
  *
  * @return Vector of quadrilateral vertices in pixels
  *
@@ -510,26 +505,7 @@ int checkQuadVertices(const std::vector<cv::Point2f> &);
  * Convert from NDC [-1, 1] to pixel [0, width or height] and
  * inverts the y to match OpenCV's top-left origin
  */
-std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &quad_vertices_ndc, int width_pxl, int height_pxl, float width_ndc, float height_ndc)
-{
-    std::vector<cv::Point2f> quad_vertices_pxl;
-    for (const auto &point : quad_vertices_ndc)
-    {
-        float pixel_x = ((point.x / width_ndc) + 0.5f) * width_pxl;
-        float pixel_y = ((-point.y / height_ndc) + 0.5f) * height_pxl;
-        quad_vertices_pxl.push_back(cv::Point2f(pixel_x, pixel_y));
-    }
-    return quad_vertices_pxl;
-}
-
-/**
- * @brief Calculates the bounding dimensions based on a given set of vertices.
- *
- * @param quad_vertices std:arr of four vertices defining a quadrilateral.
- *
- * @return Size object containing the maximum dimensions.
- */
-cv::Size getBoundaryDims(std::array<cv::Point2f, 4>);
+std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f>&, int, int);
 
 /**
  * @brief Performs bilinear interpolation.

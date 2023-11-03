@@ -153,15 +153,18 @@ const char *wallFragmentSource = R"glsl(
 
 /**
  * @brief Vertex shader source code for control point rendering.
+ * 
+ * @note The shader program will reverse the y axis to match image coordinate systems used by OpenCV.
  *
  * @details
  * This GLSL vertex shader source code is stored as a C++ raw string literal.
  * - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
- * - `layout (location = 0) in vec2 position;`: Declares an input vertex attribute for position, received from the application.
+ * - `layout (location = 0) in vec2 position;`: Declares an input vertex attribute for position, received from the application. 
+ *      The y-axis will be inverted to match image coordinate systems such as those used in OpenCV.
  * - `layout (location = 1) in vec3 color;`: Declares an input vertex attribute for color, received from the application.
  * - `layout (location = 2) in float size;`: Declares an input vertex attribute for size, received from the application.
  * - `out vec3 fragColor;`: Passes the color to the fragment shader.
- * - `void main() { ... }`: Main function of the shader, where it calculates the final position of the vertex and sets the point size for rendering.
+ * - `void main() { ... }`: Main function of the shader, where it calculates the final position of the vertex with an inverted y-axis and sets the point size for rendering.
  */
 const GLchar *ctrlPtVertexSource = R"glsl(
     #version 330 core
@@ -170,7 +173,8 @@ const GLchar *ctrlPtVertexSource = R"glsl(
     layout (location = 2) in float size;
     out vec3 fragColor;
     void main() {
-        gl_Position = vec4(position, 0.0, 1.0);
+        // Invert the y coordinate to match image coordinate systems
+        gl_Position = vec4(position.x, -position.y, 0.0, 1.0);
         gl_PointSize = size;
         fragColor = color;
     }
@@ -195,7 +199,6 @@ const GLchar *ctrlPtFragmentSource = R"glsl(
     }
 )glsl";
 
-
 /**
  * @brief Shader program IDs for wall image and control point marker rendering.
  *
@@ -218,11 +221,6 @@ std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> WALL_HMAT_DATA;
 
 // Global variable to set the OpenGL debug level.
 int DEBUG_LEVEL_GL = 3; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
-
-// Vectors to store the loaded images in cv::Mat format
-std::vector<cv::Mat> wallImgMatVec; // Vector of wall image texture matrices
-std::vector<cv::Mat> monImgMatVec;  // Vector of monitor mode image texture matrices
-std::vector<cv::Mat> calImgMatVec;  // Vector of calibration mode image texture matrices
 
 // Control point graphics
 const std::array<GLfloat, 3> cpVertSelectedRGB = {0.0f, 1.0f, 0.0f}; // Select control point marker color (green)
@@ -287,6 +285,11 @@ std::vector<std::string> calImgPathVec = {
     image_state_dir_path + "/cwm.png", // middle walls
     image_state_dir_path + "/cwr.png", // right walls
 };
+
+// Vectors to store the loaded images in cv::Mat format
+std::vector<cv::Mat> wallImgMatVec; // Vector of wall image texture matrices
+std::vector<cv::Mat> monImgMatVec;  // Vector of monitor mode image texture matrices
+std::vector<cv::Mat> calImgMatVec;  // Vector of calibration mode image texture matrices
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -407,22 +410,6 @@ int checkErrorGLFW(int, const char *, const char * = nullptr);
 int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
 
 /**
- * @brief Updates the stored warped wall image vertices based on the control point array.
- *
- * @param img_wall_mat cv::Mat image matrix for the base wall image.
- * @param img_mode_mon_mat cv::Mat image matrix for the monitor mode image.
- * @param img_mode_cal_mat cv::Mat image matrix for the calibration image.
- * @param _WALL_HMAT_DATA 3x3 array of Homography matrices used to warp the wall image.
- * @param[out] out_WALL_TEXTURE_ID OpenGL texture ID for the wall image.
- *
- * @return Integer status code [0:successful, -1:error].
- */
-int updateWallTexture(
-    cv::Mat, cv::Mat, cv::Mat,
-    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &,
-    GLuint &);
-
-/**
  * @brief Renders a all wall images from the computed texture2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
  *
  * @param _WALL_TEXTURE_ID OpenGL texture ID for the wall image.
@@ -496,7 +483,7 @@ int initializeControlPointObjects();
  * Once the shader program is created and linked successfully, it returns the GLuint ID of the shader program.
  * This ID is used to activate the shader program for rendering.
  */
-GLuint createShaderProgram(const GLchar *, const GLchar *);
+GLuint compileAndLinkShaders(const GLchar *, const GLchar *);
 
 /**
  * @brief Converts an OpenCV Mat image into an OpenGL texture and returns the texture ID.
@@ -555,6 +542,25 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
  * the alpha value - if the alpha value is not fully transparent (0), the pixel is copied.
  */
 int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img);
+
+/**
+ * @brief Updates the stored warped wall image vertices based on the control point array.
+ *
+ * @param img_wall_mat cv::Mat image matrix for the base wall image.
+ * @param img_mode_mon_mat cv::Mat image matrix for the monitor mode image.
+ * @param img_mode_cal_mat cv::Mat image matrix for the calibration image.
+ * @param _WALL_HMAT_DATA 3x3 array of Homography matrices used to warp the wall image.
+ * @param[out] out_WALL_TEXTURE_ID OpenGL texture ID for the wall image.
+ *
+ * @return Integer status code [0:successful, -1:error].
+ */
+int updateWallTexture(
+    cv::Mat, cv::Mat, cv::Mat,
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &,
+    GLuint &);
+
+bool initializeGLFWandGLAD();
+void testRenderSinglePoint();
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.

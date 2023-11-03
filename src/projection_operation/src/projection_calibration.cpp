@@ -336,7 +336,7 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
             }
 
             // Set the window to windowed mode and position it on the current monitor
-            glfwSetWindowMonitor(p_window_id, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * PROJ_WIN_ASPECT_RATIO), 500, 0);
+            glfwSetWindowMonitor(p_window_id, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * WINDOW_ASPECT_RATIO), 500, 0);
         }
 
         // Update window title
@@ -391,7 +391,7 @@ int initializeWallObjects()
     glBindVertexArray(0);
 
     // Create the shader program for wall image rendering
-    WALL_SHADER = createShaderProgram(wallVertexSource, wallFragmentSource);
+    WALL_SHADER = compileAndLinkShaders(wallVertexSource, wallFragmentSource);
 
     // Return GL status
     return checkErrorOpenGL(__LINE__, __FILE__);
@@ -400,7 +400,7 @@ int initializeWallObjects()
 int initializeControlPointObjects()
 {
     // Create shader program
-    CP_SHADER = createShaderProgram(ctrlPtVertexSource, ctrlPtFragmentSource);
+    CP_SHADER = compileAndLinkShaders(ctrlPtVertexSource, ctrlPtFragmentSource);
 
     // Generate and bind the VAO
     glGenVertexArrays(1, &CP_VAO);
@@ -415,16 +415,25 @@ int initializeControlPointObjects()
             glGenBuffers(1, &CP_VBO_POS_ARR[c_i][v_i]);
             glBindBuffer(GL_ARRAY_BUFFER, CP_VBO_POS_ARR[c_i][v_i]);
             glBufferData(GL_ARRAY_BUFFER, sizeof(cv::Point2f), nullptr, GL_DYNAMIC_DRAW);
+            // Set up vertex attributes for position
+            glEnableVertexAttribArray(0);
+            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(cv::Point2f), (void *)0);
 
             // Generate VBO for color
             glGenBuffers(1, &CP_VBO_RGB_ARR[c_i][v_i]);
             glBindBuffer(GL_ARRAY_BUFFER, CP_VBO_RGB_ARR[c_i][v_i]);
             glBufferData(GL_ARRAY_BUFFER, 3 * sizeof(GLfloat), cpDefaultRGB.data(), GL_STATIC_DRAW);
+            // Set up vertex attributes for color
+            glEnableVertexAttribArray(1);
+            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void *)0);
 
             // Generate VBO for size
             glGenBuffers(1, &CP_VBO_RAD_ARR[c_i][v_i]);
             glBindBuffer(GL_ARRAY_BUFFER, CP_VBO_RAD_ARR[c_i][v_i]);
             glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat), &cpDefualtMakerRadius, GL_STATIC_DRAW);
+            // Set up vertex attributes for size
+            glEnableVertexAttribArray(2);
+            glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(GLfloat), (void *)0);
         }
     }
 
@@ -435,70 +444,8 @@ int initializeControlPointObjects()
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-int updateWallTexture(
-    cv::Mat img_wall_mat, cv::Mat img_mode_mon_mat, cv::Mat img_mode_cal_mat,
-    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_WALL_HMAT_DATA,
-    GLuint &out_WALL_TEXTURE_ID)
-{
-    // Initializ the image to be used as the texture
-    cv::Mat im_wall_merge = cv::Mat::zeros(WALL_HEIGHT_PXL, WALL_WIDTH_PXL, CV_8UC3); // Bottom-right
-
-    // Iterate through the maze grid rows
-    for (float grow_i = 0; grow_i < MAZE_SIZE; grow_i++) // image bottom to top
-    {
-        // Iterate through each column in the maze row
-        for (float gcol_i = 0; gcol_i < MAZE_SIZE; gcol_i++) // image left to right
-        {
-            // Copy wall image
-            cv::Mat img_copy;
-            img_wall_mat.copyTo(img_copy);
-
-            //  Create merged image for the wall corresponding to the selected control point
-            if (
-                (I.cpSelected[0] == 0 && grow_i == 0 && gcol_i == 0) ||
-                (I.cpSelected[0] == 1 && grow_i == 0 && gcol_i == MAZE_SIZE - 1) ||
-                (I.cpSelected[0] == 2 && grow_i == MAZE_SIZE - 1 && gcol_i == 0) ||
-                (I.cpSelected[0] == 3 && grow_i == MAZE_SIZE - 1 && gcol_i == MAZE_SIZE - 1))
-            {
-                ;
-                // Merge test pattern and active monitor image
-                if (mergeImgMat(img_mode_mon_mat, img_copy) != 0)
-                    return -1;
-
-                // Merge previous image and active calibration image
-                if (mergeImgMat(img_mode_cal_mat, img_copy) != 0)
-                    return -1;
-            }
-
-            // Get homography matrix for this wall
-            cv::Mat H = _WALL_HMAT_DATA[grow_i][gcol_i];
-
-            // Warp Perspective
-            cv::Mat im_warp;
-            cv::warpPerspective(img_copy, im_warp, H, cv::Size(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL));
-
-            // Display image directly through OpenCV
-            cv::namedWindow("Warped Image Display", cv::WINDOW_AUTOSIZE);
-            cv::imshow("Warped Image Display", im_warp);
-            cv::waitKey(0);
-
-            // Merge the warped image with the final image
-            if (mergeImgMat(im_warp, im_wall_merge) != 0)
-                return -1;
-        }
-    }
-
-    // Make the new texture
-    out_WALL_TEXTURE_ID = loadTexture(im_wall_merge);
-
-    return 0;
-}
-
 int renderWallImage(const GLuint &_WALL_TEXTURE_ID)
 {
-    // Clear the screen
-    glClear(GL_COLOR_BUFFER_BIT);
-
     // Use the shader program for wall rendering
     glUseProgram(WALL_SHADER);
 
@@ -549,6 +496,7 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COO
 
             // Define the marker radius
             GLfloat cp_rad = v_i == 3 ? cpSelectedMakerRadius : cpDefualtMakerRadius;
+            cp_rad = 0.05;
 
             // Convert cv::Point2f to GLfloat
             GLfloat cp_coord[] = {
@@ -569,6 +517,11 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COO
 
             // Draw the control point
             glDrawArrays(GL_POINTS, 0, 1);
+
+            // // Print out the control point data
+            // ROS_INFO("Control Point [%d][%d]: Pos=(%.2f, %.2f), Color=(%.2f, %.2f, %.2f), Radius=%.2f",
+            //          c_i, v_i, cp_coord[0], cp_coord[1],
+            //          cp_rgb[0], cp_rgb[1], cp_rgb[2], cp_rad);
         }
     }
 
@@ -579,7 +532,7 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COO
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-GLuint createShaderProgram(const GLchar *vertex_source, const GLchar *fragment_source)
+GLuint compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source)
 {
     // Create and compile the vertex shader
     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
@@ -640,27 +593,60 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
         // Check if image is loaded successfully
         if (img.empty())
         {
-            ROS_ERROR("Failed to load image from path: %s", img_path.c_str());
+            ROS_ERROR("[loadImgMat] Failed to load image from path: %s", img_path.c_str());
             return -1;
         }
 
         // Check if image has an alpha channel
         if (img.channels() != 4)
         {
-            ROS_ERROR("Image does not have an alpha channel: %s", img_path.c_str());
+            ROS_ERROR("[loadImgMat] Image does not have an alpha channel: %s", img_path.c_str());
             return -1;
         }
 
         // Check if image dimensions are as expected
-        if (img.cols != WALL_WIDTH_PXL || img.rows != WALL_HEIGHT_PXL)
+        if (img.cols != WALL_IMAGE_WIDTH_PXL || img.rows != WALL_IMAGE_HEIGHT_PXL)
         {
-            ROS_ERROR("Image dimensions do not match expected size: %s", img_path.c_str());
+            ROS_ERROR("[loadImgMat] Image dimensions do not match expected size: %s", img_path.c_str());
             return -1;
+        }
+
+        // Determine depth
+        std::string depth_str;
+        switch (img.depth())
+        {
+        case CV_8U:
+            depth_str = "CV_8U";
+            break;
+        case CV_8S:
+            depth_str = "CV_8S";
+            break;
+        case CV_16U:
+            depth_str = "CV_16U";
+            break;
+        case CV_16S:
+            depth_str = "CV_16S";
+            break;
+        case CV_32S:
+            depth_str = "CV_32S";
+            break;
+        case CV_32F:
+            depth_str = "CV_32F";
+            break;
+        case CV_64F:
+            depth_str = "CV_64F";
+            break;
+        default:
+            depth_str = "Unknown";
+            break;
         }
 
         // Store the loaded image in the output vector
         out_img_mat_vec.push_back(img);
-        ROS_INFO("Successfully loaded image with alpha channel from path: %s", img_path.c_str());
+
+        // Log the image information
+        ROS_INFO("[loadImgMat] Successfully loaded image: Channels[%d] Depth[%s] Path[%s]",
+                 img.channels(), depth_str.c_str(), img_path.c_str());
     }
 
     // Return success
@@ -672,14 +658,17 @@ int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img)
     // Check if images are loaded successfully
     if (out_base_img.empty() || mask_img.empty())
     {
-        ROS_ERROR("Error: Could not read one or both images.");
+        ROS_ERROR("[mergeImgMat] Error: Could not read one or both images.");
         return -1;
     }
 
     // Check dimensions
     if (out_base_img.size() != mask_img.size())
     {
-        ROS_ERROR("Error: Image dimensions do not match.");
+        ROS_ERROR("[mergeImgMat] Error: Image dimensions do not match. "
+                  "Base image(%d, %d), Mask image(%d, %d)",
+                  out_base_img.cols, out_base_img.rows,
+                  mask_img.cols, mask_img.rows);
         return -1;
     }
 
@@ -702,6 +691,165 @@ int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img)
     return 0;
 }
 
+int updateWallTexture(
+    cv::Mat img_wall_mat, cv::Mat img_mode_mon_mat, cv::Mat img_mode_cal_mat,
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_WALL_HMAT_DATA,
+    GLuint &out_WALL_TEXTURE_ID)
+{
+    // Initializ the image to be used as the texture
+    cv::Mat im_wall_merge = cv::Mat::zeros(WINDOW_HEIGHT_PXL, WINDOW_WIDTH_PXL, CV_8UC4);
+
+    // Iterate through the maze grid rows
+    for (float grow_i = 0; grow_i < MAZE_SIZE; grow_i++) // image bottom to top
+    {
+        // Iterate through each column in the maze row
+        for (float gcol_i = 0; gcol_i < MAZE_SIZE; gcol_i++) // image left to right
+        {
+            // Copy wall image
+            cv::Mat img_copy;
+            img_wall_mat.copyTo(img_copy);
+
+            //  Create merged image for the wall corresponding to the selected control point
+            if (
+                (I.cpSelected[0] == 0 && grow_i == 0 && gcol_i == 0) ||
+                (I.cpSelected[0] == 1 && grow_i == 0 && gcol_i == MAZE_SIZE - 1) ||
+                (I.cpSelected[0] == 2 && grow_i == MAZE_SIZE - 1 && gcol_i == 0) ||
+                (I.cpSelected[0] == 3 && grow_i == MAZE_SIZE - 1 && gcol_i == MAZE_SIZE - 1))
+            {
+                ;
+                // Merge test pattern and active monitor image
+                if (mergeImgMat(img_mode_mon_mat, img_copy) != 0)
+                    return -1;
+
+                // Merge previous image and active calibration image
+                if (mergeImgMat(img_mode_cal_mat, img_copy) != 0)
+                    return -1;
+            }
+
+            // Get homography matrix for this wall
+            cv::Mat H = _WALL_HMAT_DATA[grow_i][gcol_i];
+
+            // Warp Perspective
+            cv::Mat im_warp;
+            cv::warpPerspective(img_copy, im_warp, H, cv::Size(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL));
+
+            // Merge the warped image with the final image
+            if (mergeImgMat(im_warp, im_wall_merge) != 0)
+                return -1;
+
+            // // TEMP
+            // cv::namedWindow("Warped Image Display", cv::WINDOW_AUTOSIZE);
+            // cv::imshow("Warped Image Display", im_warp);
+            // cv::waitKey(0);
+            // cv::destroyWindow("Warped Image Display");
+            // break;
+        }
+    }
+
+    // Make the new texture
+    out_WALL_TEXTURE_ID = loadTexture(im_wall_merge);
+
+    return 0;
+}
+
+// Function to initialize GLFW and GLAD
+bool initializeGLFWandGLAD()
+{
+    // Initialize GLFW
+    if (!glfwInit())
+    {
+        std::cerr << "Failed to initialize GLFW\n";
+        return false;
+    }
+
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);                 // Set the GLFW major version
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);                 // Set the GLFW minor version
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // Set the GLFW profile
+#ifdef __APPLE__
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // Uncomment this statement for macOS compatibility
+#endif
+
+    // Create a windowed mode window and its OpenGL context
+    GLFWwindow *window = glfwCreateWindow(640, 480, "Simple Point Test", NULL, NULL);
+    if (!window)
+    {
+        glfwTerminate();
+        std::cerr << "Failed to create GLFW window\n";
+        return false;
+    }
+
+    // Make the window's context current
+    glfwMakeContextCurrent(window);
+
+    // Initialize GLAD
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
+    {
+        std::cerr << "Failed to initialize GLAD\n";
+        return false;
+    }
+
+    return true;
+}
+
+void testRenderSinglePoint()
+{
+    if (!initializeGLFWandGLAD())
+    {
+        return;
+    }
+
+    GLFWwindow *window = glfwGetCurrentContext();
+
+    // Set up the viewport
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    glViewport(0, 0, width, height);
+
+    // Set clear color to black and clear the window
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Create a VAO and VBO for the point
+    GLuint VAO, VBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+
+    // Bind VAO and VBO, set up data for a single point in the middle
+    glBindVertexArray(VAO);
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    float pointVertex[] = {0.0f, 0.0f}; // Coordinates for the point
+    glBufferData(GL_ARRAY_BUFFER, sizeof(pointVertex), pointVertex, GL_STATIC_DRAW);
+
+    // Enable the vertex attribute
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
+
+    // Unbind VAO and VBO
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    // The render loop
+    while (!glfwWindowShouldClose(window))
+    {
+        // Clear the color buffer
+        glClear(GL_COLOR_BUFFER_BIT);
+
+        // Draw the point
+        glBindVertexArray(VAO);
+        glPointSize(10.0f); // Set the point size
+        glDrawArrays(GL_POINTS, 0, 1);
+
+        // Swap front and back buffers and poll for events
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    // Deallocate resources
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glfwTerminate();
+}
+
 int main(int argc, char **argv)
 {
 
@@ -715,12 +863,16 @@ int main(int argc, char **argv)
 
     // Log setup parameters
     ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
-    ROS_INFO("[SETUP] Display: Width[%d] Height[%d] AR[%0.2f]", PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, PROJ_WIN_ASPECT_RATIO);
-    ROS_INFO("[SETUP] Wall (Pxl): Width[%d] Height[%d]", WALL_WIDTH_PXL, WALL_HEIGHT_PXL);
-    ROS_INFO("[SETUP] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_WIDTH_NDC, WALL_HEIGHT_NDC, WALL_SPACE_HORZ_NDC, WALL_SPACE_VERT_NDC);
-    ROS_INFO("[SETUP] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", PROJ_WIN_WIDTH_PXL, MAZE_HEIGHT_NDC);
+    ROS_INFO("[SETUP] Display: Width[%d] Height[%d] AR[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, WINDOW_ASPECT_RATIO);
+    ROS_INFO("[SETUP] Wall (Pxl): Width[%d] Height[%d]", WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL);
+    ROS_INFO("[SETUP] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_IMAGE_WIDTH_NDC, WALL_IMAGE_HEIGHT_NDC);
+    ROS_INFO("[SETUP] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
 
     // --------------- OpenGL SETUP ---------------
+
+    // TEMP
+    testRenderSinglePoint();
+    return 0;
 
     // Declare GLFW variables
     GLFWwindow *p_window_id = nullptr;
@@ -734,6 +886,11 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    // Set up OpenGL context for GLFW
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
     // Discover available monitors
     pp_monitor_id_Vec = glfwGetMonitors(&N.monitors);
     if (!pp_monitor_id_Vec || N.monitors == 0)
@@ -744,7 +901,7 @@ int main(int argc, char **argv)
     ROS_INFO("[SETUP] Monitors Found: %d", N.monitors);
 
     // Create a new GLFW window
-    p_window_id = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
+    p_window_id = glfwCreateWindow(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, "", NULL, NULL);
     if (!p_window_id || checkErrorGLFW(__LINE__, __FILE__))
     {
         glfwTerminate();
@@ -822,8 +979,10 @@ int main(int argc, char **argv)
 
     // Initialize control point coordinate dataset
     initControlPointCoordinates(CP_COORDS);
-    ROS_INFO("TEST1");
-    dbLogCtrlPointCoordinates(CP_COORDS);
+
+    // // TEMP
+    // CP_COORDS[0][0].x += -0.05f;
+    // CP_COORDS[0][0].y += -0.05f;
 
     // Initialize wall homography matrices array
     if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) != 0)
@@ -831,7 +990,6 @@ int main(int argc, char **argv)
         ROS_ERROR("[SETUP] Failed to Initialize Wall Parameters");
         return -1;
     }
-    ROS_INFO("TEST2");
 
     // Initialize wall image texture
     if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_DATA, WALL_TEXTURE_ID) != 0)
@@ -839,7 +997,6 @@ int main(int argc, char **argv)
         ROS_ERROR("[SETUP] Failed to Initialize Wall Texture");
         return -1;
     }
-    ROS_INFO("TEST3");
 
     // _______________ MAIN LOOP _______________
 
@@ -870,7 +1027,7 @@ int main(int argc, char **argv)
         {
             if (updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, I.winMon, F.setFullscreen) != 0)
             {
-                ROS_ERROR("[MAIN] Update Window Monitor Mode Threw Error");
+                ROS_ERROR("[MAIN] Update Window Monitor Mode Threw an Error");
                 is_error = true;
                 break;
             }
@@ -918,7 +1075,7 @@ int main(int argc, char **argv)
         // Draw/update wall images
         if (renderWallImage(WALL_TEXTURE_ID) != 0)
         {
-            ROS_ERROR("[MAIN] Draw Walls Threw Error");
+            ROS_ERROR("[MAIN] Draw Walls Threw an Error");
             is_error = true;
             break;
         }
@@ -926,7 +1083,7 @@ int main(int argc, char **argv)
         // Draw/update control point markers
         if (renderControlPoints(CP_COORDS) != 0)
         {
-            ROS_ERROR("[MAIN] Draw Control Point Threw Error");
+            ROS_ERROR("[MAIN] Draw Control Point Threw an Error");
             is_error = true;
             break;
         }
@@ -1003,18 +1160,20 @@ int main(int argc, char **argv)
 
     // Use first wall image
     cv::Mat im_wall = wallImgMatVec[0];
-    cv::Mat im_wall_mask = monImgMatVec[0];
+    cv::Mat im_wall_mask_1 = monImgMatVec[0];
+    cv::Mat im_wall_mask_2 = calImgMatVec[0];
 
     // Test merge image
-    mergeImgMat(im_wall_mask, im_wall);
+    mergeImgMat(im_wall_mask_1, im_wall);
+    mergeImgMat(im_wall_mask_2, im_wall);
 
     // Populate the source correspondence points
     /// @note Assumes Y-axis points down
     std::vector<cv::Point2f> srcPoints = {
-        cv::Point2f(0, 0),                            // Top-left (0,0)
-        cv::Point2f(WALL_WIDTH_PXL, 0),               // Top-right (1,0)
-        cv::Point2f(WALL_WIDTH_PXL, WALL_HEIGHT_PXL), // Bottom-right (1,1)
-        cv::Point2f(0, WALL_HEIGHT_PXL)};             // Bottom-left (0,1)
+        cv::Point2f(0, 0),                                        // Top-left (0,0)
+        cv::Point2f(WALL_IMAGE_WIDTH_PXL, 0),                     // Top-right (1,0)
+        cv::Point2f(WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL), // Bottom-right (1,1)
+        cv::Point2f(0, WALL_IMAGE_HEIGHT_PXL)};                   // Bottom-left (0,1)
 
     // Populate the destination correspondence points
     std::vector<cv::Point2f> dstPoints = {
@@ -1027,7 +1186,7 @@ int main(int argc, char **argv)
     cv::Mat H1 = cv::findHomography(srcPoints, dstPoints);
     // Warp Perspective
     cv::Mat im_warp1;
-    cv::warpPerspective(im_wall, im_warp1, H1, cv::Size(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL));
+    cv::warpPerspective(im_wall, im_warp1, H1, cv::Size(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL));
 
     // Test second image
 
@@ -1035,14 +1194,14 @@ int main(int argc, char **argv)
     for (int i = 0; i < dstPoints.size(); i++)
     {
         // Update srcPoints
-        dstPoints[i].x += WALL_WIDTH_PXL + 50;
+        dstPoints[i].x += WALL_IMAGE_WIDTH_PXL + 50;
     }
 
     // Find Homography
     cv::Mat H2 = cv::findHomography(srcPoints, dstPoints);
     // Warp Perspective
     cv::Mat im_warp2;
-    cv::warpPerspective(im_wall, im_warp2, H2, cv::Size(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL));
+    cv::warpPerspective(im_wall, im_warp2, H2, cv::Size(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL));
 
     // Merge images
     mergeImgMat(im_warp1, im_warp2);

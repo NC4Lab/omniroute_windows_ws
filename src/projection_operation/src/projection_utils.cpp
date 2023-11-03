@@ -66,26 +66,28 @@ int checkQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
     return 0;
 }
 
-cv::Size getBoundaryDims(std::array<cv::Point2f, 4> quad_vertices)
+std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &quad_vertices_ndc, int window_width_pxl, int window_height_pxl)
 {
-    float max_width = 0.0;
-    float max_height = 0.0;
 
-    for (int i = 0; i < 4; ++i)
+    std::vector<cv::Point2f> quad_vertices_pxl;
+    quad_vertices_pxl.reserve(quad_vertices_ndc.size());
+
+    for (const auto &vertex : quad_vertices_ndc)
     {
-        for (int j = i + 1; j < 4; ++j)
-        {
-            float dx = quad_vertices[i].x - quad_vertices[j].x;
-            float dy = quad_vertices[i].y - quad_vertices[j].y;
-            max_width = std::max(max_width, std::abs(dx));
-            max_height = std::max(max_height, std::abs(dy));
-        }
+        // Convert x point values from NDC to pixel coordinates
+        float x_pixel = (vertex.x + 1.0f) * (window_width_pxl / 2.0f);
+
+        // Convet y points but keep y-axis direction the same as NDC, with origin at the bottom
+        float y_pixel = (vertex.y + 1.0f) * (window_height_pxl / 2.0f);
+
+        // // Y is inverted because pixel coordinates increase downwards
+        // float y_pixel = (1.0f - vertex.y) * ((float)window_height_pxl / 2.0f);
+
+        // Store values
+        quad_vertices_pxl.emplace_back(x_pixel, y_pixel);
     }
 
-    int bound_width = static_cast<int>(max_width);
-    int bound_height = static_cast<int>(max_height);
-
-    return cv::Size(bound_width, bound_height);
+    return quad_vertices_pxl;
 }
 
 float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size)
@@ -134,10 +136,10 @@ void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &out_
 
         // Set x y values for each vertex
         out_CP_COORDS[cp_i] = {
-            cv::Point2f(p_org.x, p_org.y),                                    // top left
-            cv::Point2f(p_org.x + WALL_WIDTH_NDC, p_org.y),                   // top right
-            cv::Point2f(p_org.x + WALL_WIDTH_NDC, p_org.y + WALL_HEIGHT_NDC), // bottom right
-            cv::Point2f(p_org.x, p_org.y + WALL_HEIGHT_NDC),                  // bottom left
+            cv::Point2f(p_org.x, p_org.y),                                                // top left
+            cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y),                         // top right
+            cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y + WALL_IMAGE_HEIGHT_NDC), // bottom right
+            cv::Point2f(p_org.x, p_org.y + WALL_IMAGE_HEIGHT_NDC),                        // bottom left
         };
     }
 }
@@ -148,10 +150,14 @@ int updateHomographyMatrices(
 {
     // Define origin plane vertices
     std::vector<cv::Point2f> source_vertices_pxl = {
-        cv::Point2f(0.0f, 0.0f),                      // Top-left
-        cv::Point2f(WALL_WIDTH_PXL, 0.0f),            // Top-right
-        cv::Point2f(WALL_WIDTH_PXL, WALL_HEIGHT_PXL), // Bottom-right
-        cv::Point2f(0.0f, WALL_HEIGHT_PXL)};          // Bottom-left
+        cv::Point2f(0.0f, 0.0f),                                  // Top-left
+        cv::Point2f(WALL_IMAGE_WIDTH_PXL, 0.0f),                  // Top-right
+        cv::Point2f(WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL), // Bottom-right
+        cv::Point2f(0.0f, WALL_IMAGE_HEIGHT_PXL)};                // Bottom-left
+
+    // // TEMP
+    // ROS_INFO("Source Vertices:");
+    // dbLogQuadVertices(source_vertices_pxl);
 
     // Iterate trough grid/wall rows
     for (float grow_i = 0; grow_i < MAZE_SIZE; grow_i++) // image bottom to top
@@ -179,7 +185,7 @@ int updateHomographyMatrices(
             }
 
             // Convert to pixel coordinates for OpenCV's findHomography function
-            std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WALL_WIDTH_PXL, WALL_HEIGHT_PXL, MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
+            std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
 
             // Check that the target plane vertices are valid
             if (checkQuadVertices(target_vertices_pxl) != 0)
@@ -188,13 +194,6 @@ int updateHomographyMatrices(
                          checkQuadVertices(target_vertices_pxl) == 1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
                 return -1;
             }
-
-            // TEMP
-            ROS_INFO("Source Vertices:");
-            dbLogQuadVertices(source_vertices_pxl);
-            ROS_INFO("Target Vertices:");
-            dbLogQuadVertices(target_vertices_pxl);
-            //return -1;
 
             // Use OpenCV's findHomography function to compute the homography matrix
             cv::Mat H = cv::findHomography(source_vertices_pxl, target_vertices_pxl);
@@ -212,7 +211,9 @@ int updateHomographyMatrices(
     }
 
     // TEMP
-    // dbLogCtrlPointCoordinates(r_CP_COORDS);
+    // dbLogCtrlPointCoordinates(_CP_COORDS);
+    // TEMP
+    // return -1;
 
     // Return success
     return 0;
