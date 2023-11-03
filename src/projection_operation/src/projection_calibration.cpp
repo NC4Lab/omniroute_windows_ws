@@ -25,39 +25,39 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // Set/unset Fullscreen
         if (key == GLFW_KEY_F)
         {
-            isFullScreen = !isFullScreen;
+            F.setFullscreen = !F.setFullscreen;
             F.updateWindowMonMode = true;
         }
 
         // Move the window to another monitor
         else if (key == GLFW_KEY_0)
         {
-            winMonInd = 0;
+            I.winMon = 0;
             F.updateWindowMonMode = true;
         }
-        else if (key == GLFW_KEY_1 && nMonitors > 1)
+        else if (key == GLFW_KEY_1 && N.monitors > 1)
         {
-            winMonInd = 1;
+            I.winMon = 1;
             F.updateWindowMonMode = true;
         }
-        else if (key == GLFW_KEY_2 && nMonitors > 2)
+        else if (key == GLFW_KEY_2 && N.monitors > 2)
         {
-            winMonInd = 2;
+            I.winMon = 2;
             F.updateWindowMonMode = true;
         }
-        else if (key == GLFW_KEY_3 && nMonitors > 3)
+        else if (key == GLFW_KEY_3 && N.monitors > 3)
         {
-            winMonInd = 3;
+            I.winMon = 3;
             F.updateWindowMonMode = true;
         }
-        else if (key == GLFW_KEY_4 && nMonitors > 4)
+        else if (key == GLFW_KEY_4 && N.monitors > 4)
         {
-            winMonInd = 4;
+            I.winMon = 4;
             F.updateWindowMonMode = true;
         }
-        else if (key == GLFW_KEY_5 && nMonitors > 5)
+        else if (key == GLFW_KEY_5 && N.monitors > 5)
         {
-            winMonInd = 5;
+            I.winMon = 5;
             F.updateWindowMonMode = true;
         }
 
@@ -79,19 +79,19 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         else if (key == GLFW_KEY_F1)
         {
-            imgWallInd = (int)imgWallPathVec.size() > 0 ? 0 : imgWallInd;
+            I.wallImage = N.wallImages > 0 ? 0 : I.wallImage;
         }
         else if (key == GLFW_KEY_F2)
         {
-            imgWallInd = (int)imgWallPathVec.size() > 1 ? 1 : imgWallInd;
+            I.wallImage = N.wallImages > 1 ? 1 : I.wallImage;
         }
         else if (key == GLFW_KEY_F3)
         {
-            imgWallInd = (int)imgWallPathVec.size() > 2 ? 2 : imgWallInd;
+            I.wallImage = N.wallImages > 2 ? 2 : I.wallImage;
         }
         else if (key == GLFW_KEY_F4)
         {
-            imgWallInd = (int)imgWallPathVec.size() > 3 ? 3 : imgWallInd;
+            I.wallImage = N.wallImages > 3 ? 3 : I.wallImage;
         }
 
         // ---------- Control Point Reset [R] ----------
@@ -110,15 +110,16 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         if ((mods & GLFW_MOD_CONTROL) && (mods & GLFW_MOD_SHIFT))
         {
+
             // Listen for arrow key input to switch through calibration modes
             if (key == GLFW_KEY_LEFT)
             {
-                calModeInd = (calModeInd > 0) ? calModeInd - 1 : (int)nCalModes - 1;
+                I.calMode = (I.calMode > 0) ? I.calMode - 1 : N.calModes - 1;
                 F.initControlPointMarkers = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                calModeInd = (calModeInd < nCalModes - 1) ? calModeInd + 1 : 0;
+                I.calMode = (I.calMode < N.calModes - 1) ? I.calMode + 1 : 0;
                 F.initControlPointMarkers = true;
             }
         }
@@ -130,22 +131,22 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             if (key == GLFW_KEY_UP)
             {
                 // Move to the top row, keeping the horizontal position
-                cpSelectedInd[0] = (cpSelectedInd[0] % 2); // Result will be 0 or 1
+                I.cpSelected[0] = (I.cpSelected[0] % 2); // Result will be 0 or 1
             }
             else if (key == GLFW_KEY_DOWN)
             {
                 // Move to the bottom row, keeping the horizontal position
-                cpSelectedInd[0] = 2 + (cpSelectedInd[0] % 2); // Result will be 2 or 3
+                I.cpSelected[0] = 2 + (I.cpSelected[0] % 2); // Result will be 2 or 3
             }
             else if (key == GLFW_KEY_LEFT)
             {
                 // Move to the left column, keeping the vertical position
-                cpSelectedInd[0] = (cpSelectedInd[0] >= 2) ? 2 : 0; // Result will be 0 or 2
+                I.cpSelected[0] = (I.cpSelected[0] >= 2) ? 2 : 0; // Result will be 0 or 2
             }
             else if (key == GLFW_KEY_RIGHT)
             {
                 // Move to the right column, keeping the vertical position
-                cpSelectedInd[0] = (cpSelectedInd[0] >= 2) ? 3 : 1; // Result will be 1 or 3
+                I.cpSelected[0] = (I.cpSelected[0] >= 2) ? 3 : 1; // Result will be 1 or 3
             }
         }
 
@@ -156,22 +157,22 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             if (key == GLFW_KEY_UP)
             {
                 // Move to the top row, keeping the horizontal position
-                cpSelectedInd[1] = (cpSelectedInd[1] % 2); // Result will be 0 or 1
+                I.cpSelected[1] = (I.cpSelected[1] % 2); // Result will be 0 or 1
             }
             else if (key == GLFW_KEY_DOWN)
             {
                 // Move to the bottom row, keeping the horizontal position
-                cpSelectedInd[1] = 2 + (cpSelectedInd[1] % 2); // Result will be 2 or 3
+                I.cpSelected[1] = 2 + (I.cpSelected[1] % 2); // Result will be 2 or 3
             }
             else if (key == GLFW_KEY_LEFT)
             {
                 // Move to the left column, keeping the vertical position
-                cpSelectedInd[1] = (cpSelectedInd[1] >= 2) ? 2 : 0; // Result will be 0 or 2
+                I.cpSelected[1] = (I.cpSelected[1] >= 2) ? 2 : 0; // Result will be 0 or 2
             }
             else if (key == GLFW_KEY_RIGHT)
             {
                 // Move to the right column, keeping the vertical position
-                cpSelectedInd[1] = (cpSelectedInd[1] >= 2) ? 3 : 1; // Result will be 1 or 3
+                I.cpSelected[1] = (I.cpSelected[1] >= 2) ? 3 : 1; // Result will be 1 or 3
             }
         }
 
@@ -182,47 +183,47 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.0005f;
 
             // Store current origin
-            cv::Point2f cp_origin_save = CTRL_PT_COORDS[cpSelectedInd[0]][2];
+            cv::Point2f cp_origin_save = CP_COORDS[I.cpSelected[0]][2];
 
             // Listen for arrow key input to move selected control point
             if (key == GLFW_KEY_LEFT)
             {
-                CTRL_PT_COORDS[cpSelectedInd[0]][cpSelectedInd[1]].x -= pos_inc; // Move left
+                CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].x -= pos_inc; // Move left
                 F.updateWallDatasets = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                CTRL_PT_COORDS[cpSelectedInd[0]][cpSelectedInd[1]].x += pos_inc; // Move right
+                CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].x += pos_inc; // Move right
                 F.updateWallDatasets = true;
             }
             else if (key == GLFW_KEY_UP)
             {
-                CTRL_PT_COORDS[cpSelectedInd[0]][cpSelectedInd[1]].y += pos_inc; // Move up
+                CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].y += pos_inc; // Move up
                 F.updateWallDatasets = true;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                CTRL_PT_COORDS[cpSelectedInd[0]][cpSelectedInd[1]].y -= pos_inc; // Move down
+                CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].y -= pos_inc; // Move down
                 F.updateWallDatasets = true;
             }
 
             // Shift all control points if origin moved
-            cv::Point2f cp_origin_new = CTRL_PT_COORDS[cpSelectedInd[0]][2];
+            cv::Point2f cp_origin_new = CP_COORDS[I.cpSelected[0]][2];
 
             // Calculate the change in x and y for the origin
             float delta_x = cp_origin_new.x - cp_origin_save.x;
             float delta_y = cp_origin_new.y - cp_origin_save.y;
 
             // Check if the origin vertex was moved
-            if (cpSelectedInd[1] == 2)
+            if (I.cpSelected[1] == 2)
             {
                 // Update all other vertices based on the change in the origin
                 for (int i = 0; i < 4; ++i) // Assuming there are 4 vertices
                 {
                     if (i != 2) // Skip the origin vertex itself
                     {
-                        CTRL_PT_COORDS[cpSelectedInd[0]][i].x += delta_x;
-                        CTRL_PT_COORDS[cpSelectedInd[0]][i].y += delta_y;
+                        CP_COORDS[I.cpSelected[0]][i].x += delta_x;
+                        CP_COORDS[I.cpSelected[0]][i].y += delta_y;
                     }
                 }
             }
@@ -357,131 +358,103 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
     return 0;
 }
 
-int drawColoredCircle(float x, float y, float radius, std::array<float, 3> rgb_arr)
+int initializeWallObjects()
 {
-    const int segments = 100; // Number of segments to approximate a circle
 
-    // Begin drawing a filled circle
-    glBegin(GL_TRIANGLE_FAN);
+    // Generate and bind an Element Buffer Object (EBO)
+    glGenBuffers(1, &WALL_EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
 
-    // Set the color to green
-    glColor3f(rgb_arr[0], rgb_arr[1], rgb_arr[2]);
+    // Initialize the EBO with index data
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(WALL_GL_INDICES), WALL_GL_INDICES, GL_DYNAMIC_DRAW);
 
-    // Center of the circle
-    glVertex2f(x, y);
+    // Generate and bind a Vertex Array Object (VAO)
+    glGenVertexArrays(1, &WALL_VAO);
+    glBindVertexArray(WALL_VAO);
 
-    // Calculate and draw the vertices of the circle
-    for (int i = 0; i <= segments; i++)
-    {
-        float theta = 2.0f * 3.1415926f * float(i) / float(segments);
-        float px = x + radius * cosf(theta);
-        float py = y + (radius * PROJ_WIN_ASPECT_RATIO) * sinf(theta);
-        glVertex2f(px, py);
-    }
+    // Generate and bind a Vertex Buffer Object (VBO)
+    glGenBuffers(1, &WALL_VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, WALL_VBO);
 
-    // End drawing
-    glEnd();
+    // Initialize the VBO with vertex data
+    glBufferData(GL_ARRAY_BUFFER, sizeof(WALL_GL_VERTICES), WALL_GL_VERTICES, GL_STATIC_DRAW);
+
+    // Specify the format of the vertex data for the position attribute
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0); // Enable the position attribute
+
+    // Specify the format of the vertex data for the texture coordinate attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1); // Enable the texture coordinate attribute
+
+    // Unbind the VAO to prevent accidental modification
+    glBindVertexArray(0);
+
+    // Create the shader program for wall image rendering
+    WALL_SHADER = createShaderProgram(wallVertexSource, wallFragmentSource);
 
     // Return GL status
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-int updateControlPointMarkers()
+int initializeControlPointObjects()
 {
+    // Create shader program
+    CP_SHADER = createShaderProgram(ctrlPtVertexSource, ctrlPtFragmentSource);
 
-    // Itterate through maze cornerss
-    for (int c_i = 0; c_i < 4; c_i++)
+    // Generate and bind the VAO
+    glGenVertexArrays(1, &CP_VAO);
+    glBindVertexArray(CP_VAO);
+
+    // Loop through all control points to create individual VBOs
+    for (int c_i = 0; c_i < 4; ++c_i)
     {
-        // Itterate through verteces
-        for (int v_i = 0; v_i < 4; v_i++)
+        for (int v_i = 0; v_i < 4; ++v_i)
         {
-            float cp_rad = cpMakerRadius[0];
-            std::array<float, 3> cp_col = cpInactiveRGB;
+            // Generate VBO for position
+            glGenBuffers(1, &CP_VBO_POS_ARR[c_i][v_i]);
+            glBindBuffer(GL_ARRAY_BUFFER, CP_VBO_POS_ARR[c_i][v_i]);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(cv::Point2f), nullptr, GL_DYNAMIC_DRAW);
 
-            // Set color based on cp selected
-            if (c_i == cpSelectedInd[0])
-            {
-                if (cpSelectedInd[1] == v_i)
-                {
-                    cp_col = cpVertSelectedRGB;
-                }
-                else
-                    cp_col = cpWallSelectedRGB;
-            }
+            // Generate VBO for color
+            glGenBuffers(1, &CP_VBO_RGB_ARR[c_i][v_i]);
+            glBindBuffer(GL_ARRAY_BUFFER, CP_VBO_RGB_ARR[c_i][v_i]);
+            glBufferData(GL_ARRAY_BUFFER, 3 * sizeof(GLfloat), cpDefaultRGB.data(), GL_STATIC_DRAW);
 
-            // Make marker size larger for control point origin/anchor
-            if (v_i == 2)
-                cp_rad = cpMakerRadius[1];
-
-            // Get the control point coordinates
-            cv::Point2f p_cp = CTRL_PT_COORDS[c_i][v_i];
-
-            // Draw the control point
-            if (drawColoredCircle(p_cp.x, p_cp.y, cp_rad, cp_col) != 0)
-            {
-                ROS_ERROR("[MAIN] Draw Control Point Threw Error");
-                return -1;
-            }
+            // Generate VBO for size
+            glGenBuffers(1, &CP_VBO_RAD_ARR[c_i][v_i]);
+            glBindBuffer(GL_ARRAY_BUFFER, CP_VBO_RAD_ARR[c_i][v_i]);
+            glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat), &cpDefualtMakerRadius, GL_STATIC_DRAW);
         }
     }
-    return 0;
-}
 
-int drawQuadImage(std::array<cv::Point2f, 4> quad_vertices_arr)
-{
-    // Start drawing a quadrilateral
-    glBegin(GL_QUADS);
+    // Unbind the VAO
+    glBindVertexArray(0);
 
-    // Set the color to white (for texture mapping)
-    /// @note: this is necessary when drawing the control points
-    glColor3f(1.0f, 1.0f, 1.0f);
-
-    // Top-left corner of texture
-    glTexCoord2f(0.0f, 1.0f);
-    glVertex2f(quad_vertices_arr[0].x, quad_vertices_arr[0].y);
-
-    // Top-right corner of texture
-    glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(quad_vertices_arr[1].x, quad_vertices_arr[1].y);
-
-    // Bottom-right corner of texture
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(quad_vertices_arr[3].x, quad_vertices_arr[3].y);
-
-    // Bottom-left corner of texture
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(quad_vertices_arr[2].x, quad_vertices_arr[2].y);
-
-    // End drawing
-    glEnd();
-
-    // Check and return GL status
+    // Check for errors
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-int drawWallImages(GLuint fbo_texture_id, ILuint tex_wall_id, ILuint tex_mode_mon_id, ILuint tex_mode_cal_id)
+int updateWallTexture(
+    cv::Mat img_wall_mat, cv::Mat img_mode_mon_mat, cv::Mat img_mode_cal_mat,
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_WALL_HMAT_DATA,
+    GLuint &out_WALL_TEXTURE_ID)
 {
-    // Enable OpenGL texture mapping
-    glEnable(GL_TEXTURE_2D);
+    // Initializ the image to be used as the texture
+    cv::Mat im_wall_merge = cv::Mat::zeros(WALL_HEIGHT_PXL, WALL_WIDTH_PXL, CV_8UC3); // Bottom-right
 
-    // Iterate through the wall grid rows and columns
+    // Iterate through the maze grid rows
     for (float grow_i = 0; grow_i < MAZE_SIZE; grow_i++) // image bottom to top
     {
+        // Iterate through each column in the maze row
         for (float gcol_i = 0; gcol_i < MAZE_SIZE; gcol_i++) // image left to right
         {
-            // Create a copy of the wall image
-            ILuint copy_tex_wall_id;
-            ilBindImage(tex_wall_id);
-            ilGenImages(1, &copy_tex_wall_id);
-            ilBindImage(copy_tex_wall_id);
-            ilCopyImage(tex_wall_id);
-
             //  Create merged image for the wall corresponding to the selected control point
             if (
-                (cpSelectedInd[0] == 0 && grow_i == 0 && gcol_i == 0) ||
-                (cpSelectedInd[0] == 1 && grow_i == 0 && gcol_i == MAZE_SIZE - 1) ||
-                (cpSelectedInd[0] == 2 && grow_i == MAZE_SIZE - 1 && gcol_i == 0) ||
-                (cpSelectedInd[0] == 3 && grow_i == MAZE_SIZE - 1 && gcol_i == MAZE_SIZE - 1))
+                (I.cpSelected[0] == 0 && grow_i == 0 && gcol_i == 0) ||
+                (I.cpSelected[0] == 1 && grow_i == 0 && gcol_i == MAZE_SIZE - 1) ||
+                (I.cpSelected[0] == 2 && grow_i == MAZE_SIZE - 1 && gcol_i == 0) ||
+                (I.cpSelected[0] == 3 && grow_i == MAZE_SIZE - 1 && gcol_i == MAZE_SIZE - 1))
             {
                 // // Merge test pattern and active monitor image
                 // if (textureMerge(tex_mode_mon_id, copy_tex_wall_id) != 0)
@@ -491,120 +464,95 @@ int drawWallImages(GLuint fbo_texture_id, ILuint tex_wall_id, ILuint tex_mode_mo
                 // if (textureMerge(tex_mode_cal_id, copy_tex_wall_id) != 0)
                 //     return -1;
             }
-            if (checkErrorDevIL(__LINE__, __FILE__) != 0)
-            {
-                ilDeleteImages(1, &copy_tex_wall_id);
-                return -1;
-            }
-
-            // Get warped vertices for this wall
-            std::array<cv::Point2f, 4> quad_vertices_warped = WALL_WARP_COORDS[grow_i][gcol_i];
-
-            // Get homography matrix for this wall's texture
-            cv::Mat _HMAT = WALL_HMAT_DATA[grow_i][gcol_i];
-
-            // Warp the texture
-            if (textureWarp(_HMAT, quad_vertices_warped, copy_tex_wall_id) != 0)
-                return -1;
-
-            // Bind the image
-            ilBindImage(copy_tex_wall_id); // show test pattern
-            if (checkErrorDevIL(__LINE__, __FILE__) != 0)
-            {
-                ilDeleteImages(1, &copy_tex_wall_id);
-                return -1;
-            }
-
-            // Set texture image
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, ilGetInteger(IL_IMAGE_WIDTH),
-                         ilGetInteger(IL_IMAGE_HEIGHT), 0, GL_RGB,
-                         GL_UNSIGNED_BYTE, ilGetData());
-
-            // Bind texture to framebuffer object
-            glBindTexture(GL_TEXTURE_2D, fbo_texture_id);
-
-            // Delete the texture
-            ilDeleteImages(1, &copy_tex_wall_id);
-
-            // TEMP
-            if (gcol_i != 0 || grow_i != 0)
-                continue;
-
-            // Draw the wall
-            if (drawQuadImage(quad_vertices_warped) != 0)
-                return -1;
         }
     }
 
-    // Disable OpenGL texture mapping
-    glDisable(GL_TEXTURE_2D);
+    // Make the new texture
+    WALL_TEXTURE_ID = loadTexture(im_wall_merge);
+
+    return 0;
+}
+
+int renderWallImage(const GLuint &_WALL_TEXTURE_ID)
+{
+    // Clear the screen
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // Use the shader program for wall rendering
+    glUseProgram(WALL_SHADER);
+
+    // Bind the texture for the walls
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, WALL_TEXTURE_ID);
+
+    // Bind the Vertex Array Object(VAO) specific to the current wall
+    glBindVertexArray(WALL_VAO);
+
+    // Bind the common Element Buffer Object (EBO)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
+
+    // Draw the rectangle (2 triangles) for the current wall
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    // Unbind the VAO to prevent accidental modification
+    glBindVertexArray(0);
 
     // Return GL status
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-int initializeOpenGLObjects()
+int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS)
 {
-    // -------- LAMBDA FUNCTION FOR INITIALIZING VAO AND VBO BY ELEMENT -------
-    auto initializeByElement = [](GLuint &vao, GLuint &vbo, float *vertices, size_t size)
+    // Use the shader program for control point rendering
+    glUseProgram(CP_SHADER);
+
+    // Bind the VAO
+    glBindVertexArray(CP_VAO);
+
+    // Loop through the control points and draw them
+    for (int c_i = 0; c_i < 4; ++c_i)
     {
-        // Generate and bind a Vertex Array Object (VAO)
-        glGenVertexArrays(1, &vao);
-        glBindVertexArray(vao);
-
-        // Generate and bind a Vertex Buffer Object (VBO)
-        glGenBuffers(1, &vbo);
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-        // Initialize the VBO with vertex data
-        glBufferData(GL_ARRAY_BUFFER, size, vertices, GL_STATIC_DRAW);
-
-        // Specify the format of the vertex data for the position attribute
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
-        glEnableVertexAttribArray(0); // Enable the position attribute
-
-        // Specify the format of the vertex data for the texture coordinate attribute
-        glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
-        glEnableVertexAttribArray(1); // Enable the texture coordinate attribute
-
-        // Unbind the VAO to prevent accidental modification
-        glBindVertexArray(0);
-    };
-
-    // --------------- SETUP FOR WALL IMAGE RENDERING ---------------
-
-    // Generate and bind an Element Buffer Object (EBO)
-    glGenBuffers(1, &WALL_EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
-
-    // Initialize the EBO with index data
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(WALL_GL_INDICES), WALL_GL_INDICES, GL_DYNAMIC_DRAW);
-
-    // Iterate through the wall grid to initialize each element's VAO and VBO
-    for (int gr_i = 0; gr_i < MAZE_SIZE; gr_i++)
-    {
-        for (int gc_i = 0; gc_i < MAZE_SIZE; gc_i++)
+        for (int v_i = 0; v_i < 4; ++v_i)
         {
-            initializeByElement(WALL_VAO_ARR[gr_i][gc_i], WALL_VBO_ARR[gr_i][gc_i], WALL_GL_VERTICES, sizeof(WALL_GL_VERTICES));
+            // Define the marker color
+            std::array<GLfloat, 3> cp_rgb;
+            if (c_i == I.cpSelected[0])
+            {
+                if (I.cpSelected[1] == v_i)
+                    cp_rgb = cpVertSelectedRGB;
+                else
+                    cp_rgb = cpWallSelectedRGB;
+            }
+            else
+                cp_rgb = cpDefaultRGB;
+
+            // Define the marker radius
+            GLfloat cp_rad = v_i == 3 ? cpSelectedMakerRadius : cpDefualtMakerRadius;
+
+            // Convert cv::Point2f to GLfloat
+            GLfloat cp_coord[] = {
+                static_cast<GLfloat>(_CP_COORDS[c_i][v_i].x),
+                static_cast<GLfloat>(_CP_COORDS[c_i][v_i].y)};
+
+            // Bind position VBO and update data
+            glBindBuffer(GL_ARRAY_BUFFER, CP_VBO_POS_ARR[c_i][v_i]);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(cp_coord), cp_coord);
+
+            // Bind color VBO and update data
+            glBindBuffer(GL_ARRAY_BUFFER, CP_VBO_RGB_ARR[c_i][v_i]);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, 3 * sizeof(GLfloat), cp_rgb.data());
+
+            // Bind size VBO and update data
+            glBindBuffer(GL_ARRAY_BUFFER, CP_VBO_RAD_ARR[c_i][v_i]);
+            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(GLfloat), &cp_rad);
+
+            // Draw the control point
+            glDrawArrays(GL_POINTS, 0, 1);
         }
     }
 
-    // Create the shader program for wall image rendering
-    WALL_SHADER = createShaderProgram(vertexSource, fragmentSource);
-
-    // --------------- SETUP FOR CONTROL POINT RENDERING ---------------
-
-    // Iterate through the maze corners to initialize each control point's VAO and VBO
-    for (int c_i = 0; c_i < 4; c_i++)
-    {
-        for (int v_i = 0; v_i < 4; v_i++)
-        {
-            initializeByElement(CTRL_PT_VAO_ARR[c_i][v_i], CTRL_PT_VBO_ARR[c_i][v_i], NULL, sizeof(cv::Point2f));
-        }
-    }
-
-    // Create the shader program for control point rendering
-    CTRL_PT_SHADER = createShaderProgram(vertexSource, fragmentSource);
+    // Unbind the VAO
+    glBindVertexArray(0);
 
     // Return GL status
     return checkErrorOpenGL(__LINE__, __FILE__);
@@ -659,70 +607,78 @@ GLuint loadTexture(cv::Mat image)
     return textureID;
 }
 
-
-/**
- * @brief Merges a mask image over a base image and stores the result in an output image.
- *
- * @param base_img_path Path to the base image.
- * @param mask_img_path Path to the mask image.
- * @param output_img_path Path where the merged image will be saved.
- * @param out_merg_img Output cv::Mat containing the merged image.
- *
- * @return true on successful merge, false otherwise.
- *
- * @details
- * This function merges a mask image over a base image. Both images are read from
- * their respective paths. The function then overlays the mask image on top of the
- * base image. If the mask pixel is not white, it is overlaid onto the base image.
- * The merged image is stored in an output cv::Mat. The function returns true if
- * the merge operation is successful and false otherwise.
- */
-bool textureMerge(const std::string &base_img_path, const std::string &mask_img_path, const std::string &output_img_path, cv::Mat &out_merg_img)
+int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Mat> &out_img_mat_vec)
 {
-    // Read the base and mask images
-    cv::Mat base_img = cv::imread(base_img_path, cv::IMREAD_UNCHANGED);
-    cv::Mat mask_img = cv::imread(mask_img_path, cv::IMREAD_UNCHANGED);
+    out_img_mat_vec.clear(); // Ensure the output vector is empty before starting
 
+    for (const std::string &img_path : img_paths_vec)
+    {
+        // Load image using OpenCV
+        cv::Mat img = cv::imread(img_path, cv::IMREAD_UNCHANGED);
+
+        // Check if image is loaded successfully
+        if (img.empty())
+        {
+            ROS_ERROR("Failed to load image from path: %s", img_path.c_str());
+            return -1;
+        }
+
+        // Check if image has an alpha channel
+        if (img.channels() != 4)
+        {
+            ROS_ERROR("Image does not have an alpha channel: %s", img_path.c_str());
+            return -1;
+        }
+
+        // Check if image dimensions are as expected
+        if (img.cols != WALL_WIDTH_PXL || img.rows != WALL_HEIGHT_PXL)
+        {
+            ROS_ERROR("Image dimensions do not match expected size: %s", img_path.c_str());
+            return -1;
+        }
+
+        // Store the loaded image in the output vector
+        out_img_mat_vec.push_back(img);
+        ROS_INFO("Successfully loaded image with alpha channel from path: %s", img_path.c_str());
+    }
+
+    // Return success
+    return 0;
+}
+
+int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img)
+{
     // Check if images are loaded successfully
-    if (base_img.empty() || mask_img.empty())
+    if (out_base_img.empty() || mask_img.empty())
     {
         ROS_ERROR("Error: Could not read one or both images.");
-        return false;
+        return -1;
     }
 
     // Check dimensions
-    if (base_img.size() != mask_img.size())
+    if (out_base_img.size() != mask_img.size())
     {
         ROS_ERROR("Error: Image dimensions do not match.");
-        return false;
+        return -1;
     }
 
-    // Copy the base image to the output image
-    out_merg_img = base_img.clone();
-
     // Loop through each pixel
-    for (int y = 0; y < base_img.rows; ++y)
+    for (int y = 0; y < out_base_img.rows; ++y)
     {
-        for (int x = 0; x < base_img.cols; ++x)
+        for (int x = 0; x < out_base_img.cols; ++x)
         {
-            cv::Vec4b &base_pixel = base_img.at<cv::Vec4b>(y, x);
-            cv::Vec4b &mask_pixel = mask_img.at<cv::Vec4b>(y, x);
+            const cv::Vec4b &base_pixel = out_base_img.at<cv::Vec4b>(y, x);
+            const cv::Vec4b &mask_pixel = mask_img.at<cv::Vec4b>(y, x);
 
-            // If the mask pixel is not white, overlay it onto the base image
-            if (mask_pixel[0] != 255 || mask_pixel[1] != 255 || mask_pixel[2] != 255)
+            // If the alpha channel of the mask pixel is not fully transparent, overlay it
+            if (mask_pixel[3] != 0)
             {
-                out_merg_img.at<cv::Vec4b>(y, x) = mask_pixel;
+                out_base_img.at<cv::Vec4b>(y, x) = mask_pixel;
             }
         }
     }
 
-    // // Save the merged image
-    // if (!cv::imwrite(output_img_path, out_merg_img)) {
-    //     ROS_ERROR("Error: Could not save merged image.");
-    //     return false;
-    // }
-
-    return true;
+    return 0;
 }
 
 int main(int argc, char **argv)
@@ -743,20 +699,6 @@ int main(int argc, char **argv)
     ROS_INFO("[SETUP] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_WIDTH_NDC, WALL_HEIGHT_NDC, WALL_SPACE_HORZ_NDC, WALL_SPACE_VERT_NDC);
     ROS_INFO("[SETUP] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", PROJ_WIN_WIDTH_PXL, MAZE_HEIGHT_NDC);
 
-    // --------------- VARIABLE SETUP ---------------
-
-    // Specify window resolution size
-    const int win_wd_pxl = 1000;
-    const int win_ht_pxl = 1000;
-
-    // Image size (pixels)
-    const int im_wd_pxl = 300;
-    const int im_ht_pxl = 540;
-
-    // Image size (NDC)
-    const float im_wd_ndc = (static_cast<float>(im_wd_pxl) / static_cast<float>(win_wd_pxl)) * 2;
-    const float im_ht_ndc = (static_cast<float>(im_ht_pxl) / static_cast<float>(win_ht_pxl)) * 2;
-
     // --------------- OpenGL SETUP ---------------
 
     // Declare GLFW variables
@@ -772,17 +714,16 @@ int main(int argc, char **argv)
     }
 
     // Discover available monitors
-    pp_monitor_id_Vec = glfwGetMonitors(&nMonitors);
-    if (!pp_monitor_id_Vec || nMonitors == 0)
+    pp_monitor_id_Vec = glfwGetMonitors(&N.monitors);
+    if (!pp_monitor_id_Vec || N.monitors == 0)
     {
         ROS_ERROR("[SETUP] Monitors Found: None");
         return -1;
     }
-    ROS_INFO("[SETUP] Monitors Found: %d", nMonitors);
+    ROS_INFO("[SETUP] Monitors Found: %d", N.monitors);
 
     // Create a new GLFW window
     p_window_id = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
-    //p_window_id = glfwCreateWindow(win_wd_pxl, win_ht_pxl, "OpenGL", NULL, NULL);
     if (!p_window_id || checkErrorGLFW(__LINE__, __FILE__))
     {
         glfwTerminate();
@@ -811,60 +752,226 @@ int main(int argc, char **argv)
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(callbackDebugOpenGL, 0);
 
-    // Initialize OpenGL objects
-    if (initializeOpenGLObjects() != 0)
+    // Initialize OpenGL wall image objects
+    if (initializeWallObjects() != 0)
     {
-        ROS_ERROR("[SETUP] Failed to Initialize OpenGL Objects");
+        ROS_ERROR("[SETUP] Failed to Initialize OpenGL Wall Image Objects");
+        return -1;
+    }
+
+    // Initialize OpenGL control point marker objects
+    if (initializeControlPointObjects() != 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Initialize OpenGL COntrol Point Marker Objects");
         return -1;
     }
 
     // Log OpenGL versions
     const GLubyte *opengl_version = glGetString(GL_VERSION);
-    ROS_INFO("[OpenGL] Initialized: Version [%s]", opengl_version);
+    ROS_INFO("[SETUP] OpenGL Initialized: Version [%s]", opengl_version);
 
     // Log GLFW versions
     int glfw_major, glfw_minor, glfw_rev;
     glfwGetVersion(&glfw_major, &glfw_minor, &glfw_rev);
-    ROS_INFO("[GLFW] Initialized: Version: %d.%d.%d", glfw_major, glfw_minor, glfw_rev);
+    ROS_INFO("[SETUP] GLFW Initialized: Version: %d.%d.%d", glfw_major, glfw_minor, glfw_rev);
 
     // Update monitor and window mode settings
-    updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, winMonInd, isFullScreen);
+    updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, I.winMon, F.setFullscreen);
 
-    // --------------- TEST IMAGE SETUP ---------------
+    // --------------- VARIABLE SETUP ---------------
 
-    // // Test load and merg images
-    // std::string base_img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/1_test_pattern.bmp";
-    // std::string mask_img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/ui_state_images/m0.bmp";
-    // std::string output_img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/assets/temp/output_image.bmp";
-    // cv::Mat im_wall;
+    // Load images using OpenCV
+    if (loadImgMat(wallImgPathVec, wallImgMatVec) != 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Load Wall Images");
+        return -1;
+    }
+    if (loadImgMat(monImgPathVec, monImgMatVec) != 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Load Monitor Number Images");
+        return -1;
+    }
+    if (loadImgMat(calImgPathVec, calImgMatVec) != 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Load Calibration Mode Images");
+        return -1;
+    }
 
-    // // Merge the images
-    // if (textureMerge(base_img_path, mask_img_path, output_img_path, im_wall))
+    // --------------- VARIABLE SETUP ---------------
+
+    // _______________ MAIN LOOP _______________
+
+    // bool is_error = false;
+    // while (!glfwWindowShouldClose(p_window_id) && ros::ok())
     // {
-    //     ROS_INFO("Successfully merged images.");
+
+    //     // --------------- Check Kayboard Callback Flags ---------------
+
+    //     // Load XML file
+    //     if (F.loadXML)
+    //     {
+    //         std::string file_path = formatCoordinatesFilePathXML(I.winMon, I.calMode, CONFIG_DIR_PATH);
+    //         /// @todo Ad save xml back in
+    //         F.loadXML = false;
+    //     }
+
+    //     // Save XML file
+    //     if (F.saveXML)
+    //     {
+    //         std::string file_path = formatCoordinatesFilePathXML(I.winMon, I.calMode, CONFIG_DIR_PATH);
+    //         /// @todo Ad save xml back in
+    //         F.saveXML = false;
+    //     }
+
+    //     // Update the window monitor and mode
+    //     if (F.updateWindowMonMode)
+    //     {
+    //         if (updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, I.winMon, F.setFullscreen) != 0)
+    //         {
+    //             ROS_ERROR("[MAIN] Update Window Monitor Mode Threw Error");
+    //             is_error = true;
+    //             break;
+    //         }
+    //         F.updateWindowMonMode = false;
+    //     }
+
+    //     // Initialize/reinitialize control point coordinate dataset
+    //     if (F.initControlPointMarkers)
+    //     {
+    //         initControlPointCoordinates(CP_COORDS);
+    //         F.initControlPointMarkers = false;
+    //     }
+
+    //     // Recompute wall vertices and homography matrices
+    //     if (F.updateWallDatasets)
+    //     {
+    //         // Initialize wall parameter datasets
+    //         if (updateWallParameters(CP_COORDS, WALL_WARP_COORDS, WALL_HMAT_DATA) != 0)
+    //         {
+    //             ROS_ERROR("[MAIN] Update of Wall Vertices Datasets Failed");
+    //             return -1;
+    //         }
+
+    //         // Initialize homography matrix dataset
+    //         if (drawWallImages(fbo_texture_id, wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode]) != 0)
+    //             if (updateWallHomography(CP_COORDS, WALL_WARP_COORDS, WALL_HMAT_DATA) != 0)
+    //             {
+    //                 ROS_ERROR("[MAIN] Update of Wall Homography Datasets Failed");
+    //                 return -1;
+    //             }
+    //         F.updateWallDatasets = false;
+    //     }
+
+    //     // --------------- Handle Image Processing for Next Frame ---------------
+
+    //     // Clear back buffer for new frame
+    //     glClear(GL_COLOR_BUFFER_BIT);
+    //     if (checkErrorOpenGL(__LINE__, __FILE__))
+    //     {
+    //         is_error = true;
+    //         break;
+    //     }
+
+    //     // Draw/update wall images
+    //     if (renderWallImage(WALL_TEXTURE_ID) != 0)
+    //     {
+    //         ROS_ERROR("[MAIN] Draw Walls Threw Error");
+    //         is_error = true;
+    //         break;
+    //     }
+
+    //     // Draw/update control point markers
+    //     if (renderControlPoints(CP_COORDS) != 0)
+    //     {
+    //         ROS_ERROR("[MAIN] Draw Control Point Threw Error");
+    //         is_error = true;
+    //         break;
+    //     }
+
+    //     // Swap buffers and poll events
+    //     glfwSwapBuffers(p_window_id);
+    //     if (
+    //         checkErrorGLFW(__LINE__, __FILE__) ||
+    //         checkErrorOpenGL(__LINE__, __FILE__))
+    //     {
+    //         is_error = true;
+    //         break;
+    //     }
+
+    //     // Poll events
+    //     glfwPollEvents();
+
+    //     // Exit condition
+    //     if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_window_id))
+    //         break;
+    // }
+
+    // // _______________ CLEANUP _______________
+    // ROS_INFO("SHUTTING DOWN");
+
+    // // Check which condition caused the loop to exit
+    // if (!ros::ok())
+    //     ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
+    // else if (glfwWindowShouldClose(p_window_id))
+    //     ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
+    // else if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    //     ROS_INFO("[LOOP TERMINATION] Escape Key was Pressed");
+    // else if (is_error)
+    //     ROS_INFO("[LOOP TERMINATION] Error Thrown");
+    // else
+    //     ROS_INFO("[LOOP TERMINATION] Reason Unknown");
+
+    // // Delete wall texture
+    // if (WALL_TEXTURE_ID != 0)
+    // {
+    //     glDeleteFramebuffers(1, &WALL_TEXTURE_ID);
+    //     if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+    //         ROS_WARN("[SHUTDOWN] Failed to Delete Wall Texture");
+    //     else
+    //         ROS_INFO("[SHUTDOWN] Deleted Wall Texture");
+    // }
+    // else
+    //     ROS_WARN("[SHUTDOWN] No Wall Texture to Delete");
+
+    // // Destroy GLFW window
+    // if (p_window_id)
+    // {
+    //     glfwDestroyWindow(p_window_id);
+    //     p_window_id = nullptr;
+    //     if (checkErrorGLFW(__LINE__, __FILE__) != 0)
+    //         ROS_WARN("[SHUTDOWN] Failed to Destroy GLFW Window");
+    //     else
+    //         ROS_INFO("[SHUTDOWN] Destroyed GLFW Window");
     // }
     // else
     // {
-    //     std::cout << "Failed to merge images." << std::endl;
+    //     ROS_WARN("[SHUTDOWN] No GLFW window to destroy");
     // }
 
-        // Load image using OpenCV
-    std::string img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/1_test_pattern.bmp";
-    // std::string img_path = "C:/Users/lester/MeDocuments/Research/MadhavLab/CodeBase/omniroute_windows_ws/data/proj_img/calibration_images/2_manu_pirate.bmp";
-    cv::Mat im_wall = cv::imread(img_path.c_str());
-    if (im_wall.empty())
-    {
-        ROS_ERROR("Failed to load image");
-        return -1;
-    }
+    // // Terminate GLFW
+    // glfwTerminate();
+    // checkErrorGLFW(__LINE__, __FILE__);
+    // ROS_INFO("[SHUTDOWN] Terminated GLFW");
+
+    // // Return success
+    // return is_error ? -1 : 0;
+
+    // --------------- TEST IMAGE SETUP ---------------
+
+    // Use first wall image
+    cv::Mat im_wall = wallImgMatVec[0];
+    cv::Mat im_wall_mask = monImgMatVec[0];
+
+    // Test merge image
+    mergeImgMat(im_wall_mask, im_wall);
 
     // Populate the source correspondence points
     /// @note Assumes Y-axis points down
     std::vector<cv::Point2f> srcPoints = {
-        cv::Point2f(0, 0),                 // Top-left (0,0)
-        cv::Point2f(im_wd_pxl, 0),         // Top-right (1,0)
-        cv::Point2f(im_wd_pxl, im_ht_pxl), // Bottom-right (1,1)
-        cv::Point2f(0, im_ht_pxl)};        // Bottom-left (0,1)
+        cv::Point2f(0, 0),                            // Top-left (0,0)
+        cv::Point2f(WALL_WIDTH_PXL, 0),               // Top-right (1,0)
+        cv::Point2f(WALL_WIDTH_PXL, WALL_HEIGHT_PXL), // Bottom-right (1,1)
+        cv::Point2f(0, WALL_HEIGHT_PXL)};             // Bottom-left (0,1)
 
     // Populate the destination correspondence points
     std::vector<cv::Point2f> dstPoints = {
@@ -874,20 +981,31 @@ int main(int argc, char **argv)
         cv::Point2f(350, 770)};
 
     // Find Homography
-    cv::Mat H = cv::findHomography(srcPoints, dstPoints);
-
-    // TEMP
-    // H = cv::Mat::eye(3, 3, CV_32F);
-
+    cv::Mat H1 = cv::findHomography(srcPoints, dstPoints);
     // Warp Perspective
-    cv::Mat im_warp;
-    cv::warpPerspective(im_wall, im_warp, H, cv::Size(win_wd_pxl, win_ht_pxl));
+    cv::Mat im_warp1;
+    cv::warpPerspective(im_wall, im_warp1, H1, cv::Size(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL));
 
-    // // TEMP
-    // im_warp = im_wall.clone();
+    // Test second image
 
-    // Load warpedImage as a texture
-    GLuint texture = loadTexture(im_warp);
+    // Loop through dstPoints
+    for (int i = 0; i < dstPoints.size(); i++)
+    {
+        // Update srcPoints
+        dstPoints[i].x += WALL_WIDTH_PXL + 50;
+    }
+
+    // Find Homography
+    cv::Mat H2 = cv::findHomography(srcPoints, dstPoints);
+    // Warp Perspective
+    cv::Mat im_warp2;
+    cv::warpPerspective(im_wall, im_warp2, H2, cv::Size(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL));
+
+    // Merge images
+    mergeImgMat(im_warp1, im_warp2);
+
+    // Make texture
+    WALL_TEXTURE_ID = loadTexture(im_warp2);
 
     // // Display image directly through OpenCV
     // cv::namedWindow("Warped Image Display", cv::WINDOW_AUTOSIZE);
@@ -901,7 +1019,7 @@ int main(int argc, char **argv)
     dbLogQuadVertices(srcPoints);
     // ROS_INFO("dstPoints:");
     // dbLogQuadVertices(dstPoints);
-    dbLogHomMat(H);
+    dbLogHomMat(H1);
 
     // Main loop (unchanged)
     while (!glfwWindowShouldClose(p_window_id))
@@ -915,26 +1033,19 @@ int main(int argc, char **argv)
 
         // Bind the texture for the walls
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, texture);
+        glBindTexture(GL_TEXTURE_2D, WALL_TEXTURE_ID);
 
-        // Loop through all the wall images
-        for (int gr_i = 0; gr_i < 1; gr_i++)
-        {
-            for (int gc_i = 0; gc_i < 1; gc_i++)
-            {
-                // Bind the Vertex Array Object(VAO) specific to the current wall
-                glBindVertexArray(WALL_VAO_ARR[gr_i][gr_i]);
+        // Bind the Vertex Array Object(VAO) specific to the current wall
+        glBindVertexArray(WALL_VAO);
 
-                // Bind the common Element Buffer Object (EBO)
-                glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
+        // Bind the common Element Buffer Object (EBO)
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
 
-                // Draw the rectangle (2 triangles) for the current wall
-                glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+        // Draw the rectangle (2 triangles) for the current wall
+        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-                // Unbind the VAO to prevent accidental modification
-                glBindVertexArray(0);
-            }
-        }
+        // Unbind the VAO to prevent accidental modification
+        glBindVertexArray(0);
 
         // Swap the front and back buffers
         glfwSwapBuffers(p_window_id);

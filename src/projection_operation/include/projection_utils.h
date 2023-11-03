@@ -85,11 +85,8 @@
  *  @details Omniroute Wall Projection Geometry
  *
  * - The walls requre 3 seperatate callibrations for each projector:
- *
  *      - Left wall calibration (Lc)
- *
  *      - Middle wall calibration (Mc)
- *
  *      - Right wall calibration (Rc)
 
  * - For each calibration, 9 wall images are created.
@@ -121,53 +118,54 @@
  *
  *  @details Omniroute Wall Image Processing Parameters
  *
+ * - Wall Layout:
+ *     - 3x3 grid represented by 3 rows (R) and 3 columns (C)
+ *
  * - Wall Vertices:
+ *      - Indexed clockwise for the top left [0,1,2,3].
  *
- *      - Indexed clockwise for the top left.
- *
- * - Calibration procedure:
- *
- *      - For the calibration opperatin, only one GLFWwindow window is used, but it can be moved between monitors.
- *
- *      - A test pattern image with the same aspect ration as the walls is read in (currently using DevIL).
- *
- *      - This image is tesselated  uniformly over a 3x3 grid in the in the graphics window
- *
- *      - The window is moved to the desired projector and set to fullscreen.
- *
- *      - Corner wall vertices are visible in the projected image displayed during calibration.
- *
- *      - Each corner wall vertex acts as a 'control points'.
- *
- *      - These control point vertices are independently positioned to the physical corners using a keyboard.
- *
- *      - This process continues until all four vertices from all four corrner wall have been positioned
- *
- *      - These values are then used to interpolate all other non-corner wall vertices.
- *
- *      - All 3x3x4 warped wall vertices are tehn saved.
- *
- *      - This continues until all 3 calibrations have been performed for all 4 projectors.
- *
+ * - Calibration points:
+ *      - The vertices of the corner walls (CW) act as the Calibration Points (CP).
  *
  *
  *                   C(0)           C(1)          C(2)
  *
  *                 0-----1        0-----1        0-----1
- *          R(0)   | CP0 |        |     |        | CP1 |
+ *       R(0)      | CW0 |        |     |        | CW1 |
  *                 |     |        |     |        |     |
  *                 3-----2        3-----2        3-----2
  *
  *                 0-----1        0-----1        0-----1
- *          R(1)   |     |        |     |        |     |
+ *       R(1)      |     |        |     |        |     |
  *                 |     |        |     |        |     |
  *                 3-----2        3-----2        3-----2
  *
  *                 0-----1        0-----1        0-----1
- *          R(2)   | CP3 |        |     |        | CP2 |
+ *       R(2)      | CW3 |        |     |        | CW2 |
  *                 |     |        |     |        |     |
  *                 3-----2        3-----2        3-----2
  *
+ *  - Calibration Procedure:
+ *      - For the calibration opperatin, only one GLFWwindow window is used, but it can be moved between monitors.
+ *      - A test pattern image with the same aspect ration as the walls is read in (currently using DevIL).
+ *      - This image is tesselated  uniformly over a 3x3 grid in the in the graphics window
+ *      - The window is moved to the desired projector and set to fullscreen.
+ *      - Corner wall vertices are visible in the projected image displayed during calibration.
+ *      - Each corner wall vertex acts as a 'control points'.
+ *      - These control point vertices are independently positioned to the physical corners using a keyboard.
+ *      - This process continues until all four vertices from all four corrner wall have been positioned
+ *      - These values are then used to interpolate all other non-corner wall vertices.
+ *      - All 3x3x4 warped wall vertices are tehn saved.
+ *      - This continues until all 3 calibrations have been performed for all 4 projectors.
+ * 
+ *  - Example of warping applied to the first row of walls:
+ *
+ *                   C(0)           C(1)          C(2)
+ *
+ *              0-----   1     0-----------1     0--------1
+ *       R(0)    \   CW0 |      \         /      | CW1   /
+ *                \      |       \       /       |      /
+ *                 3-----2        3-----2        3-----2  
  *
  */
 
@@ -215,6 +213,7 @@
 #include <array>
 #include <vector>
 #include <string>
+#include <cstring> 
 
 // PugiXML for XML parsing
 #include "pugixml.hpp"
@@ -229,13 +228,15 @@
 
 // ================================================== VARIABLES ==================================================
 
-// Directory paths for configuration files
+// Get top-level package path
 extern const std::string package_path = ros::package::getPath("projection_operation");
 extern const std::string workspace_path = package_path.substr(0, package_path.rfind("/src"));
-extern const std::string CONFIG_DIR_PATH = workspace_path + "/data/proj_cfg";
+
+// Directory paths for configuration files
+extern const std::string CONFIG_DIR_PATH = workspace_path + "/data/proj_calibration_parameters";
 
 // Directory paths for configuration images
-extern const std::string IMAGE_TOP_DIR_PATH = workspace_path + "/data/proj_img";
+extern const std::string IMAGE_TOP_DIR_PATH = workspace_path + "/data/proj_images";
 
 /**
  * @brief 4D array of hardcoded image indices to display.
@@ -411,21 +412,6 @@ extern const float WALL_HEIGHT_NDC = 2 * WALL_SPACE_VERT_NDC / (1 + std::sqrt(2)
 // ================================================== FUNCTIONS ==================================================
 
 /**
- * @brief Checks for DevIL errors and logs them.
- * Should be called after DevIL API calls.
- *
- * @param line Line number where the function is called.
- * @param file_str File name where the function is called.
- * @param msg_str Optional message to provide additional context (default to nullptr).
- *
- * @return Integer status code [0:successful, -1:error].
- *
- *
- * @example checkErrorDevIL(__LINE__, __FILE__);
- */
-int checkErrorDevIL(int, const char *, const char * = nullptr);
-
-/**
  * @brief Formats the file name for the XML file based on the active calibration mode and monitor.
  *
  * Format:
@@ -454,7 +440,7 @@ std::string formatCoordinatesFilePathXML(int, int, std::string);
  *
  * @note Uses pugiXML for XML parsing.
  */
-//int loadCoordinatesXML(std::string, int, cv::Mat &, std::array<std::array<float, 6>, 4> &);
+// int loadCoordinatesXML(std::string, int, cv::Mat &, std::array<std::array<float, 6>, 4> &);
 
 /**
  * @brief Saves the calibration parameter coordinates and homography matrix to an XML file.
@@ -491,47 +477,7 @@ std::string formatCoordinatesFilePathXML(int, int, std::string);
  * </config>
  * @endcode
  */
-//void saveCoordinatesXML(cv::Mat, std::array<std::array<float, 6>, 4>, std::string);
-
-/**
- * @brief Loads images from specified file paths and stores their IDs in a reference vector.
- *
- * @param img_paths_vec A vector of file paths to the images to be loaded.
- * @param[out] out_tex_id_vec Reference to a vector of ILuint where the IDs of the loaded images will be stored.
- *
- * @return Integer status code [0:successful, -1:error].
- *
- * @details
- * This function takes a vector of file paths and iteratively loads each image
- * using the DevIL library. The function then stores the ILuint IDs of successfully loaded images
- * in a reference vector.
- */
-int loadImgTextures(std::vector<std::string>, std::vector<ILuint> &);
-
-/**
- * @brief Deletes DevIL images from a given vector of image IDs.
- *
- * @param r_tex_id_vec Reference to the vector containing DevIL image IDs.
- *
- * @return Integer status code [0:successful, -1:error].
- */
-int deleteImgTextures(std::vector<ILuint> &);
-
-/**
- * @brief Merges two images by overlaying non-white pixels from the second image onto the first.
- *
- * @param tex_mask_id The ILuint ID of the mask image.
- * @param[out] out_tex_base_id Reference to the ILuint ID of the baseline image that will be modified.
- *
- * @return Integer status code [0:successful, -1:error].
- *
- * @details
- * This function overlays a mask image onto a base image, replacing pixels in the base image with
- * the corresponding non-white pixels from mask image.
- *
- * @warning The dimensions of img1 and img2 must match.
- */
-int textureMerge(ILuint tex_mask_id, ILuint &out_tex_base_id);
+// void saveCoordinatesXML(cv::Mat, std::array<std::array<float, 6>, 4>, std::string);
 
 /**
  * @brief Converts quadrilateral vertices vector of cv::Point2f to an array of cv::Point2f
@@ -623,20 +569,9 @@ cv::Size getBoundaryDims(std::array<cv::Point2f, 4>);
 float bilinearInterpolation(float, float, float, float, int, int, int);
 
 /**
- * @brief Applies a given homography matrix to a texture image and returns the transformed texture.
- *
- * @param _HMAT Homography matrix.
- * @param target_plane_vertices Vertices of the target plane.
- * @param[out] out_tex_source_id Reference to DevIL image ID of the source texture to warp.
- *
- * @return Integer status code [0:successful, -1:error].
- */
-int textureWarp(cv::Mat, std::array<cv::Point2f, 4>, ILuint &);
-
-/**
  * @brief Initializes values for the verteces of the coner walls which will be used as calibraton control points.
  *
- * @param[out] out_CTRL_PT_COORDS Reference to the 4x4 array containing the coordinates of the corner wall's vertices.
+ * @param[out] out_CP_COORDS Reference to the 4x4 array containing the coordinates of the corner wall's vertices.
  *
  * @details
  * Control point x and y coordinates are specified in Normalized Device Coordinates (NDC) [-1, 1].
@@ -648,28 +583,42 @@ void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &);
 /**
  * @brief Updates the stored warped wall image vertices based on the control point array.
  *
- * @param _CTRL_PT_COORDS The control point coordinates used to warp the wall image.
+ * @param _CP_COORDS The control point coordinates used to warp the wall image.
  * @param[out] out_WALL_WARP_COORDS updated 3x3x4 warped wall image vertices array.
- *
- * @return Integer status code [0:successful, -1:error].
- */
-int updateWallVertices(
-    const std::array<std::array<cv::Point2f, 4>, 4> &,
-    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &);
-
-/**
- * @brief Computes/recomputes the homography matrix for each wall.
- *
- * @param _CTRL_PT_COORDS The control point coordinates used to warp the wall image.
- * @param _WALL_WARP_COORDS The 3x3x4 warped wall image vertices array.
  * @param[out] out_WALL_HMAT_DATA updated 3x3 array of Homography matrices used to warp the wall image.
  *
  * @return Integer status code [0:successful, -1:error].
  */
-int updateWallHomography(
+int updateWallParameters(
     const std::array<std::array<cv::Point2f, 4>, 4> &,
-    const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &,
+    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &,
     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
+
+// /**
+//  * @brief Computes/recomputes the homography matrix for each wall.
+//  *
+//  * @param _CP_COORDS The control point coordinates used to warp the wall image.
+//  * @param _WALL_WARP_COORDS The 3x3x4 warped wall image vertices array.
+//  * @param[out] out_WALL_HMAT_DATA updated 3x3 array of Homography matrices used to warp the wall image.
+//  *
+//  * @return Integer status code [0:successful, -1:error].
+//  */
+// int updateWallHomography(
+//     const std::array<std::array<cv::Point2f, 4>, 4> &,
+//     const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &,
+//     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
+
+/**
+ * @brief Track and print the elapsed time between calls.
+ *
+ * Call this function with `do_reset` set to true to start timing,
+ * and call it again with `do_reset` set to false to print the elapsed time.
+ *
+ * @param line Line number where the function is called.
+ * @param file_path File path where the function is called.
+ * @param do_reset If true, resets the start time. If false, prints the elapsed time.
+ */
+void dbTrackDT(int, const char *, bool = false);
 
 /**
  * @brief Prints the coordinates of a quadrilateral's vertices.

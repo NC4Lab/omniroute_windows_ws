@@ -23,17 +23,17 @@ int main(int argc, char **argv)
     // --------------- VARIABLE SETUP ---------------
 
     // Initialze control points
-    initControlPointCoordinates(CTRL_PT_COORDS);
+    initControlPointCoordinates(CP_COORDS);
 
     // Initialize wall parameter datasets
-    if (updateWallVertices(CTRL_PT_COORDS, WALL_WARP_COORDS) != 0)
+    if (updateWallVertices(CP_COORDS, WALL_WARP_COORDS) != 0)
     {
         ROS_ERROR("[SETUP] Failed to Initalize the Wall Vertices Dataset");
         return -1;
     }
 
     // Initialize homography matrix dataset
-    if (updateWallHomography(CTRL_PT_COORDS, WALL_WARP_COORDS, WALL_HMAT_DATA) != 0)
+    if (updateWallHomography(CP_COORDS, WALL_WARP_COORDS, WALL_HMAT_DATA) != 0)
     {
         ROS_ERROR("[SETUP] Failed to Initalize the Wall Homography Dataset");
         return -1;
@@ -51,13 +51,13 @@ int main(int argc, char **argv)
     }
 
     // Discover available monitors
-    pp_monitorIDVec = glfwGetMonitors(&nMonitors);
-    if (!pp_monitorIDVec || nMonitors == 0) // Added this check
+    pp_monitorIDVec = glfwGetMonitors(&N.monitors);
+    if (!pp_monitorIDVec || N.monitors == 0) // Added this check
     {
         ROS_ERROR("[GLFW] No monitors found");
         return -1;
     }
-    ROS_INFO("[GLFW] Found %d monitors", nMonitors);
+    ROS_INFO("[GLFW] Found %d monitors", N.monitors);
 
     // Create a new GLFW window
     p_windowID = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
@@ -142,7 +142,7 @@ int main(int argc, char **argv)
     }
 
     // Update monitor and window mode settings
-    updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen);
+    updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, I.winMon, F.setFullscreen);
 
     // Log OpenGL versions
     const GLubyte *opengl_version = glGetString(GL_VERSION);
@@ -165,17 +165,17 @@ int main(int argc, char **argv)
     ROS_INFO("[DevIL] Intitalized: Version[%d]", version);
 
     // Load images
-    if (loadImgTextures(imgWallPathVec, texWallIDVec) != 0)
+    if (loadImgTextures(imgWallPathVec, wallImgMatVec) != 0)
     {
         ROS_ERROR("[DevIL] Failed to load wall images");
         return -1;
     }
-    if (loadImgTextures(imgMonPathVec, texMonIDVec) != 0)
+    if (loadImgTextures(imgMonPathVec, monImgMatVec) != 0)
     {
         ROS_ERROR("[DevIL] Failed to load monitor images");
         return -1;
     }
-    if (loadImgTextures(imgCalPathVec, texCalIDVec) != 0)
+    if (loadImgTextures(imgCalPathVec, calImgMatVec) != 0)
     {
         ROS_ERROR("[DevIL] Failed to load calibration images");
         return -1;
@@ -192,7 +192,7 @@ int main(int argc, char **argv)
         // Load XML file
         if (F.loadXML)
         {
-            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
+            std::string file_path = formatCoordinatesFilePathXML(I.winMon, I.calMode, CONFIG_DIR_PATH);
             /// @todo Ad save xml back in
             F.loadXML = false;
         }
@@ -200,7 +200,7 @@ int main(int argc, char **argv)
         // Save XML file
         if (F.saveXML)
         {
-            std::string file_path = formatCoordinatesFilePathXML(winMonInd, calModeInd, CONFIG_DIR_PATH);
+            std::string file_path = formatCoordinatesFilePathXML(I.winMon, I.calMode, CONFIG_DIR_PATH);
             /// @todo Ad save xml back in
             F.saveXML = false;
         }
@@ -208,7 +208,7 @@ int main(int argc, char **argv)
         // Update the window monitor and mode
         if (F.updateWindowMonMode)
         {
-            if (updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, winMonInd, isFullScreen) != 0)
+            if (updateWindowMonMode(p_windowID, 0, pp_monitorIDVec, I.winMon, F.setFullscreen) != 0)
             {
                 ROS_ERROR("[MAIN] Update Window Monitor Mode Threw Error");
                 is_error = true;
@@ -220,7 +220,7 @@ int main(int argc, char **argv)
         // Initialize/reinitialize control point coordinate dataset
         if (F.initControlPointMarkers)
         {
-            initControlPointCoordinates(CTRL_PT_COORDS);
+            initControlPointCoordinates(CP_COORDS);
             F.initControlPointMarkers = false;
         }
 
@@ -228,14 +228,14 @@ int main(int argc, char **argv)
         if (F.updateWallDatasets)
         {
             // Initialize wall parameter datasets
-            if (updateWallVertices(CTRL_PT_COORDS, WALL_WARP_COORDS) != 0)
+            if (updateWallVertices(CP_COORDS, WALL_WARP_COORDS) != 0)
             {
                 ROS_ERROR("[MAIN] Update of Wall Vertices Datasets Failed");
                 return -1;
             }
 
             // Initialize homography matrix dataset
-            if (updateWallHomography(CTRL_PT_COORDS, WALL_WARP_COORDS, WALL_HMAT_DATA) != 0)
+            if (updateWallHomography(CP_COORDS, WALL_WARP_COORDS, WALL_HMAT_DATA) != 0)
             {
                 ROS_ERROR("[MAIN] Update of Wall Homography Datasets Failed");
                 return -1;
@@ -254,7 +254,7 @@ int main(int argc, char **argv)
         }
 
         // Draw/update wall images
-        if (drawWallImages(fbo_texture_id, texWallIDVec[imgWallInd], texMonIDVec[winMonInd], texCalIDVec[calModeInd]) != 0)
+        if (drawWallImages(fbo_texture_id, wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode]) != 0)
         {
             ROS_ERROR("[MAIN] Draw Walls Threw Error");
             is_error = true;
@@ -327,11 +327,11 @@ int main(int argc, char **argv)
         ROS_WARN("[SHUTDOWN] No FBO Texture to Delete");
 
     // Delete DevIL images
-    if (deleteImgTextures(texWallIDVec) == 0)
+    if (deleteImgTextures(wallImgMatVec) == 0)
         ROS_INFO("[SHUTDOWN] Deleted DevIL Wall Images");
-    if (deleteImgTextures(texMonIDVec) == 0)
+    if (deleteImgTextures(monImgMatVec) == 0)
         ROS_INFO("[SHUTDOWN] Deleted DevIL Monitor Images");
-    if (deleteImgTextures(texCalIDVec) == 0)
+    if (deleteImgTextures(calImgMatVec) == 0)
         ROS_INFO("[SHUTDOWN] Deleted DevIL Calibration Images");
 
     // Destroy GLFW window

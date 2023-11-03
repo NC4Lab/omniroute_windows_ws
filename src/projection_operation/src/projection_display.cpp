@@ -10,256 +10,256 @@
 
 // ================================================== FUNCTIONS ==================================================
 
-void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
-{
-    bool do_window_update = false;
+// void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
+// {
+//     bool do_window_update = false;
 
-    // _______________ ANY KEY RELEASE ACTION _______________
+//     // _______________ ANY KEY RELEASE ACTION _______________
 
-    if (action == GLFW_RELEASE)
-    {
+//     if (action == GLFW_RELEASE)
+//     {
 
-        // ---------- Monitor handling [F, M] ----------
+//         // ---------- Monitor handling [F, M] ----------
 
-        // Set/unset all windows to fullscreen [F]
-        if (key == GLFW_KEY_F)
-        {
-            isFullScreen = !isFullScreen;
-            do_window_update = true;
-        }
+//         // Set/unset all windows to fullscreen [F]
+//         if (key == GLFW_KEY_F)
+//         {
+//             F.setFullscreen = !F.setFullscreen;
+//             do_window_update = true;
+//         }
 
-        // Move window between projector and default monitor [M]
-        if (key == GLFW_KEY_M)
-        {
-            isWinOnProj = !isWinOnProj;
-            do_window_update = true;
-        }
-    }
+//         // Move window between projector and default monitor [M]
+//         if (key == GLFW_KEY_M)
+//         {
+//             isWinOnProj = !isWinOnProj;
+//             do_window_update = true;
+//         }
+//     }
 
-    // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
-    else if (action == GLFW_PRESS || action == GLFW_REPEAT)
-    {
-    }
+//     // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
+//     else if (action == GLFW_PRESS || action == GLFW_REPEAT)
+//     {
+//     }
 
-    // _______________ Update _______________
+//     // _______________ Update _______________
 
-    // Update all windows
-    if (do_window_update)
-    {
-        for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
-        {
-            int mon_id_ind = isWinOnProj ? projMonIndArr[proj_i] : winMonIndDefault; // Show image on default or projector monitor
-            updateWindowMonMode(p_windowIDVec[proj_i], proj_i, pp_monitorIDVec, mon_id_ind, isFullScreen);
-        }
-    }
-}
+//     // Update all windows
+//     if (do_window_update)
+//     {
+//         for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
+//         {
+//             int mon_id_ind = isWinOnProj ? projMonIndArr[proj_i] : winMonIndDefault; // Show image on default or projector monitor
+//             updateWindowMonMode(p_windowIDVec[proj_i], proj_i, pp_monitorIDVec, mon_id_ind, F.setFullscreen);
+//         }
+//     }
+// }
 
-void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
-{
-    glViewport(0, 0, width, height);
-    checkErrorOpenGL(__LINE__, __FILE__);
-}
+// void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
+// {
+//     glViewport(0, 0, width, height);
+//     checkErrorOpenGL(__LINE__, __FILE__);
+// }
 
-static void callbackErrorGLFW(int error, const char *description)
-{
-    ROS_ERROR("[GLFW] Error Flagged: Error[%d] Description[%s]", error, description);
-}
+// static void callbackErrorGLFW(int error, const char *description)
+// {
+//     ROS_ERROR("[GLFW] Error Flagged: Error[%d] Description[%s]", error, description);
+// }
 
-int checkErrorOpenGL(int line, const char *file_str, const char *msg_str)
-{
-    GLenum gl_err;
-    while ((gl_err = glGetError()) != GL_NO_ERROR)
-    {
-        if (msg_str)
-            ROS_INFO("[OpenGL] Error Flagged: Message[%s] Error Number[%u] File[%s] Line[%d]", msg_str, gl_err, file_str, line);
-        else
-            ROS_INFO("[OpenGL] Error Flagged: Error Number[%u] File[%s] Line[%d]", gl_err, file_str, line);
-        return -1;
-    }
-    return 0;
-}
+// int checkErrorOpenGL(int line, const char *file_str, const char *msg_str)
+// {
+//     GLenum gl_err;
+//     while ((gl_err = glGetError()) != GL_NO_ERROR)
+//     {
+//         if (msg_str)
+//             ROS_INFO("[OpenGL] Error Flagged: Message[%s] Error Number[%u] File[%s] Line[%d]", msg_str, gl_err, file_str, line);
+//         else
+//             ROS_INFO("[OpenGL] Error Flagged: Error Number[%u] File[%s] Line[%d]", gl_err, file_str, line);
+//         return -1;
+//     }
+//     return 0;
+// }
 
-int checkErrorGLFW(int line, const char *file_str, const char *msg_str)
-{
-    const char *description;
-    int glfw_err = glfwGetError(&description);
-    if (glfw_err != GLFW_NO_ERROR)
-    {
-        if (msg_str)
-            ROS_ERROR("[GLFW] Error Flagged: Message[%s] Description[%s] File[%s] Line[%d]", msg_str, description, file_str, line);
-        else
-            ROS_ERROR("[GLFW] Error Flagged: Description[%s] File[%s] Line[%d]", description, file_str, line);
-        return -1;
-    }
-    return 0;
-}
+// int checkErrorGLFW(int line, const char *file_str, const char *msg_str)
+// {
+//     const char *description;
+//     int glfw_err = glfwGetError(&description);
+//     if (glfw_err != GLFW_NO_ERROR)
+//     {
+//         if (msg_str)
+//             ROS_ERROR("[GLFW] Error Flagged: Message[%s] Description[%s] File[%s] Line[%d]", msg_str, description, file_str, line);
+//         else
+//             ROS_ERROR("[GLFW] Error Flagged: Description[%s] File[%s] Line[%d]", description, file_str, line);
+//         return -1;
+//     }
+//     return 0;
+// }
 
-int setupProjGLFW(
-    GLFWwindow **pp_window_id,
-    int win_ind,
-    GLFWmonitor **&pp_r_monitor_id,
-    int mon_id_ind,
-    GLuint &r_fbo_id,
-    GLuint &r_fbo_texture_id)
-{
-    // Create GLFW window
-    pp_window_id[win_ind] = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
-    if (!pp_window_id[win_ind])
-    {
-        glfwTerminate();
-        ROS_ERROR("[GLFW] Create Window Failed");
-        return -1;
-    }
+// int setupProjGLFW(
+//     GLFWwindow **pp_window_id,
+//     int win_ind,
+//     GLFWmonitor **&pp_r_monitor_id,
+//     int mon_id_ind,
+//     GLuint &r_fbo_id,
+//     GLuint &r_fbo_texture_id)
+// {
+//     // Create GLFW window
+//     pp_window_id[win_ind] = glfwCreateWindow(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, "", NULL, NULL);
+//     if (!pp_window_id[win_ind])
+//     {
+//         glfwTerminate();
+//         ROS_ERROR("[GLFW] Create Window Failed");
+//         return -1;
+//     }
 
-    // Set OpenGL context and callbacks
-    glfwMakeContextCurrent(pp_window_id[win_ind]);
-    gladLoadGL();
-    glfwSetKeyCallback(pp_window_id[win_ind], callbackKeyBinding);
-    glfwSetFramebufferSizeCallback(pp_window_id[win_ind], callbackFrameBufferSizeGLFW);
+//     // Set OpenGL context and callbacks
+//     glfwMakeContextCurrent(pp_window_id[win_ind]);
+//     gladLoadGL();
+//     glfwSetKeyCallback(pp_window_id[win_ind], callbackKeyBinding);
+//     glfwSetFramebufferSizeCallback(pp_window_id[win_ind], callbackFrameBufferSizeGLFW);
 
-    // Generate and set up the FBO
-    glGenFramebuffers(1, &r_fbo_id);
-    glBindFramebuffer(GL_FRAMEBUFFER, r_fbo_id);
+//     // Generate and set up the FBO
+//     glGenFramebuffers(1, &r_fbo_id);
+//     glBindFramebuffer(GL_FRAMEBUFFER, r_fbo_id);
 
-    // Generate and set up the texture
-    glGenTextures(1, &r_fbo_texture_id);
-    glBindTexture(GL_TEXTURE_2D, r_fbo_texture_id);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+//     // Generate and set up the texture
+//     glGenTextures(1, &r_fbo_texture_id);
+//     glBindTexture(GL_TEXTURE_2D, r_fbo_texture_id);
+//     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+//     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    // Attach the texture to the FBO
-    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r_fbo_texture_id, 0);
+//     // Attach the texture to the FBO
+//     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, r_fbo_texture_id, 0);
 
-    // Check for FBO completeness
-    GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-    if (status != GL_FRAMEBUFFER_COMPLETE)
-    {
-        ROS_ERROR("[GLFW] Framebuffer is Not Complete");
-        return -1;
-    }
+//     // Check for FBO completeness
+//     GLenum status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+//     if (status != GL_FRAMEBUFFER_COMPLETE)
+//     {
+//         ROS_ERROR("[GLFW] Framebuffer is Not Complete");
+//         return -1;
+//     }
 
-    // Unbind the FBO
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+//     // Unbind the FBO
+//     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-    // Set window to wondowed mode on the second monitor
-    if (updateWindowMonMode(pp_window_id[win_ind], win_ind, pp_r_monitor_id, mon_id_ind, isFullScreen) != 0)
-    {
-        ROS_ERROR("[GLFW] Failed to Update Window[%d] Monitor[%d] Mode", win_ind, mon_id_ind);
-        return -1;
-    }
-    else
-    {
-        ROS_INFO("[GLFW] Setup Window[%d] On Monitor[%d]", win_ind, mon_id_ind);
-    }
+//     // Set window to wondowed mode on the second monitor
+//     if (updateWindowMonMode(pp_window_id[win_ind], win_ind, pp_r_monitor_id, mon_id_ind, F.setFullscreen) != 0)
+//     {
+//         ROS_ERROR("[GLFW] Failed to Update Window[%d] Monitor[%d] Mode", win_ind, mon_id_ind);
+//         return -1;
+//     }
+//     else
+//     {
+//         ROS_INFO("[GLFW] Setup Window[%d] On Monitor[%d]", win_ind, mon_id_ind);
+//     }
 
-    // Check for GL errors
-    checkErrorOpenGL(__LINE__, __FILE__);
+//     // Check for GL errors
+//     checkErrorOpenGL(__LINE__, __FILE__);
 
-    return 0;
-}
+//     return 0;
+// }
 
-int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_r_monitor_id, int mon_id_ind, bool is_fullscreen)
-{
-    int x_pos, y_pos;
+// int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_r_monitor_id, int mon_id_ind, bool is_fullscreen)
+// {
+//     int x_pos, y_pos;
 
-    // Set the current OpenGL context to the window
-    glfwMakeContextCurrent(p_window_id);
+//     // Set the current OpenGL context to the window
+//     glfwMakeContextCurrent(p_window_id);
 
-    // Get GLFWmonitor for active monitor
-    GLFWmonitor *p_monitor_id = pp_r_monitor_id[mon_id_ind];
+//     // Get GLFWmonitor for active monitor
+//     GLFWmonitor *p_monitor_id = pp_r_monitor_id[mon_id_ind];
 
-    // Update window size and position
-    if (p_monitor_id)
-    {
-        // Get the video mode of the selected monitor
-        const GLFWvidmode *mode = glfwGetVideoMode(p_monitor_id);
-        if (!mode)
-        {
-            ROS_ERROR("[WIN MODE] Failed to Get Video Mode: Monitor[%d]", mon_id_ind);
-            return -1;
-        }
+//     // Update window size and position
+//     if (p_monitor_id)
+//     {
+//         // Get the video mode of the selected monitor
+//         const GLFWvidmode *mode = glfwGetVideoMode(p_monitor_id);
+//         if (!mode)
+//         {
+//             ROS_ERROR("[WIN MODE] Failed to Get Video Mode: Monitor[%d]", mon_id_ind);
+//             return -1;
+//         }
 
-        // Set the window to full-screen mode on the current monitor
-        x_pos = 0;
-        y_pos = 0;
-        glfwSetWindowMonitor(p_window_id, p_monitor_id, x_pos, y_pos, mode->width, mode->height, mode->refreshRate);
-        if (!p_monitor_id)
-        {
-            ROS_ERROR("[WIN MODE] Invalid Monitor Pointer: Monitor[%d]", mon_id_ind);
-            return -1;
-        }
+//         // Set the window to full-screen mode on the current monitor
+//         x_pos = 0;
+//         y_pos = 0;
+//         glfwSetWindowMonitor(p_window_id, p_monitor_id, x_pos, y_pos, mode->width, mode->height, mode->refreshRate);
+//         if (!p_monitor_id)
+//         {
+//             ROS_ERROR("[WIN MODE] Invalid Monitor Pointer: Monitor[%d]", mon_id_ind);
+//             return -1;
+//         }
 
-        if (!is_fullscreen)
-        {
-            // Get the position of the current monitor
-            int monitor_x, monitor_y;
-            glfwGetMonitorPos(p_monitor_id, &monitor_x, &monitor_y);
+//         if (!is_fullscreen)
+//         {
+//             // Get the position of the current monitor
+//             int monitor_x, monitor_y;
+//             glfwGetMonitorPos(p_monitor_id, &monitor_x, &monitor_y);
 
-            // Validate monitor position
-            if (monitor_x < 0 || monitor_y < 0)
-            {
-                ROS_WARN("[WIN MODE] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_id_ind, monitor_x, monitor_y);
-                return 0;
-            }
+//             // Validate monitor position
+//             if (monitor_x < 0 || monitor_y < 0)
+//             {
+//                 ROS_WARN("[WIN MODE] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_id_ind, monitor_x, monitor_y);
+//                 return 0;
+//             }
 
-            // Specify offset from the top-left corner of the monitor
-            x_pos = monitor_x + (int)(500.0f * ((float)win_ind + 0.1f));
-            y_pos = monitor_y + (int)(500.0f * ((float)win_ind + 0.1f));
+//             // Specify offset from the top-left corner of the monitor
+//             x_pos = monitor_x + (int)(500.0f * ((float)win_ind + 0.1f));
+//             y_pos = monitor_y + (int)(500.0f * ((float)win_ind + 0.1f));
 
-            // Set the window to windowed mode and position it on the current monitor
-            glfwSetWindowMonitor(p_window_id, NULL, x_pos, y_pos, (int)(500.0f * PROJ_WIN_ASPECT_RATIO), 500, 0);
-        }
+//             // Set the window to windowed mode and position it on the current monitor
+//             glfwSetWindowMonitor(p_window_id, NULL, x_pos, y_pos, (int)(500.0f * PROJ_WIN_ASPECT_RATIO), 500, 0);
+//         }
 
-        // Update window title
-        std::string new_title = "Window[" + std::to_string(win_ind) + "] Monitor[" + std::to_string(mon_id_ind) + "]";
-        glfwSetWindowTitle(p_window_id, new_title.c_str());
+//         // Update window title
+//         std::string new_title = "Window[" + std::to_string(win_ind) + "] Monitor[" + std::to_string(mon_id_ind) + "]";
+//         glfwSetWindowTitle(p_window_id, new_title.c_str());
 
-        ROS_INFO("RAN: Update Window: Monitor[%d] Format[%s] X[%d] Y[%d]", mon_id_ind, is_fullscreen ? "fullscreen" : "windowed", x_pos, y_pos);
-    }
-    else
-    {
-        ROS_ERROR("[GLFW] Monitor[%d] Not Found", mon_id_ind);
-        return -1;
-    }
+//         ROS_INFO("RAN: Update Window: Monitor[%d] Format[%s] X[%d] Y[%d]", mon_id_ind, is_fullscreen ? "fullscreen" : "windowed", x_pos, y_pos);
+//     }
+//     else
+//     {
+//         ROS_ERROR("[GLFW] Monitor[%d] Not Found", mon_id_ind);
+//         return -1;
+//     }
 
-    return 0;
-}
+//     return 0;
+// }
 
-int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
-{
+// int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
+// {
 
-    // Start drawing a quadrilateral
-    glBegin(GL_QUADS);
+//     // Start drawing a quadrilateral
+//     glBegin(GL_QUADS);
 
-    // Set the color to white (for texture mapping)
-    /// @note: this is nececary when drawing the control points
-    glColor3f(1.0f, 1.0f, 1.0f);
+//     // Set the color to white (for texture mapping)
+//     /// @note: this is nececary when drawing the control points
+//     glColor3f(1.0f, 1.0f, 1.0f);
 
-    // Set texture and vertex coordinates for each corner
+//     // Set texture and vertex coordinates for each corner
 
-    // Top-left corner of texture
-    glTexCoord2f(0.0f, 1.0f);
-    glVertex2f(quad_vertices_vec[0].x, quad_vertices_vec[0].y);
+//     // Top-left corner of texture
+//     glTexCoord2f(0.0f, 1.0f);
+//     glVertex2f(quad_vertices_vec[0].x, quad_vertices_vec[0].y);
 
-    // Top-right corner of texture
-    glTexCoord2f(1.0f, 1.0f);
-    glVertex2f(quad_vertices_vec[1].x, quad_vertices_vec[1].y);
+//     // Top-right corner of texture
+//     glTexCoord2f(1.0f, 1.0f);
+//     glVertex2f(quad_vertices_vec[1].x, quad_vertices_vec[1].y);
 
-    // Bottom-right corner of texture
-    glTexCoord2f(1.0f, 0.0f);
-    glVertex2f(quad_vertices_vec[2].x, quad_vertices_vec[2].y);
+//     // Bottom-right corner of texture
+//     glTexCoord2f(1.0f, 0.0f);
+//     glVertex2f(quad_vertices_vec[2].x, quad_vertices_vec[2].y);
 
-    // Bottom-left corner of texture
-    glTexCoord2f(0.0f, 0.0f);
-    glVertex2f(quad_vertices_vec[3].x, quad_vertices_vec[3].y);
+//     // Bottom-left corner of texture
+//     glTexCoord2f(0.0f, 0.0f);
+//     glVertex2f(quad_vertices_vec[3].x, quad_vertices_vec[3].y);
 
-    // End drawing
-    glEnd();
+//     // End drawing
+//     glEnd();
 
-    // Check and return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__);
-}
+//     // Check and return GL status
+//     return checkErrorOpenGL(__LINE__, __FILE__);
+// }
 
 // int drawWallImages(
 //     int proj_ind,
@@ -374,13 +374,13 @@ int main(int argc, char **argv)
     // }
 
     // // Get the list of available monitors and their count
-    // pp_monitorIDVec = glfwGetMonitors(&nMonitors);
-    // ROS_INFO("[GLFW] Monitors Found [%d] Projectors Sepcified[%d]", nMonitors, nProjectors);
+    // pp_monitorIDVec = glfwGetMonitors(&N.monitors);
+    // ROS_INFO("[GLFW] Monitors Found [%d] Projectors Sepcified[%d]", N.monitors, nProjectors);
 
     // // Make sure nProj is not greater than the total number of monitors found
-    // if (nProjectors > nMonitors)
+    // if (nProjectors > N.monitors)
     // {
-    //     ROS_ERROR("[GLFW] Error Fewer Monitors[%d] Found than Expected Projectors[%d]", nMonitors, nProjectors);
+    //     ROS_ERROR("[GLFW] Error Fewer Monitors[%d] Found than Expected Projectors[%d]", N.monitors, nProjectors);
     //     return -1;
     // }
 

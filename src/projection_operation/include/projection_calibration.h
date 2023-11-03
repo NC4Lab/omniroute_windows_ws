@@ -15,52 +15,52 @@
 // ================================================== VARIABLES ==================================================
 
 /**
- * @brief Shader program IDs for wall image and control point marker rendering.
+ * @brief  <MAZE_SIZE> x <MAZE_SIZE> x 4 data container for storing the final warped wall vertex coordinates in Normalized Device Coordinates (NDC)
+ *
+ * The array stores the all wall verteces as OpenGL's Normalized Device Coordinates (NDC), which range from [-1, 1]
+ * with the origin at the center of the screen.
  *
  * @details
- * - `WALL_SHADER`: Shader program used for rendering the warped wall images.
- * - `CTRL_PT_SHADER`: Shader program used for rendering the control point markers as circles.
+ * [MAZE_SIZE][MAZE_SIZE][4] = [row][col][vertex]
+ *
+ * - Dimension 1: Row in maze grid [0-MAZE_SIZE-1]:
+ *  - Top to Bottom
+ *
+ * - Dimension 2: Column in maze grid [0-MAZE_SIZE-1]:
+ *  - Left to Right
+ *
+ * - Dimension 3: Vertex(x, y) [0, 1, 2, 3]
+ *  - 0: Top-left  (quadrilateral vertex)
+ *  - 1: Top-right  (quadrilateral vertex)
+ *  - 2: Bottom-right  (quadrilateral vertex)
+ *  - 3: Bottom-left  (quadrilateral vertex)
  */
-GLuint WALL_SHADER;
-GLuint CTRL_PT_SHADER;
+std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WALL_WARP_COORDS;
 
 /**
- * @brief Global Element Buffer Object (EBO) for wall images and control point markers.
+ * @brief  4x4 data container for tracking the vertex coordinates for the corner wall images which are used as control point
+ *
+ * The array stores the corner wall vertex as OpenGL's Normalized Device Coordinates (NDC), which range from [-1, 1]
+ * with the origin at the center of the screen.
  *
  * @details
- * - 'WALL_EBO': Element Buffer Object (EBO) containing the index data for rendering the wall images.
- *      Initialized at the beginning of the program and remains constant.
- * - 'CTRL_PT_EBO': Element Buffer Object (EBO) containing the index data for rendering the control point markers.
- *      Initialized at the beginning of the program and remains constant.
- */
-GLuint WALL_EBO;
-GLuint CTRL_PT_EBO;
-
-/**
- * @brief Global Vertex Array Object (VAO) arrays for wall images and control point markers.
+ *[4][4] = [conrol point][vertex]
  *
- * @details
- * - 'WALL_VAO_ARR': 2D array of Vertex Array Objects (VAOs) that manage vertex attributes for each wall image.
- *      Each VAO is initialized at the beginning of the program.
- * - 'CTRL_PT_VAO_ARR': 2D array of Vertex Array Objects (VAOs) that manage vertex attributes for each control point marker.
- *      Each VAO is initialized at the beginning of the program.
- */
-std::array<std::array<GLuint, MAZE_SIZE>, MAZE_SIZE> WALL_VAO_ARR;
-std::array<std::array<GLuint, 4>, 4> CTRL_PT_VAO_ARR;
-
-/**
- * @brief Global Vertex Buffer Object (VBO) arrays for wall images and control point markers.
+ * - Dimension 1: Control Point [0, 1, 2, 3]
+ * - Index with respect to the overall maze verteces
+ *      - 0: Top-left
+ *      - 1: Top-right
+ *      - 2: Bottom-right
+ *      - 3: Bottom-left
  *
- * @details
- * - 'WALL_VBO_ARR': Array of VBO that contain the vertex data for rendering and transforming
- *      the wall images. It is initialized at the beginning of the program and
- *      updated as needed.
- * - 'CTRL_PT_VBO_ARR':  Array of VBO that contain the vertex data for rendering the control
- *      point markers (circles). Like WALL_VBO_ARR, it is initialized at the start
- *      and updated as necessary.
+ * - Dimension 2: Vertex(x, y) [0, 1, 2, 3]
+ * - Index with respect to the wall image verteces
+ *      - 0: Top-left
+ *      - 1: Top-right
+ *      - 2: Bottom-right
+ *      - 3: Bottom-left
  */
-std::array<std::array<GLuint, MAZE_SIZE>, MAZE_SIZE> WALL_VBO_ARR;
-std::array<std::array<GLuint, 4>, 4> CTRL_PT_VBO_ARR;
+std::array<std::array<cv::Point2f, 4>, 4> CP_COORDS;
 
 /**
  * @brief Vertex data for rendering the textured rectangle.
@@ -108,6 +108,31 @@ unsigned int WALL_GL_INDICES[] = {
 };
 
 /**
+ * @brief Global Element Buffer Object (EBO) for wall images and control point markers.
+ */
+GLuint WALL_EBO;
+GLuint CP_EBO;
+
+/**
+ * @brief Global Vertex Array Object (VAO) for wall image and control point markers.
+ */
+GLuint WALL_VAO; // Vertex Array Object (VAO) for wall image.
+GLuint CP_VAO;   // Vertex Array Object (VAO) for control point markers.
+
+/**
+ * @brief  Global Vertex Buffer Object (VBO) for rendering the wall image.
+ */
+GLuint WALL_VBO;
+
+/**
+ * @brief  Global Vertex Buffer Object (VBO) arrays for rendering the control point markers.
+ */
+std::array<std::array<GLuint, 4>, 4> CP_VBO_POS_ARR;
+std::array<std::array<GLuint, 4>, 4> CP_VBO_RGB_ARR;
+std::array<std::array<GLuint, 4>, 4> CP_VBO_RAD_ARR;
+
+/**
+ * @brief Vertex shader source code for wall images.
  *
  * @details
  * This is a GLSL (OpenGL Shading Language) vertex shader source code stored as a C++ raw string literal.
@@ -117,7 +142,7 @@ unsigned int WALL_GL_INDICES[] = {
  * - `out vec2 Texcoord;`: Declares an output variable that will be passed to the fragment shader.
  * - `void main() { ... }`: Main function where the vertex shader performs its work.
  */
-const char *vertexSource = R"glsl(
+const char *wallVertexSource = R"glsl(
     #version 330 core
     in vec2 position;
     in vec2 texcoord;
@@ -129,7 +154,7 @@ const char *vertexSource = R"glsl(
 )glsl";
 
 /**
- * @brief Fragment shader source code.
+ * @brief Fragment shader source code for wall images.
  *
  * @details
  * This is a GLSL (OpenGL Shading Language) fragment shader source code also stored as a C++ raw string literal.
@@ -139,7 +164,7 @@ const char *vertexSource = R"glsl(
  * - `uniform sampler2D tex;`: Declares a uniform variable representing a 2D texture.
  * - `void main() { ... }`: Main function of the fragment shader, samples the texture at the given coordinates and sets the output color.
  */
-const char *fragmentSource = R"glsl(
+const char *wallFragmentSource = R"glsl(
     #version 330 core
     in vec2 Texcoord;
     out vec4 outColor;
@@ -150,52 +175,63 @@ const char *fragmentSource = R"glsl(
 )glsl";
 
 /**
- * @brief  4x4 data container for tracking the vertex coordinates for the corner wall images which are used as control point
- *
- * The array stores the corner wall vertex as OpenGL's Normalized Device Coordinates (NDC), which range from [-1, 1]
- * with the origin at the center of the screen.
+ * @brief Vertex shader source code for control point rendering.
  *
  * @details
- *[4][4] = [conrol point][vertex]
- *
- * - Dimension 1: Control Point [0, 1, 2, 3]
- * - Index with respect to the overall maze verteces
- *      - 0: Top-left
- *      - 1: Top-right
- *      - 2: Bottom-right
- *      - 3: Bottom-left
- *
- * - Dimension 2: Vertex(x, y) [0, 1, 2, 3]
- * - Index with respect to the wall image verteces
- *      - 0: Top-left
- *      - 1: Top-right
- *      - 2: Bottom-right
- *      - 3: Bottom-left
+ * This GLSL vertex shader source code is stored as a C++ raw string literal.
+ * - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
+ * - `layout (location = 0) in vec2 position;`: Declares an input vertex attribute for position, received from the application.
+ * - `layout (location = 1) in vec3 color;`: Declares an input vertex attribute for color, received from the application.
+ * - `layout (location = 2) in float size;`: Declares an input vertex attribute for size, received from the application.
+ * - `out vec3 fragColor;`: Passes the color to the fragment shader.
+ * - `void main() { ... }`: Main function of the shader, where it calculates the final position of the vertex and sets the point size for rendering.
  */
-std::array<std::array<cv::Point2f, 4>, 4> CTRL_PT_COORDS;
+const GLchar *ctrlPtVertexSource = R"glsl(
+    #version 330 core
+    layout (location = 0) in vec2 position;
+    layout (location = 1) in vec3 color;
+    layout (location = 2) in float size;
+    out vec3 fragColor;
+    void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+        gl_PointSize = size;
+        fragColor = color;
+    }
+)glsl";
 
 /**
- * @brief  MAZE_SIZExMAZE_SIZEx4 data container for storing the final warped wall vertex coordinates in Normalized Device Coordinates (NDC)
- *
- * The array stores the all wall verteces as OpenGL's Normalized Device Coordinates (NDC), which range from [-1, 1]
- * with the origin at the center of the screen.
+ * @brief Fragment shader source code for control point rendering.
  *
  * @details
- * [MAZE_SIZE][MAZE_SIZE][4] = [row][col][vertex]
- *
- * - Dimension 1: Row in maze grid [0-MAZE_SIZE-1]:
- *  - Top to Bottom
- *
- * - Dimension 2: Column in maze grid [0-MAZE_SIZE-1]:
- *  - Left to Right
- *
- * - Dimension 3: Vertex(x, y) [0, 1, 2, 3]
- *  - 0: Top-left  (quadrilateral vertex)
- *  - 1: Top-right  (quadrilateral vertex)
- *  - 2: Bottom-right  (quadrilateral vertex)
- *  - 3: Bottom-left  (quadrilateral vertex)
+ * This GLSL fragment shader source code is stored as a C++ raw string literal.
+ * - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
+ * - `in vec3 fragColor;`: Receives the color from the vertex shader.
+ * - `out vec4 color;`: Declares an output variable to output the color of the fragment.
+ * - `void main() { ... }`: Main function of the shader, which outputs the color of the control point.
  */
-std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WALL_WARP_COORDS;
+const GLchar *ctrlPtFragmentSource = R"glsl(
+    #version 330 core
+    in vec3 fragColor;
+    out vec4 color;
+    void main() {
+        color = vec4(fragColor, 1.0);
+    }
+)glsl";
+
+/**
+ * @brief Shader program IDs for wall image and control point marker rendering.
+ *
+ * @details
+ * - `WALL_SHADER`: Shader program used for rendering the warped wall images.
+ * - `CP_SHADER`: Shader program used for rendering the control point markers as circles.
+ */
+GLuint WALL_SHADER;
+GLuint CP_SHADER;
+
+/**
+ * @brief  OpenGL textures associated with the current wall texture.
+ */
+GLuint WALL_TEXTURE_ID;
 
 /**
  * @brief  3x3 data contianer for storing the 3x3 homography matrix for each wall image
@@ -203,9 +239,21 @@ std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WALL_WA
 std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> WALL_HMAT_DATA;
 
 // Global variable to set the OpenGL debug level.
-int DEBUG_LEVEL_GL = 3;  // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
+int DEBUG_LEVEL_GL = 3; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
 
-// Struct primarely used for tracking flags set in the keyboard callback
+// Vectors to store the loaded images in cv::Mat format
+std::vector<cv::Mat> wallImgMatVec; // Vector of wall image texture matrices
+std::vector<cv::Mat> monImgMatVec;  // Vector of monitor mode image texture matrices
+std::vector<cv::Mat> calImgMatVec;  // Vector of calibration mode image texture matrices
+
+// Control point graphics
+const std::array<GLfloat, 3> cpVertSelectedRGB = {0.0f, 1.0f, 0.0f}; // Select control point marker color (green)
+const std::array<GLfloat, 3> cpWallSelectedRGB = {1.0f, 0.0f, 0.0f}; // Selected control point wall color (red)
+const std::array<GLfloat, 3> cpDefaultRGB = {0.0f, 0.0f, 1.0f};      // Default control point marker color (blue)
+const GLfloat cpDefualtMakerRadius = 0.0025f;                        // Control point image radius
+const GLfloat cpSelectedMakerRadius = 0.005f;                        // Control point image radius
+
+// Struct for flags set/used in the keyboard callback
 static struct FlagStruct
 {
     bool dbRun = false;                   // Flag to indicate if something should be run for debugging
@@ -214,65 +262,53 @@ static struct FlagStruct
     bool updateWindowMonMode = false;     // Flag to indicate if the window mode needs to be updated
     bool initControlPointMarkers = false; // Flag to indicate if the control point markers need to be reinitialized
     bool updateWallDatasets = false;      // Flag to indicate if the warped wall vertices need to be updated
+    bool setFullscreen = false;           // Flag to indicate if the window needs to be set to full screen mode
 } F;
 
-// Selected control point
-std::array<int, 2> cpSelectedInd = {0, 0}; // Index: maze_corner[0,1] wall_vertex[0,1,2,3]
+// Struct for indices set/used in the keyboard callback
+static struct IndStruct
+{
+    std::array<int, 2> cpSelected = {0, 0}; // Index: maze_corner[0,1] wall_vertex[0,1,2,3]
+    int wallImage = 0;                      // Index of the image to be loaded
+    int calMode = 1;                        // Index of the image to be loaded
+    int winMon = 0;                         // Index of the active monitor to be loaded
+} I;
 
-// Control point graphics
-std::array<float, 3> cpVertSelectedRGB = {0.0f, 1.0f, 0.0f}; // Select control point marker color (green)
-std::array<float, 3> cpWallSelectedRGB = {1.0f, 0.0f, 0.0f}; // Selected control point wall color (red)
-std::array<float, 3> cpInactiveRGB = {0.0f, 0.0f, 1.0f};    // Inactive control point marker color (blue)
+// Struct for counts used in the keyboard callback
+static struct CountStruct
+{
+    int monitors;       // Number of monitors connected to the system
+    int wallImages = 4; // Number of wall images
+    int calModes = 3;   // Number of calibration modes
+} N;
 
-// Control point image radius
-const std::array<float, 2> cpMakerRadius = {0.0025f, 0.005f};
-
-// Directory paths
+// Sub-directory paths
 std::string image_wall_dir_path = IMAGE_TOP_DIR_PATH + "/calibration_images";
-std::string image_state_dir_path = IMAGE_TOP_DIR_PATH + "/ui_state_images";
+std::string image_state_dir_path = IMAGE_TOP_DIR_PATH + "/ui_mode_images";
 
-// Test image variables
-std::vector<ILuint> texWallIDVec; // Container to hold the loaded images
-std::vector<std::string> imgWallPathVec = {
+// Image file paths
+std::vector<std::string> wallImgPathVec = {
     // List of image file paths
-    image_wall_dir_path + "/1_test_pattern.bmp",
-    image_wall_dir_path + "/2_manu_pirate.bmp",
-    image_wall_dir_path + "/3_earthlings.bmp",
-    image_wall_dir_path + "/4_all_white.bmp",
+    image_wall_dir_path + "/1_test_pattern.png",
+    image_wall_dir_path + "/2_manu_pirate.png",
+    image_wall_dir_path + "/3_earthlings.png",
+    image_wall_dir_path + "/4_all_white.png",
 };
-int imgWallInd = 0; // Index of the image to be loaded
-
-// Monitor variables
-std::vector<ILuint> texMonIDVec; // Container to hold the loaded images for ui
-std::vector<std::string> imgMonPathVec = {
+std::vector<std::string> monImgPathVec = {
     // List of monitor number image file paths
-    image_state_dir_path + "/m0.bmp",
-    image_state_dir_path + "/m1.bmp",
-    image_state_dir_path + "/m2.bmp",
-    image_state_dir_path + "/m3.bmp",
-    image_state_dir_path + "/m4.bmp",
-    image_state_dir_path + "/m5.bmp",
+    image_state_dir_path + "/m0.png",
+    image_state_dir_path + "/m1.png",
+    image_state_dir_path + "/m2.png",
+    image_state_dir_path + "/m3.png",
+    image_state_dir_path + "/m4.png",
+    image_state_dir_path + "/m5.png",
 };
-int winMonInd = 0;         // Index of the image to be loaded
-int nMonitors;             // Number of monitors connected to the system
-bool isFullScreen = false; // Flag to indicate if the window is in full screen mode
-
-// Callibration image variables for ui
-std::vector<ILuint> texCalIDVec; // Container to hold the loaded images for ui
-std::vector<std::string> imgCalPathVec = {
+std::vector<std::string> calImgPathVec = {
     // List of mode image file paths
-    image_state_dir_path + "/c-wl.bmp", // left walls
-    image_state_dir_path + "/c-wm.bmp", // middle walls
-    image_state_dir_path + "/c-wr.bmp", // right walls
-    // image_state_dir_path + "/c-f.bmp",  // maze floor
-    // image_state_dir_path + "/c-d.bmp",  // distal cues
+    image_state_dir_path + "/cwl.png", // left walls
+    image_state_dir_path + "/cwm.png", // middle walls
+    image_state_dir_path + "/cwr.png", // right walls
 };
-int calModeInd = 1;                      // Index of the image to be loaded
-size_t nCalModes = imgCalPathVec.size(); // Number of calibration modes
-
-// Variables related to window and OpenGL
-GLFWwindow *p_windowID = nullptr;
-GLFWmonitor **pp_monitorIDVec = nullptr;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -386,73 +422,51 @@ int checkErrorGLFW(int, const char *, const char * = nullptr);
  * In windowed mode, the window is resized to a default size and positioned near the top-left
  * corner of the selected monitor.
  *
- * @note The global variables monitor, monitors, imgMonNumInd, window, and isFullScreen are
+ * @note The global variables monitor, monitors, imgMonNumInd, window, and F.setFullscreen are
  *       used to control the behavior of this function.
  *       Will only exicute if monotor parameters have changed.
  */
 int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
 
 /**
- * @brief Draws a control point as a quadrilateral using OpenGL.
+ * @brief Renders a all wall images from the computed texture2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
  *
- * @details
- * This function uses OpenGL to draw a quadrilateral that represents a control point.
- * The control point is drawn as a colored control point marker.
- *
- * @param x The control point x-coordinate.
- * @param y The control point y-coordinate.
- * @param radius The radius of the control point.
- * @param rgb_arr Array of rgb values to color the marker.
+ * @param _WALL_TEXTURE_ID OpenGL texture ID for the wall image.
  *
  * @return Integer status code  [0:successful, -1:error].
  */
-int drawColoredCircle(float, float, float, std::array<float, 3>);
+int renderWallImage(const GLuint &);
 
 /**
  * @brief Draws control points associated with each corner wall.
  *
+ * @param _CP_COORDS The control point coordinates used to warp the wall image.
+ *
+ * @return Integer status code [0:successful, -1:error].
  */
-int updateControlPointMarkers();
+int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &);
 
 /**
- * @brief Draws a textured quadrilateral using OpenGL.
- *
- * @param quad_vertices_vec Array of vertex/corner points for a quadrilateral image.
- *
- * @return Integer status code  [0:successful, -1:error].
- */
-int drawQuadImage(std::array<cv::Point2f, 4>);
-
-/**
- * @brief Renders a 2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
- *
- * @param fbo_texture_id OpenGL framebuffer object's (FBO) texture ID.
- * @param tex_wall_id DevIL image ID for the base wall image.
- * @param tex_mode_mon_id DevIL image ID for the monitor mode image.
- * @param tex_mode_cal_id DevIL image ID for the calibration image.
- *
- * @return Integer status code  [0:successful, -1:error].
- *
- * @details
- * This function is a core part of the maze visualization pipeline. It utilizes the OpenGL graphics library for rendering,
- * and the DevIL library for image handling. The function performs several key operations:
- * 1. Texture mapping of the wall images.
- * 2. Perspective warping based on a precomputed homography matrix.
- * 3. Shear and height adjustments based on control point calibration.
- * 4. Optional overlay of status images for cells corresponding to selected control points.
- */
-int drawWallImages(GLuint, ILuint, ILuint, ILuint);
-
-/**
- * @brief Initialize OpenGL resources for render objects (wall images and control point markers).
+ * @brief Initialize OpenGL resources for wall image render objects.
  *
  * @return Integer status code [0:successful, -1:error].
  *
  * @details
  * Initializes the vertex buffer, shader program, and default values
- * for the wall images and control point markers.
+ * for the wall image render and control point markers.
  */
-int initializeOpenGLObjects();
+int initializeWallObjects();
+
+/**
+ * @brief Initialize OpenGL resources for control point marker objects.
+ *
+ * @return Integer status code [0:successful, -1:error].
+ *
+ * @details
+ * Initializes the vertex buffer, shader program, and default values
+ * for the control point markers.
+ */
+int initializeControlPointObjects();
 
 /**
  * @brief Creates an OpenGL shader program from vertex and fragment shader source code.
@@ -510,23 +524,43 @@ GLuint createShaderProgram(const GLchar *, const GLchar *);
 GLuint loadTexture(cv::Mat);
 
 /**
- * @brief Merges a mask image over a base image and stores the result in an output image.
+ * @brief Loads PNG images with alpha channel from specified file paths and stores them in a vector as cv::Mat objects.
  *
- * @param base_img_path Path to the base image.
- * @param mask_img_path Path to the mask image.
- * @param output_img_path Path where the merged image will be saved.
- * @param out_merg_img Output cv::Mat containing the merged image.
+ * @param img_paths_vec A vector of file paths to the images to be loaded.
+ * @param[out] out_img_mat_vec Reference to a vector of cv::Mat where the loaded images will be stored.
  *
- * @return true on successful merge, false otherwise.
+ * @return Integer status code [0:successful, -1:error].
  *
  * @details
- * This function merges a mask image over a base image. Both images are read from
- * their respective paths. The function then overlays the mask image on top of the
- * base image. If the mask pixel is not white, it is overlaid onto the base image.
- * The merged image is stored in an output cv::Mat. The function returns true if
- * the merge operation is successful and false otherwise.
+ * This function takes a vector of file paths and iteratively loads each PNG image
+ * with an alpha channel using OpenCV's imread function. It checks that the image
+ * has the correct dimensions and the presence of an alpha channel. The function
+ * returns 0 if all images are loaded successfully and -1 if any error occurs.
+ *
+ * Note on exporting from Adobe Illustrator:
+ * - Select the Export As function and select PNG format.
+ * - Tick the 'Use Arboard' option and click 'Export'.
+ * - Set the 'Resolution' to 'Screen (72 ppi)' or 'Other' and then input '72 PPI'
+ * - Set the 'Anti-aliasing' option ', choose 'Art Optimized (Supersampling)'.
+ * - Tick the 'Transparency' checkbox in the PNG export options to include the alpha channel.
+ * - Confirm the PNG is exported with a bit depth that supports alpha (typically PNG-24).
  */
-bool textureMerge(const std::string &, const std::string &, const std::string &, cv::Mat &);
+int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Mat> &out_img_mat_vec);
+
+/**
+ * @brief Merges a mask image over a base image using the alpha channel and stores the result.
+ *
+ * @param base_img_path Output cv::Mat containing the base image.
+ * @param[out] out_base_img cv::Mat containing the base image for merging.
+ *
+ * @return Integer status code [0:successful, -1:error].
+ *
+ * @details
+ * This function overlays the mask image on top of the base image using the alpha channel
+ * of the mask image. Pixels from the mask image are copied over to the base image based on
+ * the alpha value - if the alpha value is not fully transparent (0), the pixel is copied.
+ */
+int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img);
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.
