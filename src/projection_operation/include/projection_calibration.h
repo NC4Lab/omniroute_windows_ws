@@ -15,29 +15,6 @@
 // ================================================== VARIABLES ==================================================
 
 /**
- * @brief  <MAZE_SIZE> x <MAZE_SIZE> x 4 data container for storing the final warped wall vertex coordinates in Normalized Device Coordinates (NDC)
- *
- * The array stores the all wall verteces as OpenGL's Normalized Device Coordinates (NDC), which range from [-1, 1]
- * with the origin at the center of the screen.
- *
- * @details
- * [MAZE_SIZE][MAZE_SIZE][4] = [row][col][vertex]
- *
- * - Dimension 1: Row in maze grid [0-MAZE_SIZE-1]:
- *  - Top to Bottom
- *
- * - Dimension 2: Column in maze grid [0-MAZE_SIZE-1]:
- *  - Left to Right
- *
- * - Dimension 3: Vertex(x, y) [0, 1, 2, 3]
- *  - 0: Top-left  (quadrilateral vertex)
- *  - 1: Top-right  (quadrilateral vertex)
- *  - 2: Bottom-right  (quadrilateral vertex)
- *  - 3: Bottom-left  (quadrilateral vertex)
- */
-std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WALL_WARP_COORDS;
-
-/**
  * @brief  4x4 data container for tracking the vertex coordinates for the corner wall images which are used as control point
  *
  * The array stores the corner wall vertex as OpenGL's Normalized Device Coordinates (NDC), which range from [-1, 1]
@@ -217,6 +194,7 @@ const GLchar *ctrlPtFragmentSource = R"glsl(
         color = vec4(fragColor, 1.0);
     }
 )glsl";
+
 
 /**
  * @brief Shader program IDs for wall image and control point marker rendering.
@@ -427,6 +405,22 @@ int checkErrorGLFW(int, const char *, const char * = nullptr);
  *       Will only exicute if monotor parameters have changed.
  */
 int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
+
+/**
+ * @brief Updates the stored warped wall image vertices based on the control point array.
+ *
+ * @param img_wall_mat cv::Mat image matrix for the base wall image.
+ * @param img_mode_mon_mat cv::Mat image matrix for the monitor mode image.
+ * @param img_mode_cal_mat cv::Mat image matrix for the calibration image.
+ * @param _WALL_HMAT_DATA 3x3 array of Homography matrices used to warp the wall image.
+ * @param[out] out_WALL_TEXTURE_ID OpenGL texture ID for the wall image.
+ *
+ * @return Integer status code [0:successful, -1:error].
+ */
+int updateWallTexture(
+    cv::Mat, cv::Mat, cv::Mat,
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &,
+    GLuint &);
 
 /**
  * @brief Renders a all wall images from the computed texture2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.

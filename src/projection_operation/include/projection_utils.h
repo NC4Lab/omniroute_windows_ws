@@ -385,29 +385,17 @@ extern const float PROJ_WIN_ASPECT_RATIO = (float)PROJ_WIN_WIDTH_PXL / (float)PR
 extern const int WALL_WIDTH_PXL = 300;
 extern const int WALL_HEIGHT_PXL = 540;
 
-// // Wall image size (NDC)
-// extern const float WALL_WIDTH_NDC = (static_cast<float>(WALL_WIDTH_PXL) / static_cast<float>(PROJ_WIN_WIDTH_PXL)) * 2;
-// extern const float WALL_HEIGHT_NDC = (static_cast<float>(WALL_HEIGHT_PXL) / static_cast<float>(PROJ_WIN_HEIGHT_PXL)) * 2;
+// Specify the maze width and height (NDC)
+const float MAZE_WIDTH_NDC = 0.3f;
+const float MAZE_HEIGHT_NDC = 0.6f;
 
-// // Specify the maze width and height (NDC)
-// const float MAZE_WIDTH_NDC = 0.3f;
-// const float MAZE_HEIGHT_NDC = 0.6f;
-
-// // Wall spacing (NDC)
-// extern const float WALL_SPACE_HORZ_NDC = PROJ_WIN_WIDTH_PXL / (float(MAZE_SIZE) - 1);  // Wall spacing on X axis NDC
-// extern const float WALL_SPACE_VERT_NDC = MAZE_HEIGHT_NDC / (float(MAZE_SIZE) - 1); // Wall spacing on Y axis NDC
-
-// // Default wall width and height (NDC)
-// extern const float WALL_WIDTH_NDC = WALL_SPACE_HORZ_NDC / (1 + std::sqrt(2)); // Wall width based on octogonal geometry in NDC
-// extern const float WALL_HEIGHT_NDC = WALL_SPACE_VERT_NDC / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
-
-// TEMP
-const float MAZE_WIDTH_NDC = 0.5;
-const float MAZE_HEIGHT_NDC = 1.0f;
+// Wall spacing (NDC)
 extern const float WALL_SPACE_HORZ_NDC = MAZE_WIDTH_NDC / (float(MAZE_SIZE) - 1);  // Wall spacing on X axis NDC
 extern const float WALL_SPACE_VERT_NDC = MAZE_HEIGHT_NDC / (float(MAZE_SIZE) - 1); // Wall spacing on Y axis NDC
-extern const float WALL_WIDTH_NDC = 2 * WALL_SPACE_HORZ_NDC / (1 + std::sqrt(2));  // Wall width based on octogonal geometry in NDC
-extern const float WALL_HEIGHT_NDC = 2 * WALL_SPACE_VERT_NDC / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
+
+// Default wall width and height (NDC)
+extern const float WALL_WIDTH_NDC = WALL_SPACE_HORZ_NDC / (1 + std::sqrt(2)); // Wall width based on octogonal geometry in NDC
+extern const float WALL_HEIGHT_NDC = WALL_SPACE_VERT_NDC / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -581,32 +569,16 @@ float bilinearInterpolation(float, float, float, float, int, int, int);
 void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &);
 
 /**
- * @brief Updates the stored warped wall image vertices based on the control point array.
+ * @brief Computes updated Homography matrices for all walls.
  *
  * @param _CP_COORDS The control point coordinates used to warp the wall image.
- * @param[out] out_WALL_WARP_COORDS updated 3x3x4 warped wall image vertices array.
  * @param[out] out_WALL_HMAT_DATA updated 3x3 array of Homography matrices used to warp the wall image.
  *
  * @return Integer status code [0:successful, -1:error].
  */
-int updateWallParameters(
+int updateHomographyMatrices(
     const std::array<std::array<cv::Point2f, 4>, 4> &,
-    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &,
     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
-
-// /**
-//  * @brief Computes/recomputes the homography matrix for each wall.
-//  *
-//  * @param _CP_COORDS The control point coordinates used to warp the wall image.
-//  * @param _WALL_WARP_COORDS The 3x3x4 warped wall image vertices array.
-//  * @param[out] out_WALL_HMAT_DATA updated 3x3 array of Homography matrices used to warp the wall image.
-//  *
-//  * @return Integer status code [0:successful, -1:error].
-//  */
-// int updateWallHomography(
-//     const std::array<std::array<cv::Point2f, 4>, 4> &,
-//     const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &,
-//     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
 
 /**
  * @brief Track and print the elapsed time between calls.

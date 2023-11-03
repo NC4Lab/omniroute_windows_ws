@@ -449,6 +449,10 @@ int updateWallTexture(
         // Iterate through each column in the maze row
         for (float gcol_i = 0; gcol_i < MAZE_SIZE; gcol_i++) // image left to right
         {
+            // Copy wall image
+            cv::Mat img_copy;
+            img_wall_mat.copyTo(img_copy);
+
             //  Create merged image for the wall corresponding to the selected control point
             if (
                 (I.cpSelected[0] == 0 && grow_i == 0 && gcol_i == 0) ||
@@ -456,19 +460,36 @@ int updateWallTexture(
                 (I.cpSelected[0] == 2 && grow_i == MAZE_SIZE - 1 && gcol_i == 0) ||
                 (I.cpSelected[0] == 3 && grow_i == MAZE_SIZE - 1 && gcol_i == MAZE_SIZE - 1))
             {
-                // // Merge test pattern and active monitor image
-                // if (textureMerge(tex_mode_mon_id, copy_tex_wall_id) != 0)
-                //     return -1;
+                ;
+                // Merge test pattern and active monitor image
+                if (mergeImgMat(img_mode_mon_mat, img_copy) != 0)
+                    return -1;
 
-                // // Merge previous image and active calibration image
-                // if (textureMerge(tex_mode_cal_id, copy_tex_wall_id) != 0)
-                //     return -1;
+                // Merge previous image and active calibration image
+                if (mergeImgMat(img_mode_cal_mat, img_copy) != 0)
+                    return -1;
             }
+
+            // Get homography matrix for this wall
+            cv::Mat H = _WALL_HMAT_DATA[grow_i][gcol_i];
+
+            // Warp Perspective
+            cv::Mat im_warp;
+            cv::warpPerspective(img_copy, im_warp, H, cv::Size(PROJ_WIN_WIDTH_PXL, PROJ_WIN_HEIGHT_PXL));
+
+            // Display image directly through OpenCV
+            cv::namedWindow("Warped Image Display", cv::WINDOW_AUTOSIZE);
+            cv::imshow("Warped Image Display", im_warp);
+            cv::waitKey(0);
+
+            // Merge the warped image with the final image
+            if (mergeImgMat(im_warp, im_wall_merge) != 0)
+                return -1;
         }
     }
 
     // Make the new texture
-    WALL_TEXTURE_ID = loadTexture(im_wall_merge);
+    out_WALL_TEXTURE_ID = loadTexture(im_wall_merge);
 
     return 0;
 }
@@ -799,162 +820,184 @@ int main(int argc, char **argv)
 
     // --------------- VARIABLE SETUP ---------------
 
+    // Initialize control point coordinate dataset
+    initControlPointCoordinates(CP_COORDS);
+    ROS_INFO("TEST1");
+    dbLogCtrlPointCoordinates(CP_COORDS);
+
+    // Initialize wall homography matrices array
+    if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) != 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Initialize Wall Parameters");
+        return -1;
+    }
+    ROS_INFO("TEST2");
+
+    // Initialize wall image texture
+    if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_DATA, WALL_TEXTURE_ID) != 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Initialize Wall Texture");
+        return -1;
+    }
+    ROS_INFO("TEST3");
+
     // _______________ MAIN LOOP _______________
 
-    // bool is_error = false;
-    // while (!glfwWindowShouldClose(p_window_id) && ros::ok())
-    // {
+    bool is_error = false;
+    while (!glfwWindowShouldClose(p_window_id) && ros::ok())
+    {
 
-    //     // --------------- Check Kayboard Callback Flags ---------------
+        // --------------- Check Kayboard Callback Flags ---------------
 
-    //     // Load XML file
-    //     if (F.loadXML)
-    //     {
-    //         std::string file_path = formatCoordinatesFilePathXML(I.winMon, I.calMode, CONFIG_DIR_PATH);
-    //         /// @todo Ad save xml back in
-    //         F.loadXML = false;
-    //     }
+        // Load XML file
+        if (F.loadXML)
+        {
+            std::string file_path = formatCoordinatesFilePathXML(I.winMon, I.calMode, CONFIG_DIR_PATH);
+            /// @todo Ad save xml back in
+            F.loadXML = false;
+        }
 
-    //     // Save XML file
-    //     if (F.saveXML)
-    //     {
-    //         std::string file_path = formatCoordinatesFilePathXML(I.winMon, I.calMode, CONFIG_DIR_PATH);
-    //         /// @todo Ad save xml back in
-    //         F.saveXML = false;
-    //     }
+        // Save XML file
+        if (F.saveXML)
+        {
+            std::string file_path = formatCoordinatesFilePathXML(I.winMon, I.calMode, CONFIG_DIR_PATH);
+            /// @todo Ad save xml back in
+            F.saveXML = false;
+        }
 
-    //     // Update the window monitor and mode
-    //     if (F.updateWindowMonMode)
-    //     {
-    //         if (updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, I.winMon, F.setFullscreen) != 0)
-    //         {
-    //             ROS_ERROR("[MAIN] Update Window Monitor Mode Threw Error");
-    //             is_error = true;
-    //             break;
-    //         }
-    //         F.updateWindowMonMode = false;
-    //     }
+        // Update the window monitor and mode
+        if (F.updateWindowMonMode)
+        {
+            if (updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, I.winMon, F.setFullscreen) != 0)
+            {
+                ROS_ERROR("[MAIN] Update Window Monitor Mode Threw Error");
+                is_error = true;
+                break;
+            }
+            F.updateWindowMonMode = false;
+        }
 
-    //     // Initialize/reinitialize control point coordinate dataset
-    //     if (F.initControlPointMarkers)
-    //     {
-    //         initControlPointCoordinates(CP_COORDS);
-    //         F.initControlPointMarkers = false;
-    //     }
+        // Initialize/reinitialize control point coordinate dataset
+        if (F.initControlPointMarkers)
+        {
+            initControlPointCoordinates(CP_COORDS);
+            F.initControlPointMarkers = false;
+        }
 
-    //     // Recompute wall vertices and homography matrices
-    //     if (F.updateWallDatasets)
-    //     {
-    //         // Initialize wall parameter datasets
-    //         if (updateWallParameters(CP_COORDS, WALL_WARP_COORDS, WALL_HMAT_DATA) != 0)
-    //         {
-    //             ROS_ERROR("[MAIN] Update of Wall Vertices Datasets Failed");
-    //             return -1;
-    //         }
+        // Recompute wall parameters and update wall image texture
+        if (F.updateWallDatasets)
+        {
+            // Update wall homography matrices array
+            if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) != 0)
+            {
+                ROS_ERROR("[MAIN] Update of Wall Vertices Datasets Failed");
+                is_error = true;
+                break;
+            }
 
-    //         // Initialize homography matrix dataset
-    //         if (drawWallImages(fbo_texture_id, wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode]) != 0)
-    //             if (updateWallHomography(CP_COORDS, WALL_WARP_COORDS, WALL_HMAT_DATA) != 0)
-    //             {
-    //                 ROS_ERROR("[MAIN] Update of Wall Homography Datasets Failed");
-    //                 return -1;
-    //             }
-    //         F.updateWallDatasets = false;
-    //     }
+            // Update wall image texture
+            if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_DATA, WALL_TEXTURE_ID) != 0)
+            {
+                ROS_ERROR("[MAIN] Update of Wall Homography Datasets Failed");
+                is_error = true;
+                break;
+            }
+            F.updateWallDatasets = false;
+        }
 
-    //     // --------------- Handle Image Processing for Next Frame ---------------
+        // --------------- Handle Image Processing for Next Frame ---------------
 
-    //     // Clear back buffer for new frame
-    //     glClear(GL_COLOR_BUFFER_BIT);
-    //     if (checkErrorOpenGL(__LINE__, __FILE__))
-    //     {
-    //         is_error = true;
-    //         break;
-    //     }
+        // Clear back buffer for new frame
+        glClear(GL_COLOR_BUFFER_BIT);
+        if (checkErrorOpenGL(__LINE__, __FILE__))
+        {
+            is_error = true;
+            break;
+        }
 
-    //     // Draw/update wall images
-    //     if (renderWallImage(WALL_TEXTURE_ID) != 0)
-    //     {
-    //         ROS_ERROR("[MAIN] Draw Walls Threw Error");
-    //         is_error = true;
-    //         break;
-    //     }
+        // Draw/update wall images
+        if (renderWallImage(WALL_TEXTURE_ID) != 0)
+        {
+            ROS_ERROR("[MAIN] Draw Walls Threw Error");
+            is_error = true;
+            break;
+        }
 
-    //     // Draw/update control point markers
-    //     if (renderControlPoints(CP_COORDS) != 0)
-    //     {
-    //         ROS_ERROR("[MAIN] Draw Control Point Threw Error");
-    //         is_error = true;
-    //         break;
-    //     }
+        // Draw/update control point markers
+        if (renderControlPoints(CP_COORDS) != 0)
+        {
+            ROS_ERROR("[MAIN] Draw Control Point Threw Error");
+            is_error = true;
+            break;
+        }
 
-    //     // Swap buffers and poll events
-    //     glfwSwapBuffers(p_window_id);
-    //     if (
-    //         checkErrorGLFW(__LINE__, __FILE__) ||
-    //         checkErrorOpenGL(__LINE__, __FILE__))
-    //     {
-    //         is_error = true;
-    //         break;
-    //     }
+        // Swap buffers and poll events
+        glfwSwapBuffers(p_window_id);
+        if (
+            checkErrorGLFW(__LINE__, __FILE__) ||
+            checkErrorOpenGL(__LINE__, __FILE__))
+        {
+            is_error = true;
+            break;
+        }
 
-    //     // Poll events
-    //     glfwPollEvents();
+        // Poll events
+        glfwPollEvents();
 
-    //     // Exit condition
-    //     if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_window_id))
-    //         break;
-    // }
+        // Exit condition
+        if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_window_id))
+            break;
+    }
 
-    // // _______________ CLEANUP _______________
-    // ROS_INFO("SHUTTING DOWN");
+    // _______________ CLEANUP _______________
+    ROS_INFO("SHUTTING DOWN");
 
-    // // Check which condition caused the loop to exit
-    // if (!ros::ok())
-    //     ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
-    // else if (glfwWindowShouldClose(p_window_id))
-    //     ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
-    // else if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    //     ROS_INFO("[LOOP TERMINATION] Escape Key was Pressed");
-    // else if (is_error)
-    //     ROS_INFO("[LOOP TERMINATION] Error Thrown");
-    // else
-    //     ROS_INFO("[LOOP TERMINATION] Reason Unknown");
+    // Check which condition caused the loop to exit
+    if (!ros::ok())
+        ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
+    else if (glfwWindowShouldClose(p_window_id))
+        ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
+    else if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        ROS_INFO("[LOOP TERMINATION] Escape Key was Pressed");
+    else if (is_error)
+        ROS_INFO("[LOOP TERMINATION] Error Thrown");
+    else
+        ROS_INFO("[LOOP TERMINATION] Reason Unknown");
 
-    // // Delete wall texture
-    // if (WALL_TEXTURE_ID != 0)
-    // {
-    //     glDeleteFramebuffers(1, &WALL_TEXTURE_ID);
-    //     if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
-    //         ROS_WARN("[SHUTDOWN] Failed to Delete Wall Texture");
-    //     else
-    //         ROS_INFO("[SHUTDOWN] Deleted Wall Texture");
-    // }
-    // else
-    //     ROS_WARN("[SHUTDOWN] No Wall Texture to Delete");
+    // Delete wall texture
+    if (WALL_TEXTURE_ID != 0)
+    {
+        glDeleteFramebuffers(1, &WALL_TEXTURE_ID);
+        if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+            ROS_WARN("[SHUTDOWN] Failed to Delete Wall Texture");
+        else
+            ROS_INFO("[SHUTDOWN] Deleted Wall Texture");
+    }
+    else
+        ROS_WARN("[SHUTDOWN] No Wall Texture to Delete");
 
-    // // Destroy GLFW window
-    // if (p_window_id)
-    // {
-    //     glfwDestroyWindow(p_window_id);
-    //     p_window_id = nullptr;
-    //     if (checkErrorGLFW(__LINE__, __FILE__) != 0)
-    //         ROS_WARN("[SHUTDOWN] Failed to Destroy GLFW Window");
-    //     else
-    //         ROS_INFO("[SHUTDOWN] Destroyed GLFW Window");
-    // }
-    // else
-    // {
-    //     ROS_WARN("[SHUTDOWN] No GLFW window to destroy");
-    // }
+    // Destroy GLFW window
+    if (p_window_id)
+    {
+        glfwDestroyWindow(p_window_id);
+        p_window_id = nullptr;
+        if (checkErrorGLFW(__LINE__, __FILE__) != 0)
+            ROS_WARN("[SHUTDOWN] Failed to Destroy GLFW Window");
+        else
+            ROS_INFO("[SHUTDOWN] Destroyed GLFW Window");
+    }
+    else
+    {
+        ROS_WARN("[SHUTDOWN] No GLFW window to destroy");
+    }
 
-    // // Terminate GLFW
-    // glfwTerminate();
-    // checkErrorGLFW(__LINE__, __FILE__);
-    // ROS_INFO("[SHUTDOWN] Terminated GLFW");
+    // Terminate GLFW
+    glfwTerminate();
+    checkErrorGLFW(__LINE__, __FILE__);
+    ROS_INFO("[SHUTDOWN] Terminated GLFW");
 
-    // // Return success
-    // return is_error ? -1 : 0;
+    // Return success
+    return is_error ? -1 : 0;
 
     // --------------- TEST IMAGE SETUP ---------------
 

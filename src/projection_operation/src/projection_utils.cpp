@@ -104,7 +104,7 @@ float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, 
     return interp_val;
 }
 
-void initControlPointCoordinates(std::array<std::array<std::array<cv::Point2f, 4>, 2>, 2> &out_CP_COORDS)
+void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &out_CP_COORDS)
 {
 
     // Specify the control point limits
@@ -118,41 +118,40 @@ void initControlPointCoordinates(std::array<std::array<std::array<cv::Point2f, 4
 
         // 0: image top-left
         if (cp_i == 0)
-            p_org = cv::Point2f(-cp_x, +cp_y);
+            p_org = cv::Point2f(-cp_x, -cp_y);
 
         // 1: image top-right
         else if (cp_i == 1)
+            p_org = cv::Point2f(+cp_x, -cp_y);
+
+        // 2: image bottom-right
+        else if (cp_i == 2)
             p_org = cv::Point2f(+cp_x, +cp_y);
 
-        // 2: image bottom-left
-        else if (cp_i == 2)
-            p_org = cv::Point2f(-cp_x, -cp_y);
-
-        // 3: image bottom-right
+        // 3: image bottom-left
         else if (cp_i == 3)
-            p_org = cv::Point2f(+cp_x, -cp_y);
+            p_org = cv::Point2f(-cp_x, +cp_y);
 
         // Set x y values for each vertex
         out_CP_COORDS[cp_i] = {
-            cv::Point2f(p_org.x, p_org.y + WALL_HEIGHT_NDC),                  // top left
-            cv::Point2f(p_org.x + WALL_WIDTH_NDC, p_org.y + WALL_HEIGHT_NDC), // top right
-            cv::Point2f(p_org.x + WALL_WIDTH_NDC, p_org.y),                   // bottom left
-            cv::Point2f(p_org.x, p_org.y),                                    // bottom right
+            cv::Point2f(p_org.x, p_org.y),                                    // top left
+            cv::Point2f(p_org.x + WALL_WIDTH_NDC, p_org.y),                   // top right
+            cv::Point2f(p_org.x + WALL_WIDTH_NDC, p_org.y + WALL_HEIGHT_NDC), // bottom right
+            cv::Point2f(p_org.x, p_org.y + WALL_HEIGHT_NDC),                  // bottom left
         };
     }
 }
 
-int updateWallParameters(
+int updateHomographyMatrices(
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
-    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &out_WALL_WARP_COORDS,
     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &out_WALL_HMAT_DATA)
 {
     // Define origin plane vertices
-    std::vector<cv::Point2f> source_vertices = {
-        cv::Point2f(0.0f, WALL_HEIGHT_NDC),           // Top-left
-        cv::Point2f(WALL_WIDTH_NDC, WALL_HEIGHT_NDC), // Top-right
-        cv::Point2f(0.0f, 0.0f),                      // Bottom-left
-        cv::Point2f(WALL_WIDTH_NDC, 0.0f)};           // Bottom-right
+    std::vector<cv::Point2f> source_vertices_pxl = {
+        cv::Point2f(0.0f, 0.0f),                      // Top-left
+        cv::Point2f(WALL_WIDTH_PXL, 0.0f),            // Top-right
+        cv::Point2f(WALL_WIDTH_PXL, WALL_HEIGHT_PXL), // Bottom-right
+        cv::Point2f(0.0f, WALL_HEIGHT_PXL)};          // Bottom-left
 
     // Iterate trough grid/wall rows
     for (float grow_i = 0; grow_i < MAZE_SIZE; grow_i++) // image bottom to top
@@ -160,7 +159,7 @@ int updateWallParameters(
         // Iterate trough grid/wall columns
         for (float gcol_i = 0; gcol_i < MAZE_SIZE; gcol_i++) // image left to right
         {
-            // Itterate through verteces
+            std::vector<cv::Point2f> target_vertices_ndc(4);
             for (int p_i = 0; p_i < 4; p_i++)
             {
                 // Get the corner values for the interpolation function
@@ -176,15 +175,11 @@ int updateWallParameters(
                     bilinearInterpolation(p_a.y, p_b.y, p_c.y, p_d.y, grow_i, gcol_i, MAZE_SIZE)); // y
 
                 // Store the warped vertex coordinates
-                out_WALL_WARP_COORDS[grow_i][gcol_i][p_i] = p_interp;
+                target_vertices_ndc[p_i] = p_interp;
             }
 
-            // Get warped vertices for this wall to use as target
-            std::vector<cv::Point2f> target_vertices = quadArr2Vec(out_WALL_HMAT_DATA[grow_i][gcol_i]);
-
             // Convert to pixel coordinates for OpenCV's findHomography function
-            std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices, WALL_WIDTH_PXL, WALL_HEIGHT_PXL, MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
-            std::vector<cv::Point2f> source_vertices_pxl = quadVertNdc2Pxl(source_vertices, WALL_WIDTH_PXL, WALL_HEIGHT_PXL, MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
+            std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WALL_WIDTH_PXL, WALL_HEIGHT_PXL, MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
 
             // Check that the target plane vertices are valid
             if (checkQuadVertices(target_vertices_pxl) != 0)
@@ -193,6 +188,13 @@ int updateWallParameters(
                          checkQuadVertices(target_vertices_pxl) == 1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
                 return -1;
             }
+
+            // TEMP
+            ROS_INFO("Source Vertices:");
+            dbLogQuadVertices(source_vertices_pxl);
+            ROS_INFO("Target Vertices:");
+            dbLogQuadVertices(target_vertices_pxl);
+            //return -1;
 
             // Use OpenCV's findHomography function to compute the homography matrix
             cv::Mat H = cv::findHomography(source_vertices_pxl, target_vertices_pxl);
@@ -211,71 +213,10 @@ int updateWallParameters(
 
     // TEMP
     // dbLogCtrlPointCoordinates(r_CP_COORDS);
-    // dbLogWallVerticesCoordinates(r_WALL_WARP_COORDS);
 
     // Return success
     return 0;
 }
-
-// int updateWallHomography(
-//     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
-//     const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &_WALL_WARP_COORDS,
-//     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &out_WALL_HMAT_DATA)
-// {
-//     // Define origin plane vertices
-//     std::vector<cv::Point2f> origin_vertices = {
-//         cv::Point2f(0.0f, WALL_HEIGHT_NDC),           // Top-left
-//         cv::Point2f(WALL_WIDTH_NDC, WALL_HEIGHT_NDC), // Top-right
-//         cv::Point2f(0.0f, 0.0f),                      // Bottom-left
-//         cv::Point2f(WALL_WIDTH_NDC, 0.0f)};           // Bottom-right
-
-//     // Iterate through the maze grid rows
-//     for (float grow_i = 0; grow_i < MAZE_SIZE; grow_i++) // image bottom to top
-//     {
-//         // Iterate through each column in the maze row
-//         for (float gcol_i = 0; gcol_i < MAZE_SIZE; gcol_i++) // image left to right
-//         {
-//             // Get warped vertices for this wall to use as target
-//             std::vector<cv::Point2f> target_vertices = quadArr2Vec(_WALL_WARP_COORDS[grow_i][gcol_i]);
-
-//             // Convert to pixel coordinates for OpenCV's findHomography function
-//             std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices, WALL_WIDTH_PXL, WALL_HEIGHT_PXL, MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
-//             std::vector<cv::Point2f> origin_vertices_pxl = quadVertNdc2Pxl(origin_vertices, WALL_WIDTH_PXL, WALL_HEIGHT_PXL, MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
-
-//             // Check that the target plane vertices are valid
-//             if (checkQuadVertices(target_vertices_pxl) != 0)
-//             {
-//                 ROS_WARN("[COMPUTE HOMOGRAPHY] Target Plane Vertices Invalid: Reason[%s]",
-//                          checkQuadVertices(target_vertices_pxl) == 1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
-//                 return -1;
-//             }
-//             // Use OpenCV's findHomography function to compute the homography matrix
-//             cv::Mat _HMAT = cv::findHomography(origin_vertices_pxl, target_vertices_pxl);
-
-//             // Check for valid homography matrix
-//             if (_HMAT.empty())
-//             {
-//                 ROS_ERROR("[COMPUTE HOMOGRAPHY] Failed to Compute Homography Matrix");
-//                 return -1;
-//             }
-
-//             // Copy to the output homography matrix dataset
-//             out_WALL_HMAT_DATA[grow_i][gcol_i] = _HMAT;
-
-//             // TEMP
-//             if (gcol_i == 0 && grow_i == 0)
-//             {
-//                 ROS_INFO("[COMPUTE HOMOGRAPHY] Origin Plane Vertices:");
-//                 dbLogQuadVertices(origin_vertices_pxl);
-//                 ROS_INFO("[COMPUTE HOMOGRAPHY] Target Plane Vertices:");
-//                 dbLogQuadVertices(target_vertices_pxl);
-//                 dbLogHomMat(_HMAT);
-//             }
-//         }
-//     }
-
-//     return 0;
-// }
 
 void dbTrackDT(int line, const char *file_path, bool do_reset)
 {
@@ -316,6 +257,11 @@ void dbTrackDT(int line, const char *file_path, bool do_reset)
 
 void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
 {
+    if (quad_vertices.size() != 4)
+    {
+        ROS_ERROR("Invalid number of vertices. Expected 4.");
+        return;
+    }
     dbLogQuadVertices(quadVec2Arr(quad_vertices));
 }
 
@@ -368,16 +314,18 @@ void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &
         // Fetch the vertices for the current control point
         auto &quad_vertices = r_ctrl_pnt_coords[cp];
 
-        ROS_INFO("-----------------------------------------");
-        ROS_INFO("        |   X   ,   Y   |   X   ,   Y   |");
-        ROS_INFO("-----------------------------------------");
-
         // Print the top row coordinates
+        ROS_INFO("=========================================");
+        ROS_INFO("        |V0   X , Y     |V1   X , Y     ||");
+        ROS_INFO("-----------------------------------------");
         ROS_INFO("[%d] Top | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
                  cp,
                  quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
 
         // Print the bottom row coordinates
+        ROS_INFO("---------------------------------------");
+        ROS_INFO("        |V3   X , Y     |V2   X , Y     |");
+        ROS_INFO("---------------------------------------");
         ROS_INFO("[%d] Btm | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
                  cp,
                  quad_vertices[3].x, quad_vertices[3].y, quad_vertices[2].x, quad_vertices[2].y);
