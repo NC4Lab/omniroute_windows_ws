@@ -505,7 +505,7 @@ int checkQuadVertices(const std::vector<cv::Point2f> &);
  * Convert from NDC [-1, 1] to pixel [0, width or height] and
  * inverts the y to match OpenCV's top-left origin
  */
-std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f>&, int, int);
+std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &, int, int);
 
 /**
  * @brief Performs bilinear interpolation.
@@ -557,16 +557,32 @@ int updateHomographyMatrices(
     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
 
 /**
+ * @brief Manages timed delays within a loop.
+ *
+ * @param dt_wait Latency in milliseconds for the delay; used only on the initial call.
+ *
+ * @details
+ * Maintains a static timestamp to enforce a delay relative to `ros::Time::now()`.
+ * Returns false if the delay has not elapsed, true otherwise, resetting the timer.
+ *
+ * @return True if the delay has elapsed, otherwise false.
+ */
+bool dbRunDT(int);
+
+/**
  * @brief Track and print the elapsed time between calls.
  *
+ * @details
  * Call this function with `do_reset` set to true to start timing,
  * and call it again with `do_reset` set to false to print the elapsed time.
  *
+ * @param do_reset If true, resets the start time. If false, prints the elapsed time.
  * @param line Line number where the function is called.
  * @param file_path File path where the function is called.
- * @param do_reset If true, resets the start time. If false, prints the elapsed time.
+ * 
+  * @example dbLogDT(true, __LINE__, __FILE__);
  */
-void dbTrackDT(int, const char *, bool = false);
+void dbLogDT(bool = false, int = 0, const char * = nullptr);
 
 /**
  * @brief Prints the coordinates of a quadrilateral's vertices.

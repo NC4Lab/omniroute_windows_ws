@@ -153,13 +153,13 @@ const char *wallFragmentSource = R"glsl(
 
 /**
  * @brief Vertex shader source code for control point rendering.
- * 
+ *
  * @note The shader program will reverse the y axis to match image coordinate systems used by OpenCV.
  *
  * @details
  * This GLSL vertex shader source code is stored as a C++ raw string literal.
  * - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
- * - `layout (location = 0) in vec2 position;`: Declares an input vertex attribute for position, received from the application. 
+ * - `layout (location = 0) in vec2 position;`: Declares an input vertex attribute for position, received from the application.
  *      The y-axis will be inverted to match image coordinate systems such as those used in OpenCV.
  * - `layout (location = 1) in vec3 color;`: Declares an input vertex attribute for color, received from the application.
  * - `layout (location = 2) in float size;`: Declares an input vertex attribute for size, received from the application.
@@ -378,7 +378,7 @@ int checkErrorOpenGL(int, const char *, const char * = nullptr);
  * @param msg_str Optional message to provide additional context (default to nullptr).
  *
  * @return Integer status code  [0:successful, -1:error].
- * *
+ * 
  * @example checkErrorGLFW(__LINE__, __FILE__);
  */
 int checkErrorGLFW(int, const char *, const char * = nullptr);
@@ -454,6 +454,7 @@ int initializeControlPointObjects();
  *
  * @param vertex_source Source code for the vertex shader.
  * @param fragment_source Source code for the fragment shader.
+ * @param geometry_source Source code for the geometry shader.
  *
  * @return GLuint ID of the generated shader program.
  *
@@ -483,7 +484,7 @@ int initializeControlPointObjects();
  * Once the shader program is created and linked successfully, it returns the GLuint ID of the shader program.
  * This ID is used to activate the shader program for rendering.
  */
-GLuint compileAndLinkShaders(const GLchar *, const GLchar *);
+GLuint compileAndLinkShaders(const GLchar *, const GLchar *, const GLchar *);
 
 /**
  * @brief Converts an OpenCV Mat image into an OpenGL texture and returns the texture ID.

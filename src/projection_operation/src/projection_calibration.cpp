@@ -391,7 +391,7 @@ int initializeWallObjects()
     glBindVertexArray(0);
 
     // Create the shader program for wall image rendering
-    WALL_SHADER = compileAndLinkShaders(wallVertexSource, wallFragmentSource);
+    WALL_SHADER = compileAndLinkShaders(wallVertexSource, wallFragmentSource, nullptr);
 
     // Return GL status
     return checkErrorOpenGL(__LINE__, __FILE__);
@@ -400,7 +400,7 @@ int initializeWallObjects()
 int initializeControlPointObjects()
 {
     // Create shader program
-    CP_SHADER = compileAndLinkShaders(ctrlPtVertexSource, ctrlPtFragmentSource);
+    CP_SHADER = compileAndLinkShaders(ctrlPtVertexSource, ctrlPtFragmentSource, nullptr);
 
     // Generate and bind the VAO
     glGenVertexArrays(1, &CP_VAO);
@@ -469,6 +469,35 @@ int renderWallImage(const GLuint &_WALL_TEXTURE_ID)
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
+// int drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec)
+// {
+//     const int segments = 100; // Number of segments to approximate a circle
+
+//     // Begin drawing a filled circle
+//     glBegin(GL_TRIANGLE_FAN);
+
+//     // Set the color to green
+//     glColor3f(rgb_vec[0], rgb_vec[1], rgb_vec[2]);
+
+//     // Center of the circle
+//     glVertex2f(x, y);
+
+//     // Calculate and draw the vertices of the circle
+//     for (int i = 0; i <= segments; i++)
+//     {
+//         float theta = 2.0f * 3.1415926f * float(i) / float(segments);
+//         float px = x + radius * cosf(theta);
+//         float py = y + (radius * PROJ_WIN_ASPECT_RATIO) * sinf(theta);
+//         glVertex2f(px, py);
+//     }
+
+//     // End drawing
+//     glEnd();
+
+//     // Return GL status
+//     return checkErrorGL(__LINE__, __FILE__);
+// }
+
 int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS)
 {
     // Use the shader program for control point rendering
@@ -532,30 +561,98 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COO
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-GLuint compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source)
+GLuint compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source, const GLchar *geometry_source)
 {
-    // Create and compile the vertex shader
-    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertex_shader, 1, &vertex_source, NULL);
-    glCompileShader(vertex_shader);
+    auto checkCompileErrors = [](GLuint shader, const std::string &type)
+    {
+        GLint success;
+        GLchar infoLog[1024];
+        if (type != "PROGRAM")
+        {
+            glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+            if (!success)
+            {
+                glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+                ROS_ERROR("[Shader Compilation Error] Type: %s\n%s", type.c_str(), infoLog);
+            }
+        }
+        else
+        {
+            glGetProgramiv(shader, GL_LINK_STATUS, &success);
+            if (!success)
+            {
+                glGetProgramInfoLog(shader, 1024, NULL, infoLog);
+                ROS_ERROR("[Program Linking Error] Type: %s\n%s", type.c_str(), infoLog);
+            }
+        }
+    };
 
-    // Create and compile the fragment shader
-    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragment_shader, 1, &fragment_source, NULL);
-    glCompileShader(fragment_shader);
-
-    // Link the vertex and fragment shader into a shader program
     GLuint shader_program = glCreateProgram();
-    glAttachShader(shader_program, vertex_shader);
-    glAttachShader(shader_program, fragment_shader);
-    glLinkProgram(shader_program);
 
-    // Delete the vertex and fragment shaders as they're now linked into the program
-    glDeleteShader(vertex_shader);
-    glDeleteShader(fragment_shader);
+    // Vertex Shader
+    if (vertex_source != nullptr)
+    {
+        GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+        glShaderSource(vertex_shader, 1, &vertex_source, NULL);
+        glCompileShader(vertex_shader);
+        checkCompileErrors(vertex_shader, "VERTEX");
+        glAttachShader(shader_program, vertex_shader);
+        glDeleteShader(vertex_shader); // Delete after attaching
+    }
+
+    // Fragment Shader
+    if (fragment_source != nullptr)
+    {
+        GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+        glShaderSource(fragment_shader, 1, &fragment_source, NULL);
+        glCompileShader(fragment_shader);
+        checkCompileErrors(fragment_shader, "FRAGMENT");
+        glAttachShader(shader_program, fragment_shader);
+        glDeleteShader(fragment_shader); // Delete after attaching
+    }
+
+    // Geometry Shader
+    if (geometry_source != nullptr)
+    {
+        GLuint geometry_shader = glCreateShader(GL_GEOMETRY_SHADER);
+        glShaderSource(geometry_shader, 1, &geometry_source, NULL);
+        glCompileShader(geometry_shader);
+        checkCompileErrors(geometry_shader, "GEOMETRY");
+        glAttachShader(shader_program, geometry_shader);
+        glDeleteShader(geometry_shader); // Delete after attaching
+    }
+
+    // Link the shader program
+    glLinkProgram(shader_program);
+    checkCompileErrors(shader_program, "PROGRAM");
 
     return shader_program;
 }
+
+// GLuint compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source)
+// {
+//     // Create and compile the vertex shader
+//     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+//     glShaderSource(vertex_shader, 1, &vertex_source, NULL);
+//     glCompileShader(vertex_shader);
+
+//     // Create and compile the fragment shader
+//     GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+//     glShaderSource(fragment_shader, 1, &fragment_source, NULL);
+//     glCompileShader(fragment_shader);
+
+//     // Link the vertex and fragment shader into a shader program
+//     GLuint shader_program = glCreateProgram();
+//     glAttachShader(shader_program, vertex_shader);
+//     glAttachShader(shader_program, fragment_shader);
+//     glLinkProgram(shader_program);
+
+//     // Delete the vertex and fragment shaders as they're now linked into the program
+//     glDeleteShader(vertex_shader);
+//     glDeleteShader(fragment_shader);
+
+//     return shader_program;
+// }
 
 GLuint loadTexture(cv::Mat image)
 {
@@ -752,104 +849,6 @@ int updateWallTexture(
     return 0;
 }
 
-// Function to initialize GLFW and GLAD
-bool initializeGLFWandGLAD()
-{
-    // Initialize GLFW
-    if (!glfwInit())
-    {
-        std::cerr << "Failed to initialize GLFW\n";
-        return false;
-    }
-
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);                 // Set the GLFW major version
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);                 // Set the GLFW minor version
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // Set the GLFW profile
-#ifdef __APPLE__
-    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // Uncomment this statement for macOS compatibility
-#endif
-
-    // Create a windowed mode window and its OpenGL context
-    GLFWwindow *window = glfwCreateWindow(640, 480, "Simple Point Test", NULL, NULL);
-    if (!window)
-    {
-        glfwTerminate();
-        std::cerr << "Failed to create GLFW window\n";
-        return false;
-    }
-
-    // Make the window's context current
-    glfwMakeContextCurrent(window);
-
-    // Initialize GLAD
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
-    {
-        std::cerr << "Failed to initialize GLAD\n";
-        return false;
-    }
-
-    return true;
-}
-
-void testRenderSinglePoint()
-{
-    if (!initializeGLFWandGLAD())
-    {
-        return;
-    }
-
-    GLFWwindow *window = glfwGetCurrentContext();
-
-    // Set up the viewport
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    glViewport(0, 0, width, height);
-
-    // Set clear color to black and clear the window
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT);
-
-    // Create a VAO and VBO for the point
-    GLuint VAO, VBO;
-    glGenVertexArrays(1, &VAO);
-    glGenBuffers(1, &VBO);
-
-    // Bind VAO and VBO, set up data for a single point in the middle
-    glBindVertexArray(VAO);
-    glBindBuffer(GL_ARRAY_BUFFER, VBO);
-    float pointVertex[] = {0.0f, 0.0f}; // Coordinates for the point
-    glBufferData(GL_ARRAY_BUFFER, sizeof(pointVertex), pointVertex, GL_STATIC_DRAW);
-
-    // Enable the vertex attribute
-    glEnableVertexAttribArray(0);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
-
-    // Unbind VAO and VBO
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    glBindVertexArray(0);
-
-    // The render loop
-    while (!glfwWindowShouldClose(window))
-    {
-        // Clear the color buffer
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        // Draw the point
-        glBindVertexArray(VAO);
-        glPointSize(10.0f); // Set the point size
-        glDrawArrays(GL_POINTS, 0, 1);
-
-        // Swap front and back buffers and poll for events
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
-
-    // Deallocate resources
-    glDeleteVertexArrays(1, &VAO);
-    glDeleteBuffers(1, &VBO);
-    glfwTerminate();
-}
-
 int main(int argc, char **argv)
 {
 
@@ -870,10 +869,6 @@ int main(int argc, char **argv)
 
     // --------------- OpenGL SETUP ---------------
 
-    // TEMP
-    testRenderSinglePoint();
-    return 0;
-
     // Declare GLFW variables
     GLFWwindow *p_window_id = nullptr;
     GLFWmonitor **pp_monitor_id_Vec = nullptr;
@@ -885,11 +880,6 @@ int main(int argc, char **argv)
         ROS_ERROR("[SETUP] GLFW Initialization Failed");
         return -1;
     }
-
-    // Set up OpenGL context for GLFW
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Discover available monitors
     pp_monitor_id_Vec = glfwGetMonitors(&N.monitors);

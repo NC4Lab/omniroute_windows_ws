@@ -10,6 +10,173 @@
 
 // ================================================== FUNCTIONS ==================================================
 
+class Circle
+{
+public:
+    std::vector<float> vertices;
+    GLuint VAO;
+    GLuint VBO;
+    cv::Scalar color;
+    cv::Point2f position;
+    float radius;
+    unsigned int numSegments;
+    float aspectRatio;
+    cv::Point2f scalingFactor;
+    float rotationAngle;
+
+    cv::Mat transformationMatrix; // Transformation matrix for the circle
+
+    Circle(cv::Point2f pos, float rad, cv::Scalar col, unsigned int segments, float aspect)
+        : position(pos), radius(rad), color(col), numSegments(segments), aspectRatio(aspect)
+    {
+        // Initialize the transformation matrix as an identity matrix
+        transformationMatrix = cv::Mat::eye(4, 4, CV_32F);
+
+        // Run initial vertex computation and setup OpenGL
+        computeVertices();
+        setupOpenGL();
+    }
+
+    ~Circle()
+    {
+        glDeleteVertexArrays(1, &VAO);
+        glDeleteBuffers(1, &VBO);
+    }
+
+    void setPosition(cv::Point2f pos)
+    {
+        position = pos;
+        computeVertices();
+        updateOpenGLVertices();
+    }
+
+    void setRadius(float rad)
+    {
+        radius = rad;
+        computeVertices();
+        updateOpenGLVertices();
+    }
+
+    void setColor(cv::Scalar col)
+    {
+        color = col;
+    }
+
+    // Method to set the rotation angle and apply the rotation
+    void setRotation(float angle)
+    {
+        rotationAngle = angle;
+        applyTransformation();
+        computeVertices();
+        updateOpenGLVertices();
+    }
+
+    // Method to set the scaling factor of the circle along the X and Y axes
+    void setScaling(cv::Point2f scaling_factors)
+    {
+        scalingFactor = scaling_factors;
+        applyTransformation();
+        computeVertices();
+        updateOpenGLVertices();
+    }
+
+    void updateVertices()
+    {
+        // Generate the new vertices based on the current position, radius, and numSegments
+        std::vector<float> newVertices = computeVertices(position, radius, numSegments);
+
+        // Bind the VBO, update the vertex buffer with the new data
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, newVertices.size() * sizeof(float), newVertices.data(), GL_DYNAMIC_DRAW);
+
+        // Unbind the buffer
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+
+    void draw(GLuint shaderProgram, GLint colorLocation, GLint transformLocation)
+    {
+        glUniform4f(colorLocation, color[0], color[1], color[2], 1.0f); // Set color
+        cv::Mat transform = cv::Mat::eye(4, 4, CV_32F);                 // Identity matrix for no transformation
+        auto transformArray = cvMatToGlArray(transform);
+        glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transformArray.data());
+
+        glBindVertexArray(VAO);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, vertices.size() / 2);
+    }
+
+private:
+    std::vector<float> computeVertices()
+    {
+        return computeVertices(position, radius, numSegments);
+    }
+    std::vector<float> computeVertices(cv::Point2f position, float radius, unsigned int numSegments)
+    {
+        vertices.clear();
+        for (unsigned int i = 0; i <= numSegments; ++i)
+        {
+            float angle = 2.0f * std::acos(-1.0) * i / numSegments;
+            float baseX = position.x + (radius * std::cos(angle));
+            float baseY = position.y + (radius * std::sin(angle)) * aspectRatio;
+            cv::Mat vertex = (cv::Mat_<float>(4, 1) << baseX, baseY, 0, 1);
+            cv::Mat transformedVertex = transformationMatrix * vertex;
+            vertices.push_back(transformedVertex.at<float>(0, 0));
+            vertices.push_back(transformedVertex.at<float>(1, 0));
+        }
+        return vertices;
+    }
+
+    void setupOpenGL()
+    {
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_DYNAMIC_DRAW);
+        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
+        glEnableVertexAttribArray(0);
+    }
+
+    void updateOpenGLVertices()
+    {
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_DYNAMIC_DRAW);
+    }
+
+    // Helper function to convert OpenCV Mat to an array for OpenGL
+    std::array<float, 16> cvMatToGlArray(const cv::Mat &mat)
+    {
+        assert(mat.cols == 4 && mat.rows == 4 && mat.type() == CV_32F);
+        std::array<float, 16> glArray;
+        std::copy(mat.begin<float>(), mat.end<float>(), glArray.begin());
+        return glArray;
+    }
+
+    void applyTransformation()
+    {
+        // Ensure transformationMatrix is initialized
+        if (transformationMatrix.empty())
+            transformationMatrix = cv::Mat::eye(4, 4, CV_32F);
+
+        // Translate the center of the circle to the origin
+        cv::Mat translationToOrigin = cv::Mat::eye(4, 4, CV_32F);
+        translationToOrigin.at<float>(0, 3) = -position.x;
+        translationToOrigin.at<float>(1, 3) = -position.y;
+
+        // Rotate around the origin
+        cv::Mat rotation = cv::getRotationMatrix2D(cv::Point2f(0, 0), rotationAngle, 1.0);
+        cv::Mat rot4x4 = cv::Mat::eye(4, 4, CV_32F);
+        rotation.copyTo(rot4x4.rowRange(0, 2).colRange(0, 3));
+
+        // Translate back to the original position
+        cv::Mat translationBack = cv::Mat::eye(4, 4, CV_32F);
+        translationBack.at<float>(0, 3) = position.x;
+        translationBack.at<float>(1, 3) = position.y;
+
+        // Apply the transformations
+        transformationMatrix = translationBack * rot4x4 * translationToOrigin * transformationMatrix;
+    }
+};
+
 // Error callback for GLFW
 void glfwErrorCallback(int error, const char *description)
 {
@@ -28,240 +195,124 @@ bool checkGLError(const std::string &message)
     return true;
 }
 
-// Vertex Shader
 const char *vertexShaderSource = R"glsl(
-#version 330 core
-layout (location = 0) in vec2 position;
-uniform vec2 offset;
-uniform float size;
-void main() {
-    gl_Position = vec4(position + offset, 0.0, 1.0);
-    gl_PointSize = size;
-}
-)glsl";
-
-// Geometry Shader
-const char *geometryShaderSource = R"glsl(
-#version 330 core
-layout (points) in;
-layout (triangle_strip, max_vertices = 64) out;
-uniform float size;
-out vec3 fragColor;
-void main() {
-    const int num_vertices = 32; // Number of vertices to approximate the circle
-    const float PI = 3.1415926;
-    for (int i = 0; i <= num_vertices; ++i) {
-        float angle = 2.0 * PI * float(i) / float(num_vertices);
-        vec4 offset = vec4(cos(angle), sin(angle), 0.0, 0.0) * size / 2.0;
-        gl_Position = gl_in[0].gl_Position + offset;
-        EmitVertex();
+    #version 330 core
+    layout (location = 0) in vec2 aPos;
+    uniform mat4 transform;
+    void main() {
+        gl_Position = transform * vec4(aPos, 0.0, 1.0);
     }
-    EndPrimitive();
-}
 )glsl";
 
-// Fragment Shader
+// Fragment shader with color uniform
 const char *fragmentShaderSource = R"glsl(
-#version 330 core
-uniform vec3 color;
-out vec4 FragColor;
-void main() {
-    FragColor = vec4(color, 1.0);
-}
+    #version 330 core
+    out vec4 FragColor;
+    uniform vec4 color;
+    void main() {
+        FragColor = color; // Use uniform color
+    }
 )glsl";
-
-class Circle
-{
-public:
-    cv::Point2f position;
-    float size;
-    cv::Vec3f color;
-    GLuint VAO, VBO;
-
-    Circle() : position(0.0f, 0.0f), size(10.0f), color(1.0f, 1.0f, 1.0f)
-    {
-        setupCircle();
-    }
-
-    void setupCircle()
-    {
-        // Initialize VAO and VBO
-        glGenVertexArrays(1, &VAO);
-        glGenBuffers(1, &VBO);
-        glBindVertexArray(VAO);
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(cv::Point2f), &position, GL_DYNAMIC_DRAW);
-        glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, (void *)0);
-        glEnableVertexAttribArray(0);
-        glBindVertexArray(0);
-    }
-
-    void updatePosition(const cv::Point2f &newPos)
-    {
-        position = newPos;
-        glBindBuffer(GL_ARRAY_BUFFER, VBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(cv::Point2f), &position);
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-    }
-
-    void updateSize(float newSize)
-    {
-        size = newSize;
-    }
-
-    void updateColor(const cv::Vec3f &newColor)
-    {
-        color = newColor;
-    }
-
-    void draw(GLuint shaderProgram)
-    {
-        glUseProgram(shaderProgram);
-        glUniform2fv(glGetUniformLocation(shaderProgram, "offset"), 1, &position.x);
-        glUniform1f(glGetUniformLocation(shaderProgram, "size"), size);
-        glUniform3fv(glGetUniformLocation(shaderProgram, "color"), 1, &color[0]);
-        glBindVertexArray(VAO);
-        glDrawArrays(GL_POINTS, 0, 1);
-    }
-
-    ~Circle()
-    {
-        glDeleteVertexArrays(1, &VAO);
-        glDeleteBuffers(1, &VBO);
-    }
-};
-
-GLuint compileAndLinkShaders(const GLchar *vertex_source, const GLchar *geometry_source, const GLchar *fragment_source)
-{
-    auto checkCompileErrors = [](GLuint shader, const std::string &type)
-    {
-        GLint success;
-        GLchar infoLog[1024];
-        if (type != "PROGRAM")
-        {
-            glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-            if (!success)
-            {
-                glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-                ROS_ERROR("[Shader Compilation Error] Type: %s\n%s", type.c_str(), infoLog);
-            }
-        }
-        else
-        {
-            glGetProgramiv(shader, GL_LINK_STATUS, &success);
-            if (!success)
-            {
-                glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-                ROS_ERROR("[Program Linking Error] Type: %s\n%s", type.c_str(), infoLog);
-            }
-        }
-    };
-
-    GLuint shader_program = glCreateProgram();
-
-    // Vertex Shader
-    if (vertex_source != nullptr)
-    {
-        GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertex_shader, 1, &vertex_source, NULL);
-        glCompileShader(vertex_shader);
-        checkCompileErrors(vertex_shader, "VERTEX");
-        glAttachShader(shader_program, vertex_shader);
-        glDeleteShader(vertex_shader); // Delete after attaching
-    }
-
-    // Geometry Shader
-    if (geometry_source != nullptr)
-    {
-        GLuint geometry_shader = glCreateShader(GL_GEOMETRY_SHADER);
-        glShaderSource(geometry_shader, 1, &geometry_source, NULL);
-        glCompileShader(geometry_shader);
-        checkCompileErrors(geometry_shader, "GEOMETRY");
-        glAttachShader(shader_program, geometry_shader);
-        glDeleteShader(geometry_shader); // Delete after attaching
-    }
-
-    // Fragment Shader
-    if (fragment_source != nullptr)
-    {
-        GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragment_shader, 1, &fragment_source, NULL);
-        glCompileShader(fragment_shader);
-        checkCompileErrors(fragment_shader, "FRAGMENT");
-        glAttachShader(shader_program, fragment_shader);
-        glDeleteShader(fragment_shader); // Delete after attaching
-    }
-
-    // Link the shader program
-    glLinkProgram(shader_program);
-    checkCompileErrors(shader_program, "PROGRAM");
-
-    return shader_program;
-}
 
 int main(int argc, char **argv)
 {
+    // ROS Initialization
+    ros::init(argc, argv, "projection_calibration", ros::init_options::AnonymousName);
+    ros::NodeHandle n;
+    ros::NodeHandle nh("~");
+    ROS_INFO("RUNNING MAIN");
+
     glfwSetErrorCallback(glfwErrorCallback);
     if (!glfwInit())
     {
         return -1;
     }
 
-    // Set up OpenGL context for GLFW
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
-    GLFWwindow *window = glfwCreateWindow(640, 480, "Circle Renderer", nullptr, nullptr);
+    int width = 640;
+    int height = 480;
+    float aspectRatio = width / (float)height;
+    GLFWwindow *window = glfwCreateWindow(width, 480, "Diagnostic Point", nullptr, nullptr);
     if (!window)
     {
         glfwTerminate();
         return -1;
     }
     glfwMakeContextCurrent(window);
-
-    // Initialize GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress))
     {
-        std::cerr << "Failed to initialize GLAD" << std::endl;
         glfwDestroyWindow(window);
         glfwTerminate();
         return -1;
     }
 
-    // Compile and link shaders
-    GLuint shaderProgram = compileAndLinkShaders(vertexShaderSource, geometryShaderSource, fragmentShaderSource);
+    // Compile shaders
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
+    glCompileShader(vertexShader);
+    checkGLError("Vertex Shader Compilation");
 
-    // Setup the circles with different positions, sizes, and colors
-    std::vector<Circle> circles;
-    for (int i = 0; i < 16; ++i)
-    {
-        Circle circle;
-        circle.position = cv::Point2f(0.1f * (i % 4) - 0.15f, 0.1f * (i / 4) - 0.15f);
-        circle.size = 10.0f + i; // Different size for each circle
-        circle.color = cv::Vec3f(i % 3 == 0, i % 3 == 1, i % 3 == 2);
-        circles.push_back(circle);
-    }
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
+    glCompileShader(fragmentShader);
+    checkGLError("Fragment Shader Compilation");
+
+    // Link shaders
+    GLuint shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, vertexShader);
+    glAttachShader(shaderProgram, fragmentShader);
+    glLinkProgram(shaderProgram);
+    checkGLError("Shader Program Linking");
+
+    // Get uniform locations
+    GLint colorLocation = glGetUniformLocation(shaderProgram, "color");
+    GLint transformLocation = glGetUniformLocation(shaderProgram, "transform");
+
+    // Create a circle
+    Circle myCircle(cv::Point2f(0.0f, 0.0f), 0.5f, cv::Scalar(1.0f, 0.0f, 0.0f), 50, aspectRatio);
+
+    // Stretch the circle by factors of 1.2 along the X-axis and
+    // 0.8 along the Y-axis
+    myCircle.setScaling (cv::Point2f(1.25f, 0.8f));
 
     // Render loop
     while (!glfwWindowShouldClose(window))
     {
-        // Clear the color buffer
-        glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT);
 
-        // Render each circle
-        for (auto &circle : circles)
+        // Use the shader program
+        glUseProgram(shaderProgram);
+
+        // Change circle properties
+        myCircle.setPosition(cv::Point2f(0.5f, -0.5f));  // Move the circle to position (0.5, -0.5)
+        myCircle.setColor(cv::Scalar(0.0f, 1.0f, 0.0f)); // Change the circle color to green
+        myCircle.setRadius(0.05f);                       // Change the circle radius to 0.25
+
+        // if (dbRunDT(500))
+        // {
+        //     static cv::Point2f stretch = cv::Point2f(1.0f, 1.0f);
+        //     myCircle.setScaling (stretch); // Rotate the circle by 45 degrees
+        //     stretch.x += 0.001f;
+        //     stretch.y += 0.001f;
+        //     if (stretch.x > 0.5f)
+        //         stretch = cv::Point2f(0.0f, 0.0f);
+        // }
+
+        if (dbRunDT(100))
         {
-            circle.draw(shaderProgram);
+            myCircle.setRotation(5.0);
         }
 
-        // Swap buffers and poll IO events
+        // Generate new vertices for the updated circle
+        myCircle.updateVertices();
+
+        // Draw the circle
+        myCircle.draw(shaderProgram, colorLocation, transformLocation);
+
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
-
-    // Cleanup and exit
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
     glDeleteProgram(shaderProgram);
     glfwDestroyWindow(window);
     glfwTerminate();

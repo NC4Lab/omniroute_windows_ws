@@ -219,7 +219,24 @@ int updateHomographyMatrices(
     return 0;
 }
 
-void dbTrackDT(int line, const char *file_path, bool do_reset)
+bool dbRunDT(int dt_wait)
+{
+    // Initialize with 0 to return true on the first call
+    static ros::Time ts_wait = ros::Time(0);
+    ros::Time now = ros::Time::now();
+
+    // Check if ts_wait is set to zero or the current time is past ts_wait
+    if (ts_wait == ros::Time(0) || now > ts_wait)
+    {
+        // Set the next wait timestamp
+        ts_wait = now + ros::Duration(0, dt_wait * 1000000); // Convert ms to ns
+        return true;
+    }
+
+    return false;
+}
+
+void dbLogDT(bool do_reset, int line, const char *file_path)
 {
     static ros::Time start_time;
     static int line_start = 0;
@@ -228,6 +245,10 @@ void dbTrackDT(int line, const char *file_path, bool do_reset)
     // Function to extract file name from file path
     auto extractFileName = [](const char *path) -> std::string
     {
+        if (path == nullptr)
+        {
+            return std::string("NULL");
+        }
         const char *file_name = strrchr(path, '\\'); // Windows file path separator
         if (!file_name)
             file_name = strrchr(path, '/'); // In case of Unix-style paths
@@ -250,9 +271,16 @@ void dbTrackDT(int line, const char *file_path, bool do_reset)
     {
         ros::Duration elapsed_time = ros::Time::now() - start_time;
         std::string file_name_current = extractFileName(file_path);
-        ROS_INFO("Elapsed Time from %s[%d] to %s[%d]: %f milliseconds",
-                 file_name_start.c_str(), line_start, file_name_current.c_str(), line,
-                 elapsed_time.toNSec() / 1e6);
+        if (line_start == 0 || line == 0)
+        {
+            ROS_INFO("Elapsed Time: %f milliseconds", elapsed_time.toNSec() / 1e6);
+        }
+        else
+        {
+            ROS_INFO("Elapsed Time from %s[%d] to %s[%d]: %0.2f milliseconds",
+                     file_name_start.c_str(), line_start, file_name_current.c_str(), line,
+                     elapsed_time.toNSec() / 1e6);
+        }
     }
 }
 
