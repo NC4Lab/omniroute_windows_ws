@@ -195,7 +195,7 @@ public:
     GLuint VBO;
     cv::Scalar color;
     cv::Point2f position;
-    float radius;
+    float cirRadius;
     unsigned int numSegments;
     float aspectRatio;
     cv::Point2f scalingFactor;

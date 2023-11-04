@@ -60,141 +60,43 @@
 // GLFWmonitor **pp_monitorIDVec = nullptr;
 
 // ================================================== FUNCTIONS ==================================================
-
-// /**
-//  * @brief GLFW key callback function to handle key events and execute corresponding actions.
-//  *
-//  * This function is set as the GLFW key callback and gets called whenever a key event occurs.
-//  * It handles various key events for control points, monitor handling, XML operations, and more.
-//  *
-//  * ## Keybindings:
-//  *
-//  * @param window Pointer to the GLFW window that received the event.
-//  * @param key The keyboard key that was pressed or released.
-//  * @param scancode The system-specific scancode of the key.
-//  * @param action GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT.
-//  * @param mods Bit field describing which modifier keys were held down.
-//  */
-// void callbackKeyBinding(GLFWwindow *, int, int, int, int);
-
-// /**
-//  * @brief Callback function for handling framebuffer size changes.
-//  *
-//  * This function is called whenever the framebuffer size changes,
-//  * and it updates the OpenGL viewport to match the new dimensions.
-//  *
-//  * @param window Pointer to the GLFW window.
-//  * @param width The new width of the framebuffer.
-//  * @param height The new height of the framebuffer.
-//  */
-// void callbackFrameBufferSizeGLFW(GLFWwindow *, int, int);
-
-// /**
-//  * @brief Callback function for handling errors.
-//  *
-//  * This function is called whenever an error occurs in the GLFW context.
-//  * It logs the error message using ROS_ERROR.
-//  *
-//  * @param error The error code.
-//  * @param description The error description.
-//  */
-// static void callbackErrorGLFW(int, const char *);
-
-// /**
-//  * @brief Checks for OpenGL errors and logs them.
-//  * Should be called after OpenGL API calls.
-//  *
-//  * @example checkErrorGL(__LINE__, __FILE__);
-//  *
-//  * @param line Line number where the function is called.
-//  * @param file_str File name where the function is called.
-//  * @param msg_str Optional message to provide additional context (default to nullptr).
-//  *
-//  * @return 0 if no errors, -1 if error.
-//  */
-// int checkErrorOpenGL(int, const char *, const char * = nullptr);
-
-// /**
-//  * @brief Checks for GLFW errors and logs them.
-//  * Should be called after GLFW API calls.
-//  *
-//  * @example checkErrorGLFW(__LINE__, __FILE__);
-//  *
-//  * @param line Line number where the function is called.
-//  * @param file_str File name where the function is called.
-//  * @param msg_str Optional message to provide additional context (default to nullptr).
-//  *
-//  * @return 0 if no errors, -1 if error.
-//  */
-// int checkErrorGLFW(int, const char *, const char * = nullptr);
-
-// /**
-//  * @brief Set up a GLFW window and its associated Framebuffer Object (FBO) and texture.
-//  *
-//  * This function creates a GLFW window, sets its OpenGL context and callbacks, and initializes
-//  * an FBO and texture to be used for offscreen rendering.
-//  *
-//  * @param pp_window_id GLFWwindow pointer array, where each pointer corresponds to a projector window.
-//  * @param win_ind Index of the window for which the setup is to be done.
-//  * @param pp_r_monitor_id Reference to the GLFWmonitor pointer array.
-//  * @param mon_id_ind Index of the monitor to move the window to.
-//  * @param r_fbo_id Reference to the GLuint variable where the generated FBO ID will be stored.
-//  * @param r_fbo_texture_id Reference to the GLuint variable where the generated FBO texture ID will be stored.
-//  *
-//  * @return 0 on successful execution, -1 on failure.
-//  */
-// int setupProjGLFW(GLFWwindow **, int, GLFWmonitor **&, int, GLuint &, GLuint &);
-
-// /**
-//  * @brief Changes the display mode and monitor of the application window.
-//  *
-//  * This function switches the application window between full-screen and windowed modes
-//  * and moves it to the monitor specified by the global variable imgMonNumInd.
-//  *
-//  * In full-screen mode, the window is resized to match the dimensions of the selected monitor.
-//  * In windowed mode, the window is resized to a default size and positioned near the top-left
-//  * corner of the selected monitor.
-//  *
-//  * @note The global variables monitor, monitors, imgMonNumInd, window, and F.setFullscreen are
-//  *       used to control the behavior of this function.
-//  *       Will only exicute if monotor parameters have changed.
-//  *
-//  * @param p_window_id Pointer to the GLFWwindow pointer that will be updated.
-//  * @param win_ind Index of the window for which the setup is to be done.
-//  * @param pp_r_monitor_id Reference to the GLFWmonitor pointer array.
-//  * @param mon_id_ind Index of the monitor to move the window to.
-//  * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
-//  *
-//  * @return 0 on successful execution, -1 on failure.
-//  */
-// int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
-
-// /**
-//  * @brief Draws a textured rectangle using OpenGL.
-//  *
-//  * @param quad_vertices_vec Vector of vertex/corner points for a rectangular image.
-//  *
-//  * @return 0 if no errors, -1 if error.
-//  */
-// int drawQuadImage(std::vector<cv::Point2f>);
-
-// /**
-//  * @brief Draws walls on the OpenGL window.
-//  *
-//  * This function is responsible for drawing the walls on the OpenGL window.
-//  * It iterates through each calibration mode and each wall in the maze to
-//  * draw the corresponding image.
-//  *
-//  * @param proj_ind Index of the projector being used.
-//  * @param mon_iind Index of the projector monitor being used.
-//  * @param p_window_id Pointer to the GLFW window.
-//  * @param fbo_texture_id Framebuffer Object's texture ID.
-//  * @param r_tex_id_vec Reference to the vector containing image IDs.
-//  *
-//  * @return Returns 0 on success, -1 otherwise.
-//  */
-// int drawWallImages(int, int, GLFWwindow *, GLuint, std::vector<ILuint> &);
-
+/**
+ * @file Circle.h
+ * @author Adam Lester
+ * @date Summer 2023
+ * @brief Class for representing and manipulating a circle in OpenGL context.
+ *
+ * @section DESCRIPTION
+ * The Circle class encapsulates the properties and behavior of a circle
+ * that can be rendered using OpenGL. It includes methods for setting the
+ * position, radius, color, and transformations such as rotation and scaling.
+ * The class is designed to work with the OpenGL rendering pipeline and
+ * expects the user to manage the shader program and uniform locations externally.
+ *
+ * @section USAGE
+ * - Create an instance of the Circle class by providing initial parameters.
+ * - Use member functions to modify properties or apply transformations.
+ * - Call the draw() method within the OpenGL rendering loop to render the circle.
+ *
+ * @code
+ * Circle circle(cv::Point2f(0.0f, 0.0f), 1.0f, cv::Scalar(1.0f, 0.0f, 0.0f), 36, 1.0f);
+ * circle.setPosition(cv::Point2f(0.5f, -0.5f));
+ * circle.setRadius(0.25f);
+ * circle.setColor(cv::Scalar(0.0f, 1.0f, 0.0f));
+ * circle.draw(shaderProgram, colorLocation, transformLocation);
+ * @endcode
+ *
+ * @section DEPENDENCIES
+ * - OpenGL for rendering the circle.
+ * - OpenCV for matrix operations and handling transformations.
+ *
+ * @section LICENSE
+ * @todo Define the license for the code.
+ *
+ * @details This class is part of the Omniroute project, which aims to
+ * create an automated rodent maze apparatus. The Circle class helps in rendering
+ * elements in the maze where a circular representation is required.
+ */
 /**
  * @brief  Entry point for the projection_display ROS node.
  *
