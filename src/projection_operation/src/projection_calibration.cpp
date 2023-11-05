@@ -8,6 +8,334 @@
 
 #include "projection_calibration.h"
 
+// ================================================== CLASSES ==================================================
+
+CircleRenderer::CircleRenderer()
+    : circPosition(cv::Point2f(0.0f, 0.0f)), cirRadius(1.0f), circColor(cv::Scalar(1.0, 1.0, 1.0)),
+      circSegments(32), circRotationAngle(0.0f), circScalingFactors(cv::Point2f(1.0f, 1.0f))
+{
+    // Define instance count and itterate static IDX
+    circID = IDX++;
+
+    // Initialize the transformation matrix as an identity matrix
+    _transformationMatrix = cv::Mat::eye(4, 4, CV_32F);
+}
+
+CircleRenderer::~CircleRenderer()
+{
+    glDeleteVertexArrays(1, &_VAO);
+    glDeleteBuffers(1, &_VBO);
+}
+
+void CircleRenderer::initializeCircleRenderer(cv::Point2f pos, float rad, cv::Scalar col, unsigned int segments)
+{
+    // Set variables
+    circPosition = pos;
+    cirRadius = rad;
+    circColor = col;
+    circSegments = segments;
+
+    // Initialize variables
+    circScalingFactors = cv::Point2f(1.0f, 1.0f);
+    circRotationAngle = 0.0f;
+
+    // Run initial vertex computation
+    _computeVertices(circPosition, cirRadius, circSegments, _circVertices);
+
+    // Setup OpenGL buffers
+    _setupOpenGL();
+
+    // Log input arguments
+    ROS_INFO("[CircleRenderer] Initialized Instance[%d]: Position[%0.2f, %0.2f] Radius[%0.4f] Color[%.2f, %.2f, %.2f] Segments[%d]",
+             circID, circPosition.x, circPosition.y, cirRadius, circColor[0], circColor[1], circColor[2], circSegments);
+}
+
+void CircleRenderer::setPosition(cv::Point2f pos)
+{
+    circPosition = pos;
+}
+
+void CircleRenderer::setRadius(float rad)
+{
+    cirRadius = rad;
+}
+
+void CircleRenderer::setRotationAngle(float angle)
+{
+    circRotationAngle = angle;
+}
+
+void CircleRenderer::setScaling(cv::Point2f scaling_factors)
+{
+    circScalingFactors = scaling_factors;
+}
+
+void CircleRenderer::setColor(cv::Scalar col)
+{
+    circColor = col;
+}
+
+void CircleRenderer::recomputeParameters()
+{
+    // Update the transformation matrix
+    _computeTransformation();
+
+    // Generate the new vertices based on the current position, radius, and circSegments
+    _computeVertices(circPosition, cirRadius, circSegments, _circVertices);
+
+    // Bind the VBO to the GL_ARRAY_BUFFER target
+    glBindBuffer(GL_ARRAY_BUFFER, _VBO);
+
+    // Update the VBO's data with the new vertices. This call will reallocate the buffer if necessary
+    // or simply update the data store's contents if the buffer is large enough.
+    glBufferData(GL_ARRAY_BUFFER, _circVertices.size() * sizeof(float), _circVertices.data(), GL_DYNAMIC_DRAW);
+
+    // Unbind the buffer
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // Log input arguments
+    ROS_INFO("[CircleRenderer] Initialized Instance[%d]: Position[%0.2f, %0.2f] Radius[%0.4f] Color[%.2f, %.2f, %.2f] Segments[%d]",
+             circID, circPosition.x, circPosition.y, cirRadius, circColor[0], circColor[1], circColor[2], circSegments);
+}
+
+void CircleRenderer::draw()
+{
+    // Set color
+    glUniform4f(_COLOR_LOCATION, circColor[0], circColor[1], circColor[2], 1.0f);
+
+    // Use the updated transformation matrix instead of an identity matrix
+    auto transformArray = _cvMatToGlArray(_transformationMatrix);
+    glUniformMatrix4fv(_TRANSFORM_LOCATION, 1, GL_FALSE, transformArray.data());
+
+    // Bind the VAO and draw the circle using GL_TRIANGLE_FAN
+    glBindVertexArray(_VAO);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, static_cast<GLsizei>(_circVertices.size() / 2));
+
+    // Unbind the VAO to leave a clean state
+    glBindVertexArray(0);
+}
+
+// Static method to setup shader program and get uniform locations
+int CircleRenderer::compileAndLinkCircleShaders(float aspect_ratio)
+{
+    // Set the aspect ratio
+    _ASPECT_RATIO_UNIFORM = aspect_ratio;
+
+    // Compile vertex shader
+    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
+    glCompileShader(vertexShader);
+    if (!_checkShaderCompilation(vertexShader))
+    {
+        ROS_ERROR("[CircleRenderer] Vertex shader compilation failed.");
+        return -1;
+    }
+
+    // Compile fragment shader
+    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
+    glCompileShader(fragmentShader);
+    if (!_checkShaderCompilation(fragmentShader))
+    {
+        ROS_ERROR("[CircleRenderer] Fragment shader compilation failed.");
+        return -1;
+    }
+
+    // Link shaders into a program
+    _SHADER_PROGRAM = glCreateProgram();
+    glAttachShader(_SHADER_PROGRAM, vertexShader);
+    glAttachShader(_SHADER_PROGRAM, fragmentShader);
+    glLinkProgram(_SHADER_PROGRAM);
+    if (!_checkProgramLinking(_SHADER_PROGRAM))
+    {
+        ROS_ERROR("[CircleRenderer] Shader program linking failed.");
+        return -1;
+    }
+
+    // After linking, shaders can be deleted
+    glDeleteShader(vertexShader);
+    glDeleteShader(fragmentShader);
+
+    // Get uniform locations
+    _COLOR_LOCATION = glGetUniformLocation(_SHADER_PROGRAM, "color");
+    _TRANSFORM_LOCATION = glGetUniformLocation(_SHADER_PROGRAM, "transform");
+    _ASPECT_RATIO_LOCATION = glGetUniformLocation(_SHADER_PROGRAM, "aspectRatio");
+
+    // Check for errors in getting uniforms
+    if (_COLOR_LOCATION == -1 || _TRANSFORM_LOCATION == -1 || _ASPECT_RATIO_LOCATION == -1)
+    {
+        ROS_ERROR("[CircleRenderer] Error getting uniform locations.");
+        return -1;
+    }
+
+    return 0; // Success
+}
+
+int CircleRenderer::cleanupShaderObjects()
+{
+    // Use OpenGL calls to delete shader program and shaders
+    if (_SHADER_PROGRAM != 0)
+    {
+        glDeleteProgram(_SHADER_PROGRAM);
+        _SHADER_PROGRAM = 0;
+    }
+    else
+    {
+        return -1;
+    }
+}
+
+void CircleRenderer::setupShaderForDrawing()
+{
+    // Use the shader program
+    glUseProgram(_SHADER_PROGRAM);
+
+    // Set the aspect ratio uniform
+    glUniform1f(_ASPECT_RATIO_LOCATION, _ASPECT_RATIO_UNIFORM);
+}
+
+void CircleRenderer::unsetShaderForDrawing()
+{
+    // Unset the shader program
+    glUseProgram(0);
+}
+
+bool CircleRenderer::_checkShaderCompilation(GLuint shader)
+{
+    GLint success;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        // Get and log the error message
+        char infoLog[512];
+        glGetShaderInfoLog(shader, 512, nullptr, infoLog);
+        ROS_ERROR("[CircleRenderer] Shader compilation error: %s", infoLog);
+        return false;
+    }
+    return true;
+}
+
+bool CircleRenderer::_checkProgramLinking(GLuint program)
+{
+    GLint success;
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    if (!success)
+    {
+        // Get and log the error message
+        char infoLog[512];
+        glGetProgramInfoLog(program, 512, nullptr, infoLog);
+        ROS_ERROR("[CircleRenderer] Program linking error: %s", infoLog);
+        return false;
+    }
+    return true;
+}
+
+void CircleRenderer::_setupOpenGL()
+{
+    // Generate a new Vertex Array Object (VAO) and store the ID
+    glGenVertexArrays(1, &_VAO);
+    // Generate a new Vertex Buffer Object (VBO) and store the ID
+    glGenBuffers(1, &_VBO);
+
+    // Bind the VAO to set it up
+    glBindVertexArray(_VAO);
+
+    // Bind the VBO to the GL_ARRAY_BUFFER target
+    glBindBuffer(GL_ARRAY_BUFFER, _VBO);
+    // Copy vertex data into the buffer's memory (GL_DYNAMIC_DRAW hints that the data might change often)
+    glBufferData(GL_ARRAY_BUFFER, _circVertices.size() * sizeof(float), _circVertices.data(), GL_DYNAMIC_DRAW);
+
+    // Define an array of generic vertex attribute data. Arguments:
+    // 0: the index of the vertex attribute to be modified.
+    // 2: the number of components per generic vertex attribute. Since we're using 2D points, this is 2.
+    // GL_FLOAT: the data type of each component in the array.
+    // GL_FALSE: specifies whether fixed-point data values should be normalized or not.
+    // 2 * sizeof(float): the byte offset between consecutive vertex attributes.
+    // (void*)0: offset of the first component of the first generic vertex attribute in the array.
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
+
+    // Enable the vertex attribute array for the VAO at index 0
+    glEnableVertexAttribArray(0);
+
+    // Unbind the VAO to prevent further modification.
+    glBindVertexArray(0);
+}
+
+void CircleRenderer::_computeVertices(cv::Point2f position, float radius, unsigned int circSegments, std::vector<float> &circVertices)
+{
+    // Clear the vertex vector to prepare for new vertices
+    circVertices.clear();
+
+    // Loop to generate vertices for the circle
+    for (unsigned int i = 0; i <= circSegments; ++i)
+    {
+        // Calculate the angle for the current segment
+        float angle = 2.0f * std::acos(-1.0) * i / circSegments;
+        // Determine the x position of the vertex on the circle
+        float baseX = position.x + (radius * std::cos(angle));
+        // Determine the y position of the vertex on the circle
+        float baseY = position.y + (radius * std::sin(angle));
+
+        // Create a 4x1 matrix (homogeneous coordinates) for the vertex
+        cv::Mat vertex = (cv::Mat_<float>(4, 1) << baseX, baseY, 0, 1);
+        // Apply the transformation matrix to the vertex
+        cv::Mat transformedVertex = _transformationMatrix * vertex;
+        // Extract the transformed x coordinate and add to the vertices list
+        circVertices.push_back(transformedVertex.at<float>(0, 0));
+        // Extract the transformed y coordinate and add to the vertices list
+        circVertices.push_back(transformedVertex.at<float>(1, 0));
+    }
+}
+
+void CircleRenderer::_computeTransformation()
+{
+    // Initialize transformation matrix as identity if not done
+    if (_transformationMatrix.empty())
+    {
+        _transformationMatrix = cv::Mat::eye(4, 4, CV_32F);
+    }
+
+    // (1) Translate to the origin
+    cv::Mat translationToOrigin = cv::Mat::eye(4, 4, CV_32F);
+    translationToOrigin.at<float>(0, 3) = -circPosition.x;
+    translationToOrigin.at<float>(1, 3) = -circPosition.y;
+
+    // (2) Rotate around the origin (create a 3x3 rotation matrix first)
+    cv::Mat rotation2D = cv::getRotationMatrix2D(cv::Point2f(0, 0), circRotationAngle, 1.0);
+    cv::Mat rotation = cv::Mat::eye(4, 4, CV_32F); // Convert to 4x4 matrix
+    rotation2D.copyTo(rotation.rowRange(0, 2).colRange(0, 3));
+
+    // (3) Scale the circle by the scaling factors
+    cv::Mat scaling = cv::Mat::eye(4, 4, CV_32F);
+    scaling.at<float>(0, 0) = circScalingFactors.x;
+    scaling.at<float>(1, 1) = circScalingFactors.y;
+
+    // (4) Translate back to the original position
+    cv::Mat translationBack = cv::Mat::eye(4, 4, CV_32F);
+    translationBack.at<float>(0, 3) = circPosition.x;
+    translationBack.at<float>(1, 3) = circPosition.y;
+
+    // The multiplication order here is important
+    _transformationMatrix = translationBack * scaling * rotation * translationToOrigin;
+}
+
+// Helper function to convert OpenCV Mat to an array for OpenGL
+std::array<float, 16> CircleRenderer::_cvMatToGlArray(const cv::Mat &mat)
+{
+    assert(mat.cols == 4 && mat.rows == 4 && mat.type() == CV_32F);
+    std::array<float, 16> glArray;
+    std::copy(mat.begin<float>(), mat.end<float>(), glArray.begin());
+    return glArray;
+}
+
+// Initialize static members
+int CircleRenderer::IDX = 0;
+GLuint CircleRenderer::_SHADER_PROGRAM = 0;
+GLint CircleRenderer::_COLOR_LOCATION = -1;
+GLint CircleRenderer::_TRANSFORM_LOCATION = -1;
+GLint CircleRenderer::_ASPECT_RATIO_LOCATION = -1;
+float CircleRenderer::_ASPECT_RATIO_UNIFORM = 1.0f;
+
 // ================================================== FUNCTIONS ==================================================
 
 void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -252,12 +580,12 @@ static void APIENTRY callbackDebugOpenGL(GLenum source, GLenum type, GLuint id, 
     }
 
     // Log the message
-    ROS_ERROR("[OPENGL DEBUG CALLBACK] Type[0x%x] ID[%d] Severity[0x%x] Message[%s]", type, id, severity, message);
+    ROS_DEBUG("[callbackDebugOpenGL] Type[0x%x] ID[%d] Severity[0x%x] Message[%s]", type, id, severity, message);
 }
 
 static void callbackErrorGLFW(int error, const char *description)
 {
-    ROS_ERROR("[GLFW ERROR CALLBACK] Error[%d] Description[%s]", error, description);
+    ROS_ERROR("[callbackErrorGLFW] Error[%d] Description[%s]", error, description);
 }
 
 int checkErrorOpenGL(int line, const char *file_str, const char *msg_str)
@@ -265,10 +593,8 @@ int checkErrorOpenGL(int line, const char *file_str, const char *msg_str)
     GLenum gl_err;
     while ((gl_err = glGetError()) != GL_NO_ERROR)
     {
-        if (msg_str)
-            ROS_INFO("[OpenGL ERROR CHECK] Message[%s] Error Number[%u] File[%s] Line[%d]", msg_str, gl_err, file_str, line);
-        else
-            ROS_INFO("[OpenGL ERROR CHECK] Error Number[%u] File[%s] Line[%d]", gl_err, file_str, line);
+        ROS_ERROR("[checkErrorOpenGL] Message[%s] Error Number[%u] File[%s] Line[%d]",
+                  msg_str ? msg_str : "No additional info", gl_err, file_str, line);
         return -1;
     }
     return 0;
@@ -281,9 +607,9 @@ int checkErrorGLFW(int line, const char *file_str, const char *msg_str)
     if (glfw_err != GLFW_NO_ERROR)
     {
         if (msg_str)
-            ROS_ERROR("[GLFW ERROR CHECK] Message[%s] Description[%s] File[%s] Line[%d]", msg_str, description, file_str, line);
+            ROS_ERROR("[checkErrorGLFW] Message[%s] Description[%s] File[%s] Line[%d]", msg_str, description, file_str, line);
         else
-            ROS_ERROR("[GLFW ERROR CHECK] Description[%s] File[%s] Line[%d]", description, file_str, line);
+            ROS_ERROR("[checkErrorGLFW] Description[%s] File[%s] Line[%d]", description, file_str, line);
         return -1;
     }
     return 0;
@@ -310,7 +636,7 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
         const GLFWvidmode *mode = glfwGetVideoMode(p_monitor_id);
         if (!mode)
         {
-            ROS_ERROR("[WIN MODE] Failed to Get Video Mode: Monitor[%d]", mon_id_ind);
+            ROS_ERROR("[updateWindowMonMode] Failed to Get Video Mode: Monitor[%d]", mon_id_ind);
             return -1;
         }
 
@@ -318,7 +644,7 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
         glfwSetWindowMonitor(p_window_id, p_monitor_id, 0, 0, mode->width, mode->height, mode->refreshRate);
         if (!p_monitor_id)
         {
-            ROS_ERROR("[WIN MODE] Invalid Monitor Pointer: Monitor[%d]", mon_id_ind);
+            ROS_ERROR("[updateWindowMonMode] Invalid Monitor Pointer: Monitor[%d]", mon_id_ind);
             return -1;
         }
 
@@ -331,7 +657,7 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
             // Validate monitor position
             if (monitor_x < 0 || monitor_y < 0)
             {
-                ROS_WARN("[WIN MODE] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_id_ind, monitor_x, monitor_y);
+                ROS_WARN("[updateWindowMonMode] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_id_ind, monitor_x, monitor_y);
                 return 0;
             }
 
@@ -343,11 +669,11 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
         std::string new_title = "Window[" + std::to_string(win_ind) + "] Monitor[" + std::to_string(mon_id_ind) + "]";
         glfwSetWindowTitle(p_window_id, new_title.c_str());
 
-        ROS_INFO("[WIN MODE] Move Window: Monitor[%d] Format[%s]", mon_id_ind, is_fullscreen ? "fullscreen" : "windowed");
+        ROS_INFO("[updateWindowMonMode] Move Window: Monitor[%d] Format[%s]", mon_id_ind, is_fullscreen ? "fullscreen" : "windowed");
     }
     else
     {
-        ROS_WARN("[WIN MODE] Failed Move Window: Monitor[%d] Format[%s]", mon_id_ind, is_fullscreen ? "fullscreen" : "windowed");
+        ROS_WARN("[updateWindowMonMode] Failed Move Window: Monitor[%d] Format[%s]", mon_id_ind, is_fullscreen ? "fullscreen" : "windowed");
         return 0;
     }
 
@@ -358,7 +684,59 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
     return 0;
 }
 
-int initializeWallObjects()
+int initControlPointVariables(std::array<std::array<cv::Point2f, 4>, 4> &out_CP_COORDS)
+{
+
+    // Specify the control point limits
+    const float cp_x = MAZE_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
+    const float cp_y = MAZE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates
+
+    // Iterate through control point outer array (corners)
+    for (float cp_i = 0; cp_i < 4; cp_i++) // image bottom to top
+    {
+        cv::Point2f p_org;
+
+        // 0: image top-left
+        if (cp_i == 0)
+            p_org = cv::Point2f(-cp_x, -cp_y);
+
+        // 1: image top-right
+        else if (cp_i == 1)
+            p_org = cv::Point2f(+cp_x, -cp_y);
+
+        // 2: image bottom-right
+        else if (cp_i == 2)
+            p_org = cv::Point2f(+cp_x, +cp_y);
+
+        // 3: image bottom-left
+        else if (cp_i == 3)
+            p_org = cv::Point2f(-cp_x, +cp_y);
+
+        // Set x y values for each vertex
+        out_CP_COORDS[cp_i] = {
+            cv::Point2f(p_org.x, p_org.y),                                                // top left
+            cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y),                         // top right
+            cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y + WALL_IMAGE_HEIGHT_NDC), // bottom right
+            cv::Point2f(p_org.x, p_org.y + WALL_IMAGE_HEIGHT_NDC),                        // bottom left
+        };
+
+        // Iterate through control point inner array to initialize the CircleRenderer class objects array
+        for (int cv_i = 0; cv_i < 4; ++cv_i)
+        {
+            CP_RENDERERS[cp_i][cv_i].initializeCircleRenderer(
+                out_CP_COORDS[cp_i][cv_i], // position
+                cpDefualtMakerRadius,      // radius
+                cpDefaultRGB,              // color
+                cpRenderSegments           // segments
+            );
+        }
+    }
+
+    // Return GL status
+    return checkErrorOpenGL(__LINE__, __FILE__);
+}
+
+int initializeWallRenderObjects()
 {
 
     // Generate and bind an Element Buffer Object (EBO)
@@ -390,74 +768,24 @@ int initializeWallObjects()
     // Unbind the VAO to prevent accidental modification
     glBindVertexArray(0);
 
-    // Create the shader program for wall image rendering
-    WALL_SHADER = compileAndLinkShaders(wallVertexSource, wallFragmentSource, nullptr);
-
     // Return GL status
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-int initializeControlPointObjects()
-{
-    // Create shader program
-    CP_SHADER = compileAndLinkShaders(ctrlPtVertexSource, ctrlPtFragmentSource, nullptr);
-
-    // Generate and bind the VAO
-    glGenVertexArrays(1, &CP_VAO);
-    glBindVertexArray(CP_VAO);
-
-    // Loop through all control points to create individual VBOs
-    for (int c_i = 0; c_i < 4; ++c_i)
-    {
-        for (int v_i = 0; v_i < 4; ++v_i)
-        {
-            // Generate VBO for position
-            glGenBuffers(1, &CP_VBO_POS_ARR[c_i][v_i]);
-            glBindBuffer(GL_ARRAY_BUFFER, CP_VBO_POS_ARR[c_i][v_i]);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(cv::Point2f), nullptr, GL_DYNAMIC_DRAW);
-            // Set up vertex attributes for position
-            glEnableVertexAttribArray(0);
-            glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, sizeof(cv::Point2f), (void *)0);
-
-            // Generate VBO for color
-            glGenBuffers(1, &CP_VBO_RGB_ARR[c_i][v_i]);
-            glBindBuffer(GL_ARRAY_BUFFER, CP_VBO_RGB_ARR[c_i][v_i]);
-            glBufferData(GL_ARRAY_BUFFER, 3 * sizeof(GLfloat), cpDefaultRGB.data(), GL_STATIC_DRAW);
-            // Set up vertex attributes for color
-            glEnableVertexAttribArray(1);
-            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(GLfloat), (void *)0);
-
-            // Generate VBO for size
-            glGenBuffers(1, &CP_VBO_RAD_ARR[c_i][v_i]);
-            glBindBuffer(GL_ARRAY_BUFFER, CP_VBO_RAD_ARR[c_i][v_i]);
-            glBufferData(GL_ARRAY_BUFFER, sizeof(GLfloat), &cpDefualtMakerRadius, GL_STATIC_DRAW);
-            // Set up vertex attributes for size
-            glEnableVertexAttribArray(2);
-            glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(GLfloat), (void *)0);
-        }
-    }
-
-    // Unbind the VAO
-    glBindVertexArray(0);
-
-    // Check for errors
-    return checkErrorOpenGL(__LINE__, __FILE__);
-}
-
-int renderWallImage(const GLuint &_WALL_TEXTURE_ID)
+int renderWallImage(const GLuint &_WALL_TEXTURE_ID, const GLuint &_WALL_SHADER, const GLuint &_WALL_VAO, const GLuint &_WALL_EBO)
 {
     // Use the shader program for wall rendering
-    glUseProgram(WALL_SHADER);
+    glUseProgram(_WALL_SHADER);
 
     // Bind the texture for the walls
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, WALL_TEXTURE_ID);
+    glBindTexture(GL_TEXTURE_2D, _WALL_TEXTURE_ID);
 
     // Bind the Vertex Array Object(VAO) specific to the current wall
-    glBindVertexArray(WALL_VAO);
+    glBindVertexArray(_WALL_VAO);
 
     // Bind the common Element Buffer Object (EBO)
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _WALL_EBO);
 
     // Draw the rectangle (2 triangles) for the current wall
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -465,46 +793,18 @@ int renderWallImage(const GLuint &_WALL_TEXTURE_ID)
     // Unbind the VAO to prevent accidental modification
     glBindVertexArray(0);
 
+    // Unset the shader program
+    glUseProgram(0);
+
     // Return GL status
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-// int drawControlPoint(float x, float y, float radius, std::vector<float> rgb_vec)
-// {
-//     const int segments = 100; // Number of segments to approximate a circle
-
-//     // Begin drawing a filled circle
-//     glBegin(GL_TRIANGLE_FAN);
-
-//     // Set the color to green
-//     glColor3f(rgb_vec[0], rgb_vec[1], rgb_vec[2]);
-
-//     // Center of the circle
-//     glVertex2f(x, y);
-
-//     // Calculate and draw the vertices of the circle
-//     for (int i = 0; i <= segments; i++)
-//     {
-//         float theta = 2.0f * 3.1415926f * float(i) / float(segments);
-//         float px = x + radius * cosf(theta);
-//         float py = y + (radius * PROJ_WIN_ASPECT_RATIO) * sinf(theta);
-//         glVertex2f(px, py);
-//     }
-
-//     // End drawing
-//     glEnd();
-
-//     // Return GL status
-//     return checkErrorGL(__LINE__, __FILE__);
-// }
-
-int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS)
+int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
+                        std::array<std::array<CircleRenderer, 4>, 4> &_CP_RENDERERS)
 {
-    // Use the shader program for control point rendering
-    glUseProgram(CP_SHADER);
-
-    // Bind the VAO
-    glBindVertexArray(CP_VAO);
+    // Setup the CircleRenderer class shaders
+    CircleRenderer::setupShaderForDrawing();
 
     // Loop through the control points and draw them
     for (int c_i = 0; c_i < 4; ++c_i)
@@ -512,122 +812,117 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COO
         for (int v_i = 0; v_i < 4; ++v_i)
         {
             // Define the marker color
-            std::array<GLfloat, 3> cp_rgb;
-            if (c_i == I.cpSelected[0])
-            {
-                if (I.cpSelected[1] == v_i)
-                    cp_rgb = cpVertSelectedRGB;
-                else
-                    cp_rgb = cpWallSelectedRGB;
-            }
+            cv::Scalar col;
+            // Selected conrnor and wall vertex
+            if (c_i == I.cpSelected[0] && v_i == I.cpSelected[1])
+                col = cpVertSelectedRGB;
+            // Selected conrnor but not wall vertex
+            else if (c_i == I.cpSelected[0] && v_i != I.cpSelected[1])
+                col = cpCornerSelectedRGB;
+            // Unselected
             else
-                cp_rgb = cpDefaultRGB;
+                col = cpDefaultRGB;
 
             // Define the marker radius
-            GLfloat cp_rad = v_i == 3 ? cpSelectedMakerRadius : cpDefualtMakerRadius;
-            cp_rad = 0.05;
+            GLfloat rad = v_i == 3 ? cpSelectedMakerRadius : cpDefualtMakerRadius;
 
-            // Convert cv::Point2f to GLfloat
-            GLfloat cp_coord[] = {
-                static_cast<GLfloat>(_CP_COORDS[c_i][v_i].x),
-                static_cast<GLfloat>(_CP_COORDS[c_i][v_i].y)};
+            // Set the marker parameters
+            _CP_RENDERERS[c_i][v_i].setPosition(_CP_COORDS[c_i][v_i]);
+            _CP_RENDERERS[c_i][v_i].setRadius(rad);
+            _CP_RENDERERS[c_i][v_i].setColor(col);
 
-            // Bind position VBO and update data
-            glBindBuffer(GL_ARRAY_BUFFER, CP_VBO_POS_ARR[c_i][v_i]);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(cp_coord), cp_coord);
+            // Recompute the marker parameters
+            _CP_RENDERERS[c_i][v_i].recomputeParameters();
 
-            // Bind color VBO and update data
-            glBindBuffer(GL_ARRAY_BUFFER, CP_VBO_RGB_ARR[c_i][v_i]);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, 3 * sizeof(GLfloat), cp_rgb.data());
+            // Draw the marker
+            _CP_RENDERERS[c_i][v_i].draw();
 
-            // Bind size VBO and update data
-            glBindBuffer(GL_ARRAY_BUFFER, CP_VBO_RAD_ARR[c_i][v_i]);
-            glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(GLfloat), &cp_rad);
-
-            // Draw the control point
-            glDrawArrays(GL_POINTS, 0, 1);
-
-            // // Print out the control point data
-            // ROS_INFO("Control Point [%d][%d]: Pos=(%.2f, %.2f), Color=(%.2f, %.2f, %.2f), Radius=%.2f",
-            //          c_i, v_i, cp_coord[0], cp_coord[1],
-            //          cp_rgb[0], cp_rgb[1], cp_rgb[2], cp_rad);
+            // Check for errors
+            if (checkErrorOpenGL(__LINE__, __FILE__) < 0)
+            {
+                ROS_ERROR("[renderControlPoints] Error Thrown for Control Point[%d][%d]", c_i, v_i);
+                return -1;
+            }
         }
     }
 
-    // Unbind the VAO
-    glBindVertexArray(0);
+    // Unset the shader program
+    CircleRenderer::setupShaderForDrawing();
+
+    // TEMP
+    return -1;
 
     // Return GL status
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-GLuint compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source, const GLchar *geometry_source)
-{
-    auto checkCompileErrors = [](GLuint shader, const std::string &type)
-    {
-        GLint success;
-        GLchar infoLog[1024];
-        if (type != "PROGRAM")
-        {
-            glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-            if (!success)
-            {
-                glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-                ROS_ERROR("[Shader Compilation Error] Type: %s\n%s", type.c_str(), infoLog);
-            }
-        }
-        else
-        {
-            glGetProgramiv(shader, GL_LINK_STATUS, &success);
-            if (!success)
-            {
-                glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-                ROS_ERROR("[Program Linking Error] Type: %s\n%s", type.c_str(), infoLog);
-            }
-        }
-    };
+// GLuint compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source, const GLchar *geometry_source)
+// {
+//     auto checkCompileErrors = [](GLuint shader, const std::string &type)
+//     {
+//         GLint success;
+//         GLchar infoLog[1024];
+//         if (type != "PROGRAM")
+//         {
+//             glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+//             if (!success)
+//             {
+//                 glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+//                 ROS_ERROR("[Shader Compilation Error] Type: %s\n%s", type.c_str(), infoLog);
+//             }
+//         }
+//         else
+//         {
+//             glGetProgramiv(shader, GL_LINK_STATUS, &success);
+//             if (!success)
+//             {
+//                 glGetProgramInfoLog(shader, 1024, NULL, infoLog);
+//                 ROS_ERROR("[Program Linking Error] Type: %s\n%s", type.c_str(), infoLog);
+//             }
+//         }
+//     };
 
-    GLuint shader_program = glCreateProgram();
+//     GLuint shader_program = glCreateProgram();
 
-    // Vertex Shader
-    if (vertex_source != nullptr)
-    {
-        GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-        glShaderSource(vertex_shader, 1, &vertex_source, NULL);
-        glCompileShader(vertex_shader);
-        checkCompileErrors(vertex_shader, "VERTEX");
-        glAttachShader(shader_program, vertex_shader);
-        glDeleteShader(vertex_shader); // Delete after attaching
-    }
+//     // Vertex Shader
+//     if (vertex_source != nullptr)
+//     {
+//         GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+//         glShaderSource(vertex_shader, 1, &vertex_source, NULL);
+//         glCompileShader(vertex_shader);
+//         checkCompileErrors(vertex_shader, "VERTEX");
+//         glAttachShader(shader_program, vertex_shader);
+//         glDeleteShader(vertex_shader); // Delete after attaching
+//     }
 
-    // Fragment Shader
-    if (fragment_source != nullptr)
-    {
-        GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-        glShaderSource(fragment_shader, 1, &fragment_source, NULL);
-        glCompileShader(fragment_shader);
-        checkCompileErrors(fragment_shader, "FRAGMENT");
-        glAttachShader(shader_program, fragment_shader);
-        glDeleteShader(fragment_shader); // Delete after attaching
-    }
+//     // Fragment Shader
+//     if (fragment_source != nullptr)
+//     {
+//         GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+//         glShaderSource(fragment_shader, 1, &fragment_source, NULL);
+//         glCompileShader(fragment_shader);
+//         checkCompileErrors(fragment_shader, "FRAGMENT");
+//         glAttachShader(shader_program, fragment_shader);
+//         glDeleteShader(fragment_shader); // Delete after attaching
+//     }
 
-    // Geometry Shader
-    if (geometry_source != nullptr)
-    {
-        GLuint geometry_shader = glCreateShader(GL_GEOMETRY_SHADER);
-        glShaderSource(geometry_shader, 1, &geometry_source, NULL);
-        glCompileShader(geometry_shader);
-        checkCompileErrors(geometry_shader, "GEOMETRY");
-        glAttachShader(shader_program, geometry_shader);
-        glDeleteShader(geometry_shader); // Delete after attaching
-    }
+//     // Geometry Shader
+//     if (geometry_source != nullptr)
+//     {
+//         GLuint geometry_shader = glCreateShader(GL_GEOMETRY_SHADER);
+//         glShaderSource(geometry_shader, 1, &geometry_source, NULL);
+//         glCompileShader(geometry_shader);
+//         checkCompileErrors(geometry_shader, "GEOMETRY");
+//         glAttachShader(shader_program, geometry_shader);
+//         glDeleteShader(geometry_shader); // Delete after attaching
+//     }
 
-    // Link the shader program
-    glLinkProgram(shader_program);
-    checkCompileErrors(shader_program, "PROGRAM");
+//     // Link the shader program
+//     glLinkProgram(shader_program);
+//     checkCompileErrors(shader_program, "PROGRAM");
 
-    return shader_program;
-}
+//     return shader_program;
+// }
 
 // GLuint compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source)
 // {
@@ -653,6 +948,107 @@ GLuint compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment
 
 //     return shader_program;
 // }
+
+int compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source, GLuint &shader_program_out)
+{
+    auto checkCompileErrors = [](GLuint shader, const std::string &type) -> bool
+    {
+        GLint success;
+        GLchar infoLog[1024];
+        if (type != "PROGRAM")
+        {
+            glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+            if (!success)
+            {
+                glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+                ROS_ERROR("[Shader Compilation Error] Type: %s\n%s", type.c_str(), infoLog);
+                return false;
+            }
+        }
+        else
+        {
+            glGetProgramiv(shader, GL_LINK_STATUS, &success);
+            if (!success)
+            {
+                glGetProgramInfoLog(shader, 1024, NULL, infoLog);
+                ROS_ERROR("[Shader Linking Error] Type: %s\n%s", type.c_str(), infoLog);
+                return false;
+            }
+        }
+        return true;
+    };
+
+    GLuint shader_program = glCreateProgram();
+    if (!shader_program)
+    {
+        ROS_ERROR("[Shader Program Error] Unable to create shader program.");
+        return -1;
+    }
+
+    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    if (!vertex_shader)
+    {
+        ROS_ERROR("[Shader Program Error] Unable to create vertex shader.");
+        glDeleteProgram(shader_program);
+        return -1;
+    }
+
+    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    if (!fragment_shader)
+    {
+        ROS_ERROR("[Shader Program Error] Unable to create fragment shader.");
+        glDeleteShader(vertex_shader);
+        glDeleteProgram(shader_program);
+        return -1;
+    }
+
+    // Vertex Shader
+    glShaderSource(vertex_shader, 1, &vertex_source, NULL);
+    glCompileShader(vertex_shader);
+    if (!checkCompileErrors(vertex_shader, "VERTEX"))
+    {
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+        glDeleteProgram(shader_program);
+        return -1;
+    }
+    glAttachShader(shader_program, vertex_shader);
+
+    // Fragment Shader
+    glShaderSource(fragment_shader, 1, &fragment_source, NULL);
+    glCompileShader(fragment_shader);
+    if (!checkCompileErrors(fragment_shader, "FRAGMENT"))
+    {
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+        glDeleteProgram(shader_program);
+        return -1;
+    }
+    glAttachShader(shader_program, fragment_shader);
+
+    // Link the shader program
+    glLinkProgram(shader_program);
+    if (!checkCompileErrors(shader_program, "PROGRAM"))
+    {
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+        glDeleteProgram(shader_program);
+        return -1;
+    }
+
+    shader_program_out = shader_program;
+
+    // Cleanup: detach and delete shaders
+    glDetachShader(shader_program, vertex_shader);
+    glDeleteShader(vertex_shader);
+    glDetachShader(shader_program, fragment_shader);
+    glDeleteShader(fragment_shader);
+
+    // No need to delete the program as it's being used outside this function
+
+    // Return GL status
+    return checkErrorOpenGL(__LINE__, __FILE__);
+}
 
 GLuint loadTexture(cv::Mat image)
 {
@@ -815,11 +1211,11 @@ int updateWallTexture(
             {
                 ;
                 // Merge test pattern and active monitor image
-                if (mergeImgMat(img_mode_mon_mat, img_copy) != 0)
+                if (mergeImgMat(img_mode_mon_mat, img_copy) < 0)
                     return -1;
 
                 // Merge previous image and active calibration image
-                if (mergeImgMat(img_mode_cal_mat, img_copy) != 0)
+                if (mergeImgMat(img_mode_cal_mat, img_copy) < 0)
                     return -1;
             }
 
@@ -831,7 +1227,7 @@ int updateWallTexture(
             cv::warpPerspective(img_copy, im_warp, H, cv::Size(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL));
 
             // Merge the warped image with the final image
-            if (mergeImgMat(im_warp, im_wall_merge) != 0)
+            if (mergeImgMat(im_warp, im_wall_merge) < 0)
                 return -1;
 
             // // TEMP
@@ -921,16 +1317,9 @@ int main(int argc, char **argv)
     glDebugMessageCallback(callbackDebugOpenGL, 0);
 
     // Initialize OpenGL wall image objects
-    if (initializeWallObjects() != 0)
+    if (initializeWallRenderObjects() < 0)
     {
         ROS_ERROR("[SETUP] Failed to Initialize OpenGL Wall Image Objects");
-        return -1;
-    }
-
-    // Initialize OpenGL control point marker objects
-    if (initializeControlPointObjects() != 0)
-    {
-        ROS_ERROR("[SETUP] Failed to Initialize OpenGL COntrol Point Marker Objects");
         return -1;
     }
 
@@ -946,20 +1335,40 @@ int main(int argc, char **argv)
     // Update monitor and window mode settings
     updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, I.winMon, F.setFullscreen);
 
-    // --------------- VARIABLE SETUP ---------------
+    // Create the shader program for wall image rendering
+    if (compileAndLinkShaders(wallVertexSource, wallFragmentSource, WALL_SHADER) < 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Compile and Link Wall Shader");
+        return -1;
+    }
+
+    // Create the shader program for CircleRenderer class control point rendering
+    if (CircleRenderer::compileAndLinkCircleShaders(WINDOW_ASPECT_RATIO) < 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Compile and Link CircleRenderer Class Shader");
+        return -1;
+    }
+
+    if (checkErrorOpenGL(__LINE__, __FILE__) < 0)
+    {
+        ROS_ERROR("[SETUP] Error Thrown During OpenGL Setup");
+        return -1;
+    }
+
+    // --------------- RENDER IMAGE LOADING  ---------------
 
     // Load images using OpenCV
-    if (loadImgMat(wallImgPathVec, wallImgMatVec) != 0)
+    if (loadImgMat(wallImgPathVec, wallImgMatVec) < 0)
     {
         ROS_ERROR("[SETUP] Failed to Load Wall Images");
         return -1;
     }
-    if (loadImgMat(monImgPathVec, monImgMatVec) != 0)
+    if (loadImgMat(monImgPathVec, monImgMatVec) < 0)
     {
         ROS_ERROR("[SETUP] Failed to Load Monitor Number Images");
         return -1;
     }
-    if (loadImgMat(calImgPathVec, calImgMatVec) != 0)
+    if (loadImgMat(calImgPathVec, calImgMatVec) < 0)
     {
         ROS_ERROR("[SETUP] Failed to Load Calibration Mode Images");
         return -1;
@@ -968,21 +1377,21 @@ int main(int argc, char **argv)
     // --------------- VARIABLE SETUP ---------------
 
     // Initialize control point coordinate dataset
-    initControlPointCoordinates(CP_COORDS);
-
-    // // TEMP
-    // CP_COORDS[0][0].x += -0.05f;
-    // CP_COORDS[0][0].y += -0.05f;
+    if (initControlPointVariables(CP_COORDS) < 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Initialize Control Point Variables");
+        return -1;
+    }
 
     // Initialize wall homography matrices array
-    if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) != 0)
+    if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) < 0)
     {
         ROS_ERROR("[SETUP] Failed to Initialize Wall Parameters");
         return -1;
     }
 
     // Initialize wall image texture
-    if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_DATA, WALL_TEXTURE_ID) != 0)
+    if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_DATA, WALL_TEXTURE_ID) < 0)
     {
         ROS_ERROR("[SETUP] Failed to Initialize Wall Texture");
         return -1;
@@ -1015,7 +1424,7 @@ int main(int argc, char **argv)
         // Update the window monitor and mode
         if (F.updateWindowMonMode)
         {
-            if (updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, I.winMon, F.setFullscreen) != 0)
+            if (updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, I.winMon, F.setFullscreen) < 0)
             {
                 ROS_ERROR("[MAIN] Update Window Monitor Mode Threw an Error");
                 is_error = true;
@@ -1027,7 +1436,7 @@ int main(int argc, char **argv)
         // Initialize/reinitialize control point coordinate dataset
         if (F.initControlPointMarkers)
         {
-            initControlPointCoordinates(CP_COORDS);
+            initControlPointVariables(CP_COORDS);
             F.initControlPointMarkers = false;
         }
 
@@ -1035,7 +1444,7 @@ int main(int argc, char **argv)
         if (F.updateWallDatasets)
         {
             // Update wall homography matrices array
-            if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) != 0)
+            if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) < 0)
             {
                 ROS_ERROR("[MAIN] Update of Wall Vertices Datasets Failed");
                 is_error = true;
@@ -1043,7 +1452,7 @@ int main(int argc, char **argv)
             }
 
             // Update wall image texture
-            if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_DATA, WALL_TEXTURE_ID) != 0)
+            if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_DATA, WALL_TEXTURE_ID) < 0)
             {
                 ROS_ERROR("[MAIN] Update of Wall Homography Datasets Failed");
                 is_error = true;
@@ -1058,12 +1467,13 @@ int main(int argc, char **argv)
         glClear(GL_COLOR_BUFFER_BIT);
         if (checkErrorOpenGL(__LINE__, __FILE__))
         {
+            ROS_ERROR("[MAIN] Error Following glClear() Call Threw an Error");
             is_error = true;
             break;
         }
 
         // Draw/update wall images
-        if (renderWallImage(WALL_TEXTURE_ID) != 0)
+        if (renderWallImage(WALL_TEXTURE_ID, WALL_SHADER, WALL_VAO, WALL_EBO) < 0)
         {
             ROS_ERROR("[MAIN] Draw Walls Threw an Error");
             is_error = true;
@@ -1071,7 +1481,7 @@ int main(int argc, char **argv)
         }
 
         // Draw/update control point markers
-        if (renderControlPoints(CP_COORDS) != 0)
+        if (renderControlPoints(CP_COORDS, CP_RENDERERS) < 0)
         {
             ROS_ERROR("[MAIN] Draw Control Point Threw an Error");
             is_error = true;
@@ -1111,11 +1521,32 @@ int main(int argc, char **argv)
     else
         ROS_INFO("[LOOP TERMINATION] Reason Unknown");
 
+    // Delete wall shader program
+    if (WALL_SHADER != 0)
+    {
+        glDeleteProgram(WALL_SHADER);
+        ROS_INFO("[SHUTDOWN] Deleted WALL_SHADER program");
+    }
+    else
+    {
+        ROS_WARN("[SHUTDOWN] No WALL_SHADER program to delete");
+    }
+
+    // Delete CircleRenderer class shader program
+    if (CircleRenderer::cleanupShaderObjects())
+    {
+        ROS_INFO("[SHUTDOWN] Deleted CircleRenderer program");
+    }
+    else
+    {
+        ROS_WARN("[SHUTDOWN] No CircleRenderer program to delete");
+    }
+
     // Delete wall texture
     if (WALL_TEXTURE_ID != 0)
     {
         glDeleteFramebuffers(1, &WALL_TEXTURE_ID);
-        if (checkErrorOpenGL(__LINE__, __FILE__) != 0)
+        if (checkErrorOpenGL(__LINE__, __FILE__) < 0)
             ROS_WARN("[SHUTDOWN] Failed to Delete Wall Texture");
         else
             ROS_INFO("[SHUTDOWN] Deleted Wall Texture");
@@ -1128,7 +1559,7 @@ int main(int argc, char **argv)
     {
         glfwDestroyWindow(p_window_id);
         p_window_id = nullptr;
-        if (checkErrorGLFW(__LINE__, __FILE__) != 0)
+        if (checkErrorGLFW(__LINE__, __FILE__) < 0)
             ROS_WARN("[SHUTDOWN] Failed to Destroy GLFW Window");
         else
             ROS_INFO("[SHUTDOWN] Destroyed GLFW Window");

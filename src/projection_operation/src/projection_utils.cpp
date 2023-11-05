@@ -106,44 +106,6 @@ float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, 
     return interp_val;
 }
 
-void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &out_CP_COORDS)
-{
-
-    // Specify the control point limits
-    const float cp_x = MAZE_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
-    const float cp_y = MAZE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates
-
-    // Iterate through control points
-    for (float cp_i = 0; cp_i < 4; cp_i++) // image bottom to top
-    {
-        cv::Point2f p_org;
-
-        // 0: image top-left
-        if (cp_i == 0)
-            p_org = cv::Point2f(-cp_x, -cp_y);
-
-        // 1: image top-right
-        else if (cp_i == 1)
-            p_org = cv::Point2f(+cp_x, -cp_y);
-
-        // 2: image bottom-right
-        else if (cp_i == 2)
-            p_org = cv::Point2f(+cp_x, +cp_y);
-
-        // 3: image bottom-left
-        else if (cp_i == 3)
-            p_org = cv::Point2f(-cp_x, +cp_y);
-
-        // Set x y values for each vertex
-        out_CP_COORDS[cp_i] = {
-            cv::Point2f(p_org.x, p_org.y),                                                // top left
-            cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y),                         // top right
-            cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y + WALL_IMAGE_HEIGHT_NDC), // bottom right
-            cv::Point2f(p_org.x, p_org.y + WALL_IMAGE_HEIGHT_NDC),                        // bottom left
-        };
-    }
-}
-
 int updateHomographyMatrices(
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &out_WALL_HMAT_DATA)
@@ -188,9 +150,9 @@ int updateHomographyMatrices(
             std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
 
             // Check that the target plane vertices are valid
-            if (checkQuadVertices(target_vertices_pxl) != 0)
+            if (checkQuadVertices(target_vertices_pxl) < 0)
             {
-                ROS_WARN("[COMPUTE HOMOGRAPHY] Target Plane Vertices Invalid: Reason[%s]",
+                ROS_WARN("[updateHomographyMatrices] Target Plane Vertices Invalid: Reason[%s]",
                          checkQuadVertices(target_vertices_pxl) == 1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
                 return -1;
             }
@@ -201,7 +163,7 @@ int updateHomographyMatrices(
             // Check for valid homography matrix
             if (H.empty())
             {
-                ROS_ERROR("[COMPUTE HOMOGRAPHY] Failed to Compute Homography Matrix");
+                ROS_ERROR("[updateHomographyMatrices] Failed to Compute Homography Matrix");
                 return -1;
             }
 
@@ -284,11 +246,17 @@ void dbLogDT(bool do_reset, int line, const char *file_path)
     }
 }
 
+void dbWaitForInput()
+{
+    ROS_INFO("Paused for Debugging: Press Enter to Continue...");
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+}
+
 void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
 {
     if (quad_vertices.size() != 4)
     {
-        ROS_ERROR("Invalid number of vertices. Expected 4.");
+        ROS_ERROR("[dbLogQuadVertices] Invalid number of vertices. Expected 4.");
         return;
     }
     dbLogQuadVertices(quadVec2Arr(quad_vertices));

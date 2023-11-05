@@ -12,6 +12,229 @@
 // Local custom libraries
 #include "projection_utils.h"
 
+// ================================================== CLASSES ==================================================
+
+/**
+ * @class CircleRenderer
+ * @brief Encapsulates a circle's properties and its rendering.
+ *
+ * This class is designed to represent a circle with various attributes such as
+ * position, color, and scale. It also provides functionality to compute vertex
+ * data for rendering the circle in OpenGL and update its transformation matrix.
+ */
+class CircleRenderer
+{
+public:
+    /**
+     * @brief Vertex shader source code with aspect ratio correction.
+     *
+     * @note The shader program will reverse the y axis to match image coordinate systems used by OpenCV.
+     *
+     * @details
+     * This GLSL vertex shader code corrects for the aspect ratio of the display
+     * when rendering circle vertices.
+     *
+     * - `#version 330 core`: Specifies that we're using GLSL version 3.30 with the core profile.
+     * - `layout (location = 0) in vec2 aPos;`: Defines the input vertex attribute at location 0.
+     * - `uniform mat4 transform;`: A uniform for the transformation matrix.
+     * - `uniform float aspectRatio;`: A uniform for the aspect ratio correction. Also flips the y-coordinate.
+     * - `void main() { ... }`: The main function that applies transformation and aspect ratio correction.
+     *
+     * Use this shader source by compiling it into a vertex shader object and linking it into a shader program.
+     * Set the `aspectRatio` uniform before drawing to correct the y-coordinate of vertices based on the display aspect ratio.
+     */
+    static constexpr const char *vertexShaderSource = R"glsl(
+    #version 330 core
+    layout (location = 0) in vec2 aPos;
+    uniform mat4 transform;
+    uniform float aspectRatio; // Uniform for the aspect ratio
+
+    void main() {
+        vec2 correctedPos = aPos;
+        correctedPos.y *= -aspectRatio; // Flip the y-coordinate and correct the aspect ratio
+        gl_Position = transform * vec4(correctedPos, 0.0, 1.0);
+    }
+    )glsl";
+    /**
+     * @brief Fragment shader source code for circle coloring.
+     *
+     * @details
+     * This is a GLSL fragment shader source code stored as a C++ raw string literal.
+     * - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
+     * - `out vec4 FragColor;`: Declares an output variable for the final fragment color.
+     * - `uniform vec4 color;`: Declares a uniform variable for the color, which can be set dynamically via OpenGL calls.
+     * - `void main() { ... }`: Main function of the fragment shader, sets the fragment color to the uniform color value.
+     */
+    static constexpr const char *fragmentShaderSource = R"glsl(
+        #version 330 core
+        out vec4 FragColor;
+        uniform vec4 color;
+
+        void main() {
+            FragColor = color;
+        }
+    )glsl";
+
+public:
+    int circID;                     // Index of the circle, used for identification.
+    cv::Scalar circColor;           // Color of the circle.
+    cv::Point2f circPosition;       // Position of the circle in 2D space.
+    float cirRadius;                // Radius of the circle.
+    float circRotationAngle;        // Rotation angle of the circle in degrees.
+    cv::Point2f circScalingFactors; // Scaling factors for the circle's x and y dimensions.
+    unsigned int circSegments;       // Number of segments used to approximate the circle geometry.
+
+private:
+    /// @todo use this for vertext computation
+    std::vector<float> _circVertices;                     // Vertex data for the circle's geometry.
+    GLuint _VAO;                                          // Vertex Array Object for the circle.
+    GLuint _VBO;                                          // Vertex Buffer Object for the circle's vertices.
+    cv::Mat _transformationMatrix;                        // Transformation matrix for the circle's vertices.
+    static constexpr float _PI = 3.14159265358979323846f; // Pi
+    static int IDX;                                       // Static index counter for the CircleRenderer class objects
+    static GLuint _SHADER_PROGRAM;      // Shader program for rendering
+    static GLint _COLOR_LOCATION;       // Location of color uniform in shader
+    static GLint _TRANSFORM_LOCATION;   // Location of transform uniform in shader
+    static GLint _ASPECT_RATIO_LOCATION; // Location of aspect ratio uniform in shader
+    static float _ASPECT_RATIO_UNIFORM;  // Aspect ratio uniform for the shader program
+
+public:
+    /**
+     * @brief Defualt construct for new CircleRenderer object.
+     */
+    CircleRenderer();
+
+    /**
+     * @brief Destructor for the CircleRenderer object.
+     * Cleans up the OpenGL objects associated with the circle.
+     */
+    ~CircleRenderer();
+    /**
+     * @brief Initializes the CircleRenderer with specified attributes.
+     *
+     * @param pos Position of the circle's center.
+     * @param rad Radius of the circle.
+     * @param col Color of the circle.
+     * @param segments Number of segments for the circle approximation.
+     */
+    void initializeCircleRenderer(cv::Point2f pos, float rad, cv::Scalar col, unsigned int segments);
+
+    /**
+     * @brief Sets the position of the circle.
+     * @param pos New position of the circle's center.
+     */
+    void setPosition(cv::Point2f pos);
+
+    /**
+     * @brief Sets the radius of the circle.
+     * @param rad New radius of the circle.
+     */
+    void setRadius(float rad);
+
+    /**
+     * @brief Sets the rotation angle of the circle.
+     * @param angle New rotation angle in degrees.
+     */
+    void setRotationAngle(float angle);
+
+    /**
+     * @brief Sets the scaling factors of the circle.
+     * @param scaling_factors New scaling factors for the x and y axes.
+     */
+    void setScaling(cv::Point2f scaling_factors);
+
+    /**
+     * @brief Sets the color of the circle.
+     * @param col New color of the circle.
+     */
+    void setColor(cv::Scalar col);
+
+    /**
+     * @brief Recomputes the circle parameters and updates the OpenGL buffer.
+     */
+    void recomputeParameters();
+
+    /**
+     * @brief Draws the circle using the stored shader program and uniforms.
+     */
+    void draw();
+
+    /**
+     * @brief Compiles, links shaders, and gets uniform locations.
+     * @param aspect_ratio The aspect ratio to be set for the shader.
+     * @return int Returns 0 on success, -1 on failure.
+     *
+     * @details
+     * This static method compiles the vertex and fragment shaders,
+     * links them into a shader program, and retrieves the uniform
+     * locations. It should be called once during initialization.
+     */
+    static int compileAndLinkCircleShaders(float aspect_ratio);
+
+    /**
+     * @brief Cleans up shader objects.
+     * @return int Returns 0 on success, -1 on failure.
+     *
+     * @details
+     * This method deletes the shader program associated with
+     * the CircleRenderer class. It should be called once when
+     * the application is terminating, to ensure proper cleanup
+     * of OpenGL resources.
+     */
+    static int cleanupShaderObjects();
+
+    /**
+     * @brief Sets up the shader for drawing.
+     *
+     * @details
+     * This method should be called before drawing each frame.
+     * It sets the current shader program and updates the uniform
+     * variables such as aspect ratio.
+     */
+    static void setupShaderForDrawing();
+
+        /**
+     * @brief Unsets the shader after drawing.
+     *
+     * @details
+     * This method should be called after drawing each frame.
+     */
+    static void unsetShaderForDrawing();
+
+private:
+    /**
+     * @brief Private helper methods for shader operations
+     */
+    static bool _checkShaderCompilation(GLuint shader);
+    static bool _checkProgramLinking(GLuint program);
+
+    /**
+     * @brief Sets up the OpenGL Vertex Array Object and Vertex Buffer Object.
+     */
+    void _setupOpenGL();
+
+    /**
+     * @brief Computes the vertices for the circle approximation.
+     * @param position Position of the circle's center.
+     * @param radius Radius of the circle.
+     * @param circSegments Number of segments for the circle approximation.
+     * @param circVertices Reference to the vertex array to store the computed vertices.
+     */
+    void _computeVertices(cv::Point2f position, float radius, unsigned int circSegments, std::vector<float> &circVertices);
+
+    /**
+     * @brief Computes the transformation matrix based on the circle's parameters.
+     */
+    void _computeTransformation();
+
+    /**
+     * @brief Converts an OpenCV Mat to an array suitable for OpenGL transformations.
+     * @param mat The OpenCV Mat to convert.
+     * @return An array of floats representing the matrix data.
+     */
+    std::array<float, 16> _cvMatToGlArray(const cv::Mat &mat);
+};
+
 // ================================================== VARIABLES ==================================================
 
 /**
@@ -38,6 +261,63 @@
  *      - 3: Bottom-left
  */
 std::array<std::array<cv::Point2f, 4>, 4> CP_COORDS;
+
+// Create an associateed 4x4 array of the CircleRenderer class objects
+std::array<std::array<CircleRenderer, 4>, 4> CP_RENDERERS;
+
+// Control point graphics
+const int cpRenderSegments = 36;                  // Number of segments used to approximate the circle geometry
+const cv::Scalar cpVertSelectedRGB = (0.0f, 1.0f, 0.0f); // Select control point marker color (green)
+const cv::Scalar cpCornerSelectedRGB = (1.0f, 0.0f, 0.0f); // Selected control point wall color (red)
+const cv::Scalar cpDefaultRGB = (0.0f, 0.0f, 1.0f);      // Default control point marker color (blue)
+const GLfloat cpDefualtMakerRadius = 0.0025f;     // Default control point rendered circle radius
+const GLfloat cpSelectedMakerRadius = 0.005f;     // Selected control point rendered circle radius
+
+
+/**
+ * @brief Vertex shader source code for wall images.
+ *
+ * @details
+ * This is a GLSL (OpenGL Shading Language) vertex shader source code stored as a C++ raw string literal.
+ * - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
+ * - `in vec2 position;`: Declares an input vertex attribute called `position`. Receives vertex coordinates from the application.
+ * - `in vec2 texcoord;`: Declares another input vertex attribute called `texcoord`. Receives texture coordinates from the application.
+ * - `out vec2 Texcoord;`: Declares an output variable that will be passed to the fragment shader.
+ * - `void main() { ... }`: Main function where the vertex shader performs its work.
+ */
+const char *wallVertexSource = R"glsl(
+    #version 330 core
+    in vec2 position;
+    in vec2 texcoord;
+    out vec2 Texcoord;
+
+    void main() {
+        Texcoord = texcoord;
+        gl_Position = vec4(position, 0.0, 1.0);
+    }
+)glsl";
+
+/**
+ * @brief Fragment shader source code for wall images.
+ *
+ * @details
+ * This is a GLSL (OpenGL Shading Language) fragment shader source code also stored as a C++ raw string literal.
+ * - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
+ * - `in vec2 Texcoord;`: Receives the texture coordinates from the vertex shader.
+ * - `out vec4 outColor;`: Declares an output variable for storing the color to be used for the fragment.
+ * - `uniform sampler2D tex;`: Declares a uniform variable representing a 2D texture.
+ * - `void main() { ... }`: Main function of the fragment shader, samples the texture at the given coordinates and sets the output color.
+ */
+const char *wallFragmentSource = R"glsl(
+    #version 330 core
+    in vec2 Texcoord;
+    out vec4 outColor;
+    uniform sampler2D tex;
+
+    void main() {
+        outColor = texture(tex, Texcoord);
+    }
+)glsl";
 
 /**
  * @brief Vertex data for rendering the textured rectangle.
@@ -84,135 +364,12 @@ unsigned int WALL_GL_INDICES[] = {
     0, 2, 3  // Second Triangle
 };
 
-/**
- * @brief Global Element Buffer Object (EBO) for wall images and control point markers.
- */
-GLuint WALL_EBO;
-GLuint CP_EBO;
-
-/**
- * @brief Global Vertex Array Object (VAO) for wall image and control point markers.
- */
+// Wall image render OpneGL objects
+GLuint WALL_EBO; // Global Element Buffer Object (EBO) for wall images.
 GLuint WALL_VAO; // Vertex Array Object (VAO) for wall image.
-GLuint CP_VAO;   // Vertex Array Object (VAO) for control point markers.
-
-/**
- * @brief  Global Vertex Buffer Object (VBO) for rendering the wall image.
- */
-GLuint WALL_VBO;
-
-/**
- * @brief  Global Vertex Buffer Object (VBO) arrays for rendering the control point markers.
- */
-std::array<std::array<GLuint, 4>, 4> CP_VBO_POS_ARR;
-std::array<std::array<GLuint, 4>, 4> CP_VBO_RGB_ARR;
-std::array<std::array<GLuint, 4>, 4> CP_VBO_RAD_ARR;
-
-/**
- * @brief Vertex shader source code for wall images.
- *
- * @details
- * This is a GLSL (OpenGL Shading Language) vertex shader source code stored as a C++ raw string literal.
- * - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
- * - `in vec2 position;`: Declares an input vertex attribute called `position`. Receives vertex coordinates from the application.
- * - `in vec2 texcoord;`: Declares another input vertex attribute called `texcoord`. Receives texture coordinates from the application.
- * - `out vec2 Texcoord;`: Declares an output variable that will be passed to the fragment shader.
- * - `void main() { ... }`: Main function where the vertex shader performs its work.
- */
-const char *wallVertexSource = R"glsl(
-    #version 330 core
-    in vec2 position;
-    in vec2 texcoord;
-    out vec2 Texcoord;
-    void main() {
-        Texcoord = texcoord;
-        gl_Position = vec4(position, 0.0, 1.0);
-    }
-)glsl";
-
-/**
- * @brief Fragment shader source code for wall images.
- *
- * @details
- * This is a GLSL (OpenGL Shading Language) fragment shader source code also stored as a C++ raw string literal.
- * - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
- * - `in vec2 Texcoord;`: Receives the texture coordinates from the vertex shader.
- * - `out vec4 outColor;`: Declares an output variable for storing the color to be used for the fragment.
- * - `uniform sampler2D tex;`: Declares a uniform variable representing a 2D texture.
- * - `void main() { ... }`: Main function of the fragment shader, samples the texture at the given coordinates and sets the output color.
- */
-const char *wallFragmentSource = R"glsl(
-    #version 330 core
-    in vec2 Texcoord;
-    out vec4 outColor;
-    uniform sampler2D tex;
-    void main() {
-        outColor = texture(tex, Texcoord);
-    }
-)glsl";
-
-/**
- * @brief Vertex shader source code for control point rendering.
- *
- * @note The shader program will reverse the y axis to match image coordinate systems used by OpenCV.
- *
- * @details
- * This GLSL vertex shader source code is stored as a C++ raw string literal.
- * - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
- * - `layout (location = 0) in vec2 position;`: Declares an input vertex attribute for position, received from the application.
- *      The y-axis will be inverted to match image coordinate systems such as those used in OpenCV.
- * - `layout (location = 1) in vec3 color;`: Declares an input vertex attribute for color, received from the application.
- * - `layout (location = 2) in float size;`: Declares an input vertex attribute for size, received from the application.
- * - `out vec3 fragColor;`: Passes the color to the fragment shader.
- * - `void main() { ... }`: Main function of the shader, where it calculates the final position of the vertex with an inverted y-axis and sets the point size for rendering.
- */
-const GLchar *ctrlPtVertexSource = R"glsl(
-    #version 330 core
-    layout (location = 0) in vec2 position;
-    layout (location = 1) in vec3 color;
-    layout (location = 2) in float size;
-    out vec3 fragColor;
-    void main() {
-        // Invert the y coordinate to match image coordinate systems
-        gl_Position = vec4(position.x, -position.y, 0.0, 1.0);
-        gl_PointSize = size;
-        fragColor = color;
-    }
-)glsl";
-
-/**
- * @brief Fragment shader source code for control point rendering.
- *
- * @details
- * This GLSL fragment shader source code is stored as a C++ raw string literal.
- * - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
- * - `in vec3 fragColor;`: Receives the color from the vertex shader.
- * - `out vec4 color;`: Declares an output variable to output the color of the fragment.
- * - `void main() { ... }`: Main function of the shader, which outputs the color of the control point.
- */
-const GLchar *ctrlPtFragmentSource = R"glsl(
-    #version 330 core
-    in vec3 fragColor;
-    out vec4 color;
-    void main() {
-        color = vec4(fragColor, 1.0);
-    }
-)glsl";
-
-/**
- * @brief Shader program IDs for wall image and control point marker rendering.
- *
- * @details
- * - `WALL_SHADER`: Shader program used for rendering the warped wall images.
- * - `CP_SHADER`: Shader program used for rendering the control point markers as circles.
- */
-GLuint WALL_SHADER;
-GLuint CP_SHADER;
-
-/**
- * @brief  OpenGL textures associated with the current wall texture.
- */
-GLuint WALL_TEXTURE_ID;
+GLuint WALL_VBO; // Global Vertex Buffer Object (VBO) for rendering the wall image.
+GLuint WALL_SHADER; // Shader program IDs for wall image rendering.
+GLuint WALL_TEXTURE_ID; //  OpenGL textures associated with the current wall texture.
 
 /**
  * @brief  3x3 data contianer for storing the 3x3 homography matrix for each wall image
@@ -221,13 +378,6 @@ std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> WALL_HMAT_DATA;
 
 // Global variable to set the OpenGL debug level.
 int DEBUG_LEVEL_GL = 3; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
-
-// Control point graphics
-const std::array<GLfloat, 3> cpVertSelectedRGB = {0.0f, 1.0f, 0.0f}; // Select control point marker color (green)
-const std::array<GLfloat, 3> cpWallSelectedRGB = {1.0f, 0.0f, 0.0f}; // Selected control point wall color (red)
-const std::array<GLfloat, 3> cpDefaultRGB = {0.0f, 0.0f, 1.0f};      // Default control point marker color (blue)
-const GLfloat cpDefualtMakerRadius = 0.0025f;                        // Control point image radius
-const GLfloat cpSelectedMakerRadius = 0.005f;                        // Control point image radius
 
 // Struct for flags set/used in the keyboard callback
 static struct FlagStruct
@@ -365,7 +515,7 @@ static void callbackErrorGLFW(int, const char *);
  * @return Integer status code  [0:successful, -1:error].
  *
  *
- * @example checkErrorGL(__LINE__, __FILE__);
+ * @example checkErrorOpenGL(__LINE__, __FILE__);
  */
 int checkErrorOpenGL(int, const char *, const char * = nullptr);
 
@@ -378,7 +528,7 @@ int checkErrorOpenGL(int, const char *, const char * = nullptr);
  * @param msg_str Optional message to provide additional context (default to nullptr).
  *
  * @return Integer status code  [0:successful, -1:error].
- * 
+ *
  * @example checkErrorGLFW(__LINE__, __FILE__);
  */
 int checkErrorGLFW(int, const char *, const char * = nullptr);
@@ -410,22 +560,40 @@ int checkErrorGLFW(int, const char *, const char * = nullptr);
 int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
 
 /**
+ * @brief Initializes values for the verteces of the coner walls which will be used as calibraton control points.
+ *
+ * @param[out] out_CP_COORDS Reference to the 4x4 array containing the coordinates of the corner wall's vertices.
+ *
+ * @return Integer status code  [0:successful, -1:error].
+ *
+ * @details
+ * Control point x and y coordinates are specified in Normalized Device Coordinates (NDC) [-1, 1].
+ * The vertices for the entire projected image are calculated based on the dimensions that enclose
+ * all control points (i.e., boundary dimensions in the control point plane).
+ */
+int initControlPointVariables(std::array<std::array<cv::Point2f, 4>, 4> &);
+
+/**
  * @brief Renders a all wall images from the computed texture2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
  *
  * @param _WALL_TEXTURE_ID OpenGL texture ID for the wall image.
+ * @param _WALL_SHADER OpenGL shader program ID for the wall image.
+ * @param _WALL_VAO OpenGL Vertex Array Object (VAO) ID for the wall image.
+ * @param _WALL_EBO OpenGL Element Buffer Object (EBO) ID for the wall image.
  *
  * @return Integer status code  [0:successful, -1:error].
  */
-int renderWallImage(const GLuint &);
+int renderWallImage(const GLuint &, const GLuint &, const GLuint &, const GLuint &);
 
 /**
  * @brief Draws control points associated with each corner wall.
  *
  * @param _CP_COORDS The control point coordinates used to warp the wall image.
+ * @param _CP_RENDERERS The 4x4 array of CircleRenderer objects used to draw the control points.
  *
  * @return Integer status code [0:successful, -1:error].
  */
-int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &);
+int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &, std::array<std::array<CircleRenderer, 4>, 4> &);
 
 /**
  * @brief Initialize OpenGL resources for wall image render objects.
@@ -436,7 +604,7 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &);
  * Initializes the vertex buffer, shader program, and default values
  * for the wall image render and control point markers.
  */
-int initializeWallObjects();
+int initializeWallRenderObjects();
 
 /**
  * @brief Initialize OpenGL resources for control point marker objects.
@@ -455,8 +623,9 @@ int initializeControlPointObjects();
  * @param vertex_source Source code for the vertex shader.
  * @param fragment_source Source code for the fragment shader.
  * @param geometry_source Source code for the geometry shader.
+ * @param[out] out_shader_program Reference to the GLuint where the shader program ID will be stored.
  *
- * @return GLuint ID of the generated shader program.
+ * @return Integer status code [0:successful, -1:error].
  *
  * @details
  * This function encapsulates the process of creating, compiling, and linking an OpenGL shader program.
@@ -484,7 +653,7 @@ int initializeControlPointObjects();
  * Once the shader program is created and linked successfully, it returns the GLuint ID of the shader program.
  * This ID is used to activate the shader program for rendering.
  */
-GLuint compileAndLinkShaders(const GLchar *, const GLchar *, const GLchar *);
+int compileAndLinkShaders(const GLchar *, const GLchar *, GLuint &);
 
 /**
  * @brief Converts an OpenCV Mat image into an OpenGL texture and returns the texture ID.

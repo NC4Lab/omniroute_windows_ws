@@ -533,18 +533,6 @@ std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &, int, 
 float bilinearInterpolation(float, float, float, float, int, int, int);
 
 /**
- * @brief Initializes values for the verteces of the coner walls which will be used as calibraton control points.
- *
- * @param[out] out_CP_COORDS Reference to the 4x4 array containing the coordinates of the corner wall's vertices.
- *
- * @details
- * Control point x and y coordinates are specified in Normalized Device Coordinates (NDC) [-1, 1].
- * The vertices for the entire projected image are calculated based on the dimensions that enclose
- * all control points (i.e., boundary dimensions in the control point plane).
- */
-void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &);
-
-/**
  * @brief Computes updated Homography matrices for all walls.
  *
  * @param _CP_COORDS The control point coordinates used to warp the wall image.
@@ -583,6 +571,11 @@ bool dbRunDT(int);
   * @example dbLogDT(true, __LINE__, __FILE__);
  */
 void dbLogDT(bool = false, int = 0, const char * = nullptr);
+
+/**
+ * @brief Pauses program and waits for any keypress.
+ */
+void dbWaitForInput();
 
 /**
  * @brief Prints the coordinates of a quadrilateral's vertices.

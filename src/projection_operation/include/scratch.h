@@ -1,165 +1,55 @@
-
-// class Circle
+// void initControlPointVariables(std::array<std::array<cv::Point2f, 4>, 4> &out_CP_COORDS)
 // {
-// public:
-//     std::vector<float> vertices;
-//     GLuint VAO;
-//     GLuint VBO;
-//     cv::Scalar color;
-//     cv::Point2f position;
-//     float radius;
-//     unsigned int numSegments;
-//     float aspectRatio;
-//     float rotationAngle;
-//     cv::Mat transformationMatrix; // Transformation matrix for the circle
 
-//     Circle(cv::Point2f pos, float rad, cv::Scalar col, unsigned int segments, float aspect)
-//         : position(pos), radius(rad), color(col), numSegments(segments), aspectRatio(aspect) // Initialize aspectRatio here
+//     // Specify the control point limits
+//     const float cp_x = MAZE_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
+//     const float cp_y = MAZE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates
+
+//     // Iterate through control point outer array (corners)
+//     for (float cp_i = 0; cp_i < 4; cp_i++) // image bottom to top
 //     {
-//         computeVertices();
-//         setupOpenGL();
-//         // Initialize the transformation matrix as an identity matrix
-//         transformationMatrix = cv::Mat::eye(4, 4, CV_32F);
-//     }
+//         cv::Point2f p_org;
 
-//     ~Circle()
-//     {
-//         glDeleteVertexArrays(1, &VAO);
-//         glDeleteBuffers(1, &VBO);
-//     }
+//         // 0: image top-left
+//         if (cp_i == 0)
+//             p_org = cv::Point2f(-cp_x, -cp_y);
 
-//     void setPosition(cv::Point2f pos)
-//     {
-//         position = pos;
-//         computeVertices();
-//         updateOpenGLVertices();
-//     }
+//         // 1: image top-right
+//         else if (cp_i == 1)
+//             p_org = cv::Point2f(+cp_x, -cp_y);
 
-//     void setRadius(float rad)
-//     {
-//         radius = rad;
-//         computeVertices();
-//         updateOpenGLVertices();
-//     }
+//         // 2: image bottom-right
+//         else if (cp_i == 2)
+//             p_org = cv::Point2f(+cp_x, +cp_y);
 
-//     void setColor(cv::Scalar col)
-//     {
-//         color = col;
-//     }
+//         // 3: image bottom-left
+//         else if (cp_i == 3)
+//             p_org = cv::Point2f(-cp_x, +cp_y);
 
-//     // Method to stretch the circle by factors along the X and Y axes
-//     void stretch(cv::Point2f factors)
-//     {
-//         // Create a scaling matrix with the X and Y scaling factors
-//         cv::Mat scaling = cv::Mat::eye(4, 4, CV_32F);
-//         scaling.at<float>(0, 0) = factors.x; // Apply scaling on X-axis
-//         scaling.at<float>(1, 1) = factors.y; // Apply scaling on Y-axis
+//         // Set x y values for each vertex
+//         out_CP_COORDS[cp_i] = {
+//             cv::Point2f(p_org.x, p_org.y),                                                // top left
+//             cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y),                         // top right
+//             cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y + WALL_IMAGE_HEIGHT_NDC), // bottom right
+//             cv::Point2f(p_org.x, p_org.y + WALL_IMAGE_HEIGHT_NDC),                        // bottom left
+//         };
 
-//         // Apply the scaling to the transformation matrix
-//         transformationMatrix = scaling * transformationMatrix;
+//         // Assuming you want to vary the parameters for each circle
+//         float radius = 0.05 * (i + 1);
+//         float pos = 0.5 * (i + 1) - 1.0f;
+//         cv::Point2f position(pos, pos);
+//         cv::Scalar color(i * 50, 255 - i * 50, 0); // Example: Different colors for each circle
+//         unsigned int segments = 36;                // Example: Same number of segments for each circle
 
-//         // Apply the updated transformation
-//         applyTransformation();
-
-//         computeVertices();
-//         updateOpenGLVertices();
-//     }
-
-//     // Method to set the rotation angle and apply the rotation
-//     void setRotation(float angle)
-//     {
-//         rotationAngle = angle; // Set the new rotation angle
-//         applyTransformation(); // Apply the transformation
-
-//         computeVertices();
-//         updateOpenGLVertices();
-//     }
-
-//     void updateVertices()
-//     {
-//         // Generate the new vertices based on the current position, radius, and numSegments
-//         std::vector<float> newVertices = computeVertices(position, radius, numSegments);
-
-//         // Bind the VBO, update the vertex buffer with the new data
-//         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-//         glBufferData(GL_ARRAY_BUFFER, newVertices.size() * sizeof(float), newVertices.data(), GL_DYNAMIC_DRAW);
-
-//         // Unbind the buffer
-//         glBindBuffer(GL_ARRAY_BUFFER, 0);
-//     }
-
-//     void draw(GLuint shaderProgram, GLint colorLocation, GLint transformLocation)
-//     {
-//         glUniform4f(colorLocation, color[0], color[1], color[2], 1.0f); // Set color
-//         cv::Mat transform = cv::Mat::eye(4, 4, CV_32F);                 // Identity matrix for no transformation
-//         auto transformArray = cvMatToGlArray(transform);
-//         glUniformMatrix4fv(transformLocation, 1, GL_FALSE, transformArray.data());
-
-//         glBindVertexArray(VAO);
-//         glDrawArrays(GL_TRIANGLE_FAN, 0, vertices.size() / 2);
-//     }
-
-// private:
-//     std::vector<float> computeVertices()
-//     {
-//         return computeVertices(position, radius, numSegments);
-//     }
-//     std::vector<float> computeVertices(cv::Point2f position, float radius, unsigned int numSegments)
-//     {
-//         vertices.push_back(position.x); // Center x
-//         vertices.push_back(position.y); // Center y
-//         for (unsigned int i = 0; i <= numSegments; ++i)
+//         // Iterate through control point inner array to initialize the CircleRenderer class objects array
+//         for (int cv_i = 0; cv_i < 4; ++cv_i)
 //         {
-//             float angle = 2.0f * std::acos(-1.0) * i / numSegments;
-//             float baseX = position.x + (radius * std::cos(angle));
-//             float baseY = position.y + (radius * std::sin(angle)) * aspectRatio;
-//             cv::Mat vertex = (cv::Mat_<float>(4, 1) << baseX, baseY, 0, 1);
-//             cv::Mat transformedVertex = transformationMatrix * vertex;
-//             vertices.push_back(transformedVertex.at<float>(0, 0));
-//             vertices.push_back(transformedVertex.at<float>(1, 0));
+//             CP_RENDERERS[cv_i][cv_i].initializeCircleRenderer(
+//                 out_CP_COORDS[cp_i][cv_i], // position
+//                 cpDefualtMakerRadius,      // radius
+//                 cpVertSelectedRGB,         // color
+//                 cpRenderSegments           // segments
+//             );
 //         }
-//         return vertices;
 //     }
-
-//     void setupOpenGL()
-//     {
-//         glGenVertexArrays(1, &VAO);
-//         glGenBuffers(1, &VBO);
-//         glBindVertexArray(VAO);
-//         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-//         glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_DYNAMIC_DRAW);
-//         glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
-//         glEnableVertexAttribArray(0);
-//     }
-
-//     // void updateOpenGLVertices()
-//     // {
-//     //     glBindBuffer(GL_ARRAY_BUFFER, VBO);
-//     //     glBufferSubData(GL_ARRAY_BUFFER, 0, vertices.size() * sizeof(float), vertices.data());
-//     // }
-//     void updateOpenGLVertices()
-//     {
-//         glBindBuffer(GL_ARRAY_BUFFER, VBO);
-//         glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(float), vertices.data(), GL_DYNAMIC_DRAW);
-//     }
-
-//     // Helper function to convert OpenCV Mat to an array for OpenGL
-//     std::array<float, 16> cvMatToGlArray(const cv::Mat &mat)
-//     {
-//         assert(mat.cols == 4 && mat.rows == 4 && mat.type() == CV_32F);
-//         std::array<float, 16> glArray;
-//         std::copy(mat.begin<float>(), mat.end<float>(), glArray.begin());
-//         return glArray;
-//     }
-
-//     void applyTransformation()
-//     {
-//         // Update the transformation matrix with the new rotation
-//         cv::Mat rotation = cv::getRotationMatrix2D(position, rotationAngle, 1.0);
-//         // Convert the 2x3 rotation matrix to a 4x4 matrix
-//         cv::Mat rot4x4 = cv::Mat::eye(4, 4, CV_32F);
-//         rotation.copyTo(rot4x4.rowRange(0, 2).colRange(0, 3));
-//         // Apply the rotation to the transformation matrix
-//         transformationMatrix = rot4x4 * transformationMatrix;
-//     }
-// };
+// }
