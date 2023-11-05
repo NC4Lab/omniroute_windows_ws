@@ -1,4 +1,4 @@
-// void initControlPointVariables(std::array<std::array<cv::Point2f, 4>, 4> &out_CP_COORDS)
+// void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &out_CP_COORDS)
 // {
 
 //     // Specify the control point limits

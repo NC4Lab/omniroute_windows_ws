@@ -82,7 +82,7 @@ public:
     float cirRadius;                // Radius of the circle.
     float circRotationAngle;        // Rotation angle of the circle in degrees.
     cv::Point2f circScalingFactors; // Scaling factors for the circle's x and y dimensions.
-    unsigned int circSegments;       // Number of segments used to approximate the circle geometry.
+    unsigned int circSegments;      // Number of segments used to approximate the circle geometry.
 
 private:
     /// @todo use this for vertext computation
@@ -92,11 +92,11 @@ private:
     cv::Mat _transformationMatrix;                        // Transformation matrix for the circle's vertices.
     static constexpr float _PI = 3.14159265358979323846f; // Pi
     static int IDX;                                       // Static index counter for the CircleRenderer class objects
-    static GLuint _SHADER_PROGRAM;      // Shader program for rendering
-    static GLint _COLOR_LOCATION;       // Location of color uniform in shader
-    static GLint _TRANSFORM_LOCATION;   // Location of transform uniform in shader
-    static GLint _ASPECT_RATIO_LOCATION; // Location of aspect ratio uniform in shader
-    static float _ASPECT_RATIO_UNIFORM;  // Aspect ratio uniform for the shader program
+    static GLuint _SHADER_PROGRAM;                        // Shader program for rendering
+    static GLint _COLOR_LOCATION;                         // Location of color uniform in shader
+    static GLint _TRANSFORM_LOCATION;                     // Location of transform uniform in shader
+    static GLint _ASPECT_RATIO_LOCATION;                  // Location of aspect ratio uniform in shader
+    static float _ASPECT_RATIO_UNIFORM;                   // Aspect ratio uniform for the shader program
 
 public:
     /**
@@ -193,7 +193,7 @@ public:
      */
     static void setupShaderForDrawing();
 
-        /**
+    /**
      * @brief Unsets the shader after drawing.
      *
      * @details
@@ -266,13 +266,12 @@ std::array<std::array<cv::Point2f, 4>, 4> CP_COORDS;
 std::array<std::array<CircleRenderer, 4>, 4> CP_RENDERERS;
 
 // Control point graphics
-const int cpRenderSegments = 36;                  // Number of segments used to approximate the circle geometry
-const cv::Scalar cpVertSelectedRGB = (0.0f, 1.0f, 0.0f); // Select control point marker color (green)
-const cv::Scalar cpCornerSelectedRGB = (1.0f, 0.0f, 0.0f); // Selected control point wall color (red)
-const cv::Scalar cpDefaultRGB = (0.0f, 0.0f, 1.0f);      // Default control point marker color (blue)
-const GLfloat cpDefualtMakerRadius = 0.0025f;     // Default control point rendered circle radius
-const GLfloat cpSelectedMakerRadius = 0.005f;     // Selected control point rendered circle radius
-
+const int cpRenderSegments = 36;                                     // Number of segments used to approximate the circle geometry
+const cv::Scalar cpVertSelectedRGB = cv::Scalar(0.0f, 1.0f, 0.0f);   // Select control point marker color (green)
+const cv::Scalar cpCornerSelectedRGB = cv::Scalar(1.0f, 0.0f, 0.0f); // Selected control point wall color (red)
+const cv::Scalar cpDefaultRGB = cv::Scalar(0.0f, 0.0f, 1.0f);        // Default control point marker color (blue)
+const GLfloat cpDefualtMakerRadius = 0.0025f;                        // Default control point rendered circle radius
+const GLfloat cpSelectedMakerRadius = 0.005f;                        // Selected control point rendered circle radius
 
 /**
  * @brief Vertex shader source code for wall images.
@@ -365,10 +364,10 @@ unsigned int WALL_GL_INDICES[] = {
 };
 
 // Wall image render OpneGL objects
-GLuint WALL_EBO; // Global Element Buffer Object (EBO) for wall images.
-GLuint WALL_VAO; // Vertex Array Object (VAO) for wall image.
-GLuint WALL_VBO; // Global Vertex Buffer Object (VBO) for rendering the wall image.
-GLuint WALL_SHADER; // Shader program IDs for wall image rendering.
+GLuint WALL_EBO;        // Global Element Buffer Object (EBO) for wall images.
+GLuint WALL_VAO;        // Vertex Array Object (VAO) for wall image.
+GLuint WALL_VBO;        // Global Vertex Buffer Object (VBO) for rendering the wall image.
+GLuint WALL_SHADER;     // Shader program IDs for wall image rendering.
 GLuint WALL_TEXTURE_ID; //  OpenGL textures associated with the current wall texture.
 
 /**
@@ -564,14 +563,12 @@ int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
  *
  * @param[out] out_CP_COORDS Reference to the 4x4 array containing the coordinates of the corner wall's vertices.
  *
- * @return Integer status code  [0:successful, -1:error].
- *
  * @details
  * Control point x and y coordinates are specified in Normalized Device Coordinates (NDC) [-1, 1].
  * The vertices for the entire projected image are calculated based on the dimensions that enclose
  * all control points (i.e., boundary dimensions in the control point plane).
  */
-int initControlPointVariables(std::array<std::array<cv::Point2f, 4>, 4> &);
+void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &);
 
 /**
  * @brief Renders a all wall images from the computed texture2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
@@ -589,7 +586,7 @@ int renderWallImage(const GLuint &, const GLuint &, const GLuint &, const GLuint
  * @brief Draws control points associated with each corner wall.
  *
  * @param _CP_COORDS The control point coordinates used to warp the wall image.
- * @param _CP_RENDERERS The 4x4 array of CircleRenderer objects used to draw the control points.
+ * @param[out] out_CP_RENDERERS The 4x4 array of CircleRenderer objects used to draw the control points.
  *
  * @return Integer status code [0:successful, -1:error].
  */
@@ -598,16 +595,23 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &, std::
 /**
  * @brief Initialize OpenGL resources for wall image render objects.
  *
+ * @param _WALL_VAO Reference to OpenGL Vertex Array Object (VAO) ID for the wall image.
+ * @param _WALL_VBO Reference to OpenGL Vertex Buffer Object (VBO) ID for the wall image.
+ * @param _WALL_EBO Reference to OpenGL Element Buffer Object (EBO) ID for the wall image.
+ *
  * @return Integer status code [0:successful, -1:error].
  *
  * @details
  * Initializes the vertex buffer, shader program, and default values
  * for the wall image render and control point markers.
  */
-int initializeWallRenderObjects();
+int initializeWallRenderObjects(GLuint &, GLuint &, GLuint &);
 
 /**
- * @brief Initialize OpenGL resources for control point marker objects.
+ * @brief Initialize OpenGL resources for CircleRenderer objects.
+ *
+ * @param _CP_COORDS The 4x4 array containing the coordinates of the corner wall's vertices.
+ * @param[out] out_CP_RENDERERS The 4x4 array of CircleRenderer objects used to draw the control points.
  *
  * @return Integer status code [0:successful, -1:error].
  *
@@ -615,7 +619,7 @@ int initializeWallRenderObjects();
  * Initializes the vertex buffer, shader program, and default values
  * for the control point markers.
  */
-int initializeControlPointObjects();
+int initializeCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &, std::array<std::array<CircleRenderer, 4>, 4> &);
 
 /**
  * @brief Creates an OpenGL shader program from vertex and fragment shader source code.
@@ -728,9 +732,6 @@ int updateWallTexture(
     cv::Mat, cv::Mat, cv::Mat,
     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &,
     GLuint &);
-
-bool initializeGLFWandGLAD();
-void testRenderSinglePoint();
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.

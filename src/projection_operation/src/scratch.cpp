@@ -1276,7 +1276,7 @@
 //     // --------------- VARIABLE SETUP ---------------
 
 //     // Initialize control point coordinate dataset
-//     initControlPointVariables(CP_COORDS);
+//     initControlPointCoordinates(CP_COORDS);
 
 //     // Initialize wall homography matrices array
 //     if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) != 0)
@@ -1331,7 +1331,7 @@
 //         // Initialize/reinitialize control point coordinate dataset
 //         if (F.initControlPointMarkers)
 //         {
-//             initControlPointVariables(CP_COORDS);
+//             initControlPointCoordinates(CP_COORDS);
 //             F.initControlPointMarkers = false;
 //         }
 

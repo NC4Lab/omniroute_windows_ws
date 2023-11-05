@@ -45,13 +45,15 @@ void CircleRenderer::initializeCircleRenderer(cv::Point2f pos, float rad, cv::Sc
     // Setup OpenGL buffers
     _setupOpenGL();
 
-    // Log input arguments
-    ROS_INFO("[CircleRenderer] Initialized Instance[%d]: Position[%0.2f, %0.2f] Radius[%0.4f] Color[%.2f, %.2f, %.2f] Segments[%d]",
-             circID, circPosition.x, circPosition.y, cirRadius, circColor[0], circColor[1], circColor[2], circSegments);
+    // // TEMP
+    // ROS_INFO("[CircleRenderer] Initialized Instance[%d]: Position[%0.2f, %0.2f] Radius[%0.4f] Color[%.2f, %.2f, %.2f] Segments[%d]",
+    //          circID, circPosition.x, circPosition.y, cirRadius, circColor[0], circColor[1], circColor[2], circSegments);
 }
 
 void CircleRenderer::setPosition(cv::Point2f pos)
 {
+    // Modify the y position based on the aspect ratio
+    pos.y /= _ASPECT_RATIO_UNIFORM;
     circPosition = pos;
 }
 
@@ -93,9 +95,9 @@ void CircleRenderer::recomputeParameters()
     // Unbind the buffer
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-    // Log input arguments
-    ROS_INFO("[CircleRenderer] Initialized Instance[%d]: Position[%0.2f, %0.2f] Radius[%0.4f] Color[%.2f, %.2f, %.2f] Segments[%d]",
-             circID, circPosition.x, circPosition.y, cirRadius, circColor[0], circColor[1], circColor[2], circSegments);
+    // // TEMP
+    // ROS_INFO("[CircleRenderer] Initialized Instance[%d]: Position[%0.2f, %0.2f] Radius[%0.4f] Color[%.2f, %.2f, %.2f] Segments[%d]",
+    //          circID, circPosition.x, circPosition.y, cirRadius, circColor[0], circColor[1], circColor[2], circSegments);
 }
 
 void CircleRenderer::draw()
@@ -684,9 +686,8 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
     return 0;
 }
 
-int initControlPointVariables(std::array<std::array<cv::Point2f, 4>, 4> &out_CP_COORDS)
+void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &out_CP_COORDS)
 {
-
     // Specify the control point limits
     const float cp_x = MAZE_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
     const float cp_y = MAZE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates
@@ -719,57 +720,7 @@ int initControlPointVariables(std::array<std::array<cv::Point2f, 4>, 4> &out_CP_
             cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y + WALL_IMAGE_HEIGHT_NDC), // bottom right
             cv::Point2f(p_org.x, p_org.y + WALL_IMAGE_HEIGHT_NDC),                        // bottom left
         };
-
-        // Iterate through control point inner array to initialize the CircleRenderer class objects array
-        for (int cv_i = 0; cv_i < 4; ++cv_i)
-        {
-            CP_RENDERERS[cp_i][cv_i].initializeCircleRenderer(
-                out_CP_COORDS[cp_i][cv_i], // position
-                cpDefualtMakerRadius,      // radius
-                cpDefaultRGB,              // color
-                cpRenderSegments           // segments
-            );
-        }
     }
-
-    // Return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__);
-}
-
-int initializeWallRenderObjects()
-{
-
-    // Generate and bind an Element Buffer Object (EBO)
-    glGenBuffers(1, &WALL_EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
-
-    // Initialize the EBO with index data
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(WALL_GL_INDICES), WALL_GL_INDICES, GL_DYNAMIC_DRAW);
-
-    // Generate and bind a Vertex Array Object (VAO)
-    glGenVertexArrays(1, &WALL_VAO);
-    glBindVertexArray(WALL_VAO);
-
-    // Generate and bind a Vertex Buffer Object (VBO)
-    glGenBuffers(1, &WALL_VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, WALL_VBO);
-
-    // Initialize the VBO with vertex data
-    glBufferData(GL_ARRAY_BUFFER, sizeof(WALL_GL_VERTICES), WALL_GL_VERTICES, GL_STATIC_DRAW);
-
-    // Specify the format of the vertex data for the position attribute
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0); // Enable the position attribute
-
-    // Specify the format of the vertex data for the texture coordinate attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1); // Enable the texture coordinate attribute
-
-    // Unbind the VAO to prevent accidental modification
-    glBindVertexArray(0);
-
-    // Return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
 int renderWallImage(const GLuint &_WALL_TEXTURE_ID, const GLuint &_WALL_SHADER, const GLuint &_WALL_VAO, const GLuint &_WALL_EBO)
@@ -801,7 +752,7 @@ int renderWallImage(const GLuint &_WALL_TEXTURE_ID, const GLuint &_WALL_SHADER, 
 }
 
 int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
-                        std::array<std::array<CircleRenderer, 4>, 4> &_CP_RENDERERS)
+                        std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
 {
     // Setup the CircleRenderer class shaders
     CircleRenderer::setupShaderForDrawing();
@@ -827,15 +778,15 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COO
             GLfloat rad = v_i == 3 ? cpSelectedMakerRadius : cpDefualtMakerRadius;
 
             // Set the marker parameters
-            _CP_RENDERERS[c_i][v_i].setPosition(_CP_COORDS[c_i][v_i]);
-            _CP_RENDERERS[c_i][v_i].setRadius(rad);
-            _CP_RENDERERS[c_i][v_i].setColor(col);
+            out_CP_RENDERERS[c_i][v_i].setPosition(_CP_COORDS[c_i][v_i]);
+            out_CP_RENDERERS[c_i][v_i].setRadius(rad);
+            out_CP_RENDERERS[c_i][v_i].setColor(col);
 
             // Recompute the marker parameters
-            _CP_RENDERERS[c_i][v_i].recomputeParameters();
+            out_CP_RENDERERS[c_i][v_i].recomputeParameters();
 
             // Draw the marker
-            _CP_RENDERERS[c_i][v_i].draw();
+            out_CP_RENDERERS[c_i][v_i].draw();
 
             // Check for errors
             if (checkErrorOpenGL(__LINE__, __FILE__) < 0)
@@ -847,107 +798,105 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COO
     }
 
     // Unset the shader program
-    CircleRenderer::setupShaderForDrawing();
+    CircleRenderer::unsetShaderForDrawing();
 
-    // TEMP
-    return -1;
+    // // TEMP
+    // return -1;
 
     // Return GL status
     return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
-// GLuint compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source, const GLchar *geometry_source)
+// int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
+//                         std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
 // {
-//     auto checkCompileErrors = [](GLuint shader, const std::string &type)
-//     {
-//         GLint success;
-//         GLchar infoLog[1024];
-//         if (type != "PROGRAM")
-//         {
-//             glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-//             if (!success)
-//             {
-//                 glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-//                 ROS_ERROR("[Shader Compilation Error] Type: %s\n%s", type.c_str(), infoLog);
-//             }
-//         }
-//         else
-//         {
-//             glGetProgramiv(shader, GL_LINK_STATUS, &success);
-//             if (!success)
-//             {
-//                 glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-//                 ROS_ERROR("[Program Linking Error] Type: %s\n%s", type.c_str(), infoLog);
-//             }
-//         }
-//     };
+//     // Setup the CircleRenderer class shaders
+//     CircleRenderer::setupShaderForDrawing();
 
-//     GLuint shader_program = glCreateProgram();
+//     out_CP_RENDERERS[0][0].setPosition(cv::Point2f(-0.5f, 0.5f));
 
-//     // Vertex Shader
-//     if (vertex_source != nullptr)
+//     out_CP_RENDERERS[0][0].setRadius(0.05f);
+
+//     //out_CP_RENDERERS[0][0].setColor(cv::Scalar(0.0f, 0.0f, 1.0f));
+//     out_CP_RENDERERS[0][0].setColor(cpDefaultRGB);
+
+//     // Recompute the marker parameters
+//     out_CP_RENDERERS[0][0].recomputeParameters();
+
+//     // Draw the marker
+//     out_CP_RENDERERS[0][0].draw();
+
+//     // Check for errors
+//     if (checkErrorOpenGL(__LINE__, __FILE__) < 0)
 //     {
-//         GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-//         glShaderSource(vertex_shader, 1, &vertex_source, NULL);
-//         glCompileShader(vertex_shader);
-//         checkCompileErrors(vertex_shader, "VERTEX");
-//         glAttachShader(shader_program, vertex_shader);
-//         glDeleteShader(vertex_shader); // Delete after attaching
+//         ROS_ERROR("[renderControlPoints] Error Thrown for Control Point");
+//         return -1;
 //     }
 
-//     // Fragment Shader
-//     if (fragment_source != nullptr)
-//     {
-//         GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-//         glShaderSource(fragment_shader, 1, &fragment_source, NULL);
-//         glCompileShader(fragment_shader);
-//         checkCompileErrors(fragment_shader, "FRAGMENT");
-//         glAttachShader(shader_program, fragment_shader);
-//         glDeleteShader(fragment_shader); // Delete after attaching
-//     }
+//     // Unset the shader program
+//     CircleRenderer::unsetShaderForDrawing();
 
-//     // Geometry Shader
-//     if (geometry_source != nullptr)
-//     {
-//         GLuint geometry_shader = glCreateShader(GL_GEOMETRY_SHADER);
-//         glShaderSource(geometry_shader, 1, &geometry_source, NULL);
-//         glCompileShader(geometry_shader);
-//         checkCompileErrors(geometry_shader, "GEOMETRY");
-//         glAttachShader(shader_program, geometry_shader);
-//         glDeleteShader(geometry_shader); // Delete after attaching
-//     }
-
-//     // Link the shader program
-//     glLinkProgram(shader_program);
-//     checkCompileErrors(shader_program, "PROGRAM");
-
-//     return shader_program;
+//     // Return GL status
+//     return checkErrorOpenGL(__LINE__, __FILE__);
 // }
 
-// GLuint compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source)
-// {
-//     // Create and compile the vertex shader
-//     GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-//     glShaderSource(vertex_shader, 1, &vertex_source, NULL);
-//     glCompileShader(vertex_shader);
+int initializeCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
+                                    std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
+{
+    // Iterate through control point outer array (corners)
+    for (float cp_i = 0; cp_i < 4; cp_i++) // image bottom to top
+    {
+        // Iterate through control point inner array to initialize the CircleRenderer class objects array
+        for (int cv_i = 0; cv_i < 4; ++cv_i)
+        {
+            out_CP_RENDERERS[cp_i][cv_i].initializeCircleRenderer(
+                _CP_COORDS[cp_i][cv_i], // position
+                cpDefualtMakerRadius,   // radius
+                cpDefaultRGB,           // color
+                cpRenderSegments        // segments
+            );
+        }
+    }
 
-//     // Create and compile the fragment shader
-//     GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-//     glShaderSource(fragment_shader, 1, &fragment_source, NULL);
-//     glCompileShader(fragment_shader);
+    // Return GL status
+    return checkErrorOpenGL(__LINE__, __FILE__);
+}
 
-//     // Link the vertex and fragment shader into a shader program
-//     GLuint shader_program = glCreateProgram();
-//     glAttachShader(shader_program, vertex_shader);
-//     glAttachShader(shader_program, fragment_shader);
-//     glLinkProgram(shader_program);
+int initializeWallRenderObjects(GLuint &_WALL_VAO, GLuint &_WALL_VBO, GLuint &_WALL_EBO)
+{
 
-//     // Delete the vertex and fragment shaders as they're now linked into the program
-//     glDeleteShader(vertex_shader);
-//     glDeleteShader(fragment_shader);
+    // Generate and bind an Element Buffer Object (EBO)
+    glGenBuffers(1, &_WALL_EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _WALL_EBO);
 
-//     return shader_program;
-// }
+    // Initialize the EBO with index data
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(WALL_GL_INDICES), WALL_GL_INDICES, GL_DYNAMIC_DRAW);
+
+    // Generate and bind a Vertex Array Object (VAO)
+    glGenVertexArrays(1, &_WALL_VAO);
+    glBindVertexArray(_WALL_VAO);
+
+    // Generate and bind a Vertex Buffer Object (VBO)
+    glGenBuffers(1, &_WALL_VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, _WALL_VBO);
+
+    // Initialize the VBO with vertex data
+    glBufferData(GL_ARRAY_BUFFER, sizeof(WALL_GL_VERTICES), WALL_GL_VERTICES, GL_STATIC_DRAW);
+
+    // Specify the format of the vertex data for the position attribute
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0); // Enable the position attribute
+
+    // Specify the format of the vertex data for the texture coordinate attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1); // Enable the texture coordinate attribute
+
+    // Unbind the VAO to prevent accidental modification
+    glBindVertexArray(0);
+
+    // Return GL status
+    return checkErrorOpenGL(__LINE__, __FILE__);
+}
 
 int compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source, GLuint &shader_program_out)
 {
@@ -1263,6 +1212,18 @@ int main(int argc, char **argv)
     ROS_INFO("[SETUP] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_IMAGE_WIDTH_NDC, WALL_IMAGE_HEIGHT_NDC);
     ROS_INFO("[SETUP] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
 
+    // --------------- VARIABLE SETUP ---------------
+
+    // Initialize control point coordinate dataset
+    initControlPointCoordinates(CP_COORDS);
+
+    // Initialize wall homography matrices array
+    if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) < 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Initialize Wall Parameters");
+        return -1;
+    }
+
     // --------------- OpenGL SETUP ---------------
 
     // Declare GLFW variables
@@ -1317,20 +1278,11 @@ int main(int argc, char **argv)
     glDebugMessageCallback(callbackDebugOpenGL, 0);
 
     // Initialize OpenGL wall image objects
-    if (initializeWallRenderObjects() < 0)
+    if (initializeWallRenderObjects(WALL_VAO, WALL_VBO, WALL_EBO) < 0)
     {
         ROS_ERROR("[SETUP] Failed to Initialize OpenGL Wall Image Objects");
         return -1;
     }
-
-    // Log OpenGL versions
-    const GLubyte *opengl_version = glGetString(GL_VERSION);
-    ROS_INFO("[SETUP] OpenGL Initialized: Version [%s]", opengl_version);
-
-    // Log GLFW versions
-    int glfw_major, glfw_minor, glfw_rev;
-    glfwGetVersion(&glfw_major, &glfw_minor, &glfw_rev);
-    ROS_INFO("[SETUP] GLFW Initialized: Version: %d.%d.%d", glfw_major, glfw_minor, glfw_rev);
 
     // Update monitor and window mode settings
     updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, I.winMon, F.setFullscreen);
@@ -1349,11 +1301,27 @@ int main(int argc, char **argv)
         return -1;
     }
 
+    // Initialize the CircleRenderer class objects array
+    if (initializeCircleRendererObjects(CP_COORDS, CP_RENDERERS) < 0)
+    {
+        ROS_ERROR("[SETUP] Failed to Initialize Control Point Variables");
+        return -1;
+    }
+
     if (checkErrorOpenGL(__LINE__, __FILE__) < 0)
     {
         ROS_ERROR("[SETUP] Error Thrown During OpenGL Setup");
         return -1;
     }
+
+    // Log OpenGL versions
+    const GLubyte *opengl_version = glGetString(GL_VERSION);
+    ROS_INFO("[SETUP] OpenGL Initialized: Version [%s]", opengl_version);
+
+    // Log GLFW versions
+    int glfw_major, glfw_minor, glfw_rev;
+    glfwGetVersion(&glfw_major, &glfw_minor, &glfw_rev);
+    ROS_INFO("[SETUP] GLFW Initialized: Version: %d.%d.%d", glfw_major, glfw_minor, glfw_rev);
 
     // --------------- RENDER IMAGE LOADING  ---------------
 
@@ -1371,22 +1339,6 @@ int main(int argc, char **argv)
     if (loadImgMat(calImgPathVec, calImgMatVec) < 0)
     {
         ROS_ERROR("[SETUP] Failed to Load Calibration Mode Images");
-        return -1;
-    }
-
-    // --------------- VARIABLE SETUP ---------------
-
-    // Initialize control point coordinate dataset
-    if (initControlPointVariables(CP_COORDS) < 0)
-    {
-        ROS_ERROR("[SETUP] Failed to Initialize Control Point Variables");
-        return -1;
-    }
-
-    // Initialize wall homography matrices array
-    if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) < 0)
-    {
-        ROS_ERROR("[SETUP] Failed to Initialize Wall Parameters");
         return -1;
     }
 
@@ -1436,7 +1388,7 @@ int main(int argc, char **argv)
         // Initialize/reinitialize control point coordinate dataset
         if (F.initControlPointMarkers)
         {
-            initControlPointVariables(CP_COORDS);
+            initControlPointCoordinates(CP_COORDS);
             F.initControlPointMarkers = false;
         }
 
