@@ -341,9 +341,7 @@ int MazeRenderContext::cleanupShaderObjects()
         return checkErrorOpenGL(__LINE__, __FILE__, "MazeRenderContext::cleanupShaderObjects");
     }
     else
-    {
         return -1;
-    }
 }
 
 int MazeRenderContext::switchWindowMode(int mon_ind_new, bool do_fullscreen)

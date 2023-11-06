@@ -617,12 +617,10 @@ std::array<std::array<CircleRenderer, 4>, 4> CP_RENDERERS;
  */
 std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> WALL_HMAT_DATA;
 
-// Struct for holding OpenGL objects for a given context
-
 // Global variable to set the OpenGL debug level.
 int DEBUG_LEVEL_GL = 3; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
 
-// Struct for flags
+// Struct for global flags
 static struct FlagStruct
 {
     bool dbRun = false;                   // Flag to indicate if something should be run for debugging
@@ -634,7 +632,7 @@ static struct FlagStruct
     bool setFullscreen = false;           // Flag to indicate if the window needs to be set to full screen mode
 } F;
 
-// Struct for counts
+// Struct for global counts
 static struct CountStruct
 {
     int monitors;       // Number of monitors connected to the system
@@ -642,7 +640,7 @@ static struct CountStruct
     int calModes = 3;   // Number of calibration modes
 } N;
 
-// Struct for indices
+// Struct for global indices
 static struct IndStruct
 {
     int wallImage = 0; // Index of the image to be loaded
