@@ -336,6 +336,93 @@ void CircleRenderer::_computeVertices(cv::Point2f position, float radius, unsign
     }
 }
 
+// ================================================== CLASS: WallRenderContext ==================================================
+
+// Constructor implementation
+WallRenderContext::WallRenderContext(GLuint shader, GLuint _vao, GLuint _vbo,
+                                     GLuint _ebo, GLuint tex, GLFWwindow *win,
+                                     GLFWmonitor *mon, int win_ind, int mon_ind)
+    : shaderProgram(shader), vao(_vao), vbo(_vbo), ebo(_ebo),
+      texture(tex), window(win), monitor(mon), windowInd(win_ind), monitorInd(mon_ind)
+{
+    // Constructor code to set up the render context
+    // This could include shader program compilation, VAO/VBO setup, etc.
+}
+
+// Destructor implementation
+WallRenderContext::~WallRenderContext()
+{
+    // Clean up resources
+    glDeleteProgram(shaderProgram);
+    glDeleteVertexArrays(1, &vao);
+    glDeleteBuffers(1, &vbo);
+    glDeleteBuffers(1, &ebo);
+    glDeleteTextures(1, &texture);
+    // Do not destroy the window or monitor here, as they are managed externally
+}
+
+// Move constructor implementation
+WallRenderContext::WallRenderContext(WallRenderContext &&other) noexcept
+    : shaderProgram(other.shaderProgram), vao(other.vao), vbo(other.vbo),
+      ebo(other.ebo), texture(other.texture), window(other.window),
+      monitor(other.monitor), windowInd(other.windowInd), monitorInd(other.monitorInd)
+{
+    // Reset the other's members to default values
+    other.shaderProgram = 0;
+    other.vao = 0;
+    other.vbo = 0;
+    other.ebo = 0;
+    other.texture = 0;
+    other.window = nullptr;
+    other.monitor = nullptr;
+    other.windowInd = -1;
+    other.monitorInd = -1;
+}
+
+// Move assignment operator implementation
+WallRenderContext &WallRenderContext::operator=(WallRenderContext &&other) noexcept
+{
+    if (this != &other) // Prevent self-assignment
+    {
+        // Clean up existing resources
+        glDeleteProgram(shaderProgram);
+        glDeleteVertexArrays(1, &vao);
+        glDeleteBuffers(1, &vbo);
+        glDeleteBuffers(1, &ebo);
+        glDeleteTextures(1, &texture);
+
+        // Transfer ownership of resources from other to this
+        shaderProgram = other.shaderProgram;
+        vao = other.vao;
+        vbo = other.vbo;
+        ebo = other.ebo;
+        texture = other.texture;
+        window = other.window;
+        monitor = other.monitor;
+        windowInd = other.windowInd;
+        monitorInd = other.monitorInd;
+
+        // Reset the other's members to default values
+        other.shaderProgram = 0;
+        other.vao = 0;
+        other.vbo = 0;
+        other.ebo = 0;
+        other.texture = 0;
+        other.window = nullptr;
+        other.monitor = nullptr;
+        other.windowInd = -1;
+        other.monitorInd = -1;
+    }
+    return *this;
+}
+
+// Implementation of setMonitor
+void WallRenderContext::setMonitor(int monitor_ind, GLFWmonitor *_monitor)
+{
+    monitor = _monitor;
+    monitorInd = monitor_ind;
+}
+
 // ================================================== FUNCTIONS ==================================================
 
 void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -593,7 +680,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
 {
     glViewport(0, 0, width, height);
-    checkErrorOpenGL(__LINE__, __FILE__);
+    checkErrorGLFW(__LINE__, __FILE__, "callbackFrameBufferSizeGLFW");
 }
 
 static void APIENTRY callbackDebugOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
@@ -960,7 +1047,7 @@ int compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_so
     // No need to delete the program as it's being used outside this function
 
     // Return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__);
+    return checkErrorOpenGL(__LINE__, __FILE__, "compileAndLinkShaders");
 }
 
 int initializeWallRenderObjects(GLuint &_WALL_VAO, GLuint &_WALL_VBO, GLuint &_WALL_EBO)
@@ -996,7 +1083,7 @@ int initializeWallRenderObjects(GLuint &_WALL_VAO, GLuint &_WALL_VBO, GLuint &_W
     glBindVertexArray(0);
 
     // Return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__);
+    return checkErrorOpenGL(__LINE__, __FILE__, "initializeWallRenderObjects");
 }
 
 int initializeCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
@@ -1018,7 +1105,7 @@ int initializeCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>,
     }
 
     // Return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__);
+    return checkErrorOpenGL(__LINE__, __FILE__, "initializeCircleRendererObjects");
 }
 
 int updateWallTexture(
@@ -1133,7 +1220,7 @@ int renderWallImage(const GLuint &_WALL_TEXTURE_ID, const GLuint &_WALL_SHADER, 
     glUseProgram(0);
 
     // Return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__);
+    return checkErrorOpenGL(__LINE__, __FILE__, "renderWallImage");
 }
 
 int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
@@ -1185,7 +1272,7 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COO
     // return -1;
 
     // Return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__);
+    return checkErrorOpenGL(__LINE__, __FILE__, "renderControlPoints");
 }
 
 int main(int argc, char **argv)
@@ -1243,7 +1330,7 @@ int main(int argc, char **argv)
 
     // Create a new GLFW window
     p_window_id = glfwCreateWindow(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, "", NULL, NULL);
-    if (!p_window_id || checkErrorGLFW(__LINE__, __FILE__))
+    if (!p_window_id || checkErrorGLFW(__LINE__, __FILE__, "[main] Error Flagged Following glfwCreateWindow()"))
     {
         glfwTerminate();
         ROS_ERROR("[SETUP] GLFW Failed to Create Window");
@@ -1299,12 +1386,6 @@ int main(int argc, char **argv)
     if (initializeCircleRendererObjects(CP_COORDS, CP_RENDERERS) < 0)
     {
         ROS_ERROR("[SETUP] Failed to Initialize Control Point Variables");
-        return -1;
-    }
-
-    if (checkErrorOpenGL(__LINE__, __FILE__) < 0)
-    {
-        ROS_ERROR("[SETUP] Error Thrown During OpenGL Setup");
         return -1;
     }
 
@@ -1411,9 +1492,8 @@ int main(int argc, char **argv)
 
         // Clear back buffer for new frame
         glClear(GL_COLOR_BUFFER_BIT);
-        if (checkErrorOpenGL(__LINE__, __FILE__))
+        if (checkErrorGLFW(__LINE__, __FILE__, "[main] Error Flagged Following glClear()"))
         {
-            ROS_ERROR("[MAIN] Error Following glClear() Call Threw an Error");
             is_error = true;
             break;
         }
@@ -1436,9 +1516,7 @@ int main(int argc, char **argv)
 
         // Swap buffers and poll events
         glfwSwapBuffers(p_window_id);
-        if (
-            checkErrorGLFW(__LINE__, __FILE__) ||
-            checkErrorOpenGL(__LINE__, __FILE__))
+        if (checkErrorGLFW(__LINE__, __FILE__, "[main] Error Flagged Following glfwSwapBuffers()") < 0)
         {
             is_error = true;
             break;
@@ -1492,7 +1570,7 @@ int main(int argc, char **argv)
     if (WALL_TEXTURE_ID != 0)
     {
         glDeleteFramebuffers(1, &WALL_TEXTURE_ID);
-        if (checkErrorOpenGL(__LINE__, __FILE__) < 0)
+        if (checkErrorGLFW(__LINE__, __FILE__, "[main] Error Flagged Following glDeleteFramebuffers()") < 0)
             ROS_WARN("[SHUTDOWN] Failed to Delete Wall Texture");
         else
             ROS_INFO("[SHUTDOWN] Deleted Wall Texture");
@@ -1505,126 +1583,21 @@ int main(int argc, char **argv)
     {
         glfwDestroyWindow(p_window_id);
         p_window_id = nullptr;
-        if (checkErrorGLFW(__LINE__, __FILE__) < 0)
+        if (checkErrorGLFW(__LINE__, __FILE__, "[main] Error Flagged Following glfwDestroyWindow()") < 0)
             ROS_WARN("[SHUTDOWN] Failed to Destroy GLFW Window");
         else
             ROS_INFO("[SHUTDOWN] Destroyed GLFW Window");
     }
     else
-    {
         ROS_WARN("[SHUTDOWN] No GLFW window to destroy");
-    }
 
     // Terminate GLFW
     glfwTerminate();
-    checkErrorGLFW(__LINE__, __FILE__);
-    ROS_INFO("[SHUTDOWN] Terminated GLFW");
+    if (checkErrorGLFW(__LINE__, __FILE__, "[main] Error Flagged Following glfwTerminate()") < 0)
+        ROS_WARN("[SHUTDOWN] Failed to Terminate GLFW Library");
+    else
+        ROS_INFO("[SHUTDOWN] Terminated GLFW");
 
     // Return success
     return is_error ? -1 : 0;
-
-    // --------------- TEST IMAGE SETUP ---------------
-
-    // Use first wall image
-    cv::Mat im_wall = wallImgMatVec[0];
-    cv::Mat im_wall_mask_1 = monImgMatVec[0];
-    cv::Mat im_wall_mask_2 = calImgMatVec[0];
-
-    // Test merge image
-    mergeImgMat(im_wall_mask_1, im_wall);
-    mergeImgMat(im_wall_mask_2, im_wall);
-
-    // Populate the source correspondence points
-    /// @note Assumes Y-axis points down
-    std::vector<cv::Point2f> srcPoints = {
-        cv::Point2f(0, 0),                                        // Top-left (0,0)
-        cv::Point2f(WALL_IMAGE_WIDTH_PXL, 0),                     // Top-right (1,0)
-        cv::Point2f(WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL), // Bottom-right (1,1)
-        cv::Point2f(0, WALL_IMAGE_HEIGHT_PXL)};                   // Bottom-left (0,1)
-
-    // Populate the destination correspondence points
-    std::vector<cv::Point2f> dstPoints = {
-        cv::Point2f(375, 230),
-        cv::Point2f(675, 205),
-        cv::Point2f(600, 695),
-        cv::Point2f(350, 770)};
-
-    // Find Homography
-    cv::Mat H1 = cv::findHomography(srcPoints, dstPoints);
-    // Warp Perspective
-    cv::Mat im_warp1;
-    cv::warpPerspective(im_wall, im_warp1, H1, cv::Size(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL));
-
-    // Test second image
-
-    // Loop through dstPoints
-    for (int i = 0; i < dstPoints.size(); i++)
-    {
-        // Update srcPoints
-        dstPoints[i].x += WALL_IMAGE_WIDTH_PXL + 50;
-    }
-
-    // Find Homography
-    cv::Mat H2 = cv::findHomography(srcPoints, dstPoints);
-    // Warp Perspective
-    cv::Mat im_warp2;
-    cv::warpPerspective(im_wall, im_warp2, H2, cv::Size(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL));
-
-    // Merge images
-    mergeImgMat(im_warp1, im_warp2);
-
-    // Make texture
-    WALL_TEXTURE_ID = loadTexture(im_warp2);
-
-    // // Display image directly through OpenCV
-    // cv::namedWindow("Warped Image Display", cv::WINDOW_AUTOSIZE);
-    // cv::imshow("Warped Image Display", im_warp);
-    // cv::waitKey(0);
-    // cv::destroyWindow("Warped Image Display");
-
-    // Print params
-    ROS_INFO("IMAGE DIMS: Rows[%d] Cols[%d]", im_wall.rows, im_wall.cols);
-    ROS_INFO("srcPoints:");
-    dbLogQuadVertices(srcPoints);
-    // ROS_INFO("dstPoints:");
-    // dbLogQuadVertices(dstPoints);
-    dbLogHomMat(H1);
-
-    // Main loop (unchanged)
-    while (!glfwWindowShouldClose(p_window_id))
-    {
-
-        // Clear the screen
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        // Use the shader program for wall rendering
-        glUseProgram(WALL_SHADER);
-
-        // Bind the texture for the walls
-        glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, WALL_TEXTURE_ID);
-
-        // Bind the Vertex Array Object(VAO) specific to the current wall
-        glBindVertexArray(WALL_VAO);
-
-        // Bind the common Element Buffer Object (EBO)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, WALL_EBO);
-
-        // Draw the rectangle (2 triangles) for the current wall
-        glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-        // Unbind the VAO to prevent accidental modification
-        glBindVertexArray(0);
-
-        // Swap the front and back buffers
-        glfwSwapBuffers(p_window_id);
-
-        // Poll for events like keyboard input or window closing
-        glfwPollEvents();
-    }
-
-    // Cleanup
-    glfwDestroyWindow(p_window_id);
-    glfwTerminate();
-    return 0;
 }

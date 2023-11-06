@@ -14,6 +14,9 @@
 
 // ================================================== CLASSES ==================================================
 
+#ifndef CIRCLE_RENDERER_H
+#define CIRCLE_RENDERER_H
+
 /**
  * @class CircleRenderer
  * @brief Encapsulates a circle's properties and its rendering.
@@ -239,6 +242,50 @@ private:
     void _computeVertices(cv::Point2f position, float radius, unsigned int circSegments, std::vector<float> &circVertices);
 };
 
+#endif // CIRCLE_RENDERER_H
+
+// ================================================== CLASS: WallRenderContext ==================================================
+
+#ifndef WALL_RENDER_CONTEXT_H
+#define WALL_RENDER_CONTEXT_H
+
+class WallRenderContext
+{
+public:
+    GLuint shaderProgram; // Shader program for wall rendering
+    GLuint vao;           // Vertex Array Object
+    GLuint vbo;           // Vertex Buffer Object
+    GLuint ebo;           // Element Buffer Object
+    GLuint texture;       // Texture for the wall
+    GLFWwindow *window;   // The window associated with this context
+    GLFWmonitor *monitor; // The monitor associated with this context
+    int windowInd;        // Index of the window associated with this context
+    int monitorInd;       // Index of the monitor associated with this context
+
+
+public:    
+    // Constructor
+    WallRenderContext(GLuint shader, GLuint _vao, GLuint _vbo,
+                      GLuint _ebo, GLuint tex, GLFWwindow *win,
+                      GLFWmonitor *mon, int win_ind, int mon_ind);
+
+    // Destructor
+    ~WallRenderContext();
+
+    // Copy constructor and copy assignment are deleted to avoid accidental copying
+    WallRenderContext(const WallRenderContext &) = delete;
+    WallRenderContext &operator=(const WallRenderContext &) = delete;
+
+    // Move constructor and move assignment for efficient transfer of resources
+    WallRenderContext(WallRenderContext &&other) noexcept;
+    WallRenderContext &operator=(WallRenderContext &&other) noexcept;
+
+    // Public method to set the monitor
+    void setMonitor(int monitor_ind, GLFWmonitor *_monitor);
+};
+
+#endif // WALL_RENDER_CONTEXT_H
+
 // ================================================== VARIABLES ==================================================
 
 /**
@@ -376,6 +423,8 @@ std::array<std::array<CircleRenderer, 4>, 4> CP_RENDERERS;
  * @brief  3x3 data contianer for storing the 3x3 homography matrix for each wall image
  */
 std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> WALL_HMAT_DATA;
+
+// Struct for holding OpenGL objects for a given context
 
 // Global variable to set the OpenGL debug level.
 int DEBUG_LEVEL_GL = 3; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
