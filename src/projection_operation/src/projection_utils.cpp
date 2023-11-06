@@ -19,39 +19,12 @@ std::string formatCoordinatesFilePathXML(int mon_id_ind, int mode_cal_ind, std::
     return file_path;
 }
 
-std::array<cv::Point2f, 4> quadVec2Arr(const std::vector<cv::Point2f> &quad_vert_vec)
-{
-    std::array<cv::Point2f, 4> quad_vert_arr{0, 0, 0, 0};
-
-    // Check if the input vector has exactly 4 vertices
-    if (quad_vert_vec.size() != 4)
-    {
-        ROS_WARN("[BAD ARG] Vertices Must have 4 Points for Array Conversion");
-        return quad_vert_arr;
-    }
-
-    // Convert to an array and return
-    std::copy(quad_vert_vec.begin(), quad_vert_vec.end(), quad_vert_arr.begin());
-    return quad_vert_arr;
-}
-
-std::vector<cv::Point2f> quadArr2Vec(const std::array<cv::Point2f, 4> &quad_vert_arr)
-{
-    // Convert array to vector and return
-    std::vector<cv::Point2f> quad_vert_vec(quad_vert_arr.begin(), quad_vert_arr.end());
-    return quad_vert_vec;
-}
-
-int checkQuadVertices(const std::array<cv::Point2f, 4> &quad_vertices)
-{
-    return checkQuadVertices(quadArr2Vec(quad_vertices));
-}
 int checkQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
 {
 
     // Check if the input vector has exactly 4 vertices
     if (quad_vertices.size() != 4)
-        return 1;
+        return -1;
 
     // Check if any three points are collinear; for a valid quadrilateral, no three points should be collinear
     for (int i = 0; i < 4; ++i)
@@ -61,7 +34,7 @@ int checkQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
         cv::Point2f p3 = quad_vertices[(i + 2) % 4];
         float area = p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y);
         if (std::abs(area) < 1e-5)
-            return 2; // The points are collinear
+            return -2; // The points are collinear
     }
     return 0;
 }
@@ -122,15 +95,15 @@ int updateHomographyMatrices(
     // dbLogQuadVertices(source_vertices_pxl);
 
     // Iterate trough grid/wall rows
-    for (float grow_i = 0; grow_i < MAZE_SIZE; grow_i++) // image bottom to top
+    for (float gr_i = 0; gr_i < MAZE_SIZE; gr_i++) // image bottom to top
     {
         // Iterate trough grid/wall columns
-        for (float gcol_i = 0; gcol_i < MAZE_SIZE; gcol_i++) // image left to right
+        for (float gc_i = 0; gc_i < MAZE_SIZE; gc_i++) // image left to right
         {
             std::vector<cv::Point2f> target_vertices_ndc(4);
             for (int p_i = 0; p_i < 4; p_i++)
             {
-                // Get the corner values for the interpolation function
+                // Get the wall vertex values for each maze corner for the interpolation function
                 ///@note that y values must be flipped to account for the image origin being in the top-left corner
                 cv::Point2f p_a = _CP_COORDS[0][p_i]; // bottom-left interp == top left NDC
                 cv::Point2f p_b = _CP_COORDS[1][p_i]; // bottom-right interp == top right NDC
@@ -139,8 +112,8 @@ int updateHomographyMatrices(
 
                 // Get the interpolated vertex x-coordinate
                 cv::Point2f p_interp(
-                    bilinearInterpolation(p_a.x, p_b.x, p_c.x, p_d.x, grow_i, gcol_i, MAZE_SIZE),  // x
-                    bilinearInterpolation(p_a.y, p_b.y, p_c.y, p_d.y, grow_i, gcol_i, MAZE_SIZE)); // y
+                    bilinearInterpolation(p_a.x, p_b.x, p_c.x, p_d.x, gr_i, gc_i, MAZE_SIZE),  // x
+                    bilinearInterpolation(p_a.y, p_b.y, p_c.y, p_d.y, gr_i, gc_i, MAZE_SIZE)); // y
 
                 // Store the warped vertex coordinates
                 target_vertices_ndc[p_i] = p_interp;
@@ -150,10 +123,11 @@ int updateHomographyMatrices(
             std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
 
             // Check that the target plane vertices are valid
-            if (checkQuadVertices(target_vertices_pxl) < 0)
+            int resp = checkQuadVertices(target_vertices_pxl);
+            if (resp < 0)
             {
                 ROS_WARN("[updateHomographyMatrices] Target Plane Vertices Invalid: Reason[%s]",
-                         checkQuadVertices(target_vertices_pxl) == 1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
+                         resp == -1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
                 return -1;
             }
 
@@ -168,7 +142,7 @@ int updateHomographyMatrices(
             }
 
             // Store the homography matrix
-            out_WALL_HMAT_DATA[grow_i][gcol_i] = H;
+            out_WALL_HMAT_DATA[gr_i][gc_i] = H;
         }
     }
 
@@ -254,16 +228,12 @@ void dbWaitForInput()
 
 void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
 {
-    if (quad_vertices.size() != 4)
+        if (quad_vertices.size() != 4)
     {
         ROS_ERROR("[dbLogQuadVertices] Invalid number of vertices. Expected 4.");
         return;
     }
-    dbLogQuadVertices(quadVec2Arr(quad_vertices));
-}
 
-void dbLogQuadVertices(const std::array<cv::Point2f, 4> &quad_vertices)
-{
     ROS_INFO("         Quad Vertices             ");
     ROS_INFO("===================================");
     ROS_INFO("    |     Left     |     Right    |");

@@ -6,28 +6,28 @@
 //     const float cp_y = MAZE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates
 
 //     // Iterate through control point outer array (corners)
-//     for (float cp_i = 0; cp_i < 4; cp_i++) // image bottom to top
+//     for (float mv_i = 0; mv_i < 4; mv_i++) // image bottom to top
 //     {
 //         cv::Point2f p_org;
 
 //         // 0: image top-left
-//         if (cp_i == 0)
+//         if (mv_i == 0)
 //             p_org = cv::Point2f(-cp_x, -cp_y);
 
 //         // 1: image top-right
-//         else if (cp_i == 1)
+//         else if (mv_i == 1)
 //             p_org = cv::Point2f(+cp_x, -cp_y);
 
 //         // 2: image bottom-right
-//         else if (cp_i == 2)
+//         else if (mv_i == 2)
 //             p_org = cv::Point2f(+cp_x, +cp_y);
 
 //         // 3: image bottom-left
-//         else if (cp_i == 3)
+//         else if (mv_i == 3)
 //             p_org = cv::Point2f(-cp_x, +cp_y);
 
 //         // Set x y values for each vertex
-//         out_CP_COORDS[cp_i] = {
+//         out_CP_COORDS[mv_i] = {
 //             cv::Point2f(p_org.x, p_org.y),                                                // top left
 //             cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y),                         // top right
 //             cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y + WALL_IMAGE_HEIGHT_NDC), // bottom right
@@ -42,12 +42,12 @@
 //         unsigned int segments = 36;                // Example: Same number of segments for each circle
 
 //         // Iterate through control point inner array to initialize the CircleRenderer class objects array
-//         for (int cv_i = 0; cv_i < 4; ++cv_i)
+//         for (int wv_i = 0; wv_i < 4; ++wv_i)
 //         {
-//             CP_RENDERERS[cv_i][cv_i].initializeCircleRenderer(
-//                 out_CP_COORDS[cp_i][cv_i], // position
+//             CP_RENDERERS[wv_i][wv_i].initializeCircleRenderer(
+//                 out_CP_COORDS[mv_i][wv_i], // position
 //                 cpDefualtMakerRadius,      // radius
-//                 cpVertSelectedRGB,         // color
+//                 cpWallVertSelectedRGB,         // color
 //                 cpRenderSegments           // segments
 //             );
 //         }

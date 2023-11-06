@@ -465,31 +465,12 @@ std::string formatCoordinatesFilePathXML(int, int, std::string);
 // void saveCoordinatesXML(cv::Mat, std::array<std::array<float, 6>, 4>, std::string);
 
 /**
- * @brief Converts quadrilateral vertices vector of cv::Point2f to an array of cv::Point2f
- *
- * @param quad_vert_vec
- *
- * @return quadrilateral vertices array of cv::Point2f
- */
-std::array<cv::Point2f, 4> quadVec2Arr(const std::vector<cv::Point2f> &);
-
-/**
- * @brief Converts quadrilateral vertices array of cv::Point2f to a vector of cv::Point2f
- *
- * @param quad_vert_arr
- *
- * @return quadrilateral vertices vector of cv::Point2f
- */
-std::vector<cv::Point2f> quadArr2Vec(const std::array<cv::Point2f, 4> &);
-
-/**
  * @brief Checks if a given set of vertices defines a valid quadrilateral.
  *
  * @param quad_vertices std:arr or std:vector of the four vertices defining a quadrilateral.
  *
- * @return Integer status code [0:valid, 1:wrong size, 2:wrong shape].
+ * @return Integer status code [-1:invalid wrong size, -2:invalid wrong shape, 0:valid].
  */
-int checkQuadVertices(const std::array<cv::Point2f, 4> &);
 int checkQuadVertices(const std::vector<cv::Point2f> &);
 
 /**
@@ -586,7 +567,6 @@ void dbWaitForInput();
  *   \[\s*([A-Z]+)\]\s*\[([\d\.]+)\]:
  */
 void dbLogQuadVertices(const std::vector<cv::Point2f> &);
-void dbLogQuadVertices(const std::array<cv::Point2f, 4> &);
 
 /**
  * @brief Prints the coordinates of all entries in the control point array.

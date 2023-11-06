@@ -501,22 +501,22 @@
 //             if (key == GLFW_KEY_LEFT)
 //             {
 //                 CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].x -= pos_inc; // Move left
-//                 F.updateWallDatasets = true;
+//                 F.updateWallTexture = true;
 //             }
 //             else if (key == GLFW_KEY_RIGHT)
 //             {
 //                 CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].x += pos_inc; // Move right
-//                 F.updateWallDatasets = true;
+//                 F.updateWallTexture = true;
 //             }
 //             else if (key == GLFW_KEY_UP)
 //             {
 //                 CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].y += pos_inc; // Move up
-//                 F.updateWallDatasets = true;
+//                 F.updateWallTexture = true;
 //             }
 //             else if (key == GLFW_KEY_DOWN)
 //             {
 //                 CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].y -= pos_inc; // Move down
-//                 F.updateWallDatasets = true;
+//                 F.updateWallTexture = true;
 //             }
 
 //             // Shift all control points if origin moved
@@ -738,35 +738,35 @@
 //     CircleRenderer::setupShaderForDrawing();
 
 //     // Loop through the control points and draw them
-//     for (int c_i = 0; c_i < 4; ++c_i)
+//     for (int mv_i = 0; mv_i < 4; ++mv_i)
 //     {
-//         for (int v_i = 0; v_i < 4; ++v_i)
+//         for (int wv_i = 0; wv_i < 4; ++wv_i)
 //         {
 //             // Define the marker color
 //             cv::Scalar cp_rgb;
-//             if (c_i == I.cpSelected[0])
+//             if (mv_i == I.cpSelected[0])
 //             {
-//                 if (I.cpSelected[1] == v_i)
-//                     cp_rgb = cpVertSelectedRGB;
+//                 if (I.cpSelected[1] == wv_i)
+//                     cp_rgb = cpWallVertSelectedRGB;
 //                 else
-//                     cp_rgb = cpCornerSelectedRGB;
+//                     cp_rgb = cpMazeVertSelectedRGB;
 //             }
 //             else
 //                 cp_rgb = cpDefaultRGB;
 
 //             // Define the marker radius
-//             GLfloat cp_rad = v_i == 3 ? cpSelectedMakerRadius : cpDefualtMakerRadius;
+//             GLfloat cp_rad = wv_i == 3 ? cpSelectedMakerRadius : cpDefualtMakerRadius;
         
 //             // Set the marker parameters
-//             _CP_RENDERERS[c_i][v_i].setPosition(_CP_COORDS[c_i][v_i]);
-//             _CP_RENDERERS[c_i][v_i].setRadius(cp_rad);
-//             _CP_RENDERERS[c_i][v_i].setColor(cp_rgb);
+//             _CP_RENDERERS[mv_i][wv_i].setPosition(_CP_COORDS[mv_i][wv_i]);
+//             _CP_RENDERERS[mv_i][wv_i].setRadius(cp_rad);
+//             _CP_RENDERERS[mv_i][wv_i].setColor(cp_rgb);
 
 //             // Recompute the marker parameters
-//             _CP_RENDERERS[c_i][v_i].recomputeParameters();
+//             _CP_RENDERERS[mv_i][wv_i].recomputeParameters();
 
 //             // Draw the marker
-//             _CP_RENDERERS[c_i][v_i].draw();
+//             _CP_RENDERERS[mv_i][wv_i].draw();
 //         }
 //     }
 
@@ -1096,10 +1096,10 @@
 //     cv::Mat im_wall_merge = cv::Mat::zeros(WINDOW_HEIGHT_PXL, WINDOW_WIDTH_PXL, CV_8UC4);
 
 //     // Iterate through the maze grid rows
-//     for (float grow_i = 0; grow_i < MAZE_SIZE; grow_i++) // image bottom to top
+//     for (float gr_i = 0; gr_i < MAZE_SIZE; gr_i++) // image bottom to top
 //     {
 //         // Iterate through each column in the maze row
-//         for (float gcol_i = 0; gcol_i < MAZE_SIZE; gcol_i++) // image left to right
+//         for (float gc_i = 0; gc_i < MAZE_SIZE; gc_i++) // image left to right
 //         {
 //             // Copy wall image
 //             cv::Mat img_copy;
@@ -1107,10 +1107,10 @@
 
 //             //  Create merged image for the wall corresponding to the selected control point
 //             if (
-//                 (I.cpSelected[0] == 0 && grow_i == 0 && gcol_i == 0) ||
-//                 (I.cpSelected[0] == 1 && grow_i == 0 && gcol_i == MAZE_SIZE - 1) ||
-//                 (I.cpSelected[0] == 2 && grow_i == MAZE_SIZE - 1 && gcol_i == 0) ||
-//                 (I.cpSelected[0] == 3 && grow_i == MAZE_SIZE - 1 && gcol_i == MAZE_SIZE - 1))
+//                 (I.cpSelected[0] == 0 && gr_i == 0 && gc_i == 0) ||
+//                 (I.cpSelected[0] == 1 && gr_i == 0 && gc_i == MAZE_SIZE - 1) ||
+//                 (I.cpSelected[0] == 2 && gr_i == MAZE_SIZE - 1 && gc_i == 0) ||
+//                 (I.cpSelected[0] == 3 && gr_i == MAZE_SIZE - 1 && gc_i == MAZE_SIZE - 1))
 //             {
 //                 ;
 //                 // Merge test pattern and active monitor image
@@ -1123,7 +1123,7 @@
 //             }
 
 //             // Get homography matrix for this wall
-//             cv::Mat H = _WALL_HMAT_DATA[grow_i][gcol_i];
+//             cv::Mat H = _WALL_HMAT_DATA[gr_i][gc_i];
 
 //             // Warp Perspective
 //             cv::Mat im_warp;
@@ -1336,7 +1336,7 @@
 //         }
 
 //         // Recompute wall parameters and update wall image texture
-//         if (F.updateWallDatasets)
+//         if (F.updateWallTexture)
 //         {
 //             // Update wall homography matrices array
 //             if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) != 0)
@@ -1353,7 +1353,7 @@
 //                 is_error = true;
 //                 break;
 //             }
-//             F.updateWallDatasets = false;
+//             F.updateWallTexture = false;
 //         }
 
 //         // --------------- Handle Image Processing for Next Frame ---------------

@@ -8,7 +8,15 @@
 
 #include "projection_calibration.h"
 
-// ================================================== CLASSES ==================================================
+// ================================================== CLASS: CircleRenderer ==================================================
+
+// Initialize CircleRenderer static members
+int CircleRenderer::IDX = 0;
+GLuint CircleRenderer::_SHADER_PROGRAM = 0;
+GLint CircleRenderer::_COLOR_LOCATION = -1;
+GLint CircleRenderer::_TRANSFORM_LOCATION = -1;
+GLint CircleRenderer::_ASPECT_RATIO_LOCATION = -1;
+float CircleRenderer::_ASPECT_RATIO_UNIFORM = 1.0f;
 
 CircleRenderer::CircleRenderer()
     : circPosition(cv::Point2f(0.0f, 0.0f)), cirRadius(1.0f), circColor(cv::Scalar(1.0, 1.0, 1.0)),
@@ -117,7 +125,6 @@ void CircleRenderer::draw()
     glBindVertexArray(0);
 }
 
-// Static method to setup shader program and get uniform locations
 int CircleRenderer::compileAndLinkCircleShaders(float aspect_ratio)
 {
     // Set the aspect ratio
@@ -263,30 +270,12 @@ void CircleRenderer::_setupOpenGL()
     glBindVertexArray(0);
 }
 
-void CircleRenderer::_computeVertices(cv::Point2f position, float radius, unsigned int circSegments, std::vector<float> &circVertices)
+std::array<float, 16> CircleRenderer::_cvMatToGlArray(const cv::Mat &mat)
 {
-    // Clear the vertex vector to prepare for new vertices
-    circVertices.clear();
-
-    // Loop to generate vertices for the circle
-    for (unsigned int i = 0; i <= circSegments; ++i)
-    {
-        // Calculate the angle for the current segment
-        float angle = 2.0f * std::acos(-1.0) * i / circSegments;
-        // Determine the x position of the vertex on the circle
-        float baseX = position.x + (radius * std::cos(angle));
-        // Determine the y position of the vertex on the circle
-        float baseY = position.y + (radius * std::sin(angle));
-
-        // Create a 4x1 matrix (homogeneous coordinates) for the vertex
-        cv::Mat vertex = (cv::Mat_<float>(4, 1) << baseX, baseY, 0, 1);
-        // Apply the transformation matrix to the vertex
-        cv::Mat transformedVertex = _transformationMatrix * vertex;
-        // Extract the transformed x coordinate and add to the vertices list
-        circVertices.push_back(transformedVertex.at<float>(0, 0));
-        // Extract the transformed y coordinate and add to the vertices list
-        circVertices.push_back(transformedVertex.at<float>(1, 0));
-    }
+    assert(mat.cols == 4 && mat.rows == 4 && mat.type() == CV_32F);
+    std::array<float, 16> glArray;
+    std::copy(mat.begin<float>(), mat.end<float>(), glArray.begin());
+    return glArray;
 }
 
 void CircleRenderer::_computeTransformation()
@@ -321,22 +310,31 @@ void CircleRenderer::_computeTransformation()
     _transformationMatrix = translationBack * scaling * rotation * translationToOrigin;
 }
 
-// Helper function to convert OpenCV Mat to an array for OpenGL
-std::array<float, 16> CircleRenderer::_cvMatToGlArray(const cv::Mat &mat)
+void CircleRenderer::_computeVertices(cv::Point2f position, float radius, unsigned int circSegments, std::vector<float> &circVertices)
 {
-    assert(mat.cols == 4 && mat.rows == 4 && mat.type() == CV_32F);
-    std::array<float, 16> glArray;
-    std::copy(mat.begin<float>(), mat.end<float>(), glArray.begin());
-    return glArray;
-}
+    // Clear the vertex vector to prepare for new vertices
+    circVertices.clear();
 
-// Initialize static members
-int CircleRenderer::IDX = 0;
-GLuint CircleRenderer::_SHADER_PROGRAM = 0;
-GLint CircleRenderer::_COLOR_LOCATION = -1;
-GLint CircleRenderer::_TRANSFORM_LOCATION = -1;
-GLint CircleRenderer::_ASPECT_RATIO_LOCATION = -1;
-float CircleRenderer::_ASPECT_RATIO_UNIFORM = 1.0f;
+    // Loop to generate vertices for the circle
+    for (unsigned int i = 0; i <= circSegments; ++i)
+    {
+        // Calculate the angle for the current segment
+        float angle = 2.0f * std::acos(-1.0) * i / circSegments;
+        // Determine the x position of the vertex on the circle
+        float baseX = position.x + (radius * std::cos(angle));
+        // Determine the y position of the vertex on the circle
+        float baseY = position.y + (radius * std::sin(angle));
+
+        // Create a 4x1 matrix (homogeneous coordinates) for the vertex
+        cv::Mat vertex = (cv::Mat_<float>(4, 1) << baseX, baseY, 0, 1);
+        // Apply the transformation matrix to the vertex
+        cv::Mat transformedVertex = _transformationMatrix * vertex;
+        // Extract the transformed x coordinate and add to the vertices list
+        circVertices.push_back(transformedVertex.at<float>(0, 0));
+        // Extract the transformed y coordinate and add to the vertices list
+        circVertices.push_back(transformedVertex.at<float>(1, 0));
+    }
+}
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -454,55 +452,82 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             }
         }
 
-        // ---------- Contol point wall selector keys [CTRL [LEFT, RIGHT, UP, DOWN]] ----------
+        // ---------- Contol point maze vertex selector keys [CTRL [LEFT, RIGHT, UP, DOWN]] ----------
 
         else if (mods & GLFW_MOD_CONTROL)
         {
+            bool is_cp_maze_vert_changed = false;
+
             if (key == GLFW_KEY_UP)
             {
-                // Move to the top row, keeping the horizontal position
-                I.cpSelected[0] = (I.cpSelected[0] % 2); // Result will be 0 or 1
+                // Set row index to top row
+                I.cpMazeVertSel[0] = 0;
+                is_cp_maze_vert_changed = true;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                // Move to the bottom row, keeping the horizontal position
-                I.cpSelected[0] = 2 + (I.cpSelected[0] % 2); // Result will be 2 or 3
+                // Set row index to bottom row
+                I.cpMazeVertSel[0] = 1;
+                is_cp_maze_vert_changed = true;
             }
             else if (key == GLFW_KEY_LEFT)
             {
-                // Move to the left column, keeping the vertical position
-                I.cpSelected[0] = (I.cpSelected[0] >= 2) ? 2 : 0; // Result will be 0 or 2
+                // Set column index to first column
+                I.cpMazeVertSel[1] = 0;
+                is_cp_maze_vert_changed = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                // Move to the right column, keeping the vertical position
-                I.cpSelected[0] = (I.cpSelected[0] >= 2) ? 3 : 1; // Result will be 1 or 3
+                // Set column index to second column
+                I.cpMazeVertSel[1] = 1;
+                is_cp_maze_vert_changed = true;
+            }
+
+            if (is_cp_maze_vert_changed)
+            {
+                // Set flag to update the wall texture if the maze vertex was changed
+                /// @note this is ensures the mode images are udated to the new
+                F.updateWallTexture = true;
+
+                // Set the wall vertex to the ortin if the maze vertex is changed
+                for (int i = 0; i < 2; ++i)
+                {
+                    for (int j = 0; j < 2; ++j)
+                    {
+                        if (I.cpMap[i][j] == I.cpWVOrigin)
+                        {
+                            // Set the wall vertex to the origin
+                            I.cpWallVertSel[0] = i;
+                            I.cpWallVertSel[1] = j;
+                        }
+                    }
+                }
             }
         }
 
-        // ---------- Contol point vertex selector keys [ALT [LEFT, RIGHT, UP, DOWN]] ----------
+        // ---------- Control point wall vertex selector keys [ALT [LEFT, RIGHT, UP, DOWN]] ----------
 
         else if (mods & GLFW_MOD_ALT)
         {
             if (key == GLFW_KEY_UP)
             {
-                // Move to the top row, keeping the horizontal position
-                I.cpSelected[1] = (I.cpSelected[1] % 2); // Result will be 0 or 1
+                // Set row index to top row
+                I.cpWallVertSel[0] = 0;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                // Move to the bottom row, keeping the horizontal position
-                I.cpSelected[1] = 2 + (I.cpSelected[1] % 2); // Result will be 2 or 3
+                // Set row index to bottom row
+                I.cpWallVertSel[0] = 1;
             }
             else if (key == GLFW_KEY_LEFT)
             {
-                // Move to the left column, keeping the vertical position
-                I.cpSelected[1] = (I.cpSelected[1] >= 2) ? 2 : 0; // Result will be 0 or 2
+                // Set column index to first column
+                I.cpWallVertSel[1] = 0;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                // Move to the right column, keeping the vertical position
-                I.cpSelected[1] = (I.cpSelected[1] >= 2) ? 3 : 1; // Result will be 1 or 3
+                // Set column index to second column
+                I.cpWallVertSel[1] = 1;
             }
         }
 
@@ -512,48 +537,52 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Set the position increment based on whether the shift key is pressed
             float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.0005f;
 
+            // Get the maze and wall vertex indices cooresponding to the selected control point
+            int mv_ind = I.cpMap[I.cpMazeVertSel[0]][I.cpMazeVertSel[1]];
+            int wv_ind = I.cpMap[I.cpWallVertSel[0]][I.cpWallVertSel[1]];
+
             // Store current origin
-            cv::Point2f cp_origin_save = CP_COORDS[I.cpSelected[0]][2];
+            cv::Point2f cp_origin_save = CP_COORDS[mv_ind][I.cpWVOrigin];
 
             // Listen for arrow key input to move selected control point
             if (key == GLFW_KEY_LEFT)
             {
-                CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].x -= pos_inc; // Move left
-                F.updateWallDatasets = true;
+                CP_COORDS[mv_ind][wv_ind].x -= pos_inc; // Move left
+                F.updateWallTexture = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].x += pos_inc; // Move right
-                F.updateWallDatasets = true;
+                CP_COORDS[mv_ind][wv_ind].x += pos_inc; // Move right
+                F.updateWallTexture = true;
             }
             else if (key == GLFW_KEY_UP)
             {
-                CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].y += pos_inc; // Move up
-                F.updateWallDatasets = true;
+                CP_COORDS[mv_ind][wv_ind].y -= pos_inc; // Move up
+                F.updateWallTexture = true;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].y -= pos_inc; // Move down
-                F.updateWallDatasets = true;
+                CP_COORDS[mv_ind][wv_ind].y += pos_inc; // Move down
+                F.updateWallTexture = true;
             }
 
             // Shift all control points if origin moved
-            cv::Point2f cp_origin_new = CP_COORDS[I.cpSelected[0]][2];
+            cv::Point2f cp_origin_new = CP_COORDS[mv_ind][I.cpWVOrigin];
 
             // Calculate the change in x and y for the origin
             float delta_x = cp_origin_new.x - cp_origin_save.x;
             float delta_y = cp_origin_new.y - cp_origin_save.y;
 
-            // Check if the origin vertex was moved
-            if (I.cpSelected[1] == 2)
+            // Check if the origin vertex of the wall was moved (e.g., bottom-left)
+            if (wv_ind == I.cpWVOrigin && (delta_x > 0.0f || delta_y > 0.0f))
             {
                 // Update all other vertices based on the change in the origin
                 for (int i = 0; i < 4; ++i) // Assuming there are 4 vertices
                 {
-                    if (i != 2) // Skip the origin vertex itself
+                    if (i != I.cpWVOrigin) // Skip the origin vertex itself
                     {
-                        CP_COORDS[I.cpSelected[0]][i].x += delta_x;
-                        CP_COORDS[I.cpSelected[0]][i].y += delta_y;
+                        CP_COORDS[mv_ind][i].x += delta_x;
+                        CP_COORDS[mv_ind][i].y += delta_y;
                     }
                 }
             }
@@ -692,335 +721,35 @@ void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &out_
     const float cp_x = MAZE_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
     const float cp_y = MAZE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates
 
-    // Iterate through control point outer array (corners)
-    for (float cp_i = 0; cp_i < 4; cp_i++) // image bottom to top
+    // Iterate through control point outer array (maze vertices)
+    for (float mv_i = 0; mv_i < 4; mv_i++) // image bottom to top
     {
         cv::Point2f p_org;
 
         // 0: image top-left
-        if (cp_i == 0)
+        if (mv_i == 0)
             p_org = cv::Point2f(-cp_x, -cp_y);
 
         // 1: image top-right
-        else if (cp_i == 1)
+        else if (mv_i == 1)
             p_org = cv::Point2f(+cp_x, -cp_y);
 
         // 2: image bottom-right
-        else if (cp_i == 2)
+        else if (mv_i == 2)
             p_org = cv::Point2f(+cp_x, +cp_y);
 
         // 3: image bottom-left
-        else if (cp_i == 3)
+        else if (mv_i == 3)
             p_org = cv::Point2f(-cp_x, +cp_y);
 
-        // Set x y values for each vertex
-        out_CP_COORDS[cp_i] = {
+        // Set x y values for each wall vertex
+        out_CP_COORDS[mv_i] = {
             cv::Point2f(p_org.x, p_org.y),                                                // top left
             cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y),                         // top right
             cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y + WALL_IMAGE_HEIGHT_NDC), // bottom right
             cv::Point2f(p_org.x, p_org.y + WALL_IMAGE_HEIGHT_NDC),                        // bottom left
         };
     }
-}
-
-int renderWallImage(const GLuint &_WALL_TEXTURE_ID, const GLuint &_WALL_SHADER, const GLuint &_WALL_VAO, const GLuint &_WALL_EBO)
-{
-    // Use the shader program for wall rendering
-    glUseProgram(_WALL_SHADER);
-
-    // Bind the texture for the walls
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, _WALL_TEXTURE_ID);
-
-    // Bind the Vertex Array Object(VAO) specific to the current wall
-    glBindVertexArray(_WALL_VAO);
-
-    // Bind the common Element Buffer Object (EBO)
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _WALL_EBO);
-
-    // Draw the rectangle (2 triangles) for the current wall
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-    // Unbind the VAO to prevent accidental modification
-    glBindVertexArray(0);
-
-    // Unset the shader program
-    glUseProgram(0);
-
-    // Return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__);
-}
-
-int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
-                        std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
-{
-    // Setup the CircleRenderer class shaders
-    CircleRenderer::setupShaderForDrawing();
-
-    // Loop through the control points and draw them
-    for (int c_i = 0; c_i < 4; ++c_i)
-    {
-        for (int v_i = 0; v_i < 4; ++v_i)
-        {
-            // Define the marker color
-            cv::Scalar col;
-            // Selected conrnor and wall vertex
-            if (c_i == I.cpSelected[0] && v_i == I.cpSelected[1])
-                col = cpVertSelectedRGB;
-            // Selected conrnor but not wall vertex
-            else if (c_i == I.cpSelected[0] && v_i != I.cpSelected[1])
-                col = cpCornerSelectedRGB;
-            // Unselected
-            else
-                col = cpDefaultRGB;
-
-            // Define the marker radius
-            GLfloat rad = v_i == 3 ? cpSelectedMakerRadius : cpDefualtMakerRadius;
-
-            // Set the marker parameters
-            out_CP_RENDERERS[c_i][v_i].setPosition(_CP_COORDS[c_i][v_i]);
-            out_CP_RENDERERS[c_i][v_i].setRadius(rad);
-            out_CP_RENDERERS[c_i][v_i].setColor(col);
-
-            // Recompute the marker parameters
-            out_CP_RENDERERS[c_i][v_i].recomputeParameters();
-
-            // Draw the marker
-            out_CP_RENDERERS[c_i][v_i].draw();
-
-            // Check for errors
-            if (checkErrorOpenGL(__LINE__, __FILE__) < 0)
-            {
-                ROS_ERROR("[renderControlPoints] Error Thrown for Control Point[%d][%d]", c_i, v_i);
-                return -1;
-            }
-        }
-    }
-
-    // Unset the shader program
-    CircleRenderer::unsetShaderForDrawing();
-
-    // // TEMP
-    // return -1;
-
-    // Return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__);
-}
-
-// int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
-//                         std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
-// {
-//     // Setup the CircleRenderer class shaders
-//     CircleRenderer::setupShaderForDrawing();
-
-//     out_CP_RENDERERS[0][0].setPosition(cv::Point2f(-0.5f, 0.5f));
-
-//     out_CP_RENDERERS[0][0].setRadius(0.05f);
-
-//     //out_CP_RENDERERS[0][0].setColor(cv::Scalar(0.0f, 0.0f, 1.0f));
-//     out_CP_RENDERERS[0][0].setColor(cpDefaultRGB);
-
-//     // Recompute the marker parameters
-//     out_CP_RENDERERS[0][0].recomputeParameters();
-
-//     // Draw the marker
-//     out_CP_RENDERERS[0][0].draw();
-
-//     // Check for errors
-//     if (checkErrorOpenGL(__LINE__, __FILE__) < 0)
-//     {
-//         ROS_ERROR("[renderControlPoints] Error Thrown for Control Point");
-//         return -1;
-//     }
-
-//     // Unset the shader program
-//     CircleRenderer::unsetShaderForDrawing();
-
-//     // Return GL status
-//     return checkErrorOpenGL(__LINE__, __FILE__);
-// }
-
-int initializeCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
-                                    std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
-{
-    // Iterate through control point outer array (corners)
-    for (float cp_i = 0; cp_i < 4; cp_i++) // image bottom to top
-    {
-        // Iterate through control point inner array to initialize the CircleRenderer class objects array
-        for (int cv_i = 0; cv_i < 4; ++cv_i)
-        {
-            out_CP_RENDERERS[cp_i][cv_i].initializeCircleRenderer(
-                _CP_COORDS[cp_i][cv_i], // position
-                cpDefualtMakerRadius,   // radius
-                cpDefaultRGB,           // color
-                cpRenderSegments        // segments
-            );
-        }
-    }
-
-    // Return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__);
-}
-
-int initializeWallRenderObjects(GLuint &_WALL_VAO, GLuint &_WALL_VBO, GLuint &_WALL_EBO)
-{
-
-    // Generate and bind an Element Buffer Object (EBO)
-    glGenBuffers(1, &_WALL_EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _WALL_EBO);
-
-    // Initialize the EBO with index data
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(WALL_GL_INDICES), WALL_GL_INDICES, GL_DYNAMIC_DRAW);
-
-    // Generate and bind a Vertex Array Object (VAO)
-    glGenVertexArrays(1, &_WALL_VAO);
-    glBindVertexArray(_WALL_VAO);
-
-    // Generate and bind a Vertex Buffer Object (VBO)
-    glGenBuffers(1, &_WALL_VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, _WALL_VBO);
-
-    // Initialize the VBO with vertex data
-    glBufferData(GL_ARRAY_BUFFER, sizeof(WALL_GL_VERTICES), WALL_GL_VERTICES, GL_STATIC_DRAW);
-
-    // Specify the format of the vertex data for the position attribute
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0); // Enable the position attribute
-
-    // Specify the format of the vertex data for the texture coordinate attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1); // Enable the texture coordinate attribute
-
-    // Unbind the VAO to prevent accidental modification
-    glBindVertexArray(0);
-
-    // Return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__);
-}
-
-int compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source, GLuint &shader_program_out)
-{
-    auto checkCompileErrors = [](GLuint shader, const std::string &type) -> bool
-    {
-        GLint success;
-        GLchar infoLog[1024];
-        if (type != "PROGRAM")
-        {
-            glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
-            if (!success)
-            {
-                glGetShaderInfoLog(shader, 1024, NULL, infoLog);
-                ROS_ERROR("[Shader Compilation Error] Type: %s\n%s", type.c_str(), infoLog);
-                return false;
-            }
-        }
-        else
-        {
-            glGetProgramiv(shader, GL_LINK_STATUS, &success);
-            if (!success)
-            {
-                glGetProgramInfoLog(shader, 1024, NULL, infoLog);
-                ROS_ERROR("[Shader Linking Error] Type: %s\n%s", type.c_str(), infoLog);
-                return false;
-            }
-        }
-        return true;
-    };
-
-    GLuint shader_program = glCreateProgram();
-    if (!shader_program)
-    {
-        ROS_ERROR("[Shader Program Error] Unable to create shader program.");
-        return -1;
-    }
-
-    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    if (!vertex_shader)
-    {
-        ROS_ERROR("[Shader Program Error] Unable to create vertex shader.");
-        glDeleteProgram(shader_program);
-        return -1;
-    }
-
-    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    if (!fragment_shader)
-    {
-        ROS_ERROR("[Shader Program Error] Unable to create fragment shader.");
-        glDeleteShader(vertex_shader);
-        glDeleteProgram(shader_program);
-        return -1;
-    }
-
-    // Vertex Shader
-    glShaderSource(vertex_shader, 1, &vertex_source, NULL);
-    glCompileShader(vertex_shader);
-    if (!checkCompileErrors(vertex_shader, "VERTEX"))
-    {
-        glDeleteShader(vertex_shader);
-        glDeleteShader(fragment_shader);
-        glDeleteProgram(shader_program);
-        return -1;
-    }
-    glAttachShader(shader_program, vertex_shader);
-
-    // Fragment Shader
-    glShaderSource(fragment_shader, 1, &fragment_source, NULL);
-    glCompileShader(fragment_shader);
-    if (!checkCompileErrors(fragment_shader, "FRAGMENT"))
-    {
-        glDeleteShader(vertex_shader);
-        glDeleteShader(fragment_shader);
-        glDeleteProgram(shader_program);
-        return -1;
-    }
-    glAttachShader(shader_program, fragment_shader);
-
-    // Link the shader program
-    glLinkProgram(shader_program);
-    if (!checkCompileErrors(shader_program, "PROGRAM"))
-    {
-        glDeleteShader(vertex_shader);
-        glDeleteShader(fragment_shader);
-        glDeleteProgram(shader_program);
-        return -1;
-    }
-
-    shader_program_out = shader_program;
-
-    // Cleanup: detach and delete shaders
-    glDetachShader(shader_program, vertex_shader);
-    glDeleteShader(vertex_shader);
-    glDetachShader(shader_program, fragment_shader);
-    glDeleteShader(fragment_shader);
-
-    // No need to delete the program as it's being used outside this function
-
-    // Return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__);
-}
-
-GLuint loadTexture(cv::Mat image)
-{
-    GLuint textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-
-    // Convert image from BGR to RGB
-    cv::Mat image_rgb;
-    cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
-
-    // Handle alignment
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-    // Create texture
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_rgb.cols,
-                 image_rgb.rows, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                 image_rgb.data);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    return textureID;
 }
 
 int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Mat> &out_img_mat_vec)
@@ -1133,32 +862,196 @@ int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img)
     return 0;
 }
 
+int compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source, GLuint &shader_program_out)
+{
+    auto checkCompileErrors = [](GLuint shader, const std::string &type) -> bool
+    {
+        GLint success;
+        GLchar infoLog[1024];
+        if (type != "PROGRAM")
+        {
+            glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+            if (!success)
+            {
+                glGetShaderInfoLog(shader, 1024, NULL, infoLog);
+                ROS_ERROR("[Shader Compilation Error] Type: %s\n%s", type.c_str(), infoLog);
+                return false;
+            }
+        }
+        else
+        {
+            glGetProgramiv(shader, GL_LINK_STATUS, &success);
+            if (!success)
+            {
+                glGetProgramInfoLog(shader, 1024, NULL, infoLog);
+                ROS_ERROR("[Shader Linking Error] Type: %s\n%s", type.c_str(), infoLog);
+                return false;
+            }
+        }
+        return true;
+    };
+
+    GLuint shader_program = glCreateProgram();
+    if (!shader_program)
+    {
+        ROS_ERROR("[Shader Program Error] Unable to create shader program.");
+        return -1;
+    }
+
+    GLuint vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    if (!vertex_shader)
+    {
+        ROS_ERROR("[Shader Program Error] Unable to create vertex shader.");
+        glDeleteProgram(shader_program);
+        return -1;
+    }
+
+    GLuint fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    if (!fragment_shader)
+    {
+        ROS_ERROR("[Shader Program Error] Unable to create fragment shader.");
+        glDeleteShader(vertex_shader);
+        glDeleteProgram(shader_program);
+        return -1;
+    }
+
+    // Vertex Shader
+    glShaderSource(vertex_shader, 1, &vertex_source, NULL);
+    glCompileShader(vertex_shader);
+    if (!checkCompileErrors(vertex_shader, "VERTEX"))
+    {
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+        glDeleteProgram(shader_program);
+        return -1;
+    }
+    glAttachShader(shader_program, vertex_shader);
+
+    // Fragment Shader
+    glShaderSource(fragment_shader, 1, &fragment_source, NULL);
+    glCompileShader(fragment_shader);
+    if (!checkCompileErrors(fragment_shader, "FRAGMENT"))
+    {
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+        glDeleteProgram(shader_program);
+        return -1;
+    }
+    glAttachShader(shader_program, fragment_shader);
+
+    // Link the shader program
+    glLinkProgram(shader_program);
+    if (!checkCompileErrors(shader_program, "PROGRAM"))
+    {
+        glDeleteShader(vertex_shader);
+        glDeleteShader(fragment_shader);
+        glDeleteProgram(shader_program);
+        return -1;
+    }
+
+    shader_program_out = shader_program;
+
+    // Cleanup: detach and delete shaders
+    glDetachShader(shader_program, vertex_shader);
+    glDeleteShader(vertex_shader);
+    glDetachShader(shader_program, fragment_shader);
+    glDeleteShader(fragment_shader);
+
+    // No need to delete the program as it's being used outside this function
+
+    // Return GL status
+    return checkErrorOpenGL(__LINE__, __FILE__);
+}
+
+int initializeWallRenderObjects(GLuint &_WALL_VAO, GLuint &_WALL_VBO, GLuint &_WALL_EBO)
+{
+
+    // Generate and bind an Element Buffer Object (EBO)
+    glGenBuffers(1, &_WALL_EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _WALL_EBO);
+
+    // Initialize the EBO with index data
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(WALL_GL_INDICES), WALL_GL_INDICES, GL_DYNAMIC_DRAW);
+
+    // Generate and bind a Vertex Array Object (VAO)
+    glGenVertexArrays(1, &_WALL_VAO);
+    glBindVertexArray(_WALL_VAO);
+
+    // Generate and bind a Vertex Buffer Object (VBO)
+    glGenBuffers(1, &_WALL_VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, _WALL_VBO);
+
+    // Initialize the VBO with vertex data
+    glBufferData(GL_ARRAY_BUFFER, sizeof(WALL_GL_VERTICES), WALL_GL_VERTICES, GL_STATIC_DRAW);
+
+    // Specify the format of the vertex data for the position attribute
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0); // Enable the position attribute
+
+    // Specify the format of the vertex data for the texture coordinate attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1); // Enable the texture coordinate attribute
+
+    // Unbind the VAO to prevent accidental modification
+    glBindVertexArray(0);
+
+    // Return GL status
+    return checkErrorOpenGL(__LINE__, __FILE__);
+}
+
+int initializeCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
+                                    std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
+{
+    // Iterate through control point outer array (maze vertices)
+    for (float mv_i = 0; mv_i < 4; mv_i++) // image bottom to top
+    {
+        // Iterate through control point inner array (wall vertices)
+        for (int wv_i = 0; wv_i < 4; ++wv_i)
+        {
+            out_CP_RENDERERS[mv_i][wv_i].initializeCircleRenderer(
+                _CP_COORDS[mv_i][wv_i], // position
+                cpDefualtMakerRadius,   // radius
+                cpDefaultRGB,           // color
+                cpRenderSegments        // segments
+            );
+        }
+    }
+
+    // Return GL status
+    return checkErrorOpenGL(__LINE__, __FILE__);
+}
+
 int updateWallTexture(
     cv::Mat img_wall_mat, cv::Mat img_mode_mon_mat, cv::Mat img_mode_cal_mat,
     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_WALL_HMAT_DATA,
     GLuint &out_WALL_TEXTURE_ID)
 {
-    // Initializ the image to be used as the texture
+    // Initialize the image to be used as the texture
     cv::Mat im_wall_merge = cv::Mat::zeros(WINDOW_HEIGHT_PXL, WINDOW_WIDTH_PXL, CV_8UC4);
 
     // Iterate through the maze grid rows
-    for (float grow_i = 0; grow_i < MAZE_SIZE; grow_i++) // image bottom to top
+    for (float gr_i = 0; gr_i < MAZE_SIZE; gr_i++) // image bottom to top
     {
         // Iterate through each column in the maze row
-        for (float gcol_i = 0; gcol_i < MAZE_SIZE; gcol_i++) // image left to right
+        for (float gc_i = 0; gc_i < MAZE_SIZE; gc_i++) // image left to right
         {
             // Copy wall image
             cv::Mat img_copy;
             img_wall_mat.copyTo(img_copy);
 
+            // Get the maze vertex indice cooresponding to the selected control point
+            int mv_ind = I.cpMap[I.cpMazeVertSel[0]][I.cpMazeVertSel[1]];
+
+            // Log the maze vertex index and grid indices
+            ROS_INFO("[updateWallTexture] Maze Vertex Index[%d] Grid Row[%d] Grid Col[%d]", mv_ind, gr_i, gc_i);
+
             //  Create merged image for the wall corresponding to the selected control point
             if (
-                (I.cpSelected[0] == 0 && grow_i == 0 && gcol_i == 0) ||
-                (I.cpSelected[0] == 1 && grow_i == 0 && gcol_i == MAZE_SIZE - 1) ||
-                (I.cpSelected[0] == 2 && grow_i == MAZE_SIZE - 1 && gcol_i == 0) ||
-                (I.cpSelected[0] == 3 && grow_i == MAZE_SIZE - 1 && gcol_i == MAZE_SIZE - 1))
+                (mv_ind == 0 && gr_i == 0 && gc_i == 0) ||
+                (mv_ind == 1 && gr_i == 0 && gc_i == MAZE_SIZE - 1) ||
+                (mv_ind == 3 && gr_i == MAZE_SIZE - 1 && gc_i == 0) ||
+                (mv_ind == 2 && gr_i == MAZE_SIZE - 1 && gc_i == MAZE_SIZE - 1))
             {
-                ;
                 // Merge test pattern and active monitor image
                 if (mergeImgMat(img_mode_mon_mat, img_copy) < 0)
                     return -1;
@@ -1169,7 +1062,7 @@ int updateWallTexture(
             }
 
             // Get homography matrix for this wall
-            cv::Mat H = _WALL_HMAT_DATA[grow_i][gcol_i];
+            cv::Mat H = _WALL_HMAT_DATA[gr_i][gc_i];
 
             // Warp Perspective
             cv::Mat im_warp;
@@ -1192,6 +1085,110 @@ int updateWallTexture(
     out_WALL_TEXTURE_ID = loadTexture(im_wall_merge);
 
     return 0;
+}
+
+GLuint loadTexture(cv::Mat image)
+{
+    GLuint textureID;
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    // Convert image from BGR to RGB
+    cv::Mat image_rgb;
+    cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
+
+    // Handle alignment
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
+    // Create texture
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_rgb.cols,
+                 image_rgb.rows, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                 image_rgb.data);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    return textureID;
+}
+
+int renderWallImage(const GLuint &_WALL_TEXTURE_ID, const GLuint &_WALL_SHADER, const GLuint &_WALL_VAO, const GLuint &_WALL_EBO)
+{
+    // Use the shader program for wall rendering
+    glUseProgram(_WALL_SHADER);
+
+    // Bind the texture for the walls
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, _WALL_TEXTURE_ID);
+
+    // Bind the Vertex Array Object(VAO) specific to the current wall
+    glBindVertexArray(_WALL_VAO);
+
+    // Bind the common Element Buffer Object (EBO)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _WALL_EBO);
+
+    // Draw the rectangle (2 triangles) for the current wall
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    // Unbind the VAO to prevent accidental modification
+    glBindVertexArray(0);
+
+    // Unset the shader program
+    glUseProgram(0);
+
+    // Return GL status
+    return checkErrorOpenGL(__LINE__, __FILE__);
+}
+
+int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
+                        std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
+{
+    // Setup the CircleRenderer class shaders
+    CircleRenderer::setupShaderForDrawing();
+
+    // Loop through the control points and draw them
+    for (int mv_i = 0; mv_i < 4; ++mv_i)
+    {
+        for (int wv_i = 0; wv_i < 4; ++wv_i)
+        {
+            // Get the maze and wall vertex indices cooresponding to the selected control point
+            int mv_ind = I.cpMap[I.cpMazeVertSel[0]][I.cpMazeVertSel[1]];
+            int wv_ind = I.cpMap[I.cpWallVertSel[0]][I.cpWallVertSel[1]];
+
+            // Define the marker color
+            cv::Scalar col = (mv_i == mv_ind && wv_i == wv_ind) ? cpWallVertSelectedRGB : (mv_i == mv_ind) ? cpMazeVertSelectedRGB
+                                                                                                           : cpDefaultRGB;
+
+            // Define the marker radius
+            GLfloat rad = wv_i == 3 ? cpSelectedMakerRadius : cpDefualtMakerRadius;
+
+            // Set the marker parameters
+            out_CP_RENDERERS[mv_i][wv_i].setPosition(_CP_COORDS[mv_i][wv_i]);
+            out_CP_RENDERERS[mv_i][wv_i].setRadius(rad);
+            out_CP_RENDERERS[mv_i][wv_i].setColor(col);
+
+            // Recompute the marker parameters
+            out_CP_RENDERERS[mv_i][wv_i].recomputeParameters();
+
+            // Draw the marker
+            out_CP_RENDERERS[mv_i][wv_i].draw();
+
+            // Check for errors
+            if (checkErrorOpenGL(__LINE__, __FILE__) < 0)
+            {
+                ROS_ERROR("[renderControlPoints] Error Thrown for Control Point[%d][%d]", mv_i, wv_i);
+                return -1;
+            }
+        }
+    }
+
+    // Unset the shader program
+    CircleRenderer::unsetShaderForDrawing();
+
+    // // TEMP
+    // return -1;
+
+    // Return GL status
+    return checkErrorOpenGL(__LINE__, __FILE__);
 }
 
 int main(int argc, char **argv)
@@ -1393,7 +1390,7 @@ int main(int argc, char **argv)
         }
 
         // Recompute wall parameters and update wall image texture
-        if (F.updateWallDatasets)
+        if (F.updateWallTexture)
         {
             // Update wall homography matrices array
             if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) < 0)
@@ -1410,7 +1407,7 @@ int main(int argc, char **argv)
                 is_error = true;
                 break;
             }
-            F.updateWallDatasets = false;
+            F.updateWallTexture = false;
         }
 
         // --------------- Handle Image Processing for Next Frame ---------------
