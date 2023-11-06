@@ -1042,9 +1042,6 @@ int updateWallTexture(
             // Get the maze vertex indice cooresponding to the selected control point
             int mv_ind = I.cpMap[I.cpMazeVertSel[0]][I.cpMazeVertSel[1]];
 
-            // Log the maze vertex index and grid indices
-            ROS_INFO("[updateWallTexture] Maze Vertex Index[%d] Grid Row[%d] Grid Col[%d]", mv_ind, gr_i, gc_i);
-
             //  Create merged image for the wall corresponding to the selected control point
             if (
                 (mv_ind == 0 && gr_i == 0 && gc_i == 0) ||
