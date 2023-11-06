@@ -12,7 +12,246 @@
 // Local custom libraries
 #include "projection_utils.h"
 
-// ================================================== CLASSES ==================================================
+// ================================================== CLASS: MazeRenderContext ==================================================
+
+#ifndef MAZE_RENDER_CONTEXT_H
+#define MAZE_RENDER_CONTEXT_H
+
+class MazeRenderContext
+{
+public:
+    GLuint shaderProgram;             // Shader program for wall rendering
+    const char *vertexShaderSource;   // Vertex shader source code for wall rendering
+    const char *fragmentShaderSource; // Fragment shader source code for wall rendering
+    GLuint vao;                       // Vertex Array Object
+    GLuint vbo;                       // Vertex Buffer Object
+    GLuint ebo;                       // Element Buffer Object
+    GLuint textureID;                 // Texture for the wall
+    GLFWwindow *windowID;             // The window associated with this context
+    GLFWmonitor *monitorID;           // The monitor associated with this context
+    float *verticesArr;               // Vertex data for the wall's geometry
+    unsigned int *indicesArr;         // Index data for rendering the wall using triangles
+    int windowInd;                    // Index of the window associated with this context
+    int monitorInd;                   // Index of the monitor associated with this context
+private:
+    static GLFWmonitor **_PP_Monitor;
+    static int _NumMonitors;
+
+public:
+    // Constructor
+    MazeRenderContext();
+
+    // Destructor
+    ~MazeRenderContext();
+
+    // Copy constructor and copy assignment are deleted to avoid accidental copying
+    MazeRenderContext(const MazeRenderContext &) = delete;
+    MazeRenderContext &operator=(const MazeRenderContext &) = delete;
+
+    // Move constructor and move assignment for efficient transfer of resources
+    MazeRenderContext(MazeRenderContext &&other) noexcept;
+    MazeRenderContext &operator=(MazeRenderContext &&other) noexcept;
+
+    /**
+     * @brief Callback function for handling framebuffer size changes.
+     *
+     * @param window Pointer to the GLFW window.
+     * @param width The new width of the framebuffer.
+     * @param height The new height of the framebuffer.
+     *
+     * @details
+     * This function is called whenever the framebuffer size changes,
+     * and it updates the OpenGL viewport to match the new dimensions.
+     */
+    static void CallbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height);
+
+    /**
+     * @brief Callback function for handling OpenGL errors.
+     *
+     * @param source The source of the error.
+     * @param type The type of the error.
+     * @param id The error ID.
+     * @param severity The severity of the error.
+     * @param length The length of the error message.
+     * @param message The error message.
+     * @param userParam User-defined parameter.
+     *
+     * @details
+     * This function is called whenever an error occurs in the OpenGL context.
+     * It logs the error message using ROS_ERROR.
+     */
+    static void CallbackDebugOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam);
+
+    /**
+     * @brief Callback function for handling errors.
+     *
+     * @param error The error code.
+     * @param description The error description.
+     *
+     * @details
+     * This function is called whenever an error occurs in the GLFW context.
+     * It logs the error message using ROS_ERROR.
+     */
+    static void CallbackErrorGLFW(int error, const char *description);
+
+    /**
+     * @brief Checks for OpenGL errors and logs them.
+     * Should be called after OpenGL API calls.
+     *
+     * @param line Line number where the function is called.
+     * @param file_str File name where the function is called.
+     * @param msg_str Optional message to provide additional context (default to nullptr).
+     *
+     * @return Integer status code  [0:successful, -1:error].
+     *
+     *
+     * @example CheckErrorOpenGL(__LINE__, __FILE__);
+     */
+    static int CheckErrorOpenGL(int, const char *, const char * = nullptr);
+
+    /**
+     * @brief Checks for GLFW errors and logs them.
+     * Should be called after GLFW API calls.
+     *
+     * @param line Line number where the function is called.
+     * @param file_str File name where the function is called.
+     * @param msg_str Optional message to provide additional context (default to nullptr).
+     *
+     * @return Integer status code  [0:successful, -1:error].
+     *
+     * @example checkErrorGLFW(__LINE__, __FILE__);
+     */
+    static int CheckErrorGLFW(int, const char *, const char * = nullptr);
+
+    /**
+     * @brief Initializes GLFW and discovers monitors.
+     *
+     * Sets up GLFW, including setting an error callback and initializing the library.
+     * It also discovers and stores the available monitors, reporting the total count.
+     *
+     * @param[out] out_n_mon Reference to an integer to store the number of monitors found.
+     * @return int Status of setup (0 for success, -1 for failure).
+     */
+    int static SetupGraphicsLibraries(int &n_mon);
+
+    /**
+     * @brief Cleans up GLFW and resets monitor info.
+     *
+     * Terminates GLFW to clean up all resources and resets monitor pointers and count.
+     * Logs the result of the cleanup process.
+     *
+     * @return int Status of cleanup (0 for success, -1 for failure indicated by GLFW errors).
+     */
+    static int CleanupGraphicsLibraries();
+
+    /**
+     * @brief Initializes a new rendering context.
+     *
+     * Checks and sets a new monitor based on the monitor index, creates a new GLFW window,
+     * and sets up the OpenGL context with necessary callbacks and extensions.
+     *
+     * @param win_ind Index of the window to initialize.
+     * @param mon_ind Index of the monitor to use for the window.
+     * @return int Status of context initialization (0 for success, -1 for failure).
+     */
+    int initContext(int win_ind, int mon_ind);
+
+    /**
+     * @brief Cleans up all OpenGL resources.
+     *
+     * This method deletes the shader program, textures, VAO, VBO, EBO, and destroys
+     * the GLFW window if they have been created. It also logs the cleanup process if
+     * logging is enabled.
+     *
+     * @param log_errors If set to true, the method logs the status of each resource
+     *                   cleanup operation.
+     * @return An integer status code. If all resources are cleaned up without any
+     *         OpenGL errors, it returns 0. If there are any OpenGL errors during
+     *         cleanup, it returns -1.
+     */
+    int cleanupContext(bool log_errors = true);
+
+    /**
+     * @brief Compiles and links shaders for a given class instance.
+     *
+     * @param vertex_source Source code for the vertex shader stored as a C++ raw string literal.
+     * @param fragment_source Source code for the fragment shader stored as a C++ raw string literal.
+     *
+     * @return Integer status code  [0:successful, -1:error].
+     *
+     * @details
+     * This function encapsulates the process of creating, compiling, and linking an OpenGL shader program.
+     * The OpenGL shader program is part of the OpenGL graphics pipeline and is essential for rendering graphics.
+     *
+     * The function compiles the vertex and fragment shaders from their source code.
+     * It then links them into a shader program, which can be activated with glUseProgram().
+     *
+     * - Vertex Shader: Takes attributes like position, color, texture coordinates, normals, etc.,
+     *   and computes processed values to be used in later pipeline stages.
+     *
+     * - Fragment Shader: Takes interpolated attributes from the rasterization stage and computes
+     *   the final color of a pixel. This is the stage where things like texture mapping,
+     *   lighting calculations, etc., would typically be performed.
+     *
+     * Once the shader program is created and linked successfully, it returns the GLuint ID of the shader program.
+     * This ID is used to activate the shader program for rendering.
+     */
+    int compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source);
+
+    /**
+     * @brief Cleans up shader objects.
+     *
+     * @return Integer status code  [0:successful, -1:error].
+     *
+     * @details
+     * This method deletes the shader program associated with
+     * the CircleRenderer class. It should be called once when
+     * the application is terminating, to ensure proper cleanup
+     * of OpenGL resources.
+     */
+    int cleanupShaderObjects();
+
+    /**
+     * @brief Changes the display mode and monitor of the application window.
+     *
+     *
+     * @param mon_id_ind Index of the monitor to move the window to.
+     * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
+     *
+     * @return Integer status code  [0:successful, -1:error].
+     *
+     * @details
+     * This function switches the application window between full-screen and windowed modes
+     * and moves it to the monitor specified by the global variable imgMonNumInd.
+     */
+    int switchWindowMode(int, bool);
+
+private:
+    /**
+     * @brief Private helper methods to check shader compilation.
+     *
+     * @param shader The shader to check.
+     * @param shader_type The type of shader to check.
+     */
+    bool _checkShaderCompilation(GLuint shader, const std::string &shader_type);
+
+    /**
+     * @brief Private helper methods to check shader linking.
+     *
+     * @param program The shader program to check.
+     */
+    bool _checkProgramLinking(GLuint program);
+
+    // Private method to check monitor index and id is valid
+    int _checkMonitor(int mon_ind);
+
+    // Simple test of OpenGL and GLFW callbacks
+    void _testCallbacks(GLFWwindow *win);
+};
+
+#endif // MAZE_RENDER_CONTEXT_H
+
+// ================================================== CLASS: CircleRenderer ==================================================
 
 #ifndef CIRCLE_RENDERER_H
 #define CIRCLE_RENDERER_H
@@ -88,18 +327,17 @@ public:
     unsigned int circSegments;      // Number of segments used to approximate the circle geometry.
 
 private:
-    /// @todo use this for vertext computation
     std::vector<float> _circVertices;                     // Vertex data for the circle's geometry.
-    GLuint _VAO;                                          // Vertex Array Object for the circle.
-    GLuint _VBO;                                          // Vertex Buffer Object for the circle's vertices.
+    GLuint _vao;                                          // Vertex Array Object for the circle.
+    GLuint _vbo;                                          // Vertex Buffer Object for the circle's vertices.
     cv::Mat _transformationMatrix;                        // Transformation matrix for the circle's vertices.
     static constexpr float _PI = 3.14159265358979323846f; // Pi
-    static int IDX;                                       // Static index counter for the CircleRenderer class objects
-    static GLuint _SHADER_PROGRAM;                        // Shader program for rendering
-    static GLint _COLOR_LOCATION;                         // Location of color uniform in shader
-    static GLint _TRANSFORM_LOCATION;                     // Location of transform uniform in shader
-    static GLint _ASPECT_RATIO_LOCATION;                  // Location of aspect ratio uniform in shader
-    static float _ASPECT_RATIO_UNIFORM;                   // Aspect ratio uniform for the shader program
+    static int _CircCnt;                                  // Static index counter for the CircleRenderer class objects
+    static GLuint _ShaderProgram;                         // Shader program for rendering
+    static GLint _ColorLocation;                          // Location of color uniform in shader
+    static GLint _TransformLocation;                      // Location of transform uniform in shader
+    static GLint _AspectRatioLocation;                    // Location of aspect ratio uniform in shader
+    static float _AspectRatioUniform;                     // Aspect ratio uniform for the shader program
 
 public:
     /**
@@ -120,7 +358,7 @@ public:
      * @param col Color of the circle.
      * @param segments Number of segments for the circle approximation.
      */
-    void initializeCircleRenderer(cv::Point2f pos, float rad, cv::Scalar col, unsigned int segments);
+    void initializeCircleAttributes(cv::Point2f pos, float rad, cv::Scalar col, unsigned int segments);
 
     /**
      * @brief Sets the position of the circle.
@@ -165,26 +403,25 @@ public:
     /**
      * @brief Compiles, links shaders, and gets uniform locations.
      * @param aspect_ratio The aspect ratio to be set for the shader.
-     * @return int Returns 0 on success, -1 on failure.
+     * @return Integer status code  [0:successful, -1:error].
      *
      * @details
      * This static method compiles the vertex and fragment shaders,
      * links them into a shader program, and retrieves the uniform
      * locations. It should be called once during initialization.
      */
-    static int compileAndLinkCircleShaders(float aspect_ratio);
+    static int CompileAndLinkCircleShaders(float aspect_ratio);
 
     /**
-     * @brief Cleans up shader objects.
-     * @return int Returns 0 on success, -1 on failure.
+     * @brief Cleans up shader objects and other shared resources.
+     * @return Integer status code  [0:successful, -1:error].
      *
      * @details
-     * This method deletes the shader program associated with
-     * the CircleRenderer class. It should be called once when
-     * the application is terminating, to ensure proper cleanup
-     * of OpenGL resources.
+     * This function should be called when the application is terminating
+     * or when you're sure that all instances of CircleRenderer are done
+     * with the shader program and related resources.
      */
-    static int cleanupShaderObjects();
+    static int CleanupClassResources();
 
     /**
      * @brief Sets up the shader for drawing.
@@ -194,7 +431,7 @@ public:
      * It sets the current shader program and updates the uniform
      * variables such as aspect ratio.
      */
-    static void setupShaderForDrawing();
+    static void SetupShader();
 
     /**
      * @brief Unsets the shader after drawing.
@@ -202,23 +439,28 @@ public:
      * @details
      * This method should be called after drawing each frame.
      */
-    static void unsetShaderForDrawing();
+    static void UnsetShader();
 
 private:
     /**
      * @brief Private helper methods to check shader compilation.
+     *
+     * @param shader The shader to check.
+     * @param shader_type The type of shader to check.
      */
-    static bool _checkShaderCompilation(GLuint shader);
+    static bool _CheckShaderCompilation(GLuint shader, const std::string &shader_type);
 
     /**
      * @brief Private helper methods to check shader linking.
+     *
+     * @param program The shader program to check.
      */
-    static bool _checkProgramLinking(GLuint program);
+    static bool _CheckProgramLinking(GLuint program);
 
     /**
      * @brief Sets up the OpenGL Vertex Array Object and Vertex Buffer Object.
      */
-    void _setupOpenGL();
+    void _setupRenderBuffers();
 
     /**
      * @brief Converts an OpenCV Mat to an array suitable for OpenGL transformations.
@@ -243,48 +485,6 @@ private:
 };
 
 #endif // CIRCLE_RENDERER_H
-
-// ================================================== CLASS: WallRenderContext ==================================================
-
-#ifndef WALL_RENDER_CONTEXT_H
-#define WALL_RENDER_CONTEXT_H
-
-class WallRenderContext
-{
-public:
-    GLuint shaderProgram; // Shader program for wall rendering
-    GLuint vao;           // Vertex Array Object
-    GLuint vbo;           // Vertex Buffer Object
-    GLuint ebo;           // Element Buffer Object
-    GLuint texture;       // Texture for the wall
-    GLFWwindow *window;   // The window associated with this context
-    GLFWmonitor *monitor; // The monitor associated with this context
-    int windowInd;        // Index of the window associated with this context
-    int monitorInd;       // Index of the monitor associated with this context
-
-
-public:    
-    // Constructor
-    WallRenderContext(GLuint shader, GLuint _vao, GLuint _vbo,
-                      GLuint _ebo, GLuint tex, GLFWwindow *win,
-                      GLFWmonitor *mon, int win_ind, int mon_ind);
-
-    // Destructor
-    ~WallRenderContext();
-
-    // Copy constructor and copy assignment are deleted to avoid accidental copying
-    WallRenderContext(const WallRenderContext &) = delete;
-    WallRenderContext &operator=(const WallRenderContext &) = delete;
-
-    // Move constructor and move assignment for efficient transfer of resources
-    WallRenderContext(WallRenderContext &&other) noexcept;
-    WallRenderContext &operator=(WallRenderContext &&other) noexcept;
-
-    // Public method to set the monitor
-    void setMonitor(int monitor_ind, GLFWmonitor *_monitor);
-};
-
-#endif // WALL_RENDER_CONTEXT_H
 
 // ================================================== VARIABLES ==================================================
 
@@ -332,13 +532,6 @@ unsigned int WALL_GL_INDICES[] = {
     0, 1, 2, // First Triangle
     0, 2, 3  // Second Triangle
 };
-
-// Wall image render OpneGL objects
-GLuint WALL_EBO;        // Global Element Buffer Object (EBO) for wall images.
-GLuint WALL_VAO;        // Vertex Array Object (VAO) for wall image.
-GLuint WALL_VBO;        // Global Vertex Buffer Object (VBO) for rendering the wall image.
-GLuint WALL_SHADER;     // Shader program IDs for wall image rendering.
-GLuint WALL_TEXTURE_ID; //  OpenGL textures associated with the current wall texture.
 
 /**
  * @brief Vertex shader source code for wall images.
@@ -435,11 +628,19 @@ static struct FlagStruct
     bool dbRun = false;                   // Flag to indicate if something should be run for debugging
     bool loadXML = false;                 // Flag to indicate if the XML file needs to be loaded
     bool saveXML = false;                 // Flag to indicate if the XML file needs to be saved
-    bool updateWindowMonMode = false;     // Flag to indicate if the window mode needs to be updated
+    bool switchWindowMode = false;        // Flag to indicate if the window mode needs to be updated
     bool initControlPointMarkers = false; // Flag to indicate if the control point markers need to be reinitialized
     bool updateWallTexture = false;       // Flag to indicate if wall vertices, homography and texture need to be updated
     bool setFullscreen = false;           // Flag to indicate if the window needs to be set to full screen mode
 } F;
+
+// Struct for counts
+static struct CountStruct
+{
+    int monitors;       // Number of monitors connected to the system
+    int wallImages = 4; // Number of wall images
+    int calModes = 3;   // Number of calibration modes
+} N;
 
 // Struct for indices
 static struct IndStruct
@@ -465,14 +666,6 @@ static struct IndStruct
     const int cpWVOrigin = 3;                  // Vertex index of the wall image origin (bottom-left)
     // std::array<int, 2> cpSelected = {0, 0};
 } I;
-
-// Struct for counts
-static struct CountStruct
-{
-    int monitors;       // Number of monitors connected to the system
-    int wallImages = 4; // Number of wall images
-    int calModes = 3;   // Number of calibration modes
-} N;
 
 // Sub-directory paths
 std::string image_wall_dir_path = IMAGE_TOP_DIR_PATH + "/calibration_images";
@@ -528,49 +721,6 @@ std::vector<cv::Mat> calImgMatVec;  // Vector of calibration mode image texture 
 void callbackKeyBinding(GLFWwindow *, int, int, int, int);
 
 /**
- * @brief Callback function for handling framebuffer size changes.
- *
- * @param window Pointer to the GLFW window.
- * @param width The new width of the framebuffer.
- * @param height The new height of the framebuffer.
- *
- * @details
- * This function is called whenever the framebuffer size changes,
- * and it updates the OpenGL viewport to match the new dimensions.
- */
-void callbackFrameBufferSizeGLFW(GLFWwindow *, int, int);
-
-/**
- * @brief Callback function for handling OpenGL errors.
- *
- * @param source The source of the error.
- * @param type The type of the error.
- * @param id The error ID.
- * @param severity The severity of the error.
- * @param length The length of the error message.
- * @param message The error message.
- * @param userParam User-defined parameter.
- *
- *
- * @details
- * This function is called whenever an error occurs in the OpenGL context.
- * It logs the error message using ROS_ERROR.
- */
-static void APIENTRY callbackDebugOpenGL(GLenum, GLenum, GLuint, GLenum, GLsizei, const GLchar *, const void *);
-
-/**
- * @brief Callback function for handling errors.
- *
- * @param error The error code.
- * @param description The error description.
- *
- * @details
- * This function is called whenever an error occurs in the GLFW context.
- * It logs the error message using ROS_ERROR.
- */
-static void callbackErrorGLFW(int, const char *);
-
-/**
  * @brief Checks for OpenGL errors and logs them.
  * Should be called after OpenGL API calls.
  *
@@ -598,32 +748,6 @@ int checkErrorOpenGL(int, const char *, const char * = nullptr);
  * @example checkErrorGLFW(__LINE__, __FILE__);
  */
 int checkErrorGLFW(int, const char *, const char * = nullptr);
-
-/**
- * @brief Changes the display mode and monitor of the application window.
- *
- *
- * @param p_window_id Pointer to the GLFWwindow pointer that will be updated.
- * @param win_ind Index of the window for which the setup is to be done.
- * @param pp_r_monitor_id Reference to the GLFWmonitor pointer array.
- * @param mon_id_ind Index of the monitor to move the window to.
- * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
- *
- * @return Integer status code  [0:successful, -1:error].
- *
- * @details
- * This function switches the application window between full-screen and windowed modes
- * and moves it to the monitor specified by the global variable imgMonNumInd.
- *
- * In full-screen mode, the window is resized to match the dimensions of the selected monitor.
- * In windowed mode, the window is resized to a default size and positioned near the top-left
- * corner of the selected monitor.
- *
- * @note The global variables monitor, monitors, imgMonNumInd, window, and F.setFullscreen are
- *       used to control the behavior of this function.
- *       Will only exicute if monotor parameters have changed.
- */
-int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
 
 /**
  * @brief Initializes values for the verteces of the coner walls which will be used as calibraton control points.
@@ -677,57 +801,16 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
 int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img);
 
 /**
- * @brief Creates an OpenGL shader program from vertex and fragment shader source code.
- *
- * @param vertex_source Source code for the vertex shader.
- * @param fragment_source Source code for the fragment shader.
- * @param geometry_source Source code for the geometry shader.
- * @param[out] out_shader_program Reference to the GLuint where the shader program ID will be stored.
- *
- * @return Integer status code [0:successful, -1:error].
- *
- * @details
- * This function encapsulates the process of creating, compiling, and linking an OpenGL shader program.
- * The OpenGL shader program is part of the OpenGL graphics pipeline and is essential for rendering graphics.
- *
- * The pipeline can be broken down into the following stages:
- * 1. Vertex Processing: Vertex shaders manipulate the attributes of vertices.
- *    This can include things like transforming the vertex position, normal, texture coordinate, etc.
- * 2. Primitive Assembly: Vertices are grouped into geometric primitives (points, lines, and triangles).
- * 3. Rasterization: The primitives are converted into a set of fragments.
- * 4. Fragment Processing: Fragment shaders manipulate the attributes of fragments,
- *    which are essentially potential pixels. Here you might apply textures, calculate lighting, etc.
- * 5. Output Merging: Fragments are converted into actual framebuffer pixels.
- *
- * The function compiles the vertex and fragment shaders from their source code.
- * It then links them into a shader program, which can be activated with glUseProgram().
- *
- * - Vertex Shader: Takes attributes like position, color, texture coordinates, normals, etc.,
- *   and computes processed values to be used in later pipeline stages.
- *
- * - Fragment Shader: Takes interpolated attributes from the rasterization stage and computes
- *   the final color of a pixel. This is the stage where things like texture mapping,
- *   lighting calculations, etc., would typically be performed.
- *
- * Once the shader program is created and linked successfully, it returns the GLuint ID of the shader program.
- * This ID is used to activate the shader program for rendering.
- */
-int compileAndLinkShaders(const GLchar *, const GLchar *, GLuint &);
-
-/**
  * @brief Initialize OpenGL resources for wall image render objects.
  *
- * @param _WALL_VAO Reference to OpenGL Vertex Array Object (VAO) ID for the wall image.
- * @param _WALL_VBO Reference to OpenGL Vertex Buffer Object (VBO) ID for the wall image.
- * @param _WALL_EBO Reference to OpenGL Element Buffer Object (EBO) ID for the wall image.
+ * @param[out] out_renCtx Reference to an instance of the out_renCtx class.
  *
  * @return Integer status code [0:successful, -1:error].
  *
  * @details
- * Initializes the vertex buffer, shader program, and default values
- * for the wall image render and control point markers.
+ * Initializes the Vertex Array Object (VAO), Vertex Buffer Object (VBO) and Element Buffer Object (EBO).
  */
-int initializeWallRenderObjects(GLuint &, GLuint &, GLuint &);
+int initWallRenderObjects(MazeRenderContext &out_renCtx, float *vertices, size_t verticesSize, unsigned int *indices, size_t indicesSize);
 
 /**
  * @brief Initialize OpenGL resources for CircleRenderer objects.
@@ -741,7 +824,7 @@ int initializeWallRenderObjects(GLuint &, GLuint &, GLuint &);
  * Initializes the vertex buffer, shader program, and default values
  * for the control point markers.
  */
-int initializeCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &, std::array<std::array<CircleRenderer, 4>, 4> &);
+int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &, std::array<std::array<CircleRenderer, 4>, 4> &);
 
 /**
  * @brief Updates the stored warped wall image vertices based on the control point array.
@@ -750,7 +833,7 @@ int initializeCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>,
  * @param img_mode_mon_mat cv::Mat image matrix for the monitor mode image.
  * @param img_mode_cal_mat cv::Mat image matrix for the calibration image.
  * @param _WALL_HMAT_DATA 3x3 array of Homography matrices used to warp the wall image.
- * @param[out] out_WALL_TEXTURE_ID OpenGL texture ID for the wall image.
+ * @param[out] out_wallTexture OpenGL texture ID for the wall image.
  *
  * @return Integer status code [0:successful, -1:error].
  */
@@ -781,14 +864,11 @@ GLuint loadTexture(cv::Mat);
 /**
  * @brief Renders a all wall images from the computed texture2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
  *
- * @param _WALL_TEXTURE_ID OpenGL texture ID for the wall image.
- * @param _WALL_SHADER OpenGL shader program ID for the wall image.
- * @param _WALL_VAO OpenGL Vertex Array Object (VAO) ID for the wall image.
- * @param _WALL_EBO OpenGL Element Buffer Object (EBO) ID for the wall image.
+ * @param renCtx Reference to an instance of the out_renCtx class.
  *
  * @return Integer status code  [0:successful, -1:error].
  */
-int renderWallImage(const GLuint &, const GLuint &, const GLuint &, const GLuint &);
+int renderWallImage(const MazeRenderContext &renCtx);
 
 /**
  * @brief Draws control points associated with each corner wall.

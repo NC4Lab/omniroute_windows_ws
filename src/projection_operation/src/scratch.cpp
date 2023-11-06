@@ -20,11 +20,11 @@
 
 // CircleRenderer::~CircleRenderer()
 // {
-//     glDeleteVertexArrays(1, &_VAO);
-//     glDeleteBuffers(1, &_VBO);
+//     glDeleteVertexArrays(1, &_vao);
+//     glDeleteBuffers(1, &_vbo);
 // }
 
-// void CircleRenderer::initializeCircleRenderer(cv::Point2f pos, float rad, cv::Scalar col, unsigned int segments)
+// void CircleRenderer::initializeCircleAttributes(cv::Point2f pos, float rad, cv::Scalar col, unsigned int segments)
 // {
 //     // Initialize the transformation matrix as an identity matrix
 //     _transformationMatrix = cv::Mat::eye(4, 4, CV_32F);
@@ -37,7 +37,7 @@
 //     _computeVertices(circPosition, cirRadius, circSegments, _circVertices);
 
 //     // Setup OpenGL buffers
-//     _setupOpenGL();
+//     _setupRenderBuffers();
 // }
 
 // void CircleRenderer::setPosition(cv::Point2f pos)
@@ -77,7 +77,7 @@
 //     _updateOpenGLVertices();
 
 //     // Bind the VBO, update the vertex buffer with the new data
-//     glBindBuffer(GL_ARRAY_BUFFER, _VBO);
+//     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
 //     glBufferData(GL_ARRAY_BUFFER, _circVertices.size() * sizeof(float), _circVertices.data(), GL_DYNAMIC_DRAW);
 
 //     // Unbind the buffer
@@ -87,29 +87,29 @@
 // void CircleRenderer::draw()
 // {
 //     // Set color
-//     glUniform4f(_COLOR_LOCATION, circColor[0], circColor[1], circColor[2], 1.0f);
+//     glUniform4f(_ColorLocation, circColor[0], circColor[1], circColor[2], 1.0f);
 
 //     // Use the updated transformation matrix instead of an identity matrix
 //     auto transformArray = _cvMatToGlArray(_transformationMatrix);
-//     glUniformMatrix4fv(_TRANSFORM_LOCATION, 1, GL_FALSE, transformArray.data());
+//     glUniformMatrix4fv(_TransformLocation, 1, GL_FALSE, transformArray.data());
 
 //     // Bind the VAO and draw the circle using GL_TRIANGLE_FAN
-//     glBindVertexArray(_VAO);
+//     glBindVertexArray(_vao);
 //     glDrawArrays(GL_TRIANGLE_FAN, 0, static_cast<GLsizei>(_circVertices.size() / 2));
 // }
 
 
 // // Static method to setup shader program and get uniform locations
-// int CircleRenderer::compileAndLinkCircleShaders(float aspect_ratio)
+// int CircleRenderer::CompileAndLinkCircleShaders(float aspect_ratio)
 // {
 //     // Set the aspect ratio
-//     _ASPECT_RATIO_UNIFORM = aspect_ratio;
+//     _AspectRatioUniform = aspect_ratio;
 
 //     // Compile vertex shader
 //     GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
 //     glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
 //     glCompileShader(vertexShader);
-//     if (!_checkShaderCompilation(vertexShader))
+//     if (!_CheckShaderCompilation(vertexShader))
 //     {
 //         ROS_ERROR("Vertex shader compilation failed.");
 //         return -1;
@@ -119,18 +119,18 @@
 //     GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 //     glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
 //     glCompileShader(fragmentShader);
-//     if (!_checkShaderCompilation(fragmentShader))
+//     if (!_CheckShaderCompilation(fragmentShader))
 //     {
 //         ROS_ERROR("Fragment shader compilation failed.");
 //         return -1;
 //     }
 
 //     // Link shaders into a program
-//     _SHADER_PROGRAM = glCreateProgram();
-//     glAttachShader(_SHADER_PROGRAM, vertexShader);
-//     glAttachShader(_SHADER_PROGRAM, fragmentShader);
-//     glLinkProgram(_SHADER_PROGRAM);
-//     if (!_checkProgramLinking(_SHADER_PROGRAM))
+//     _ShaderProgram = glCreateProgram();
+//     glAttachShader(_ShaderProgram, vertexShader);
+//     glAttachShader(_ShaderProgram, fragmentShader);
+//     glLinkProgram(_ShaderProgram);
+//     if (!_CheckProgramLinking(_ShaderProgram))
 //     {
 //         ROS_ERROR("Shader program linking failed.");
 //         return -1;
@@ -141,12 +141,12 @@
 //     glDeleteShader(fragmentShader);
 
 //     // Get uniform locations
-//     _COLOR_LOCATION = glGetUniformLocation(_SHADER_PROGRAM, "color");
-//     _TRANSFORM_LOCATION = glGetUniformLocation(_SHADER_PROGRAM, "transform");
-//     _ASPECT_RATIO_LOCATION = glGetUniformLocation(_SHADER_PROGRAM, "aspectRatio");
+//     _ColorLocation = glGetUniformLocation(_ShaderProgram, "color");
+//     _TransformLocation = glGetUniformLocation(_ShaderProgram, "transform");
+//     _AspectRatioLocation = glGetUniformLocation(_ShaderProgram, "aspectRatio");
 
 //     // Check for errors in getting uniforms
-//     if (_COLOR_LOCATION == -1 || _TRANSFORM_LOCATION == -1 || _ASPECT_RATIO_LOCATION == -1)
+//     if (_ColorLocation == -1 || _TransformLocation == -1 || _AspectRatioLocation == -1)
 //     {
 //         ROS_ERROR("Error getting uniform locations.");
 //         return -1;
@@ -155,27 +155,27 @@
 //     return 0; // Success
 // }
 
-// int CircleRenderer::cleanupShaderObjects() {
+// int CircleRenderer::CleanupClassResources() {
 //     // Use OpenGL calls to delete shader program and shaders
-//     if (_SHADER_PROGRAM != 0) {
-//         glDeleteProgram(_SHADER_PROGRAM);
-//         _SHADER_PROGRAM = 0;
+//     if (_ShaderProgram != 0) {
+//         glDeleteProgram(_ShaderProgram);
+//         _ShaderProgram = 0;
 //     } else {
 //         return -1;
 //     }
 // }
 
 
-// void CircleRenderer::setupShaderForDrawing()
+// void CircleRenderer::SetupShader()
 // {
 //     // Use the shader program
-//     glUseProgram(_SHADER_PROGRAM);
+//     glUseProgram(_ShaderProgram);
 
 //     // Set the aspect ratio uniform
-//     glUniform1f(_ASPECT_RATIO_LOCATION, _ASPECT_RATIO_UNIFORM);
+//     glUniform1f(_AspectRatioLocation, _AspectRatioUniform);
 // }
 
-// bool CircleRenderer::_checkShaderCompilation(GLuint shader)
+// bool CircleRenderer::_CheckShaderCompilation(GLuint shader)
 // {
 //     GLint success;
 //     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
@@ -190,7 +190,7 @@
 //     return true;
 // }
 
-// bool CircleRenderer::_checkProgramLinking(GLuint program)
+// bool CircleRenderer::_CheckProgramLinking(GLuint program)
 // {
 //     GLint success;
 //     glGetProgramiv(program, GL_LINK_STATUS, &success);
@@ -205,18 +205,18 @@
 //     return true;
 // }
 
-// void CircleRenderer::_setupOpenGL()
+// void CircleRenderer::_setupRenderBuffers()
 // {
 //     // Generate a new Vertex Array Object (VAO) and store the ID
-//     glGenVertexArrays(1, &_VAO);
+//     glGenVertexArrays(1, &_vao);
 //     // Generate a new Vertex Buffer Object (VBO) and store the ID
-//     glGenBuffers(1, &_VBO);
+//     glGenBuffers(1, &_vbo);
 
 //     // Bind the VAO to set it up
-//     glBindVertexArray(_VAO);
+//     glBindVertexArray(_vao);
 
 //     // Bind the VBO to the GL_ARRAY_BUFFER target
-//     glBindBuffer(GL_ARRAY_BUFFER, _VBO);
+//     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
 //     // Copy vertex data into the buffer's memory (GL_DYNAMIC_DRAW hints that the data might change often)
 //     glBufferData(GL_ARRAY_BUFFER, _circVertices.size() * sizeof(float), _circVertices.data(), GL_DYNAMIC_DRAW);
 
@@ -265,7 +265,7 @@
 // void CircleRenderer::_updateOpenGLVertices()
 // {
 //     // Bind the VBO to the GL_ARRAY_BUFFER target
-//     glBindBuffer(GL_ARRAY_BUFFER, _VBO);
+//     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
 //     // Update the VBO's data with the new vertices. This call will reallocate the buffer if necessary
 //     // or simply update the data store's contents if the buffer is large enough.
 //     glBufferData(GL_ARRAY_BUFFER, _circVertices.size() * sizeof(float), _circVertices.data(), GL_DYNAMIC_DRAW);
@@ -315,10 +315,10 @@
 // }
 
 // // Initialize static members
-// GLuint CircleRenderer::_SHADER_PROGRAM = 0;
-// GLint CircleRenderer::_COLOR_LOCATION = -1;
-// GLint CircleRenderer::_TRANSFORM_LOCATION = -1;
-// GLint CircleRenderer::_ASPECT_RATIO_LOCATION = -1;
+// GLuint CircleRenderer::_ShaderProgram = 0;
+// GLint CircleRenderer::_ColorLocation = -1;
+// GLint CircleRenderer::_TransformLocation = -1;
+// GLint CircleRenderer::_AspectRatioLocation = -1;
 
 // // ================================================== FUNCTIONS ==================================================
 
@@ -670,7 +670,7 @@
 //     return 0;
 // }
 
-// int initializeWallRenderObjects()
+// int initWallRenderObjects()
 // {
 
 //     // Generate and bind an Element Buffer Object (EBO)
@@ -735,7 +735,7 @@
 //                         std::array<std::array<CircleRenderer, 4>, 4> &_CP_RENDERERS)
 // {
 //     // Setup the CircleRenderer class shaders
-//     CircleRenderer::setupShaderForDrawing();
+//     CircleRenderer::SetupShader();
 
 //     // Loop through the control points and draw them
 //     for (int mv_i = 0; mv_i < 4; ++mv_i)
@@ -1220,7 +1220,7 @@
 //     glDebugMessageCallback(callbackDebugOpenGL, 0);
 
 //     // Initialize OpenGL wall image objects
-//     if (initializeWallRenderObjects() != 0)
+//     if (initWallRenderObjects() != 0)
 //     {
 //         ROS_ERROR("[SETUP] Failed to Initialize OpenGL Wall Image Objects");
 //         return -1;
@@ -1248,7 +1248,7 @@
 //     }
 
 //     // Create the shader program for CircleRenderer class control point rendering
-//     if (CircleRenderer::compileAndLinkCircleShaders(WINDOW_ASPECT_RATIO) != 0)
+//     if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_ASPECT_RATIO) != 0)
 //     {
 //         ROS_ERROR("[SETUP] Failed to Compile and Link CircleRenderer Class Shader");
 //         return -1;
@@ -1279,7 +1279,7 @@
 //     initControlPointCoordinates(CP_COORDS);
 
 //     // Initialize wall homography matrices array
-//     if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) != 0)
+//     if (updateHomography(CP_COORDS, WALL_HMAT_DATA) != 0)
 //     {
 //         ROS_ERROR("[SETUP] Failed to Initialize Wall Parameters");
 //         return -1;
@@ -1339,7 +1339,7 @@
 //         if (F.updateWallTexture)
 //         {
 //             // Update wall homography matrices array
-//             if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) != 0)
+//             if (updateHomography(CP_COORDS, WALL_HMAT_DATA) != 0)
 //             {
 //                 ROS_ERROR("[MAIN] Update of Wall Vertices Datasets Failed");
 //                 is_error = true;
@@ -1427,7 +1427,7 @@
 //     }
 
 //     // Delete CircleRenderer class shader program
-//     if (CircleRenderer::cleanupShaderObjects())
+//     if (CircleRenderer::CleanupClassResources())
 //     {
 //         ROS_INFO("[SHUTDOWN] Deleted CircleRenderer program");
 //     }

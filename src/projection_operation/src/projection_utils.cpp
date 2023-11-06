@@ -79,7 +79,7 @@ float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, 
     return interp_val;
 }
 
-int updateHomographyMatrices(
+int updateHomography(
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &out_WALL_HMAT_DATA)
 {
@@ -126,7 +126,7 @@ int updateHomographyMatrices(
             int resp = checkQuadVertices(target_vertices_pxl);
             if (resp < 0)
             {
-                ROS_WARN("[updateHomographyMatrices] Target Plane Vertices Invalid: Reason[%s]",
+                ROS_WARN("[updateHomography] Target Plane Vertices Invalid: Reason[%s]",
                          resp == -1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
                 return -1;
             }
@@ -137,7 +137,7 @@ int updateHomographyMatrices(
             // Check for valid homography matrix
             if (H.empty())
             {
-                ROS_ERROR("[updateHomographyMatrices] Failed to Compute Homography Matrix");
+                ROS_ERROR("[updateHomography] Failed to Compute Homography Matrix");
                 return -1;
             }
 

@@ -8,22 +8,473 @@
 
 #include "projection_calibration.h"
 
+// ================================================== CLASS: MazeRenderContext ==================================================
+
+// Initialize MazeRenderContext static members
+GLFWmonitor **MazeRenderContext::_PP_Monitor = nullptr;
+int MazeRenderContext::_NumMonitors = 0;
+
+MazeRenderContext::MazeRenderContext()
+    : shaderProgram(0), vao(0), vbo(0), ebo(0), textureID(0),
+      windowID(nullptr), monitorID(nullptr), windowInd(-1), monitorInd(-1)
+{
+    // Members are initialized to default values, setup is deferred
+}
+
+MazeRenderContext::~MazeRenderContext()
+{
+    // Clean up resources without logging
+    cleanupContext();
+}
+
+MazeRenderContext::MazeRenderContext(MazeRenderContext &&other) noexcept
+    : windowID(other.windowID), monitorID(other.monitorID),
+      windowInd(other.windowInd), monitorInd(other.monitorInd)
+{
+    // Reset the other's members to default values to prevent double deletion
+    other.shaderProgram = 0;
+    other.vao = 0;
+    other.vbo = 0;
+    other.ebo = 0;
+    other.textureID = 0;
+    other.windowID = nullptr;
+    other.monitorID = nullptr;
+    other.windowInd = -1;
+    other.monitorInd = -1;
+}
+
+MazeRenderContext &MazeRenderContext::operator=(MazeRenderContext &&other) noexcept
+{
+    if (this != &other) // Prevent self-assignment
+    {
+        // Clean up existing resources
+        glDeleteProgram(shaderProgram);
+        glDeleteVertexArrays(1, &vao);
+        glDeleteBuffers(1, &vbo);
+        glDeleteBuffers(1, &ebo);
+        glDeleteTextures(1, &textureID);
+
+        // Transfer ownership of resources from other to this
+        shaderProgram = other.shaderProgram;
+        vao = other.vao;
+        vbo = other.vbo;
+        ebo = other.ebo;
+        textureID = other.textureID;
+        windowID = other.windowID;
+        monitorID = other.monitorID;
+        windowInd = other.windowInd;
+        monitorInd = other.monitorInd;
+
+        // Reset the other's members to default values
+        other.shaderProgram = 0;
+        other.vao = 0;
+        other.vbo = 0;
+        other.ebo = 0;
+        other.textureID = 0;
+        other.windowID = nullptr;
+        other.monitorID = nullptr;
+        other.windowInd = -1;
+        other.monitorInd = -1;
+    }
+    return *this;
+}
+
+void MazeRenderContext::CallbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
+{
+    glViewport(0, 0, width, height);
+    CheckErrorGLFW(__LINE__, __FILE__, "CallbackFrameBufferSizeGLFW");
+}
+
+void MazeRenderContext::CallbackDebugOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
+{
+    // Get level of severity
+    int s_level = (severity == GL_DEBUG_SEVERITY_NOTIFICATION) ? 1 : (severity == GL_DEBUG_SEVERITY_LOW)  ? 2
+                                                                 : (severity == GL_DEBUG_SEVERITY_MEDIUM) ? 3
+                                                                 : (severity == GL_DEBUG_SEVERITY_HIGH)   ? 4
+                                                                                                          : 0;
+    // Check if the message is below the specified debug level
+    if (s_level < DEBUG_LEVEL_GL)
+    {
+        return;
+    }
+    ROS_INFO("[callbackDebugOpenGL] Type[0x%x] ID[%d] Severity[0x%x] Message[%s]", type, id, severity, message);
+}
+
+void MazeRenderContext::CallbackErrorGLFW(int error, const char *description)
+{
+    ROS_ERROR("[CallbackErrorGLFW] Error[%d] Description[%s]", error, description);
+}
+
+int MazeRenderContext::CheckErrorOpenGL(int line, const char *file_str, const char *msg_str)
+{
+    GLenum gl_err;
+    while ((gl_err = glGetError()) != GL_NO_ERROR)
+    {
+        ROS_ERROR("[CheckErrorOpenGL] Message[%s] Error Number[%u] File[%s] Line[%d]",
+                  msg_str ? msg_str : "No additional info", gl_err, file_str, line);
+        return -1;
+    }
+    return 0;
+}
+
+int MazeRenderContext::CheckErrorGLFW(int line, const char *file_str, const char *msg_str)
+{
+    const char *description;
+    int glfw_err = glfwGetError(&description);
+    if (glfw_err != GLFW_NO_ERROR)
+    {
+        ROS_ERROR("[checkErrorGLFW] Message[%s] Description[%s] File[%s] Line[%d]",
+                  msg_str ? msg_str : "No additional info", description, file_str, line);
+        return -1;
+    }
+    return 0;
+}
+
+int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon)
+{
+    // Initialize GLFW and set error callback
+    glfwSetErrorCallback(CallbackErrorGLFW);
+    if (!glfwInit())
+    {
+        ROS_ERROR("[MazeRenderContext::SetupGraphicsLibraries] GLFW Initialization Failed");
+        return -1;
+    }
+
+    // Request a debug context for future windows
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);      // Specify OpenGL version if needed
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);      // Specify OpenGL version if needed
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE); // Request debug context
+
+    // Discover available monitors
+    _PP_Monitor = glfwGetMonitors(&_NumMonitors);
+    if (!_PP_Monitor || _NumMonitors == 0)
+    {
+        ROS_ERROR("[MazeRenderContext::SetupGraphicsLibraries] No Monitors Found");
+        return -1;
+    }
+    ROS_INFO("[MazeRenderContext::SetupGraphicsLibraries] Monitors Found: %d", _NumMonitors);
+
+    // Set the number of monitors for the reference output argument
+    out_n_mon = _NumMonitors;
+
+    return 0;
+}
+
+int MazeRenderContext::CleanupGraphicsLibraries()
+{
+    int err_status = 0;
+
+    // Terminate GLFW, which cleans up all GLFW resources.
+    glfwTerminate();
+    err_status = checkErrorGLFW(__LINE__, __FILE__, "[MazeRenderContext::CleanupGraphicsLibraries] Error Flagged Following glfwTerminate()");
+
+    // Reset monitor pointers and count
+    _PP_Monitor = nullptr;
+    _NumMonitors = 0;
+
+    if (err_status < 0)
+        ROS_WARN("[MazeRenderContext::CleanupGraphicsLibraries] Failed to Terminate GLFW Library");
+    else
+        ROS_INFO("[MazeRenderContext::CleanupGraphicsLibraries] Graphics libraries and shared resources cleaned up successfully.");
+
+    return err_status;
+}
+
+int MazeRenderContext::initContext(int win_ind, int mon_ind)
+{
+
+    // Check/set the new monitor id
+    if (_checkMonitor(mon_ind) < 0)
+    {
+        ROS_ERROR("[MazeRenderContext::initContext] Context Setup Failed: Window[%d] Monitor[%d]", win_ind, mon_ind);
+        return -1;
+    }
+
+    // Create a new GLFW window
+    windowID = glfwCreateWindow(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, "", monitorID, NULL); // Use the monitor in window creation
+    if (!windowID)
+    {
+        glfwTerminate();
+        ROS_ERROR("[MazeRenderContext::initContext] GLFW Failed to Create Window");
+        return -1;
+    }
+    windowInd = win_ind; // Store the window index
+
+    // Set the GLFW window as the current OpenGL context
+    glfwMakeContextCurrent(windowID);
+
+    // Load OpenGL extensions using GLAD
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) || !gladLoadGL())
+    {
+        glfwDestroyWindow(windowID);
+        ROS_ERROR("[MazeRenderContext::initContext] Failed to load GLAD");
+        return -1;
+    }
+
+    // Set GLFW callbacks for keyboard and framebuffer size events
+    glfwSetKeyCallback(windowID, callbackKeyBinding);
+    glfwSetFramebufferSizeCallback(windowID, CallbackFrameBufferSizeGLFW);
+
+    // Enable OpenGL debugging context and associate callback
+    glEnable(GL_DEBUG_OUTPUT);
+    glDebugMessageCallback(CallbackDebugOpenGL, nullptr);
+
+    return checkErrorGLFW(__LINE__, __FILE__, "MazeRenderContext::switchWindowMode");
+}
+
+int MazeRenderContext::cleanupContext(bool log_errors)
+{
+    int err_status = 0;
+
+    if (shaderProgram != 0)
+    {
+        glDeleteProgram(shaderProgram);
+        err_status |= checkErrorOpenGL(__LINE__, __FILE__, "[cleanup] glDeleteProgram error");
+        if (log_errors)
+            ROS_INFO("[cleanup] %s", err_status ? "Failed to delete shader program" : "Shader program deleted successfully");
+        shaderProgram = 0;
+    }
+
+    if (textureID != 0)
+    {
+        glDeleteTextures(1, &textureID);
+        err_status |= checkErrorOpenGL(__LINE__, __FILE__, "[cleanup] glDeleteTextures error");
+        if (log_errors)
+            ROS_INFO("[cleanup] %s", err_status ? "Failed to delete texture" : "Texture deleted successfully");
+        textureID = 0;
+    }
+
+    if (vao != 0)
+    {
+        glDeleteVertexArrays(1, &vao);
+        err_status |= checkErrorOpenGL(__LINE__, __FILE__, "[cleanup] glDeleteVertexArrays error");
+        if (log_errors)
+            ROS_INFO("[cleanup] %s", err_status ? "Failed to delete VAO" : "VAO deleted successfully");
+        vao = 0;
+    }
+
+    if (vbo != 0)
+    {
+        glDeleteBuffers(1, &vbo);
+        err_status |= checkErrorOpenGL(__LINE__, __FILE__, "[cleanup] glDeleteBuffers error");
+        if (log_errors)
+            ROS_INFO("[cleanup] %s", err_status ? "Failed to delete VBO" : "VBO deleted successfully");
+        vbo = 0;
+    }
+
+    if (ebo != 0)
+    {
+        glDeleteBuffers(1, &ebo);
+        err_status |= checkErrorOpenGL(__LINE__, __FILE__, "[cleanup] glDeleteBuffers error");
+        if (log_errors)
+            ROS_INFO("[cleanup] %s", err_status ? "Failed to delete EBO" : "EBO deleted successfully");
+        ebo = 0;
+    }
+
+    if (windowID != nullptr)
+    {
+        glfwDestroyWindow(windowID);
+        err_status |= checkErrorGLFW(__LINE__, __FILE__, "[cleanup] glfwDestroyWindow error");
+        if (log_errors)
+            ROS_INFO("[cleanup] %s", err_status ? "Failed to destroy GLFW window" : "GLFW window destroyed successfully");
+        windowID = nullptr;
+    }
+
+    return err_status ? -1 : 0;
+}
+
+int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source)
+{
+    // Compile vertex shader
+    GLuint temp_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(temp_vertex_shader, 1, &vertex_source, nullptr);
+    glCompileShader(temp_vertex_shader);
+    if (!_checkShaderCompilation(temp_vertex_shader, "VERTEX"))
+    {
+        glDeleteShader(temp_vertex_shader);
+        ROS_ERROR("[MazeRenderContext] Vertex shader compilation failed.");
+        return -1;
+    }
+
+    // Compile fragment shader
+    GLuint temp_fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(temp_fragment_shader, 1, &fragment_source, nullptr);
+    glCompileShader(temp_fragment_shader);
+    if (!_checkShaderCompilation(temp_fragment_shader, "FRAGMENT"))
+    {
+        glDeleteShader(temp_vertex_shader);
+        glDeleteShader(temp_fragment_shader);
+        ROS_ERROR("[MazeRenderContext] Fragment shader compilation failed.");
+        return -1;
+    }
+
+    // Link shaders into a program
+    shaderProgram = glCreateProgram();
+    glAttachShader(shaderProgram, temp_vertex_shader);
+    glAttachShader(shaderProgram, temp_fragment_shader);
+    glLinkProgram(shaderProgram);
+    if (!_checkProgramLinking(shaderProgram))
+    {
+        glDeleteShader(temp_vertex_shader);
+        glDeleteShader(temp_fragment_shader);
+        glDeleteProgram(shaderProgram);
+        ROS_ERROR("[MazeRenderContext] Shader program linking failed.");
+        return -1;
+    }
+
+    // Cleanup: detach and delete shaders
+    glDetachShader(shaderProgram, temp_vertex_shader);
+    glDeleteShader(temp_vertex_shader);
+    glDetachShader(shaderProgram, temp_fragment_shader);
+    glDeleteShader(temp_fragment_shader);
+
+    return checkErrorOpenGL(__LINE__, __FILE__, "MazeRenderContext::compileAndLinkShaders");
+}
+
+int MazeRenderContext::cleanupShaderObjects()
+{
+    // Use OpenGL calls to delete shader program and shaders
+    if (shaderProgram != 0)
+    {
+        glDeleteProgram(shaderProgram);
+        shaderProgram = 0;
+        return checkErrorOpenGL(__LINE__, __FILE__, "MazeRenderContext::cleanupShaderObjects");
+    }
+    else
+    {
+        return -1;
+    }
+}
+
+int MazeRenderContext::switchWindowMode(int mon_ind_new, bool do_fullscreen)
+{
+    // Check/set the new monitor id
+    if (_checkMonitor(mon_ind_new) < 0)
+    {
+        ROS_ERROR("[MazeRenderContext::initContext] Context Setup Failed: Window[%d] Monitor[%d]", windowInd, mon_ind_new);
+        return -1;
+    }
+
+    if (!monitorID)
+    { // Early return if monitor pointer is invalid
+        ROS_ERROR("[switchWindowMode] Invalid Monitor Pointer: Monitor[%d]", mon_ind_new);
+        return -1;
+    }
+
+    // Get the video mode of the selected monitor
+    const GLFWvidmode *mode = glfwGetVideoMode(monitorID);
+    if (!mode)
+    { // Validate video mode retrieval
+        ROS_ERROR("[switchWindowMode] Failed to Get Video Mode: Monitor[%d]", mon_ind_new);
+        return -1;
+    }
+
+    // Update window to full-screen or windowed mode based on 'do_fullscreen'
+    if (do_fullscreen)
+    {
+        glfwSetWindowMonitor(windowID, monitorID, 0, 0, mode->width, mode->height, mode->refreshRate);
+    }
+    else
+    {
+        int monitor_x, monitor_y;
+        glfwGetMonitorPos(monitorID, &monitor_x, &monitor_y); // Get monitor position
+        if (monitor_x < 0 || monitor_y < 0)
+        { // Validate monitor position
+            ROS_WARN("[switchWindowMode] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_ind_new, monitor_x, monitor_y);
+            return 0;
+        }
+        glfwSetWindowMonitor(windowID, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * WINDOW_ASPECT_RATIO), 500, 0); // Set windowed mode position and size
+    }
+
+    // Update window title with window and monitor indices
+    std::string new_title = "Window[" + std::to_string(windowInd) + "] Monitor[" + std::to_string(mon_ind_new) + "]";
+    glfwSetWindowTitle(windowID, new_title.c_str());
+    ROS_INFO("[switchWindowMode] Move Window: Monitor[%d] Format[%s]", mon_ind_new, do_fullscreen ? "fullscreen" : "windowed");
+
+    return checkErrorGLFW(__LINE__, __FILE__, "MazeRenderContext::switchWindowMode");
+}
+
+bool MazeRenderContext::_checkShaderCompilation(GLuint shader, const std::string &shader_type)
+{
+    GLint success;
+    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    if (!success)
+    {
+        char infoLog[1024];
+        glGetShaderInfoLog(shader, 1024, nullptr, infoLog);
+        ROS_ERROR("[MazeRenderContext] %s shader compilation error: %s", shader_type.c_str(), infoLog);
+        return false;
+    }
+    return true;
+}
+
+bool MazeRenderContext::_checkProgramLinking(GLuint program)
+{
+    GLint success;
+    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    if (!success)
+    {
+        char infoLog[1024];
+        glGetProgramInfoLog(program, 1024, nullptr, infoLog);
+        ROS_ERROR("[MazeRenderContext] Program linking error: %s", infoLog);
+        return false;
+    }
+    return true;
+}
+
+int MazeRenderContext::_checkMonitor(int mon_ind)
+{
+    // Validate the inputs
+    if (mon_ind >= _NumMonitors)
+    {
+        ROS_ERROR("[MazeRenderContext::_checkMonitor] Monitor Index[%d] Exceeds Available Monitors[%d]", mon_ind, _NumMonitors);
+        return -1;
+    }
+
+    // Set the monitor for this instance
+    monitorID = _PP_Monitor[mon_ind];
+    if (!monitorID)
+    {
+        ROS_ERROR("[MazeRenderContext::initContext] Invalid monitor pointer for index %d", mon_ind);
+        return -1;
+    }
+    monitorInd = mon_ind; // Store the monitor index
+
+    return 0;
+}
+
+void _testCallbacks(GLFWwindow *win)
+{
+    ROS_INFO("============== START: CALLBACK DEBUGGIN ==============");
+    // Trigger buffer
+    glfwSetWindowSize(win, 800, 600); // Change the size to something different
+
+    // Insert a debug message manually
+    glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, -1, "Test debug message");
+    checkErrorOpenGL(__LINE__, __FILE__, "[main] Error Flagged Following glDebugMessageInsert()");
+
+    // Try to create a window with invalid arguments
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 99); // Set an invalid version to trigger an error
+    GLFWwindow *new_win = glfwCreateWindow(640, 480, "Bad Window!", nullptr, nullptr);
+    ROS_INFO("============== END: CALLBACK DEBUGGIN ==============");
+}
+
 // ================================================== CLASS: CircleRenderer ==================================================
 
 // Initialize CircleRenderer static members
-int CircleRenderer::IDX = 0;
-GLuint CircleRenderer::_SHADER_PROGRAM = 0;
-GLint CircleRenderer::_COLOR_LOCATION = -1;
-GLint CircleRenderer::_TRANSFORM_LOCATION = -1;
-GLint CircleRenderer::_ASPECT_RATIO_LOCATION = -1;
-float CircleRenderer::_ASPECT_RATIO_UNIFORM = 1.0f;
+int CircleRenderer::_CircCnt = 0;
+GLuint CircleRenderer::_ShaderProgram = 0;
+GLint CircleRenderer::_ColorLocation = -1;
+GLint CircleRenderer::_TransformLocation = -1;
+GLint CircleRenderer::_AspectRatioLocation = -1;
+float CircleRenderer::_AspectRatioUniform = 1.0f;
 
 CircleRenderer::CircleRenderer()
     : circPosition(cv::Point2f(0.0f, 0.0f)), cirRadius(1.0f), circColor(cv::Scalar(1.0, 1.0, 1.0)),
       circSegments(32), circRotationAngle(0.0f), circScalingFactors(cv::Point2f(1.0f, 1.0f))
 {
-    // Define instance count and itterate static IDX
-    circID = IDX++;
+    // Define instance count and itterate static _CircCnt
+    circID = _CircCnt++;
 
     // Initialize the transformation matrix as an identity matrix
     _transformationMatrix = cv::Mat::eye(4, 4, CV_32F);
@@ -31,11 +482,20 @@ CircleRenderer::CircleRenderer()
 
 CircleRenderer::~CircleRenderer()
 {
-    glDeleteVertexArrays(1, &_VAO);
-    glDeleteBuffers(1, &_VBO);
+    // Cleanup instance-level OpenGL resources
+    if (_vao != 0)
+    {
+        glDeleteVertexArrays(1, &_vao);
+        _vao = 0;
+    }
+    if (_vbo != 0)
+    {
+        glDeleteBuffers(1, &_vbo);
+        _vbo = 0;
+    }
 }
 
-void CircleRenderer::initializeCircleRenderer(cv::Point2f pos, float rad, cv::Scalar col, unsigned int segments)
+void CircleRenderer::initializeCircleAttributes(cv::Point2f pos, float rad, cv::Scalar col, unsigned int segments)
 {
     // Set variables
     circPosition = pos;
@@ -51,7 +511,7 @@ void CircleRenderer::initializeCircleRenderer(cv::Point2f pos, float rad, cv::Sc
     _computeVertices(circPosition, cirRadius, circSegments, _circVertices);
 
     // Setup OpenGL buffers
-    _setupOpenGL();
+    _setupRenderBuffers();
 
     // // TEMP
     // ROS_INFO("[CircleRenderer] Initialized Instance[%d]: Position[%0.2f, %0.2f] Radius[%0.4f] Color[%.2f, %.2f, %.2f] Segments[%d]",
@@ -61,7 +521,7 @@ void CircleRenderer::initializeCircleRenderer(cv::Point2f pos, float rad, cv::Sc
 void CircleRenderer::setPosition(cv::Point2f pos)
 {
     // Modify the y position based on the aspect ratio
-    pos.y /= _ASPECT_RATIO_UNIFORM;
+    pos.y /= _AspectRatioUniform;
     circPosition = pos;
 }
 
@@ -94,7 +554,7 @@ void CircleRenderer::recomputeParameters()
     _computeVertices(circPosition, cirRadius, circSegments, _circVertices);
 
     // Bind the VBO to the GL_ARRAY_BUFFER target
-    glBindBuffer(GL_ARRAY_BUFFER, _VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
 
     // Update the VBO's data with the new vertices. This call will reallocate the buffer if necessary
     // or simply update the data store's contents if the buffer is large enough.
@@ -111,67 +571,75 @@ void CircleRenderer::recomputeParameters()
 void CircleRenderer::draw()
 {
     // Set color
-    glUniform4f(_COLOR_LOCATION, circColor[0], circColor[1], circColor[2], 1.0f);
+    glUniform4f(_ColorLocation, circColor[0], circColor[1], circColor[2], 1.0f);
 
     // Use the updated transformation matrix instead of an identity matrix
     auto transformArray = _cvMatToGlArray(_transformationMatrix);
-    glUniformMatrix4fv(_TRANSFORM_LOCATION, 1, GL_FALSE, transformArray.data());
+    glUniformMatrix4fv(_TransformLocation, 1, GL_FALSE, transformArray.data());
 
     // Bind the VAO and draw the circle using GL_TRIANGLE_FAN
-    glBindVertexArray(_VAO);
+    glBindVertexArray(_vao);
     glDrawArrays(GL_TRIANGLE_FAN, 0, static_cast<GLsizei>(_circVertices.size() / 2));
 
     // Unbind the VAO to leave a clean state
     glBindVertexArray(0);
 }
 
-int CircleRenderer::compileAndLinkCircleShaders(float aspect_ratio)
+int CircleRenderer::CompileAndLinkCircleShaders(float aspect_ratio)
 {
     // Set the aspect ratio
-    _ASPECT_RATIO_UNIFORM = aspect_ratio;
+    _AspectRatioUniform = aspect_ratio;
 
     // Compile vertex shader
-    GLuint vertexShader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(vertexShader, 1, &vertexShaderSource, nullptr);
-    glCompileShader(vertexShader);
-    if (!_checkShaderCompilation(vertexShader))
+    GLuint temp_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(temp_vertex_shader, 1, &vertexShaderSource, nullptr);
+    glCompileShader(temp_vertex_shader);
+    if (!_CheckShaderCompilation(temp_vertex_shader, "VERTEX"))
     {
+        glDeleteShader(temp_vertex_shader);
         ROS_ERROR("[CircleRenderer] Vertex shader compilation failed.");
         return -1;
     }
 
     // Compile fragment shader
-    GLuint fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(fragmentShader, 1, &fragmentShaderSource, nullptr);
-    glCompileShader(fragmentShader);
-    if (!_checkShaderCompilation(fragmentShader))
+    GLuint temp_fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(temp_fragment_shader, 1, &fragmentShaderSource, nullptr);
+    glCompileShader(temp_fragment_shader);
+    if (!_CheckShaderCompilation(temp_fragment_shader, "FRAGMENT"))
     {
+        glDeleteShader(temp_vertex_shader);
+        glDeleteShader(temp_fragment_shader);
         ROS_ERROR("[CircleRenderer] Fragment shader compilation failed.");
         return -1;
     }
 
     // Link shaders into a program
-    _SHADER_PROGRAM = glCreateProgram();
-    glAttachShader(_SHADER_PROGRAM, vertexShader);
-    glAttachShader(_SHADER_PROGRAM, fragmentShader);
-    glLinkProgram(_SHADER_PROGRAM);
-    if (!_checkProgramLinking(_SHADER_PROGRAM))
+    _ShaderProgram = glCreateProgram();
+    glAttachShader(_ShaderProgram, temp_vertex_shader);
+    glAttachShader(_ShaderProgram, temp_fragment_shader);
+    glLinkProgram(_ShaderProgram);
+    if (!_CheckProgramLinking(_ShaderProgram))
     {
+        glDeleteShader(temp_vertex_shader);
+        glDeleteShader(temp_fragment_shader);
+        glDeleteProgram(_ShaderProgram);
         ROS_ERROR("[CircleRenderer] Shader program linking failed.");
         return -1;
     }
 
-    // After linking, shaders can be deleted
-    glDeleteShader(vertexShader);
-    glDeleteShader(fragmentShader);
+    // Cleanup: detach and delete shaders
+    glDetachShader(_ShaderProgram, temp_vertex_shader);
+    glDeleteShader(temp_vertex_shader);
+    glDetachShader(_ShaderProgram, temp_fragment_shader);
+    glDeleteShader(temp_fragment_shader);
 
     // Get uniform locations
-    _COLOR_LOCATION = glGetUniformLocation(_SHADER_PROGRAM, "color");
-    _TRANSFORM_LOCATION = glGetUniformLocation(_SHADER_PROGRAM, "transform");
-    _ASPECT_RATIO_LOCATION = glGetUniformLocation(_SHADER_PROGRAM, "aspectRatio");
+    _ColorLocation = glGetUniformLocation(_ShaderProgram, "color");
+    _TransformLocation = glGetUniformLocation(_ShaderProgram, "transform");
+    _AspectRatioLocation = glGetUniformLocation(_ShaderProgram, "aspectRatio");
 
     // Check for errors in getting uniforms
-    if (_COLOR_LOCATION == -1 || _TRANSFORM_LOCATION == -1 || _ASPECT_RATIO_LOCATION == -1)
+    if (_ColorLocation == -1 || _TransformLocation == -1 || _AspectRatioLocation == -1)
     {
         ROS_ERROR("[CircleRenderer] Error getting uniform locations.");
         return -1;
@@ -180,36 +648,43 @@ int CircleRenderer::compileAndLinkCircleShaders(float aspect_ratio)
     return 0; // Success
 }
 
-int CircleRenderer::cleanupShaderObjects()
+int CircleRenderer::CleanupClassResources()
 {
-    // Use OpenGL calls to delete shader program and shaders
-    if (_SHADER_PROGRAM != 0)
+    // Delete the shader program
+    if (_ShaderProgram != 0)
     {
-        glDeleteProgram(_SHADER_PROGRAM);
-        _SHADER_PROGRAM = 0;
+        glDeleteProgram(_ShaderProgram);
+        _ShaderProgram = 0;
     }
-    else
-    {
-        return -1;
-    }
+
+    // Reset the static uniform locations to -1 indicating they are no longer valid
+    _ColorLocation = -1;
+    _TransformLocation = -1;
+    _AspectRatioLocation = -1;
+
+    // Reset the aspect ratio uniform
+    _AspectRatioUniform = 0.0f;
+
+    ///@todo add error check for open gl to class
+    return 0;
 }
 
-void CircleRenderer::setupShaderForDrawing()
+void CircleRenderer::SetupShader()
 {
     // Use the shader program
-    glUseProgram(_SHADER_PROGRAM);
+    glUseProgram(_ShaderProgram);
 
     // Set the aspect ratio uniform
-    glUniform1f(_ASPECT_RATIO_LOCATION, _ASPECT_RATIO_UNIFORM);
+    glUniform1f(_AspectRatioLocation, _AspectRatioUniform);
 }
 
-void CircleRenderer::unsetShaderForDrawing()
+void CircleRenderer::UnsetShader()
 {
     // Unset the shader program
     glUseProgram(0);
 }
 
-bool CircleRenderer::_checkShaderCompilation(GLuint shader)
+bool CircleRenderer::_CheckShaderCompilation(GLuint shader, const std::string &shader_type)
 {
     GLint success;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
@@ -218,13 +693,13 @@ bool CircleRenderer::_checkShaderCompilation(GLuint shader)
         // Get and log the error message
         char infoLog[512];
         glGetShaderInfoLog(shader, 512, nullptr, infoLog);
-        ROS_ERROR("[CircleRenderer] Shader compilation error: %s", infoLog);
+        ROS_ERROR("[CircleRenderer] %s shader compilation error: %s", shader_type.c_str(), infoLog);
         return false;
     }
     return true;
 }
 
-bool CircleRenderer::_checkProgramLinking(GLuint program)
+bool CircleRenderer::_CheckProgramLinking(GLuint program)
 {
     GLint success;
     glGetProgramiv(program, GL_LINK_STATUS, &success);
@@ -239,18 +714,18 @@ bool CircleRenderer::_checkProgramLinking(GLuint program)
     return true;
 }
 
-void CircleRenderer::_setupOpenGL()
+void CircleRenderer::_setupRenderBuffers()
 {
     // Generate a new Vertex Array Object (VAO) and store the ID
-    glGenVertexArrays(1, &_VAO);
+    glGenVertexArrays(1, &_vao);
     // Generate a new Vertex Buffer Object (VBO) and store the ID
-    glGenBuffers(1, &_VBO);
+    glGenBuffers(1, &_vbo);
 
     // Bind the VAO to set it up
-    glBindVertexArray(_VAO);
+    glBindVertexArray(_vao);
 
     // Bind the VBO to the GL_ARRAY_BUFFER target
-    glBindBuffer(GL_ARRAY_BUFFER, _VBO);
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
     // Copy vertex data into the buffer's memory (GL_DYNAMIC_DRAW hints that the data might change often)
     glBufferData(GL_ARRAY_BUFFER, _circVertices.size() * sizeof(float), _circVertices.data(), GL_DYNAMIC_DRAW);
 
@@ -336,93 +811,6 @@ void CircleRenderer::_computeVertices(cv::Point2f position, float radius, unsign
     }
 }
 
-// ================================================== CLASS: WallRenderContext ==================================================
-
-// Constructor implementation
-WallRenderContext::WallRenderContext(GLuint shader, GLuint _vao, GLuint _vbo,
-                                     GLuint _ebo, GLuint tex, GLFWwindow *win,
-                                     GLFWmonitor *mon, int win_ind, int mon_ind)
-    : shaderProgram(shader), vao(_vao), vbo(_vbo), ebo(_ebo),
-      texture(tex), window(win), monitor(mon), windowInd(win_ind), monitorInd(mon_ind)
-{
-    // Constructor code to set up the render context
-    // This could include shader program compilation, VAO/VBO setup, etc.
-}
-
-// Destructor implementation
-WallRenderContext::~WallRenderContext()
-{
-    // Clean up resources
-    glDeleteProgram(shaderProgram);
-    glDeleteVertexArrays(1, &vao);
-    glDeleteBuffers(1, &vbo);
-    glDeleteBuffers(1, &ebo);
-    glDeleteTextures(1, &texture);
-    // Do not destroy the window or monitor here, as they are managed externally
-}
-
-// Move constructor implementation
-WallRenderContext::WallRenderContext(WallRenderContext &&other) noexcept
-    : shaderProgram(other.shaderProgram), vao(other.vao), vbo(other.vbo),
-      ebo(other.ebo), texture(other.texture), window(other.window),
-      monitor(other.monitor), windowInd(other.windowInd), monitorInd(other.monitorInd)
-{
-    // Reset the other's members to default values
-    other.shaderProgram = 0;
-    other.vao = 0;
-    other.vbo = 0;
-    other.ebo = 0;
-    other.texture = 0;
-    other.window = nullptr;
-    other.monitor = nullptr;
-    other.windowInd = -1;
-    other.monitorInd = -1;
-}
-
-// Move assignment operator implementation
-WallRenderContext &WallRenderContext::operator=(WallRenderContext &&other) noexcept
-{
-    if (this != &other) // Prevent self-assignment
-    {
-        // Clean up existing resources
-        glDeleteProgram(shaderProgram);
-        glDeleteVertexArrays(1, &vao);
-        glDeleteBuffers(1, &vbo);
-        glDeleteBuffers(1, &ebo);
-        glDeleteTextures(1, &texture);
-
-        // Transfer ownership of resources from other to this
-        shaderProgram = other.shaderProgram;
-        vao = other.vao;
-        vbo = other.vbo;
-        ebo = other.ebo;
-        texture = other.texture;
-        window = other.window;
-        monitor = other.monitor;
-        windowInd = other.windowInd;
-        monitorInd = other.monitorInd;
-
-        // Reset the other's members to default values
-        other.shaderProgram = 0;
-        other.vao = 0;
-        other.vbo = 0;
-        other.ebo = 0;
-        other.texture = 0;
-        other.window = nullptr;
-        other.monitor = nullptr;
-        other.windowInd = -1;
-        other.monitorInd = -1;
-    }
-    return *this;
-}
-
-// Implementation of setMonitor
-void WallRenderContext::setMonitor(int monitor_ind, GLFWmonitor *_monitor)
-{
-    monitor = _monitor;
-    monitorInd = monitor_ind;
-}
-
 // ================================================== FUNCTIONS ==================================================
 
 void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
@@ -441,39 +829,39 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         if (key == GLFW_KEY_F)
         {
             F.setFullscreen = !F.setFullscreen;
-            F.updateWindowMonMode = true;
+            F.switchWindowMode = true;
         }
 
         // Move the window to another monitor
         else if (key == GLFW_KEY_0)
         {
             I.winMon = 0;
-            F.updateWindowMonMode = true;
+            F.switchWindowMode = true;
         }
         else if (key == GLFW_KEY_1 && N.monitors > 1)
         {
             I.winMon = 1;
-            F.updateWindowMonMode = true;
+            F.switchWindowMode = true;
         }
         else if (key == GLFW_KEY_2 && N.monitors > 2)
         {
             I.winMon = 2;
-            F.updateWindowMonMode = true;
+            F.switchWindowMode = true;
         }
         else if (key == GLFW_KEY_3 && N.monitors > 3)
         {
             I.winMon = 3;
-            F.updateWindowMonMode = true;
+            F.switchWindowMode = true;
         }
         else if (key == GLFW_KEY_4 && N.monitors > 4)
         {
             I.winMon = 4;
-            F.updateWindowMonMode = true;
+            F.switchWindowMode = true;
         }
         else if (key == GLFW_KEY_5 && N.monitors > 5)
         {
             I.winMon = 5;
-            F.updateWindowMonMode = true;
+            F.switchWindowMode = true;
         }
 
         // ---------- XML Handling [ENTER, L] ----------
@@ -495,18 +883,22 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         else if (key == GLFW_KEY_F1)
         {
             I.wallImage = N.wallImages > 0 ? 0 : I.wallImage;
+            F.updateWallTexture = true;
         }
         else if (key == GLFW_KEY_F2)
         {
             I.wallImage = N.wallImages > 1 ? 1 : I.wallImage;
+            F.updateWallTexture = true;
         }
         else if (key == GLFW_KEY_F3)
         {
             I.wallImage = N.wallImages > 2 ? 2 : I.wallImage;
+            F.updateWallTexture = true;
         }
         else if (key == GLFW_KEY_F4)
         {
             I.wallImage = N.wallImages > 3 ? 3 : I.wallImage;
+            F.updateWallTexture = true;
         }
 
         // ---------- Control Point Reset [R] ----------
@@ -677,35 +1069,6 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     }
 }
 
-void callbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
-{
-    glViewport(0, 0, width, height);
-    checkErrorGLFW(__LINE__, __FILE__, "callbackFrameBufferSizeGLFW");
-}
-
-static void APIENTRY callbackDebugOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
-{
-    // Get level of severity
-    int s_level = (severity == GL_DEBUG_SEVERITY_NOTIFICATION) ? 1 : (severity == GL_DEBUG_SEVERITY_LOW)  ? 2
-                                                                 : (severity == GL_DEBUG_SEVERITY_MEDIUM) ? 3
-                                                                 : (severity == GL_DEBUG_SEVERITY_HIGH)   ? 4
-                                                                                                          : 0;
-
-    // Check if the message is below the specified debug level
-    if (s_level < DEBUG_LEVEL_GL)
-    {
-        return;
-    }
-
-    // Log the message
-    ROS_DEBUG("[callbackDebugOpenGL] Type[0x%x] ID[%d] Severity[0x%x] Message[%s]", type, id, severity, message);
-}
-
-static void callbackErrorGLFW(int error, const char *description)
-{
-    ROS_ERROR("[callbackErrorGLFW] Error[%d] Description[%s]", error, description);
-}
-
 int checkErrorOpenGL(int line, const char *file_str, const char *msg_str)
 {
     GLenum gl_err;
@@ -730,75 +1093,6 @@ int checkErrorGLFW(int line, const char *file_str, const char *msg_str)
             ROS_ERROR("[checkErrorGLFW] Description[%s] File[%s] Line[%d]", description, file_str, line);
         return -1;
     }
-    return 0;
-}
-
-int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_r_monitor_id, int mon_id_ind, bool is_fullscreen)
-{
-    static int imp_mon_id_ind_last = mon_id_ind;
-    static bool is_fullscreen_last = !is_fullscreen;
-
-    // Check if monitor or fullscreen mode has changed
-    if (imp_mon_id_ind_last == mon_id_ind && is_fullscreen_last == is_fullscreen)
-    {
-        return 0;
-    }
-
-    // Get GLFWmonitor for active monitor
-    GLFWmonitor *p_monitor_id = pp_r_monitor_id[mon_id_ind];
-
-    // Update window size and position
-    if (p_monitor_id)
-    {
-        // Get the video mode of the selected monitor
-        const GLFWvidmode *mode = glfwGetVideoMode(p_monitor_id);
-        if (!mode)
-        {
-            ROS_ERROR("[updateWindowMonMode] Failed to Get Video Mode: Monitor[%d]", mon_id_ind);
-            return -1;
-        }
-
-        // Set the window to full-screen mode on the current monitor
-        glfwSetWindowMonitor(p_window_id, p_monitor_id, 0, 0, mode->width, mode->height, mode->refreshRate);
-        if (!p_monitor_id)
-        {
-            ROS_ERROR("[updateWindowMonMode] Invalid Monitor Pointer: Monitor[%d]", mon_id_ind);
-            return -1;
-        }
-
-        if (!is_fullscreen)
-        {
-            // Get the position of the current monitor
-            int monitor_x, monitor_y;
-            glfwGetMonitorPos(p_monitor_id, &monitor_x, &monitor_y);
-
-            // Validate monitor position
-            if (monitor_x < 0 || monitor_y < 0)
-            {
-                ROS_WARN("[updateWindowMonMode] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_id_ind, monitor_x, monitor_y);
-                return 0;
-            }
-
-            // Set the window to windowed mode and position it on the current monitor
-            glfwSetWindowMonitor(p_window_id, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * WINDOW_ASPECT_RATIO), 500, 0);
-        }
-
-        // Update window title
-        std::string new_title = "Window[" + std::to_string(win_ind) + "] Monitor[" + std::to_string(mon_id_ind) + "]";
-        glfwSetWindowTitle(p_window_id, new_title.c_str());
-
-        ROS_INFO("[updateWindowMonMode] Move Window: Monitor[%d] Format[%s]", mon_id_ind, is_fullscreen ? "fullscreen" : "windowed");
-    }
-    else
-    {
-        ROS_WARN("[updateWindowMonMode] Failed Move Window: Monitor[%d] Format[%s]", mon_id_ind, is_fullscreen ? "fullscreen" : "windowed");
-        return 0;
-    }
-
-    // Update last monitor and fullscreen mode
-    imp_mon_id_ind_last = mon_id_ind;
-    is_fullscreen_last = is_fullscreen;
-
     return 0;
 }
 
@@ -1044,32 +1338,31 @@ int compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_so
     glDetachShader(shader_program, fragment_shader);
     glDeleteShader(fragment_shader);
 
-    // No need to delete the program as it's being used outside this function
-
     // Return GL status
     return checkErrorOpenGL(__LINE__, __FILE__, "compileAndLinkShaders");
 }
 
-int initializeWallRenderObjects(GLuint &_WALL_VAO, GLuint &_WALL_VBO, GLuint &_WALL_EBO)
+int initWallRenderObjects(MazeRenderContext &out_renCtx,
+                          float *vertices, size_t verticesSize,
+                          unsigned int *indices, size_t indicesSize)
 {
-
     // Generate and bind an Element Buffer Object (EBO)
-    glGenBuffers(1, &_WALL_EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _WALL_EBO);
+    glGenBuffers(1, &out_renCtx.ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, out_renCtx.ebo);
 
     // Initialize the EBO with index data
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(WALL_GL_INDICES), WALL_GL_INDICES, GL_DYNAMIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesSize, indices, GL_DYNAMIC_DRAW);
 
     // Generate and bind a Vertex Array Object (VAO)
-    glGenVertexArrays(1, &_WALL_VAO);
-    glBindVertexArray(_WALL_VAO);
+    glGenVertexArrays(1, &out_renCtx.vao);
+    glBindVertexArray(out_renCtx.vao);
 
     // Generate and bind a Vertex Buffer Object (VBO)
-    glGenBuffers(1, &_WALL_VBO);
-    glBindBuffer(GL_ARRAY_BUFFER, _WALL_VBO);
+    glGenBuffers(1, &out_renCtx.vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, out_renCtx.vbo);
 
     // Initialize the VBO with vertex data
-    glBufferData(GL_ARRAY_BUFFER, sizeof(WALL_GL_VERTICES), WALL_GL_VERTICES, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, verticesSize, vertices, GL_STATIC_DRAW);
 
     // Specify the format of the vertex data for the position attribute
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
@@ -1083,11 +1376,11 @@ int initializeWallRenderObjects(GLuint &_WALL_VAO, GLuint &_WALL_VBO, GLuint &_W
     glBindVertexArray(0);
 
     // Return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__, "initializeWallRenderObjects");
+    return checkErrorOpenGL(__LINE__, __FILE__, "initWallRenderObjects");
 }
 
-int initializeCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
-                                    std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
+int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
+                              std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
 {
     // Iterate through control point outer array (maze vertices)
     for (float mv_i = 0; mv_i < 4; mv_i++) // image bottom to top
@@ -1095,7 +1388,7 @@ int initializeCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>,
         // Iterate through control point inner array (wall vertices)
         for (int wv_i = 0; wv_i < 4; ++wv_i)
         {
-            out_CP_RENDERERS[mv_i][wv_i].initializeCircleRenderer(
+            out_CP_RENDERERS[mv_i][wv_i].initializeCircleAttributes(
                 _CP_COORDS[mv_i][wv_i], // position
                 cpDefualtMakerRadius,   // radius
                 cpDefaultRGB,           // color
@@ -1105,7 +1398,7 @@ int initializeCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>,
     }
 
     // Return GL status
-    return checkErrorOpenGL(__LINE__, __FILE__, "initializeCircleRendererObjects");
+    return checkErrorOpenGL(__LINE__, __FILE__, "initCircleRendererObjects");
 }
 
 int updateWallTexture(
@@ -1195,20 +1488,20 @@ GLuint loadTexture(cv::Mat image)
     return textureID;
 }
 
-int renderWallImage(const GLuint &_WALL_TEXTURE_ID, const GLuint &_WALL_SHADER, const GLuint &_WALL_VAO, const GLuint &_WALL_EBO)
+int renderWallImage(const MazeRenderContext &mazeRenderContext)
 {
     // Use the shader program for wall rendering
-    glUseProgram(_WALL_SHADER);
+    glUseProgram(mazeRenderContext.shaderProgram);
 
     // Bind the texture for the walls
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, _WALL_TEXTURE_ID);
+    glBindTexture(GL_TEXTURE_2D, mazeRenderContext.textureID);
 
     // Bind the Vertex Array Object(VAO) specific to the current wall
-    glBindVertexArray(_WALL_VAO);
+    glBindVertexArray(mazeRenderContext.vao);
 
     // Bind the common Element Buffer Object (EBO)
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _WALL_EBO);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mazeRenderContext.ebo);
 
     // Draw the rectangle (2 triangles) for the current wall
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -1227,7 +1520,7 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COO
                         std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
 {
     // Setup the CircleRenderer class shaders
-    CircleRenderer::setupShaderForDrawing();
+    CircleRenderer::SetupShader();
 
     // Loop through the control points and draw them
     for (int mv_i = 0; mv_i < 4; ++mv_i)
@@ -1266,7 +1559,7 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COO
     }
 
     // Unset the shader program
-    CircleRenderer::unsetShaderForDrawing();
+    CircleRenderer::UnsetShader();
 
     // // TEMP
     // return -1;
@@ -1299,7 +1592,7 @@ int main(int argc, char **argv)
     initControlPointCoordinates(CP_COORDS);
 
     // Initialize wall homography matrices array
-    if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) < 0)
+    if (updateHomography(CP_COORDS, WALL_HMAT_DATA) < 0)
     {
         ROS_ERROR("[SETUP] Failed to Initialize Wall Parameters");
         return -1;
@@ -1307,83 +1600,53 @@ int main(int argc, char **argv)
 
     // --------------- OpenGL SETUP ---------------
 
-    // Declare GLFW variables
-    GLFWwindow *p_window_id = nullptr;
-    GLFWmonitor **pp_monitor_id_Vec = nullptr;
+    // Declare MazeRenderContext instance
+    std::array<MazeRenderContext, 1> RenCtx;
 
-    // Initialize GLFW and set error callback
-    glfwSetErrorCallback(callbackErrorGLFW);
-    if (!glfwInit())
+    // Initialize GLFW and OpenGL settings
+    if (MazeRenderContext::SetupGraphicsLibraries(N.monitors) < 0)
     {
-        ROS_ERROR("[SETUP] GLFW Initialization Failed");
+        ROS_ERROR("[SETUP] Failed to Initialize Graphics");
         return -1;
     }
 
-    // Discover available monitors
-    pp_monitor_id_Vec = glfwGetMonitors(&N.monitors);
-    if (!pp_monitor_id_Vec || N.monitors == 0)
-    {
-        ROS_ERROR("[SETUP] Monitors Found: None");
-        return -1;
-    }
-    ROS_INFO("[SETUP] Monitors Found: %d", N.monitors);
-
-    // Create a new GLFW window
-    p_window_id = glfwCreateWindow(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, "", NULL, NULL);
-    if (!p_window_id || checkErrorGLFW(__LINE__, __FILE__, "[main] Error Flagged Following glfwCreateWindow()"))
-    {
-        glfwTerminate();
-        ROS_ERROR("[SETUP] GLFW Failed to Create Window");
-        return -1;
-    }
-
-    // Set the GLFW window as the current OpenGL context
-    glfwMakeContextCurrent(p_window_id);
-
-    // Load OpenGL extensions using GLAD
-    gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
-
-    // Load OpenGL extensions using GLAD
-    if (!gladLoadGL()) // Added this check
-    {
-        ROS_ERROR("[SETUP] GLAD Failed to Load OpenGL");
-        return -1;
-    }
-
-    // Set GLFW callbacks for keyboard and framebuffer size events
-    glfwSetKeyCallback(p_window_id, callbackKeyBinding);
-    glfwSetFramebufferSizeCallback(p_window_id, callbackFrameBufferSizeGLFW);
-
-    // Enable OpenGL debugging context and associate callback
-    glEnable(GL_DEBUG_OUTPUT);
-    glDebugMessageCallback(callbackDebugOpenGL, 0);
+    // Initialze render context
+    /// @note this is where we would loop through our windows if there were more
+    RenCtx[0].initContext(0, 0);
 
     // Initialize OpenGL wall image objects
-    if (initializeWallRenderObjects(WALL_VAO, WALL_VBO, WALL_EBO) < 0)
+    if (initWallRenderObjects(RenCtx[0],
+                              WALL_GL_VERTICES, sizeof(WALL_GL_VERTICES),
+                              WALL_GL_INDICES, sizeof(WALL_GL_INDICES)) < 0)
     {
         ROS_ERROR("[SETUP] Failed to Initialize OpenGL Wall Image Objects");
         return -1;
     }
 
     // Update monitor and window mode settings
-    updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, I.winMon, F.setFullscreen);
+    /// @note consider moving into class setup
+    if (RenCtx[0].switchWindowMode(I.winMon, F.setFullscreen) < 0)
+    {
+        ROS_ERROR("[SETUP] Failed Initial Update of Window Monitor Mode");
+        return -1;
+    }
 
     // Create the shader program for wall image rendering
-    if (compileAndLinkShaders(wallVertexSource, wallFragmentSource, WALL_SHADER) < 0)
+    if (RenCtx[0].compileAndLinkShaders(wallVertexSource, wallFragmentSource) < 0)
     {
         ROS_ERROR("[SETUP] Failed to Compile and Link Wall Shader");
         return -1;
     }
 
     // Create the shader program for CircleRenderer class control point rendering
-    if (CircleRenderer::compileAndLinkCircleShaders(WINDOW_ASPECT_RATIO) < 0)
+    if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_ASPECT_RATIO) < 0)
     {
         ROS_ERROR("[SETUP] Failed to Compile and Link CircleRenderer Class Shader");
         return -1;
     }
 
     // Initialize the CircleRenderer class objects array
-    if (initializeCircleRendererObjects(CP_COORDS, CP_RENDERERS) < 0)
+    if (initCircleRendererObjects(CP_COORDS, CP_RENDERERS) < 0)
     {
         ROS_ERROR("[SETUP] Failed to Initialize Control Point Variables");
         return -1;
@@ -1418,7 +1681,7 @@ int main(int argc, char **argv)
     }
 
     // Initialize wall image texture
-    if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_DATA, WALL_TEXTURE_ID) < 0)
+    if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_DATA, RenCtx[0].textureID) < 0)
     {
         ROS_ERROR("[SETUP] Failed to Initialize Wall Texture");
         return -1;
@@ -1427,7 +1690,7 @@ int main(int argc, char **argv)
     // _______________ MAIN LOOP _______________
 
     bool is_error = false;
-    while (!glfwWindowShouldClose(p_window_id) && ros::ok())
+    while (!glfwWindowShouldClose(RenCtx[0].windowID) && ros::ok())
     {
 
         // --------------- Check Kayboard Callback Flags ---------------
@@ -1449,15 +1712,15 @@ int main(int argc, char **argv)
         }
 
         // Update the window monitor and mode
-        if (F.updateWindowMonMode)
+        if (F.switchWindowMode)
         {
-            if (updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, I.winMon, F.setFullscreen) < 0)
+            if (RenCtx[0].switchWindowMode(I.winMon, F.setFullscreen) < 0)
             {
-                ROS_ERROR("[MAIN] Update Window Monitor Mode Threw an Error");
+                ROS_ERROR("[main] Update Window Monitor Mode Threw an Error");
                 is_error = true;
                 break;
             }
-            F.updateWindowMonMode = false;
+            F.switchWindowMode = false;
         }
 
         // Initialize/reinitialize control point coordinate dataset
@@ -1471,17 +1734,17 @@ int main(int argc, char **argv)
         if (F.updateWallTexture)
         {
             // Update wall homography matrices array
-            if (updateHomographyMatrices(CP_COORDS, WALL_HMAT_DATA) < 0)
+            if (updateHomography(CP_COORDS, WALL_HMAT_DATA) < 0)
             {
-                ROS_ERROR("[MAIN] Update of Wall Vertices Datasets Failed");
+                ROS_ERROR("[main] Update of Wall Vertices Datasets Failed");
                 is_error = true;
                 break;
             }
 
             // Update wall image texture
-            if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_DATA, WALL_TEXTURE_ID) < 0)
+            if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_DATA, RenCtx[0].textureID) < 0)
             {
-                ROS_ERROR("[MAIN] Update of Wall Homography Datasets Failed");
+                ROS_ERROR("[main] Update of Wall Homography Datasets Failed");
                 is_error = true;
                 break;
             }
@@ -1499,9 +1762,9 @@ int main(int argc, char **argv)
         }
 
         // Draw/update wall images
-        if (renderWallImage(WALL_TEXTURE_ID, WALL_SHADER, WALL_VAO, WALL_EBO) < 0)
+        if (renderWallImage(RenCtx[0]) < 0)
         {
-            ROS_ERROR("[MAIN] Draw Walls Threw an Error");
+            ROS_ERROR("[main] Draw Walls Threw an Error");
             is_error = true;
             break;
         }
@@ -1509,14 +1772,14 @@ int main(int argc, char **argv)
         // Draw/update control point markers
         if (renderControlPoints(CP_COORDS, CP_RENDERERS) < 0)
         {
-            ROS_ERROR("[MAIN] Draw Control Point Threw an Error");
+            ROS_ERROR("[main] Draw Control Point Threw an Error");
             is_error = true;
             break;
         }
 
         // Swap buffers and poll events
-        glfwSwapBuffers(p_window_id);
-        if (checkErrorGLFW(__LINE__, __FILE__, "[main] Error Flagged Following glfwSwapBuffers()") < 0)
+        glfwSwapBuffers(RenCtx[0].windowID);
+        if (checkErrorGLFW(__LINE__, __FILE__, "[main] Error flagged following glfwSwapBuffers()") < 0)
         {
             is_error = true;
             break;
@@ -1526,7 +1789,7 @@ int main(int argc, char **argv)
         glfwPollEvents();
 
         // Exit condition
-        if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(p_window_id))
+        if (glfwGetKey(RenCtx[0].windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(RenCtx[0].windowID))
             break;
     }
 
@@ -1536,67 +1799,32 @@ int main(int argc, char **argv)
     // Check which condition caused the loop to exit
     if (!ros::ok())
         ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
-    else if (glfwWindowShouldClose(p_window_id))
+    else if (glfwWindowShouldClose(RenCtx[0].windowID))
         ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
-    else if (glfwGetKey(p_window_id, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    else if (glfwGetKey(RenCtx[0].windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         ROS_INFO("[LOOP TERMINATION] Escape Key was Pressed");
     else if (is_error)
         ROS_INFO("[LOOP TERMINATION] Error Thrown");
     else
         ROS_INFO("[LOOP TERMINATION] Reason Unknown");
 
-    // Delete wall shader program
-    if (WALL_SHADER != 0)
-    {
-        glDeleteProgram(WALL_SHADER);
-        ROS_INFO("[SHUTDOWN] Deleted WALL_SHADER program");
-    }
-    else
-    {
-        ROS_WARN("[SHUTDOWN] No WALL_SHADER program to delete");
-    }
-
     // Delete CircleRenderer class shader program
-    if (CircleRenderer::cleanupShaderObjects())
-    {
-        ROS_INFO("[SHUTDOWN] Deleted CircleRenderer program");
-    }
+    if (CircleRenderer::CleanupClassResources() < 0)
+        ROS_WARN("[main] Failed to delete CircleRenderer shader program");
     else
-    {
-        ROS_WARN("[SHUTDOWN] No CircleRenderer program to delete");
-    }
+        ROS_INFO("[main] CircleRenderer shader program deleted successfully");
 
-    // Delete wall texture
-    if (WALL_TEXTURE_ID != 0)
-    {
-        glDeleteFramebuffers(1, &WALL_TEXTURE_ID);
-        if (checkErrorGLFW(__LINE__, __FILE__, "[main] Error Flagged Following glDeleteFramebuffers()") < 0)
-            ROS_WARN("[SHUTDOWN] Failed to Delete Wall Texture");
-        else
-            ROS_INFO("[SHUTDOWN] Deleted Wall Texture");
-    }
+    // Clean up OpenGL wall image objects
+    if (RenCtx[0].cleanupContext() != 0)
+        ROS_WARN("[main] Error during cleanup of MazeRenderContext instance");
     else
-        ROS_WARN("[SHUTDOWN] No Wall Texture to Delete");
+        ROS_INFO("[main] MazeRenderContext instance cleaned up successfully");
 
-    // Destroy GLFW window
-    if (p_window_id)
-    {
-        glfwDestroyWindow(p_window_id);
-        p_window_id = nullptr;
-        if (checkErrorGLFW(__LINE__, __FILE__, "[main] Error Flagged Following glfwDestroyWindow()") < 0)
-            ROS_WARN("[SHUTDOWN] Failed to Destroy GLFW Window");
-        else
-            ROS_INFO("[SHUTDOWN] Destroyed GLFW Window");
-    }
+    // Terminate graphics
+    if (MazeRenderContext::CleanupGraphicsLibraries() < 0)
+        ROS_WARN("[main] Failed to terminate GLFW library");
     else
-        ROS_WARN("[SHUTDOWN] No GLFW window to destroy");
-
-    // Terminate GLFW
-    glfwTerminate();
-    if (checkErrorGLFW(__LINE__, __FILE__, "[main] Error Flagged Following glfwTerminate()") < 0)
-        ROS_WARN("[SHUTDOWN] Failed to Terminate GLFW Library");
-    else
-        ROS_INFO("[SHUTDOWN] Terminated GLFW");
+        ROS_INFO("[main] GLFW library terminated successfully");
 
     // Return success
     return is_error ? -1 : 0;

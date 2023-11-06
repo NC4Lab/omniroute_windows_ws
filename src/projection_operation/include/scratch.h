@@ -44,7 +44,7 @@
 //         // Iterate through control point inner array to initialize the CircleRenderer class objects array
 //         for (int wv_i = 0; wv_i < 4; ++wv_i)
 //         {
-//             CP_RENDERERS[wv_i][wv_i].initializeCircleRenderer(
+//             CP_RENDERERS[wv_i][wv_i].initializeCircleAttributes(
 //                 out_CP_COORDS[mv_i][wv_i], // position
 //                 cpDefualtMakerRadius,      // radius
 //                 cpWallVertSelectedRGB,         // color

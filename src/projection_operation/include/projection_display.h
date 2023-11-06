@@ -118,7 +118,7 @@ public:
 
 private:
     void _computeVertices(cv::Point2f position, float radius, unsigned int numSegments, std::vector<float> &circVertices);
-    void _setupOpenGL();
+    void _setupRenderBuffers();
     void _updateOpenGLVertices();
     void _computeTransformation();
     std::array<float, 16> _cvMatToGlArray(const cv::Mat &mat);

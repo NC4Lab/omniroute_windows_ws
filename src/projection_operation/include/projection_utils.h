@@ -521,7 +521,7 @@ float bilinearInterpolation(float, float, float, float, int, int, int);
  *
  * @return Integer status code [0:successful, -1:error].
  */
-int updateHomographyMatrices(
+int updateHomography(
     const std::array<std::array<cv::Point2f, 4>, 4> &,
     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
 

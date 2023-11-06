@@ -24,7 +24,7 @@ Circle::Circle(int idx, cv::Point2f pos, float rad, cv::Scalar col, unsigned int
     _computeVertices(circPosition, cirRadius, numSegments, circVertices);
 
     // Setup OpenGL buffers
-    _setupOpenGL();
+    _setupRenderBuffers();
 }
 
 Circle::~Circle()
@@ -117,7 +117,7 @@ void Circle::_computeVertices(cv::Point2f position, float radius, unsigned int n
     }
 }
 
-void Circle::_setupOpenGL()
+void Circle::_setupRenderBuffers()
 {
     // Generate a new Vertex Array Object (VAO) and store the ID
     glGenVertexArrays(1, &VAO);
