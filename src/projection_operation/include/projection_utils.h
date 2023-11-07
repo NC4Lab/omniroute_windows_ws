@@ -234,10 +234,10 @@ extern const std::string package_path = ros::package::getPath("projection_operat
 extern const std::string workspace_path = package_path.substr(0, package_path.rfind("/src"));
 
 // Directory paths for configuration files
-extern const std::string CONFIG_DIR_PATH = workspace_path + "/data/proj_calibration_parameters";
+extern const std::string CONFIG_DIR_PATH = workspace_path + "/data/projection/params";
 
 // Directory paths for configuration images
-extern const std::string IMAGE_TOP_DIR_PATH = workspace_path + "/data/proj_images";
+extern const std::string IMAGE_TOP_DIR_PATH = workspace_path + "/data/projection/images";
 
 /**
  * @brief 4D array of hardcoded image indices to display.
@@ -407,62 +407,33 @@ extern const float WALL_IMAGE_HEIGHT_NDC = (MAZE_HEIGHT_NDC / (float(MAZE_SIZE) 
  * @param config_dir_path Path to the directory where the XML file will be loaded/saved.
  *
  */
-std::string formatCoordinatesFilePathXML(int, int, std::string);
+std::string frmtFilePathxml(int, int, std::string);
 
 /**
- * @brief Loads control point parameters and homography matrix from an XML file.
+ * @brief Saves the homography matrix array to an XML file.
  *
  * @param full_path Path to the XML file.
- * @param verbose_level Level of verbosity for printing loaded data (0:nothing, 1:file name, 2:control point parameters, 3:homography matrix).
- * @param[out] out_HMAT Reference to the homography matrix to populate.
- * @param[out] out_ctrl_point_params Reference to a 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
+ * @param _HMAT_GRID_ARR Reference to the 3x3 array of Homography matrices to be saved.
  *
  * @return Integer status code [0:successful, -1:error].
  *
  * @details
- * This is the primary function containing the implementation. It reads an XML file
- * to populate the `r_h_mat` and `r_ctrl_point_params` matrices.
+ * This function uses the pugixml library to create an XML document and populate it with
+ * the homography matrix for each wall in a 3x3 grid.
+ */
+int saveHMATxml(std::string, const std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
+
+/**
+ * @brief Loads the homography matrix array from an XML file.
+ *
+ * @param full_path Path to the XML file.
+ * @param out_HMAT_GRID_ARR Reference to 3x3 array of Homography matrices to be initialized with loaded values.
+ *
+ * @return Integer status code [0:successful, -1:error].
  *
  * @note Uses pugiXML for XML parsing.
  */
-// int loadCoordinatesXML(std::string, int, cv::Mat &, std::array<std::array<float, 6>, 4> &);
-
-/**
- * @brief Saves the calibration parameter coordinates and homography matrix to an XML file.
- *
- * @param h_mat The homography matrix used to warp perspective.
- * @param ctrl_point_params A 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
- * @param full_path Path to the XML file.
- *
- * @details
- * This function uses the pugixml library to create an XML document and populate it with
- * the calibration parameter coordinates and homography matrix. The calibration parameter are stored
- * in a 2D array and the homography matrix is stored in a cv::Mat object. Both are saved under their
- * respective XML nodes.
- *
- * @note The XML file is saved to the path specified by the global variable 'configPath'.
- *
- * Example XML structure:
- * @code
- * <config>
- *   <ctrl_point_params>
- *     <row>
- *       <cell>value</cell>
- *       ...
- *     </row>
- *     ...
- *   </ctrl_point_params>
- *   <h_mat>
- *     <row>
- *       <cell>value</cell>
- *       ...
- *     </row>
- *     ...
- *   </h_mat>
- * </config>
- * @endcode
- */
-// void saveCoordinatesXML(cv::Mat, std::array<std::array<float, 6>, 4>, std::string);
+int loadHMATxml(std::string, std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
 
 /**
  * @brief Checks if a given set of vertices defines a valid quadrilateral.
@@ -516,8 +487,8 @@ float bilinearInterpolation(float, float, float, float, int, int, int);
 /**
  * @brief Computes updated Homography matrices for all walls.
  *
- * @param _CP_COORDS The control point coordinates used to warp the wall image.
- * @param[out] out_WALL_HMAT_DATA updated 3x3 array of Homography matrices used to warp the wall image.
+ * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
+ * @param[out] out_HMAT_GRID_ARR updated 3x3 array of Homography matrices used to warp the wall image.
  *
  * @return Integer status code [0:successful, -1:error].
  */
@@ -548,8 +519,8 @@ bool dbRunDT(int);
  * @param do_reset If true, resets the start time. If false, prints the elapsed time.
  * @param line Line number where the function is called.
  * @param file_path File path where the function is called.
- * 
-  * @example dbLogDT(true, __LINE__, __FILE__);
+ *
+ * @example dbLogDT(true, __LINE__, __FILE__);
  */
 void dbLogDT(bool = false, int = 0, const char * = nullptr);
 

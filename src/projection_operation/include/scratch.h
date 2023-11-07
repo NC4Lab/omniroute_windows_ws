@@ -1,4 +1,4 @@
-// void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &out_CP_COORDS)
+// void initCtrlPtCoords(std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR)
 // {
 
 //     // Specify the control point limits
@@ -27,7 +27,7 @@
 //             p_org = cv::Point2f(-cp_x, +cp_y);
 
 //         // Set x y values for each vertex
-//         out_CP_COORDS[mv_i] = {
+//         out_CP_GRID_ARR[mv_i] = {
 //             cv::Point2f(p_org.x, p_org.y),                                                // top left
 //             cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y),                         // top right
 //             cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y + WALL_IMAGE_HEIGHT_NDC), // bottom right
@@ -45,7 +45,7 @@
 //         for (int wv_i = 0; wv_i < 4; ++wv_i)
 //         {
 //             CP_RENDERERS[wv_i][wv_i].initializeCircleAttributes(
-//                 out_CP_COORDS[mv_i][wv_i], // position
+//                 out_CP_GRID_ARR[mv_i][wv_i], // position
 //                 cpDefualtMakerRadius,      // radius
 //                 cpWallVertSelectedRGB,         // color
 //                 cpRenderSegments           // segments

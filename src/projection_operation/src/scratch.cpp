@@ -495,32 +495,32 @@
 //             float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.0005f;
 
 //             // Store current origin
-//             cv::Point2f cp_origin_save = CP_COORDS[I.cpSelected[0]][2];
+//             cv::Point2f cp_origin_save = CP_GRID_ARR[I.cpSelected[0]][2];
 
 //             // Listen for arrow key input to move selected control point
 //             if (key == GLFW_KEY_LEFT)
 //             {
-//                 CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].x -= pos_inc; // Move left
+//                 CP_GRID_ARR[I.cpSelected[0]][I.cpSelected[1]].x -= pos_inc; // Move left
 //                 F.updateWallTexture = true;
 //             }
 //             else if (key == GLFW_KEY_RIGHT)
 //             {
-//                 CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].x += pos_inc; // Move right
+//                 CP_GRID_ARR[I.cpSelected[0]][I.cpSelected[1]].x += pos_inc; // Move right
 //                 F.updateWallTexture = true;
 //             }
 //             else if (key == GLFW_KEY_UP)
 //             {
-//                 CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].y += pos_inc; // Move up
+//                 CP_GRID_ARR[I.cpSelected[0]][I.cpSelected[1]].y += pos_inc; // Move up
 //                 F.updateWallTexture = true;
 //             }
 //             else if (key == GLFW_KEY_DOWN)
 //             {
-//                 CP_COORDS[I.cpSelected[0]][I.cpSelected[1]].y -= pos_inc; // Move down
+//                 CP_GRID_ARR[I.cpSelected[0]][I.cpSelected[1]].y -= pos_inc; // Move down
 //                 F.updateWallTexture = true;
 //             }
 
 //             // Shift all control points if origin moved
-//             cv::Point2f cp_origin_new = CP_COORDS[I.cpSelected[0]][2];
+//             cv::Point2f cp_origin_new = CP_GRID_ARR[I.cpSelected[0]][2];
 
 //             // Calculate the change in x and y for the origin
 //             float delta_x = cp_origin_new.x - cp_origin_save.x;
@@ -534,8 +534,8 @@
 //                 {
 //                     if (i != 2) // Skip the origin vertex itself
 //                     {
-//                         CP_COORDS[I.cpSelected[0]][i].x += delta_x;
-//                         CP_COORDS[I.cpSelected[0]][i].y += delta_y;
+//                         CP_GRID_ARR[I.cpSelected[0]][i].x += delta_x;
+//                         CP_GRID_ARR[I.cpSelected[0]][i].y += delta_y;
 //                     }
 //                 }
 //             }
@@ -731,7 +731,7 @@
 //     return checkErrorOpenGL(__LINE__, __FILE__);
 // }
 
-// int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
+// int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
 //                         std::array<std::array<CircleRenderer, 4>, 4> &_CP_RENDERERS)
 // {
 //     // Setup the CircleRenderer class shaders
@@ -758,7 +758,7 @@
 //             GLfloat cp_rad = wv_i == 3 ? cpSelectedMakerRadius : cpDefualtMakerRadius;
         
 //             // Set the marker parameters
-//             _CP_RENDERERS[mv_i][wv_i].setPosition(_CP_COORDS[mv_i][wv_i]);
+//             _CP_RENDERERS[mv_i][wv_i].setPosition(_CP_GRID_ARR[mv_i][wv_i]);
 //             _CP_RENDERERS[mv_i][wv_i].setRadius(cp_rad);
 //             _CP_RENDERERS[mv_i][wv_i].setColor(cp_rgb);
 
@@ -1089,7 +1089,7 @@
 
 // int updateWallTexture(
 //     cv::Mat img_wall_mat, cv::Mat img_mode_mon_mat, cv::Mat img_mode_cal_mat,
-//     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_WALL_HMAT_DATA,
+//     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_HMAT_GRID_ARR,
 //     GLuint &out_WALL_TEXTURE_ID)
 // {
 //     // Initializ the image to be used as the texture
@@ -1123,7 +1123,7 @@
 //             }
 
 //             // Get homography matrix for this wall
-//             cv::Mat H = _WALL_HMAT_DATA[gr_i][gc_i];
+//             cv::Mat H = _HMAT_GRID_ARR[gr_i][gc_i];
 
 //             // Warp Perspective
 //             cv::Mat im_warp;
@@ -1276,17 +1276,17 @@
 //     // --------------- VARIABLE SETUP ---------------
 
 //     // Initialize control point coordinate dataset
-//     initControlPointCoordinates(CP_COORDS);
+//     initCtrlPtCoords(CP_GRID_ARR);
 
 //     // Initialize wall homography matrices array
-//     if (updateHomography(CP_COORDS, WALL_HMAT_DATA) != 0)
+//     if (updateHomography(CP_GRID_ARR, HMAT_GRID_ARR) != 0)
 //     {
 //         ROS_ERROR("[SETUP] Failed to Initialize Wall Parameters");
 //         return -1;
 //     }
 
 //     // Initialize wall image texture
-//     if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_DATA, WALL_TEXTURE_ID) != 0)
+//     if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], HMAT_GRID_ARR, WALL_TEXTURE_ID) != 0)
 //     {
 //         ROS_ERROR("[SETUP] Failed to Initialize Wall Texture");
 //         return -1;
@@ -1303,7 +1303,7 @@
 //         // Load XML file
 //         if (F.loadXML)
 //         {
-//             std::string file_path = formatCoordinatesFilePathXML(I.winMon, I.calMode, CONFIG_DIR_PATH);
+//             std::string file_path = frmtFilePathxml(I.winMon, I.calMode, CONFIG_DIR_PATH);
 //             /// @todo Ad save xml back in
 //             F.loadXML = false;
 //         }
@@ -1311,7 +1311,7 @@
 //         // Save XML file
 //         if (F.saveXML)
 //         {
-//             std::string file_path = formatCoordinatesFilePathXML(I.winMon, I.calMode, CONFIG_DIR_PATH);
+//             std::string file_path = frmtFilePathxml(I.winMon, I.calMode, CONFIG_DIR_PATH);
 //             /// @todo Ad save xml back in
 //             F.saveXML = false;
 //         }
@@ -1331,7 +1331,7 @@
 //         // Initialize/reinitialize control point coordinate dataset
 //         if (F.initControlPointMarkers)
 //         {
-//             initControlPointCoordinates(CP_COORDS);
+//             initCtrlPtCoords(CP_GRID_ARR);
 //             F.initControlPointMarkers = false;
 //         }
 
@@ -1339,7 +1339,7 @@
 //         if (F.updateWallTexture)
 //         {
 //             // Update wall homography matrices array
-//             if (updateHomography(CP_COORDS, WALL_HMAT_DATA) != 0)
+//             if (updateHomography(CP_GRID_ARR, HMAT_GRID_ARR) != 0)
 //             {
 //                 ROS_ERROR("[MAIN] Update of Wall Vertices Datasets Failed");
 //                 is_error = true;
@@ -1347,7 +1347,7 @@
 //             }
 
 //             // Update wall image texture
-//             if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_DATA, WALL_TEXTURE_ID) != 0)
+//             if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], HMAT_GRID_ARR, WALL_TEXTURE_ID) != 0)
 //             {
 //                 ROS_ERROR("[MAIN] Update of Wall Homography Datasets Failed");
 //                 is_error = true;
@@ -1375,7 +1375,7 @@
 //         }
 
 //         // Draw/update control point markers
-//         if (renderControlPoints(CP_COORDS) != 0)
+//         if (renderControlPoints(CP_GRID_ARR) != 0)
 //         {
 //             ROS_ERROR("[MAIN] Draw Control Point Threw an Error");
 //             is_error = true;

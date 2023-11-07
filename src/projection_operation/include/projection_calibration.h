@@ -226,6 +226,16 @@ public:
      */
     int switchWindowMode(int, bool);
 
+    /**
+     * @brief Function to set the background color and redraw the window
+     * 
+     * @param color The color to set the background to.
+     * @param duration The duration to flash the background for (sec).
+     * 
+     * @example flashBackgroundColor(window, cv::Scalar(0.1f, 0.0f, 0.0f), 0.5f); 
+     */
+    void flashBackgroundColor(const cv::Scalar &color, float duration);
+
 private:
     /**
      * @brief Private helper methods to check shader compilation.
@@ -607,7 +617,7 @@ const GLfloat cpSelectedMakerRadius = 0.005f;                          // Select
  *      - 2: OpenGL: Bottom-right   OpenCV: Top-right
  *      - 3: OpenGL: Bottom-left    OpenCV: Top-left
  */
-std::array<std::array<cv::Point2f, 4>, 4> CP_COORDS;
+std::array<std::array<cv::Point2f, 4>, 4> CP_GRID_ARR;
 
 // Create an associateed 4x4 array of the CircleRenderer class objects
 std::array<std::array<CircleRenderer, 4>, 4> CP_RENDERERS;
@@ -615,7 +625,7 @@ std::array<std::array<CircleRenderer, 4>, 4> CP_RENDERERS;
 /**
  * @brief  3x3 data contianer for storing the 3x3 homography matrix for each wall image
  */
-std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> WALL_HMAT_DATA;
+std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> HMAT_GRID_ARR;
 
 // Global variable to set the OpenGL debug level.
 int DEBUG_LEVEL_GL = 3; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
@@ -666,31 +676,30 @@ static struct IndStruct
 } I;
 
 // Sub-directory paths
-std::string image_wall_dir_path = IMAGE_TOP_DIR_PATH + "/calibration_images";
-std::string image_state_dir_path = IMAGE_TOP_DIR_PATH + "/ui_mode_images";
+std::string calib_image_path = IMAGE_TOP_DIR_PATH + "/calibration";
 
 // Image file paths
 std::vector<std::string> wallImgPathVec = {
     // List of image file paths
-    image_wall_dir_path + "/1_test_pattern.png",
-    image_wall_dir_path + "/2_manu_pirate.png",
-    image_wall_dir_path + "/3_earthlings.png",
-    image_wall_dir_path + "/4_all_white.png",
+    calib_image_path + "/1_test_pattern.png",
+    calib_image_path + "/2_manu_pirate.png",
+    calib_image_path + "/3_earthlings.png",
+    calib_image_path + "/4_all_white.png",
 };
 std::vector<std::string> monImgPathVec = {
     // List of monitor number image file paths
-    image_state_dir_path + "/m0.png",
-    image_state_dir_path + "/m1.png",
-    image_state_dir_path + "/m2.png",
-    image_state_dir_path + "/m3.png",
-    image_state_dir_path + "/m4.png",
-    image_state_dir_path + "/m5.png",
+    calib_image_path + "/m0.png",
+    calib_image_path + "/m1.png",
+    calib_image_path + "/m2.png",
+    calib_image_path + "/m3.png",
+    calib_image_path + "/m4.png",
+    calib_image_path + "/m5.png",
 };
 std::vector<std::string> calImgPathVec = {
     // List of mode image file paths
-    image_state_dir_path + "/cwl.png", // left walls
-    image_state_dir_path + "/cwm.png", // middle walls
-    image_state_dir_path + "/cwr.png", // right walls
+    calib_image_path + "/cwl.png", // left walls
+    calib_image_path + "/cwm.png", // middle walls
+    calib_image_path + "/cwr.png", // right walls
 };
 
 // Vectors to store the loaded images in cv::Mat format
@@ -750,14 +759,14 @@ int checkErrorGLFW(int, const char *, const char * = nullptr);
 /**
  * @brief Initializes values for the verteces of the coner walls which will be used as calibraton control points.
  *
- * @param[out] out_CP_COORDS Reference to the 4x4 array containing the coordinates of the corner wall's vertices.
+ * @param[out] out_CP_GRID_ARR Reference to the 4x4 array containing the coordinates of the corner wall's vertices.
  *
  * @details
  * Control point x and y coordinates are specified in Normalized Device Coordinates (NDC) [-1, 1].
  * The vertices for the entire projected image are calculated based on the dimensions that enclose
  * all control points (i.e., boundary dimensions in the control point plane).
  */
-void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &);
+void initCtrlPtCoords(std::array<std::array<cv::Point2f, 4>, 4> &);
 
 /**
  * @brief Loads PNG images with alpha channel from specified file paths and stores them in a vector as cv::Mat objects.
@@ -813,7 +822,7 @@ int initWallRenderObjects(MazeRenderContext &out_renCtx, float *vertices, size_t
 /**
  * @brief Initialize OpenGL resources for CircleRenderer objects.
  *
- * @param _CP_COORDS The 4x4 array containing the coordinates of the corner wall's vertices.
+ * @param _CP_GRID_ARR The 4x4 array containing the coordinates of the corner wall's vertices.
  * @param[out] out_CP_RENDERERS The 4x4 array of CircleRenderer objects used to draw the control points.
  *
  * @return Integer status code [0:successful, -1:error].
@@ -830,7 +839,7 @@ int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &,
  * @param img_wall_mat cv::Mat image matrix for the base wall image.
  * @param img_mode_mon_mat cv::Mat image matrix for the monitor mode image.
  * @param img_mode_cal_mat cv::Mat image matrix for the calibration image.
- * @param _WALL_HMAT_DATA 3x3 array of Homography matrices used to warp the wall image.
+ * @param _HMAT_GRID_ARR 3x3 array of Homography matrices used to warp the wall image.
  * @param[out] out_wallTexture OpenGL texture ID for the wall image.
  *
  * @return Integer status code [0:successful, -1:error].
@@ -871,7 +880,7 @@ int renderWallImage(const MazeRenderContext &renCtx);
 /**
  * @brief Draws control points associated with each corner wall.
  *
- * @param _CP_COORDS The control point coordinates used to warp the wall image.
+ * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
  * @param[out] out_CP_RENDERERS The 4x4 array of CircleRenderer objects used to draw the control points.
  *
  * @return Integer status code [0:successful, -1:error].

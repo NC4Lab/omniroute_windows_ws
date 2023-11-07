@@ -392,6 +392,22 @@ int MazeRenderContext::switchWindowMode(int mon_ind_new, bool do_fullscreen)
     return checkErrorGLFW(__LINE__, __FILE__, "MazeRenderContext::switchWindowMode");
 }
 
+void MazeRenderContext::flashBackgroundColor(const cv::Scalar &color, float duration)
+{
+    // Set the new clear color using BGR values from cv::Scalar
+    glClearColor(color[2], color[1], color[0], 1.0f); // RGBA
+
+    // Clear the window with the new color
+    glClear(GL_COLOR_BUFFER_BIT);
+    glfwSwapBuffers(windowID);
+
+    // Wait for the duration of the flash
+    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(duration * 1000)));
+
+    // Reset the clear color (assuming the default is black)
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+}
+
 bool MazeRenderContext::_checkShaderCompilation(GLuint shader, const std::string &shader_type)
 {
     GLint success;
@@ -865,7 +881,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // ---------- XML Handling [ENTER, L] ----------
 
         // Save coordinates to XML
-        else if (key == GLFW_KEY_ENTER)
+        else if (key == GLFW_KEY_S)
         {
             F.saveXML = true;
         }
@@ -1019,32 +1035,32 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             int wv_ind = I.cpMap[I.cpWallVertSel[0]][I.cpWallVertSel[1]];
 
             // Store current origin
-            cv::Point2f cp_origin_save = CP_COORDS[mv_ind][I.cpWVOrigin];
+            cv::Point2f cp_origin_save = CP_GRID_ARR[mv_ind][I.cpWVOrigin];
 
             // Listen for arrow key input to move selected control point
             if (key == GLFW_KEY_LEFT)
             {
-                CP_COORDS[mv_ind][wv_ind].x -= pos_inc; // Move left
+                CP_GRID_ARR[mv_ind][wv_ind].x -= pos_inc; // Move left
                 F.updateWallTexture = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                CP_COORDS[mv_ind][wv_ind].x += pos_inc; // Move right
+                CP_GRID_ARR[mv_ind][wv_ind].x += pos_inc; // Move right
                 F.updateWallTexture = true;
             }
             else if (key == GLFW_KEY_UP)
             {
-                CP_COORDS[mv_ind][wv_ind].y -= pos_inc; // Move up
+                CP_GRID_ARR[mv_ind][wv_ind].y -= pos_inc; // Move up
                 F.updateWallTexture = true;
             }
             else if (key == GLFW_KEY_DOWN)
             {
-                CP_COORDS[mv_ind][wv_ind].y += pos_inc; // Move down
+                CP_GRID_ARR[mv_ind][wv_ind].y += pos_inc; // Move down
                 F.updateWallTexture = true;
             }
 
             // Shift all control points if origin moved
-            cv::Point2f cp_origin_new = CP_COORDS[mv_ind][I.cpWVOrigin];
+            cv::Point2f cp_origin_new = CP_GRID_ARR[mv_ind][I.cpWVOrigin];
 
             // Calculate the change in x and y for the origin
             float delta_x = cp_origin_new.x - cp_origin_save.x;
@@ -1058,8 +1074,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 {
                     if (i != I.cpWVOrigin) // Skip the origin vertex itself
                     {
-                        CP_COORDS[mv_ind][i].x += delta_x;
-                        CP_COORDS[mv_ind][i].y += delta_y;
+                        CP_GRID_ARR[mv_ind][i].x += delta_x;
+                        CP_GRID_ARR[mv_ind][i].y += delta_y;
                     }
                 }
             }
@@ -1094,7 +1110,7 @@ int checkErrorGLFW(int line, const char *file_str, const char *msg_str)
     return 0;
 }
 
-void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &out_CP_COORDS)
+void initCtrlPtCoords(std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR)
 {
     // Specify the control point limits
     const float cp_x = MAZE_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
@@ -1122,7 +1138,7 @@ void initControlPointCoordinates(std::array<std::array<cv::Point2f, 4>, 4> &out_
             p_org = cv::Point2f(-cp_x, +cp_y);
 
         // Set x y values for each wall vertex
-        out_CP_COORDS[mv_i] = {
+        out_CP_GRID_ARR[mv_i] = {
             cv::Point2f(p_org.x, p_org.y),                                                // top left
             cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y),                         // top right
             cv::Point2f(p_org.x + WALL_IMAGE_WIDTH_NDC, p_org.y + WALL_IMAGE_HEIGHT_NDC), // bottom right
@@ -1377,7 +1393,7 @@ int initWallRenderObjects(MazeRenderContext &out_renCtx,
     return checkErrorOpenGL(__LINE__, __FILE__, "initWallRenderObjects");
 }
 
-int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
+int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
                               std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
 {
     // Iterate through control point outer array (maze vertices)
@@ -1387,10 +1403,10 @@ int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_
         for (int wv_i = 0; wv_i < 4; ++wv_i)
         {
             out_CP_RENDERERS[mv_i][wv_i].initializeCircleAttributes(
-                _CP_COORDS[mv_i][wv_i], // position
-                cpDefualtMakerRadius,   // radius
-                cpDefaultRGB,           // color
-                cpRenderSegments        // segments
+                _CP_GRID_ARR[mv_i][wv_i], // position
+                cpDefualtMakerRadius,     // radius
+                cpDefaultRGB,             // color
+                cpRenderSegments          // segments
             );
         }
     }
@@ -1401,7 +1417,7 @@ int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_
 
 int updateWallTexture(
     cv::Mat img_wall_mat, cv::Mat img_mode_mon_mat, cv::Mat img_mode_cal_mat,
-    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_WALL_HMAT_DATA,
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_HMAT_GRID_ARR,
     GLuint &out_WALL_TEXTURE_ID)
 {
     // Initialize the image to be used as the texture
@@ -1437,7 +1453,7 @@ int updateWallTexture(
             }
 
             // Get homography matrix for this wall
-            cv::Mat H = _WALL_HMAT_DATA[gr_i][gc_i];
+            cv::Mat H = _HMAT_GRID_ARR[gr_i][gc_i];
 
             // Warp Perspective
             cv::Mat im_warp;
@@ -1514,7 +1530,7 @@ int renderWallImage(const MazeRenderContext &mazeRenderContext)
     return checkErrorOpenGL(__LINE__, __FILE__, "renderWallImage");
 }
 
-int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COORDS,
+int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
                         std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
 {
     // Setup the CircleRenderer class shaders
@@ -1537,7 +1553,7 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_COO
             GLfloat rad = wv_i == 3 ? cpSelectedMakerRadius : cpDefualtMakerRadius;
 
             // Set the marker parameters
-            out_CP_RENDERERS[mv_i][wv_i].setPosition(_CP_COORDS[mv_i][wv_i]);
+            out_CP_RENDERERS[mv_i][wv_i].setPosition(_CP_GRID_ARR[mv_i][wv_i]);
             out_CP_RENDERERS[mv_i][wv_i].setRadius(rad);
             out_CP_RENDERERS[mv_i][wv_i].setColor(col);
 
@@ -1578,143 +1594,140 @@ int main(int argc, char **argv)
     ROS_INFO("RUNNING MAIN");
 
     // Log setup parameters
-    ROS_INFO("[SETUP] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
-    ROS_INFO("[SETUP] Display: Width[%d] Height[%d] AR[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, WINDOW_ASPECT_RATIO);
-    ROS_INFO("[SETUP] Wall (Pxl): Width[%d] Height[%d]", WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL);
-    ROS_INFO("[SETUP] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_IMAGE_WIDTH_NDC, WALL_IMAGE_HEIGHT_NDC);
-    ROS_INFO("[SETUP] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
+    ROS_INFO("[main] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
+    ROS_INFO("[main] Display: Width[%d] Height[%d] AR[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, WINDOW_ASPECT_RATIO);
+    ROS_INFO("[main] Wall (Pxl): Width[%d] Height[%d]", WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL);
+    ROS_INFO("[main] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_IMAGE_WIDTH_NDC, WALL_IMAGE_HEIGHT_NDC);
+    ROS_INFO("[main] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
 
     // --------------- VARIABLE SETUP ---------------
 
     // Initialize control point coordinate dataset
-    initControlPointCoordinates(CP_COORDS);
+    initCtrlPtCoords(CP_GRID_ARR);
 
     // Initialize wall homography matrices array
-    if (updateHomography(CP_COORDS, WALL_HMAT_DATA) < 0)
+    if (updateHomography(CP_GRID_ARR, HMAT_GRID_ARR) < 0)
     {
-        ROS_ERROR("[SETUP] Failed to Initialize Wall Parameters");
+        ROS_ERROR("[main] Failed to initialize wall parameters");
         return -1;
     }
 
     // --------------- OpenGL SETUP ---------------
 
     // Declare MazeRenderContext instance
-    std::array<MazeRenderContext, 1> RenCtx;
+    std::array<MazeRenderContext, 1> RenContx;
 
     // Initialize GLFW and OpenGL settings
     if (MazeRenderContext::SetupGraphicsLibraries(N.monitors) < 0)
     {
-        ROS_ERROR("[SETUP] Failed to Initialize Graphics");
+        ROS_ERROR("[main] Failed to initialize graphics");
         return -1;
     }
 
     // Initialze render context
     /// @note this is where we would loop through our windows if there were more
-    RenCtx[0].initContext(0, 0);
+    RenContx[0].initContext(0, 0);
 
     // Initialize OpenGL wall image objects
-    if (initWallRenderObjects(RenCtx[0],
+    if (initWallRenderObjects(RenContx[0],
                               WALL_GL_VERTICES, sizeof(WALL_GL_VERTICES),
                               WALL_GL_INDICES, sizeof(WALL_GL_INDICES)) < 0)
     {
-        ROS_ERROR("[SETUP] Failed to Initialize OpenGL Wall Image Objects");
+        ROS_ERROR("[main] Failed to initialize opengl wall image objects");
         return -1;
     }
 
     // Update monitor and window mode settings
     /// @note consider moving into class setup
-    if (RenCtx[0].switchWindowMode(I.winMon, F.setFullscreen) < 0)
+    if (RenContx[0].switchWindowMode(I.winMon, F.setFullscreen) < 0)
     {
-        ROS_ERROR("[SETUP] Failed Initial Update of Window Monitor Mode");
+        ROS_ERROR("[main] Failed Initial update of window monitor mode");
         return -1;
     }
 
     // Create the shader program for wall image rendering
-    if (RenCtx[0].compileAndLinkShaders(wallVertexSource, wallFragmentSource) < 0)
+    if (RenContx[0].compileAndLinkShaders(wallVertexSource, wallFragmentSource) < 0)
     {
-        ROS_ERROR("[SETUP] Failed to Compile and Link Wall Shader");
+        ROS_ERROR("[main] Failed to compile and link wall shader");
         return -1;
     }
 
     // Create the shader program for CircleRenderer class control point rendering
     if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_ASPECT_RATIO) < 0)
     {
-        ROS_ERROR("[SETUP] Failed to Compile and Link CircleRenderer Class Shader");
+        ROS_ERROR("[main] Failed to compile and link circlerenderer class shader");
         return -1;
     }
 
     // Initialize the CircleRenderer class objects array
-    if (initCircleRendererObjects(CP_COORDS, CP_RENDERERS) < 0)
+    if (initCircleRendererObjects(CP_GRID_ARR, CP_RENDERERS) < 0)
     {
-        ROS_ERROR("[SETUP] Failed to Initialize Control Point Variables");
+        ROS_ERROR("[main] Failed to initialize control point variables");
         return -1;
     }
 
     // Log OpenGL versions
     const GLubyte *opengl_version = glGetString(GL_VERSION);
-    ROS_INFO("[SETUP] OpenGL Initialized: Version [%s]", opengl_version);
+    ROS_INFO("[main] OpenGL initialized: Version[%s]", opengl_version);
 
     // Log GLFW versions
     int glfw_major, glfw_minor, glfw_rev;
     glfwGetVersion(&glfw_major, &glfw_minor, &glfw_rev);
-    ROS_INFO("[SETUP] GLFW Initialized: Version: %d.%d.%d", glfw_major, glfw_minor, glfw_rev);
+    ROS_INFO("[main] GLFW initialized: Version[%d.%d.%d]", glfw_major, glfw_minor, glfw_rev);
 
     // --------------- RENDER IMAGE LOADING  ---------------
 
     // Load images using OpenCV
     if (loadImgMat(wallImgPathVec, wallImgMatVec) < 0)
     {
-        ROS_ERROR("[SETUP] Failed to Load Wall Images");
+        ROS_ERROR("[main] Failed to load wall images");
         return -1;
     }
     if (loadImgMat(monImgPathVec, monImgMatVec) < 0)
     {
-        ROS_ERROR("[SETUP] Failed to Load Monitor Number Images");
+        ROS_ERROR("[main] Failed to load monitor number images");
         return -1;
     }
     if (loadImgMat(calImgPathVec, calImgMatVec) < 0)
     {
-        ROS_ERROR("[SETUP] Failed to Load Calibration Mode Images");
+        ROS_ERROR("[main] Failed to load calibration mode images");
         return -1;
     }
 
     // Initialize wall image texture
-    if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_DATA, RenCtx[0].textureID) < 0)
+    if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], HMAT_GRID_ARR, RenContx[0].textureID) < 0)
     {
-        ROS_ERROR("[SETUP] Failed to Initialize Wall Texture");
+        ROS_ERROR("[main] Failed to initialize wall texture");
         return -1;
     }
 
     // _______________ MAIN LOOP _______________
 
     bool is_error = false;
-    while (!glfwWindowShouldClose(RenCtx[0].windowID) && ros::ok())
+    while (!glfwWindowShouldClose(RenContx[0].windowID) && ros::ok())
     {
 
         // --------------- Check Kayboard Callback Flags ---------------
 
-        // Load XML file
-        if (F.loadXML)
+        // Load/save XML file
+        if (F.loadXML || F.saveXML)
         {
-            std::string file_path = formatCoordinatesFilePathXML(I.winMon, I.calMode, CONFIG_DIR_PATH);
-            /// @todo Ad save xml back in
-            F.loadXML = false;
-        }
-
-        // Save XML file
-        if (F.saveXML)
-        {
-            std::string file_path = formatCoordinatesFilePathXML(I.winMon, I.calMode, CONFIG_DIR_PATH);
-            /// @todo Ad save xml back in
+            std::string file_path = frmtFilePathxml(I.winMon, I.calMode, CONFIG_DIR_PATH);
+            if (F.saveXML) // Load XML file
+                saveHMATxml(file_path, HMAT_GRID_ARR);
+            else if (F.loadXML) // Save XML file
+                loadHMATxml(file_path, HMAT_GRID_ARR);
+            RenContx[0].flashBackgroundColor(cv::Scalar(0.1f, 0.0f, 0.0f), 0.5f);
             F.saveXML = false;
+            F.loadXML = false;
         }
 
         // Update the window monitor and mode
         if (F.switchWindowMode)
         {
-            if (RenCtx[0].switchWindowMode(I.winMon, F.setFullscreen) < 0)
+            if (RenContx[0].switchWindowMode(I.winMon, F.setFullscreen) < 0)
             {
-                ROS_ERROR("[main] Update Window Monitor Mode Threw an Error");
+                ROS_ERROR("[main] Update window monitor mode threw an error");
                 is_error = true;
                 break;
             }
@@ -1724,25 +1737,26 @@ int main(int argc, char **argv)
         // Initialize/reinitialize control point coordinate dataset
         if (F.initControlPointMarkers)
         {
-            initControlPointCoordinates(CP_COORDS);
+            initCtrlPtCoords(CP_GRID_ARR);
             F.initControlPointMarkers = false;
+            F.updateWallTexture = true;
         }
 
         // Recompute wall parameters and update wall image texture
         if (F.updateWallTexture)
         {
             // Update wall homography matrices array
-            if (updateHomography(CP_COORDS, WALL_HMAT_DATA) < 0)
+            if (updateHomography(CP_GRID_ARR, HMAT_GRID_ARR) < 0)
             {
-                ROS_ERROR("[main] Update of Wall Vertices Datasets Failed");
+                ROS_ERROR("[main] Update of wall vertices datasets failed");
                 is_error = true;
                 break;
             }
 
             // Update wall image texture
-            if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_DATA, RenCtx[0].textureID) < 0)
+            if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], HMAT_GRID_ARR, RenContx[0].textureID) < 0)
             {
-                ROS_ERROR("[main] Update of Wall Homography Datasets Failed");
+                ROS_ERROR("[main] Update of wall homography datasets failed");
                 is_error = true;
                 break;
             }
@@ -1753,30 +1767,30 @@ int main(int argc, char **argv)
 
         // Clear back buffer for new frame
         glClear(GL_COLOR_BUFFER_BIT);
-        if (checkErrorGLFW(__LINE__, __FILE__, "[main] Error Flagged Following glClear()"))
+        if (checkErrorGLFW(__LINE__, __FILE__, "[main] Error flagged following glclear()"))
         {
             is_error = true;
             break;
         }
 
         // Draw/update wall images
-        if (renderWallImage(RenCtx[0]) < 0)
+        if (renderWallImage(RenContx[0]) < 0)
         {
-            ROS_ERROR("[main] Draw Walls Threw an Error");
+            ROS_ERROR("[main] Draw walls threw an error");
             is_error = true;
             break;
         }
 
         // Draw/update control point markers
-        if (renderControlPoints(CP_COORDS, CP_RENDERERS) < 0)
+        if (renderControlPoints(CP_GRID_ARR, CP_RENDERERS) < 0)
         {
-            ROS_ERROR("[main] Draw Control Point Threw an Error");
+            ROS_ERROR("[main] Draw control point threw an error");
             is_error = true;
             break;
         }
 
         // Swap buffers and poll events
-        glfwSwapBuffers(RenCtx[0].windowID);
+        glfwSwapBuffers(RenContx[0].windowID);
         if (checkErrorGLFW(__LINE__, __FILE__, "[main] Error flagged following glfwSwapBuffers()") < 0)
         {
             is_error = true;
@@ -1787,7 +1801,7 @@ int main(int argc, char **argv)
         glfwPollEvents();
 
         // Exit condition
-        if (glfwGetKey(RenCtx[0].windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(RenCtx[0].windowID))
+        if (glfwGetKey(RenContx[0].windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(RenContx[0].windowID))
             break;
     }
 
@@ -1796,15 +1810,15 @@ int main(int argc, char **argv)
 
     // Check which condition caused the loop to exit
     if (!ros::ok())
-        ROS_INFO("[LOOP TERMINATION] ROS Node is no Longer in a Good State");
-    else if (glfwWindowShouldClose(RenCtx[0].windowID))
-        ROS_INFO("[LOOP TERMINATION] GLFW Window Should Close");
-    else if (glfwGetKey(RenCtx[0].windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        ROS_INFO("[LOOP TERMINATION] Escape Key was Pressed");
+        ROS_INFO("[main] Loop Terminated:  ROS node is no longer in a good state");
+    else if (glfwWindowShouldClose(RenContx[0].windowID))
+        ROS_INFO("[main] Loop Terminated:  GLFW window should close");
+    else if (glfwGetKey(RenContx[0].windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+        ROS_INFO("[main] Loop Terminated:  Escape key was pressed");
     else if (is_error)
-        ROS_INFO("[LOOP TERMINATION] Error Thrown");
+        ROS_INFO("[main] Loop Terminated:  Error thrown");
     else
-        ROS_INFO("[LOOP TERMINATION] Reason Unknown");
+        ROS_INFO("[main] Loop Terminated:  Reason unknown");
 
     // Delete CircleRenderer class shader program
     if (CircleRenderer::CleanupClassResources() < 0)
@@ -1813,7 +1827,7 @@ int main(int argc, char **argv)
         ROS_INFO("[main] CircleRenderer shader program deleted successfully");
 
     // Clean up OpenGL wall image objects
-    if (RenCtx[0].cleanupContext() != 0)
+    if (RenContx[0].cleanupContext() != 0)
         ROS_WARN("[main] Error during cleanup of MazeRenderContext instance");
     else
         ROS_INFO("[main] MazeRenderContext instance cleaned up successfully");
