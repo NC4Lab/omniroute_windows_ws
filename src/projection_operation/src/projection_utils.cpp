@@ -14,6 +14,7 @@
 GLFWmonitor **MazeRenderContext::_PP_Monitor = nullptr;
 int MazeRenderContext::_NumMonitors = 0;
 
+// Constructor
 MazeRenderContext::MazeRenderContext()
     : shaderProgram(0), vao(0), vbo(0), ebo(0), textureID(0),
       windowID(nullptr), monitorID(nullptr), windowInd(-1), monitorInd(-1)
@@ -21,38 +22,38 @@ MazeRenderContext::MazeRenderContext()
     // Members are initialized to default values, setup is deferred
 }
 
+// DESTRUCTOR
 MazeRenderContext::~MazeRenderContext()
 {
     // Clean up resources without logging
-    cleanupContext();
+    if (isContextInitialized)
+    {
+        cleanupContext(false);
+    }
 }
 
+// COPY CONSTRUCTOR
 MazeRenderContext::MazeRenderContext(MazeRenderContext &&other) noexcept
-    : windowID(other.windowID), monitorID(other.monitorID),
-      windowInd(other.windowInd), monitorInd(other.monitorInd)
+    : shaderProgram(other.shaderProgram), vao(other.vao), vbo(other.vbo),
+      ebo(other.ebo), textureID(other.textureID),
+      windowID(other.windowID), monitorID(other.monitorID),
+      windowInd(other.windowInd), monitorInd(other.monitorInd),
+      isContextInitialized(other.isContextInitialized)
 {
-    // Reset the other's members to default values to prevent double deletion
-    other.shaderProgram = 0;
-    other.vao = 0;
-    other.vbo = 0;
-    other.ebo = 0;
-    other.textureID = 0;
-    other.windowID = nullptr;
-    other.monitorID = nullptr;
-    other.windowInd = -1;
-    other.monitorInd = -1;
+    // Reset the other's members to prevent double deletion
+    other._resetMembers(); // Use a member function for resetting
 }
 
+// MOVE CONSTRUCTOR
 MazeRenderContext &MazeRenderContext::operator=(MazeRenderContext &&other) noexcept
 {
-    if (this != &other) // Prevent self-assignment
+    if (this != &other)
     {
-        // Clean up existing resources
-        glDeleteProgram(shaderProgram);
-        glDeleteVertexArrays(1, &vao);
-        glDeleteBuffers(1, &vbo);
-        glDeleteBuffers(1, &ebo);
-        glDeleteTextures(1, &textureID);
+        // Clean up existing resources if initialized
+        if (isContextInitialized)
+        {
+            cleanupContext(false);
+        }
 
         // Transfer ownership of resources from other to this
         shaderProgram = other.shaderProgram;
@@ -64,17 +65,10 @@ MazeRenderContext &MazeRenderContext::operator=(MazeRenderContext &&other) noexc
         monitorID = other.monitorID;
         windowInd = other.windowInd;
         monitorInd = other.monitorInd;
+        isContextInitialized = other.isContextInitialized;
 
         // Reset the other's members to default values
-        other.shaderProgram = 0;
-        other.vao = 0;
-        other.vbo = 0;
-        other.ebo = 0;
-        other.textureID = 0;
-        other.windowID = nullptr;
-        other.monitorID = nullptr;
-        other.windowInd = -1;
-        other.monitorInd = -1;
+        other._resetMembers();
     }
     return *this;
 }
@@ -107,8 +101,7 @@ void MazeRenderContext::CallbackErrorGLFW(int error, const char *description)
 
 int MazeRenderContext::CheckErrorOpenGL(int line, const char *file_str, const char *msg_str)
 {
-    // TEMP
-    ROS_INFO("        [CheckErrorOpenGL] DEBUG: File[%s] Line[%d]", file_str, line);
+    ROS_INFO("        [CheckErrorOpenGL] DEBUG: File[%s] Line[%d]", file_str, line); // TEMP
     GLenum gl_err;
     while ((gl_err = glGetError()) != GL_NO_ERROR)
     {
@@ -121,6 +114,7 @@ int MazeRenderContext::CheckErrorOpenGL(int line, const char *file_str, const ch
 
 int MazeRenderContext::CheckErrorGLFW(int line, const char *file_str, const char *msg_str)
 {
+    ROS_INFO("        [CheckErrorGLFW] DEBUG: File[%s] Line[%d]", file_str, line); // TEMP
     const char *description;
     int glfw_err = glfwGetError(&description);
     if (glfw_err != GLFW_NO_ERROR)
@@ -129,13 +123,13 @@ int MazeRenderContext::CheckErrorGLFW(int line, const char *file_str, const char
                   msg_str ? msg_str : "No additional info", description, file_str, line);
         return -1;
     }
-    // TEMP
-    ROS_INFO("        [CheckErrorGLFW] DEBUG: File[%s] Line[%d]", file_str, line);
     return 0;
 }
 
 int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon)
 {
+    int status = 0;
+
     // Initialize GLFW and set error callback
     glfwSetErrorCallback(CallbackErrorGLFW);
     if (!glfwInit())
@@ -143,45 +137,29 @@ int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon)
         ROS_ERROR("[MazeRenderContext::SetupGraphicsLibraries] GLFW Initialization Failed");
         return -1;
     }
+    status = CheckErrorGLFW(__LINE__, __FILE__);
 
-    // Request a debug context for future windows
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);      // Specify OpenGL version if needed
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);      // Specify OpenGL version if needed
-    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE); // Request debug context
+    // Request a debug context for future windows (all windows can share the same context)
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);                 // Specify OpenGL version if needed
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);                 // Specify OpenGL version if needed
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // Request core profile
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);            // Request debug context
+    status = CheckErrorGLFW(__LINE__, __FILE__);
 
     // Discover available monitors
     _PP_Monitor = glfwGetMonitors(&_NumMonitors);
+    status = CheckErrorGLFW(__LINE__, __FILE__);
+
+    // Check for errors in monitor discovery
     if (!_PP_Monitor || _NumMonitors == 0)
     {
         ROS_ERROR("[MazeRenderContext::SetupGraphicsLibraries] No Monitors Found");
         return -1;
     }
     ROS_INFO("[MazeRenderContext::SetupGraphicsLibraries] Monitors Found: %d", _NumMonitors);
-
-    // Set the number of monitors for the reference output argument
     out_n_mon = _NumMonitors;
 
     return 0;
-}
-
-int MazeRenderContext::CleanupGraphicsLibraries()
-{
-    int err_status = 0;
-
-    // Terminate GLFW, which cleans up all GLFW resources.
-    glfwTerminate();
-    err_status = CheckErrorGLFW(__LINE__, __FILE__, "[MazeRenderContext::CleanupGraphicsLibraries] Error Flagged Following glfwTerminate()");
-
-    // Reset monitor pointers and count
-    _PP_Monitor = nullptr;
-    _NumMonitors = 0;
-
-    if (err_status < 0)
-        ROS_WARN("[MazeRenderContext::CleanupGraphicsLibraries] Failed to Terminate GLFW Library");
-    else
-        ROS_INFO("[MazeRenderContext::CleanupGraphicsLibraries] Graphics libraries and shared resources cleaned up successfully.");
-
-    return err_status;
 }
 
 int MazeRenderContext::initContext(int win_ind, int mon_ind, KeyCallbackFunc key_callback)
@@ -203,11 +181,15 @@ int MazeRenderContext::initContext(int win_ind, int mon_ind, KeyCallbackFunc key
         ROS_ERROR("[MazeRenderContext::initContext] GLFW Failed to Create Window");
         return -1;
     }
+    status = CheckErrorGLFW(__LINE__, __FILE__);
     windowInd = win_ind; // Store the window index
 
     // Set the GLFW window as the current OpenGL context
     glfwMakeContextCurrent(windowID);
-    status = CheckErrorGLFW(__LINE__, __FILE__, "[MazeRenderContext::initContext] glfwMakeContextCurrent");
+    status = CheckErrorGLFW(__LINE__, __FILE__);
+
+    // Very imporant flag!
+    isContextInitialized = true;
 
     // Load OpenGL extensions using GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) || !gladLoadGL())
@@ -219,83 +201,43 @@ int MazeRenderContext::initContext(int win_ind, int mon_ind, KeyCallbackFunc key
 
     // Set GLFW callbacks for keyboard events using the KeyCallbackFunc function pointer
     glfwSetKeyCallback(windowID, key_callback);
-    status = CheckErrorGLFW(__LINE__, __FILE__, "[MazeRenderContext::initContext] glfwSetKeyCallback");
+    status = CheckErrorGLFW(__LINE__, __FILE__);
 
     // Set GLFW callbacks for framebuffer size events
     glfwSetFramebufferSizeCallback(windowID, CallbackFrameBufferSizeGLFW);
-    status = CheckErrorGLFW(__LINE__, __FILE__, "[MazeRenderContext::initContext] glfwSetFramebufferSizeCallback");
+    status = CheckErrorGLFW(__LINE__, __FILE__);
 
     // Enable OpenGL debugging context and associate callback
     glEnable(GL_DEBUG_OUTPUT);
     glDebugMessageCallback(CallbackDebugOpenGL, nullptr);
-    status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::initContext] glDeleteProgram error");
+    status = CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Print OpenGL version information once when the first window is created
+    if (windowInd == 0)
+    {
+        // Log OpenGL versions
+        const GLubyte *opengl_version = glGetString(GL_VERSION);
+        ROS_INFO("[main] OpenGL initialized: Version[%s]", opengl_version);
+
+        // Log GLFW versions
+        int glfw_major, glfw_minor, glfw_rev;
+        glfwGetVersion(&glfw_major, &glfw_minor, &glfw_rev);
+        ROS_INFO("[main] GLFW initialized: Version[%d.%d.%d]", glfw_major, glfw_minor, glfw_rev);
+        status = CheckErrorGLFW(__LINE__, __FILE__);
+    }
 
     return status;
 }
 
-int MazeRenderContext::cleanupContext(bool log_errors)
-{
-    int err_status = 0;
-
-    if (shaderProgram != 0)
-    {
-        glDeleteProgram(shaderProgram);
-        err_status |= CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteProgram error");
-        if (log_errors)
-            ROS_INFO("[MazeRenderContext::cleanupContext] %s", err_status ? "Failed to delete shader program" : "Shader program deleted successfully");
-        shaderProgram = 0;
-    }
-
-    if (textureID != 0)
-    {
-        glDeleteTextures(1, &textureID);
-        err_status |= CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteTextures error");
-        if (log_errors)
-            ROS_INFO("[MazeRenderContext::cleanupContext] %s", err_status ? "Failed to delete texture" : "Texture deleted successfully");
-        textureID = 0;
-    }
-
-    if (vao != 0)
-    {
-        glDeleteVertexArrays(1, &vao);
-        err_status |= CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteVertexArrays error");
-        if (log_errors)
-            ROS_INFO("[MazeRenderContext::cleanupContext] %s", err_status ? "Failed to delete VAO" : "VAO deleted successfully");
-        vao = 0;
-    }
-
-    if (vbo != 0)
-    {
-        glDeleteBuffers(1, &vbo);
-        err_status |= CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteBuffers error");
-        if (log_errors)
-            ROS_INFO("[MazeRenderContext::cleanupContext] %s", err_status ? "Failed to delete VBO" : "VBO deleted successfully");
-        vbo = 0;
-    }
-
-    if (ebo != 0)
-    {
-        glDeleteBuffers(1, &ebo);
-        err_status |= CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteBuffers error");
-        if (log_errors)
-            ROS_INFO("[MazeRenderContext::cleanupContext] %s", err_status ? "Failed to delete EBO" : "EBO deleted successfully");
-        ebo = 0;
-    }
-
-    if (windowID != nullptr)
-    {
-        glfwDestroyWindow(windowID);
-        err_status |= CheckErrorGLFW(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glfwDestroyWindow error");
-        if (log_errors)
-            ROS_INFO("[MazeRenderContext::cleanupContext] %s", err_status ? "Failed to destroy GLFW window" : "GLFW window destroyed successfully");
-        windowID = nullptr;
-    }
-
-    return err_status ? -1 : 0;
-}
-
 int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source)
 {
+    // Check that context is initialized
+    if (!isContextInitialized)
+    {
+        ROS_ERROR("[compileAndLinkShaders] Context Not Initialized");
+        return -1;
+    }
+
     // Compile vertex shader
     GLuint temp_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(temp_vertex_shader, 1, &vertex_source, nullptr);
@@ -303,7 +245,7 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
     if (!_checkShaderCompilation(temp_vertex_shader, "VERTEX"))
     {
         glDeleteShader(temp_vertex_shader);
-        ROS_ERROR("[MazeRenderContext] Vertex shader compilation failed.");
+        ROS_ERROR("[compileAndLinkShaders] Vertex shader compilation failed.");
         return -1;
     }
 
@@ -315,7 +257,7 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
     {
         glDeleteShader(temp_vertex_shader);
         glDeleteShader(temp_fragment_shader);
-        ROS_ERROR("[MazeRenderContext] Fragment shader compilation failed.");
+        ROS_ERROR("[compileAndLinkShaders] Fragment shader compilation failed.");
         return -1;
     }
 
@@ -329,7 +271,7 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
         glDeleteShader(temp_vertex_shader);
         glDeleteShader(temp_fragment_shader);
         glDeleteProgram(shaderProgram);
-        ROS_ERROR("[MazeRenderContext] Shader program linking failed.");
+        ROS_ERROR("[compileAndLinkShaders] Shader program linking failed.");
         return -1;
     }
 
@@ -339,20 +281,122 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
     glDetachShader(shaderProgram, temp_fragment_shader);
     glDeleteShader(temp_fragment_shader);
 
-    return CheckErrorOpenGL(__LINE__, __FILE__, "MazeRenderContext::compileAndLinkShaders");
+    return CheckErrorOpenGL(__LINE__, __FILE__);
 }
 
-int MazeRenderContext::cleanupShaderObjects()
+int MazeRenderContext::validateShaderProgram()
 {
-    // Use OpenGL calls to delete shader program and shaders
+    if (shaderProgram == 0)
+    {
+        ROS_ERROR("[MazeRenderContext::validateShaderProgram] No shader program to validate.");
+        return -1;
+    }
+
+    glValidateProgram(shaderProgram);
+    GLint validationStatus;
+    glGetProgramiv(shaderProgram, GL_VALIDATE_STATUS, &validationStatus);
+
+    if (validationStatus == GL_FALSE)
+    {
+        GLint logLength;
+        glGetProgramiv(shaderProgram, GL_INFO_LOG_LENGTH, &logLength);
+
+        // The maxLength includes the NULL character
+        std::vector<GLchar> errorLog(logLength);
+        glGetProgramInfoLog(shaderProgram, logLength, &logLength, &errorLog[0]);
+
+        // Log the error
+        ROS_ERROR("[MazeRenderContext::validateShaderProgram] Shader program validation failed: %s", &errorLog[0]);
+
+        // Optionally, delete the shader program if you won't need it after a failed validation
+        // glDeleteProgram(shaderProgram);
+        // shaderProgram = 0;
+
+        return -1;
+    }
+
+    ROS_INFO("[MazeRenderContext::validateShaderProgram] Shader program validated successfully.");
+    return 0;
+}
+
+int MazeRenderContext::cleanupContext(bool log_errors)
+{
+    int status = 0;
+
     if (shaderProgram != 0)
     {
         glDeleteProgram(shaderProgram);
+        status |= CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteProgram error");
+        if (log_errors)
+            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete shader program" : "Shader program deleted successfully");
         shaderProgram = 0;
-        return CheckErrorOpenGL(__LINE__, __FILE__, "MazeRenderContext::cleanupShaderObjects");
     }
+
+    if (textureID != 0)
+    {
+        glDeleteTextures(1, &textureID);
+        status |= CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteTextures error");
+        if (log_errors)
+            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete texture" : "Texture deleted successfully");
+        textureID = 0;
+    }
+
+    if (vao != 0)
+    {
+        glDeleteVertexArrays(1, &vao);
+        status |= CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteVertexArrays error");
+        if (log_errors)
+            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete VAO" : "VAO deleted successfully");
+        vao = 0;
+    }
+
+    if (vbo != 0)
+    {
+        glDeleteBuffers(1, &vbo);
+        status |= CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteBuffers error");
+        if (log_errors)
+            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete VBO" : "VBO deleted successfully");
+        vbo = 0;
+    }
+
+    if (ebo != 0)
+    {
+        glDeleteBuffers(1, &ebo);
+        status |= CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteBuffers error");
+        if (log_errors)
+            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete EBO" : "EBO deleted successfully");
+        ebo = 0;
+    }
+
+    if (windowID != nullptr)
+    {
+        glfwDestroyWindow(windowID);
+        status |= CheckErrorGLFW(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glfwDestroyWindow error");
+        if (log_errors)
+            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to destroy GLFW window" : "GLFW window destroyed successfully");
+        windowID = nullptr;
+    }
+
+    return status ? -1 : 0;
+}
+
+int MazeRenderContext::CleanupGraphicsLibraries()
+{
+    int status = 0;
+
+    // Terminate GLFW, which cleans up all GLFW resources.
+    glfwTerminate();
+    status = CheckErrorGLFW(__LINE__, __FILE__);
+    if (status < 0)
+        ROS_WARN("[MazeRenderContext::CleanupGraphicsLibraries] Failed to Terminate GLFW Library");
     else
-        return -1;
+        ROS_INFO("[MazeRenderContext::CleanupGraphicsLibraries] Graphics libraries and shared resources cleaned up successfully.");
+
+    // Reset monitor pointers and count
+    _PP_Monitor = nullptr;
+    _NumMonitors = 0;
+
+    return status;
 }
 
 int MazeRenderContext::switchWindowMode(int mon_ind_new, bool do_fullscreen)
@@ -440,6 +484,20 @@ void MazeRenderContext::flashBackgroundColor(const cv::Scalar &color, int durati
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 }
 
+void MazeRenderContext::_resetMembers()
+{
+    shaderProgram = 0;
+    vao = 0;
+    vbo = 0;
+    ebo = 0;
+    textureID = 0;
+    windowID = nullptr;
+    monitorID = nullptr;
+    windowInd = -1;
+    monitorInd = -1;
+    isContextInitialized = false;
+}
+
 bool MazeRenderContext::_checkShaderCompilation(GLuint shader, const std::string &shader_type)
 {
     GLint success;
@@ -489,11 +547,11 @@ int MazeRenderContext::_checkMonitor(int mon_ind)
     return 0;
 }
 
-void MazeRenderContext::_testCallbacks(GLFWwindow *win)
+void MazeRenderContext::_testCallbacks()
 {
     ROS_INFO("============== START: CALLBACK DEBUGGIN ==============");
     // Trigger buffer
-    glfwSetWindowSize(win, 800, 600); // Change the size to something different
+    glfwSetWindowSize(windowID, 800, 600); // Change the size to something different
 
     // Insert a debug message manually
     glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, -1, "Test debug message");
@@ -859,17 +917,190 @@ void CircleRenderer::_computeVertices(cv::Point2f position, float radius, unsign
 
 // ================================================== FUNCTIONS ==================================================
 
-/**
- * @brief Initialize OpenGL resources for wall image render objects.
- *
- * @param[out] out_renCtx Reference to an instance of the out_renCtx class.
- *
- * @return Integer status code [0:successful, -1:error].
- *
- * @details
- * Initializes the Vertex Array Object (VAO), Vertex Buffer Object (VBO) and Element Buffer Object (EBO).
- */
-int initWallRenderObjects(MazeRenderContext &out_renCtx, float *vertices, size_t verticesSize, unsigned int *indices, size_t indicesSize);
+int updateWallTexture(
+    cv::Mat img_wall_mat, cv::Mat img_mode_mon_mat, cv::Mat img_mode_cal_mat,
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_HMAT_GRID_ARR,
+    GLuint &out_WALL_TEXTURE_ID)
+{
+    // Initialize the image to be used as the texture
+    cv::Mat im_wall_merge = cv::Mat::zeros(WINDOW_HEIGHT_PXL, WINDOW_WIDTH_PXL, CV_8UC4);
+
+    // Iterate through the maze grid rows
+    for (float gr_i = 0; gr_i < MAZE_SIZE; gr_i++) // image bottom to top
+    {
+        // Iterate through each column in the maze row
+        for (float gc_i = 0; gc_i < MAZE_SIZE; gc_i++) // image left to right
+        {
+            // Copy wall image
+            cv::Mat img_copy;
+            img_wall_mat.copyTo(img_copy);
+
+            // Get the maze vertex indice cooresponding to the selected control point
+            int mv_ind = I.cpMap[I.cpMazeVertSel[0]][I.cpMazeVertSel[1]];
+
+            //  Create merged image for the wall corresponding to the selected control point
+            if (
+                (mv_ind == 0 && gr_i == 0 && gc_i == 0) ||
+                (mv_ind == 1 && gr_i == 0 && gc_i == MAZE_SIZE - 1) ||
+                (mv_ind == 3 && gr_i == MAZE_SIZE - 1 && gc_i == 0) ||
+                (mv_ind == 2 && gr_i == MAZE_SIZE - 1 && gc_i == MAZE_SIZE - 1))
+            {
+                // Merge test pattern and active monitor image
+                if (mergeImgMat(img_mode_mon_mat, img_copy) < 0)
+                    return -1;
+
+                // Merge previous image and active calibration image
+                if (mergeImgMat(img_mode_cal_mat, img_copy) < 0)
+                    return -1;
+            }
+
+            // Get homography matrix for this wall
+            cv::Mat H = _HMAT_GRID_ARR[gr_i][gc_i];
+
+            // Warp Perspective
+            cv::Mat im_warp;
+            cv::warpPerspective(img_copy, im_warp, H, cv::Size(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL));
+
+            // Merge the warped image with the final image
+            if (mergeImgMat(im_warp, im_wall_merge) < 0)
+                return -1;
+
+            // // TEMP
+            // cv::namedWindow("Warped Image Display", cv::WINDOW_AUTOSIZE);
+            // cv::imshow("Warped Image Display", im_warp);
+            // cv::waitKey(0);
+            // cv::destroyWindow("Warped Image Display");
+            // break;
+        }
+    }
+
+    // Make the new texture and return status
+    return loadTexture(im_wall_merge, out_WALL_TEXTURE_ID);
+}
+
+int loadTexture(cv::Mat image, GLuint &textureID)
+{
+    int status = 0;
+
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Convert image from BGR to RGB
+    cv::Mat image_rgb;
+    cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
+
+    // Handle alignment
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Create texture
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_rgb.cols,
+                 image_rgb.rows, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                 image_rgb.data);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    return status;
+}
+
+int renderWallImage(MazeRenderContext &_renCtx)
+{
+    int status = 0;
+
+    // Check the shader program for errors
+    if (_renCtx.validateShaderProgram())
+    {
+        ROS_ERROR("[renderWallImage] Shader program validation failed");
+        return -1;
+    }
+    glfwMakeContextCurrent(_renCtx.windowID);
+    status = MazeRenderContext::CheckErrorGLFW(__LINE__, __FILE__);
+
+    // Use the shader program for wall rendering
+    glUseProgram(_renCtx.shaderProgram);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Bind the texture for the walls
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, _renCtx.textureID);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Bind the Vertex Array Object(VAO) specific to the current wall
+    glBindVertexArray(_renCtx.vao);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Bind the common Element Buffer Object (EBO)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _renCtx.ebo);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Draw the rectangle (2 triangles) for the current wall
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Unbind the VAO to prevent accidental modification
+    glBindVertexArray(0);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Unset the shader program
+    glUseProgram(0);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    return status;
+}
+
+int initWallRenderObjects(MazeRenderContext &out_renCtx,
+                          float *vertices, size_t verticesSize,
+                          unsigned int *indices, size_t indicesSize)
+{
+    int status = 0;
+
+    glfwMakeContextCurrent(out_renCtx.windowID);
+    status = MazeRenderContext::CheckErrorGLFW(__LINE__, __FILE__);
+
+    // Generate and bind an Element Buffer Object (EBO)
+    glGenBuffers(1, &out_renCtx.ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, out_renCtx.ebo);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Initialize the EBO with index data
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesSize, indices, GL_DYNAMIC_DRAW);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Generate and bind a Vertex Array Object (VAO)
+    glGenVertexArrays(1, &out_renCtx.vao);
+    glBindVertexArray(out_renCtx.vao);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Generate and bind a Vertex Buffer Object (VBO)
+    glGenBuffers(1, &out_renCtx.vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, out_renCtx.vbo);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Initialize the VBO with vertex data
+    glBufferData(GL_ARRAY_BUFFER, verticesSize, vertices, GL_STATIC_DRAW);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Specify the format of the vertex data for the position attribute
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0); // Enable the position attribute
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Specify the format of the vertex data for the texture coordinate attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1); // Enable the texture coordinate attribute
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Unbind the VAO to prevent accidental modification
+    glBindVertexArray(0);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Return GL status
+    return status;
+}
 
 std::string frmtFilePathxml(int d_type, int mon_id_ind, int mode_cal_ind, std::string config_dir_path)
 {
@@ -1259,6 +1490,7 @@ bool dbRunDT(int dt_wait)
 
 void dbLogDT(bool do_reset, int line, const char *file_path)
 {
+    static int cnt_calls = 0;
     static ros::Time start_time;
     static int line_start = 0;
     static std::string file_name_start = "";
@@ -1283,6 +1515,7 @@ void dbLogDT(bool do_reset, int line, const char *file_path)
     // Reset start time
     if (do_reset)
     {
+        cnt_calls = 0;
         line_start = line;
         file_name_start = extractFileName(file_path);
         start_time = ros::Time::now();
@@ -1290,16 +1523,17 @@ void dbLogDT(bool do_reset, int line, const char *file_path)
     // Print elapsed time
     else
     {
+        cnt_calls++;
         ros::Duration elapsed_time = ros::Time::now() - start_time;
         std::string file_name_current = extractFileName(file_path);
         if (line_start == 0 || line == 0)
         {
-            ROS_INFO("Elapsed Time: %f milliseconds", elapsed_time.toNSec() / 1e6);
+            ROS_INFO("Call[%d]: Elapsed Time: %f milliseconds", cnt_calls, elapsed_time.toNSec() / 1e6);
         }
         else
         {
-            ROS_INFO("Elapsed Time from %s[%d] to %s[%d]: %0.2f milliseconds",
-                     file_name_start.c_str(), line_start, file_name_current.c_str(), line,
+            ROS_INFO("Call[%d]: Elapsed Time from %s[%d] to %s[%d] is %0.2f milliseconds",
+                     cnt_calls, file_name_start.c_str(), line_start, file_name_current.c_str(), line,
                      elapsed_time.toNSec() / 1e6);
         }
     }

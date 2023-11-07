@@ -440,121 +440,6 @@ int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_
     return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "initCircleRendererObjects");
 }
 
-int updateWallTexture(
-    cv::Mat img_wall_mat, cv::Mat img_mode_mon_mat, cv::Mat img_mode_cal_mat,
-    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_HMAT_GRID_ARR,
-    GLuint &out_WALL_TEXTURE_ID)
-{
-    // Initialize the image to be used as the texture
-    cv::Mat im_wall_merge = cv::Mat::zeros(WINDOW_HEIGHT_PXL, WINDOW_WIDTH_PXL, CV_8UC4);
-
-    // Iterate through the maze grid rows
-    for (float gr_i = 0; gr_i < MAZE_SIZE; gr_i++) // image bottom to top
-    {
-        // Iterate through each column in the maze row
-        for (float gc_i = 0; gc_i < MAZE_SIZE; gc_i++) // image left to right
-        {
-            // Copy wall image
-            cv::Mat img_copy;
-            img_wall_mat.copyTo(img_copy);
-
-            // Get the maze vertex indice cooresponding to the selected control point
-            int mv_ind = I.cpMap[I.cpMazeVertSel[0]][I.cpMazeVertSel[1]];
-
-            //  Create merged image for the wall corresponding to the selected control point
-            if (
-                (mv_ind == 0 && gr_i == 0 && gc_i == 0) ||
-                (mv_ind == 1 && gr_i == 0 && gc_i == MAZE_SIZE - 1) ||
-                (mv_ind == 3 && gr_i == MAZE_SIZE - 1 && gc_i == 0) ||
-                (mv_ind == 2 && gr_i == MAZE_SIZE - 1 && gc_i == MAZE_SIZE - 1))
-            {
-                // Merge test pattern and active monitor image
-                if (mergeImgMat(img_mode_mon_mat, img_copy) < 0)
-                    return -1;
-
-                // Merge previous image and active calibration image
-                if (mergeImgMat(img_mode_cal_mat, img_copy) < 0)
-                    return -1;
-            }
-
-            // Get homography matrix for this wall
-            cv::Mat H = _HMAT_GRID_ARR[gr_i][gc_i];
-
-            // Warp Perspective
-            cv::Mat im_warp;
-            cv::warpPerspective(img_copy, im_warp, H, cv::Size(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL));
-
-            // Merge the warped image with the final image
-            if (mergeImgMat(im_warp, im_wall_merge) < 0)
-                return -1;
-
-            // // TEMP
-            // cv::namedWindow("Warped Image Display", cv::WINDOW_AUTOSIZE);
-            // cv::imshow("Warped Image Display", im_warp);
-            // cv::waitKey(0);
-            // cv::destroyWindow("Warped Image Display");
-            // break;
-        }
-    }
-
-    // Make the new texture
-    out_WALL_TEXTURE_ID = loadTexture(im_wall_merge);
-
-    return 0;
-}
-
-GLuint loadTexture(cv::Mat image)
-{
-    GLuint textureID;
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-
-    // Convert image from BGR to RGB
-    cv::Mat image_rgb;
-    cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
-
-    // Handle alignment
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-
-    // Create texture
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_rgb.cols,
-                 image_rgb.rows, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                 image_rgb.data);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-    return textureID;
-}
-
-int renderWallImage(const MazeRenderContext &renCtx)
-{
-    // Use the shader program for wall rendering
-    glUseProgram(renCtx.shaderProgram);
-
-    // Bind the texture for the walls
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, renCtx.textureID);
-
-    // Bind the Vertex Array Object(VAO) specific to the current wall
-    glBindVertexArray(renCtx.vao);
-
-    // Bind the common Element Buffer Object (EBO)
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renCtx.ebo);
-
-    // Draw the rectangle (2 triangles) for the current wall
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-    // Unbind the VAO to prevent accidental modification
-    glBindVertexArray(0);
-
-    // Unset the shader program
-    glUseProgram(0);
-
-    // Return GL status
-    return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "renderWallImage");
-}
-
 int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
                         std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
 {
@@ -600,9 +485,6 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRI
     // Unset the shader program
     CircleRenderer::UnsetShader();
 
-    // // TEMP
-    // return -1;
-
     // Return GL status
     return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "renderControlPoints");
 }
@@ -642,16 +524,12 @@ int main(int argc, char **argv)
     // Declare MazeRenderContext instance
     std::array<MazeRenderContext, 1> RenContx;
 
-    ROS_INFO("!! TEST1 !!");
-
     // Initialize GLFW and OpenGL settings
     if (MazeRenderContext::SetupGraphicsLibraries(N.monitors) < 0)
     {
         ROS_ERROR("[main] Failed to initialize graphics");
         return -1;
     }
-
-    ROS_INFO("!! TEST2 !!");
 
     // Initialze render context
     /// @note this is where we would loop through our windows if there were more
@@ -661,8 +539,6 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    ROS_INFO("!! TEST3 !!");
-
     // Initialize OpenGL wall image objects
     if (initWallRenderObjects(RenContx[0],
                               WALL_GL_VERTICES, sizeof(WALL_GL_VERTICES),
@@ -671,8 +547,6 @@ int main(int argc, char **argv)
         ROS_ERROR("[main] Failed to initialize opengl wall image objects");
         return -1;
     }
-
-    ROS_INFO("!! TEST4 !!");
 
     // Update monitor and window mode settings
     /// @note consider moving into class setup
@@ -695,24 +569,12 @@ int main(int argc, char **argv)
         ROS_ERROR("[main] Failed to compile and link circlerenderer class shader");
         return -1;
     }
-
     // Initialize the CircleRenderer class objects array
     if (initCircleRendererObjects(CP_GRID_ARR, CP_RENDERERS) < 0)
     {
         ROS_ERROR("[main] Failed to initialize control point variables");
         return -1;
     }
-
-    ROS_INFO("!! TEST5 !!");
-
-    // Log OpenGL versions
-    const GLubyte *opengl_version = glGetString(GL_VERSION);
-    ROS_INFO("[main] OpenGL initialized: Version[%s]", opengl_version);
-
-    // Log GLFW versions
-    int glfw_major, glfw_minor, glfw_rev;
-    glfwGetVersion(&glfw_major, &glfw_minor, &glfw_rev);
-    ROS_INFO("[main] GLFW initialized: Version[%d.%d.%d]", glfw_major, glfw_minor, glfw_rev);
 
     // --------------- RENDER IMAGE LOADING  ---------------
 

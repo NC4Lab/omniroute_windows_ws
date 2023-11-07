@@ -12,8 +12,6 @@
 // Local custom libraries
 #include "projection_utils.h"
 
-
-
 // ================================================== VARIABLES ==================================================
 
 // Control point graphics
@@ -216,50 +214,6 @@ int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img);
  * for the control point markers.
  */
 int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &, std::array<std::array<CircleRenderer, 4>, 4> &);
-
-/**
- * @brief Updates the stored warped wall image vertices based on the control point array.
- *
- * @param img_wall_mat cv::Mat image matrix for the base wall image.
- * @param img_mode_mon_mat cv::Mat image matrix for the monitor mode image.
- * @param img_mode_cal_mat cv::Mat image matrix for the calibration image.
- * @param _HMAT_GRID_ARR 3x3 array of Homography matrices used to warp the wall image.
- * @param[out] out_wallTexture OpenGL texture ID for the wall image.
- *
- * @return Integer status code [0:successful, -1:error].
- */
-int updateWallTexture(
-    cv::Mat, cv::Mat, cv::Mat,
-    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &,
-    GLuint &);
-
-/**
- * @brief Converts an OpenCV Mat image into an OpenGL texture and returns the texture ID.
- *
- * @param image The cv::Mat image that needs to be converted.
- *
- * @return GLuint ID of the generated texture.
- *
- * @details
- * This function takes an OpenCV Mat image as input and converts it into an OpenGL texture.
- * The OpenCV image is first converted from BGR to RGB format. Then, a new OpenGL texture is
- * generated and the converted image data is stored in this texture.
- *
- * The texture parameters for minification and magnification filters are set to GL_LINEAR.
- *
- * Note: This function assumes that the input image is of type CV_8UC3 and has no alpha channel.
- */
-
-GLuint loadTexture(cv::Mat);
-
-/**
- * @brief Renders a all wall images from the computed texture2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
- *
- * @param renCtx Reference to an instance of the out_renCtx class.
- *
- * @return Integer status code  [0:successful, -1:error].
- */
-int renderWallImage(const MazeRenderContext &renCtx);
 
 /**
  * @brief Draws control points associated with each corner wall.

@@ -169,7 +169,7 @@
  *
  */
 
-#pragma once
+// TEMP #pragma once
 
 #ifndef _PROJECTION_UTILS_H
 #define _PROJECTION_UTILS_H
@@ -254,44 +254,79 @@ public:
     GLuint textureID;                 // Texture for the wall
     GLFWwindow *windowID;             // The window associated with this context
     GLFWmonitor *monitorID;           // The monitor associated with this context
-    float *verticesArr;               // Vertex data for the wall's geometry
-    unsigned int *indicesArr;         // Index data for rendering the wall using triangles
     int windowInd;                    // Index of the window associated with this context
     int monitorInd;                   // Index of the monitor associated with this context
+    bool isContextInitialized;        // Flag indicating whether there context has been initialized
 private:
     static GLFWmonitor **_PP_Monitor;
     static int _NumMonitors;
 
 public:
-    // Constructor
-    MazeRenderContext();
+    /**
+     * @brief Constructor to initialize context members.
+     *
+     * Initializes all member variables to default states,
+     * deferring the setup until resources are available.
+     */
+    MazeRenderContext::MazeRenderContext();
 
-    // Destructor
-    ~MazeRenderContext();
+    /**
+     * @brief Destructor to clean up resources.
+     *
+     * Cleans up OpenGL and GLFW resources if the context
+     * has been initialized to ensure proper resource management.
+     */
+    MazeRenderContext::~MazeRenderContext();
 
-    // Copy constructor and copy assignment are deleted to avoid accidental copying
+    /**
+     * @brief Deleted copy constructor.
+     *
+     * Copy constructor is deleted to avoid unintentional copying,
+     * ensuring unique ownership of context resources.
+     */
     MazeRenderContext(const MazeRenderContext &) = delete;
+
+    /**
+     * @brief Deleted copy assignment operator.
+     *
+     * Copy assignment is deleted to avoid unintentional copying,
+     * ensuring unique ownership of context resources.
+     */
     MazeRenderContext &operator=(const MazeRenderContext &) = delete;
 
-    // Move constructor and move assignment for efficient transfer of resources
+    /**
+     * @brief Move constructor for resource transfer.
+     *
+     * Transfers ownership of context resources from another instance
+     * and resets that instance to prevent double deletion.
+     */
     MazeRenderContext(MazeRenderContext &&other) noexcept;
+
+    /**
+     * @brief Move assignment operator for resource transfer.
+     *
+     * Cleans up the current resources and transfers ownership
+     * of context resources from another instance.
+     */
     MazeRenderContext &operator=(MazeRenderContext &&other) noexcept;
 
     /**
      * @brief Callback function for handling framebuffer size changes.
      *
+     * This function is called whenever the framebuffer size changes,
+     * and it updates the OpenGL viewport to match the new dimensions.
+     *
      * @param window Pointer to the GLFW window.
      * @param width The new width of the framebuffer.
      * @param height The new height of the framebuffer.
-     *
-     * @details
-     * This function is called whenever the framebuffer size changes,
-     * and it updates the OpenGL viewport to match the new dimensions.
      */
     static void CallbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height);
 
     /**
      * @brief Callback function for handling OpenGL errors.
+     *
+     * This function is called whenever an error occurs in the OpenGL context.
+     * It logs the error message using ROS_ERROR.
      *
      * @param source The source of the error.
      * @param type The type of the error.
@@ -300,22 +335,17 @@ public:
      * @param length The length of the error message.
      * @param message The error message.
      * @param userParam User-defined parameter.
-     *
-     * @details
-     * This function is called whenever an error occurs in the OpenGL context.
-     * It logs the error message using ROS_ERROR.
      */
     static void CallbackDebugOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam);
 
     /**
      * @brief Callback function for handling errors.
      *
-     * @param error The error code.
-     * @param description The error description.
-     *
-     * @details
      * This function is called whenever an error occurs in the GLFW context.
      * It logs the error message using ROS_ERROR.
+     *
+     * @param error The error code.
+     * @param description The error description.
      */
     static void CallbackErrorGLFW(int error, const char *description);
 
@@ -326,9 +356,7 @@ public:
      * @param line Line number where the function is called.
      * @param file_str File name where the function is called.
      * @param msg_str Optional message to provide additional context (default to nullptr).
-     *
      * @return Integer status code  [0:successful, -1:error].
-     *
      *
      * @example CheckErrorOpenGL(__LINE__, __FILE__);
      */
@@ -341,7 +369,6 @@ public:
      * @param line Line number where the function is called.
      * @param file_str File name where the function is called.
      * @param msg_str Optional message to provide additional context (default to nullptr).
-     *
      * @return Integer status code  [0:successful, -1:error].
      *
      * @example CheckErrorGLFW(__LINE__, __FILE__);
@@ -360,16 +387,6 @@ public:
     int static SetupGraphicsLibraries(int &n_mon);
 
     /**
-     * @brief Cleans up GLFW and resets monitor info.
-     *
-     * Terminates GLFW to clean up all resources and resets monitor pointers and count.
-     * Logs the result of the cleanup process.
-     *
-     * @return int Status of cleanup (0 for success, -1 for failure indicated by GLFW errors).
-     */
-    static int CleanupGraphicsLibraries();
-
-    /**
      * @brief Initializes a new rendering context.
      *
      * Checks and sets a new monitor based on the monitor index, creates a new GLFW window,
@@ -381,21 +398,6 @@ public:
      * @return int Status of context initialization (0 for success, -1 for failure).
      */
     int initContext(int win_ind, int mon_ind, KeyCallbackFunc key_callback = nullptr);
-
-    /**
-     * @brief Cleans up all OpenGL resources.
-     *
-     * This method deletes the shader program, textures, VAO, VBO, EBO, and destroys
-     * the GLFW window if they have been created. It also logs the cleanup process if
-     * logging is enabled.
-     *
-     * @param log_errors If set to true, the method logs the status of each resource
-     *                   cleanup operation.
-     * @return An integer status code. If all resources are cleaned up without any
-     *         OpenGL errors, it returns 0. If there are any OpenGL errors during
-     *         cleanup, it returns -1.
-     */
-    int cleanupContext(bool log_errors = true);
 
     /**
      * @brief Compiles and links shaders for a given class instance.
@@ -424,28 +426,49 @@ public:
     int compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source);
 
     /**
-     * @brief Cleans up shader objects.
-     * @return Integer status code  [0:successful, -1:error].
+     * @brief This method checks the validation status of the shader program
+     * and logs any errors if the validation fails.
      *
-     * @details
-     * This method deletes the shader program associated with
-     * the CircleRenderer class. It should be called once when
-     * the application is terminating, to ensure proper cleanup
-     * of OpenGL resources.
+     * Make sure to call this method after your shader program has been linked.
+     *
+     * @return Integer status code  [0:successful, -1:error].
      */
-    int cleanupShaderObjects();
+    int MazeRenderContext::validateShaderProgram();
+
+    /**
+     * @brief Cleans up GLFW and resets monitor info.
+     *
+     * Terminates GLFW to clean up all resources and resets monitor pointers and count.
+     * Logs the result of the cleanup process.
+     *
+     * @return int Status of cleanup (0 for success, -1 for failure indicated by GLFW errors).
+     */
+    static int CleanupGraphicsLibraries();
+
+    /**
+     * @brief Cleans up all OpenGL resources.
+     *
+     * This method deletes the shader program, textures, VAO, VBO, EBO, and destroys
+     * the GLFW window if they have been created. It also logs the cleanup process if
+     * logging is enabled.
+     *
+     * @param log_errors If set to true, the method logs the status of each resource
+     *                   cleanup operation.
+     * @return An integer status code. If all resources are cleaned up without any
+     *         OpenGL errors, it returns 0. If there are any OpenGL errors during
+     *         cleanup, it returns -1.
+     */
+    int cleanupContext(bool log_errors = false);
 
     /**
      * @brief Changes the display mode and monitor of the application window.
      *
+     * This function switches the application window between full-screen and windowed modes
+     * and moves it to the monitor specified by the global variable imgMonNumInd.
      *
      * @param mon_id_ind Index of the monitor to move the window to.
      * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
      * @return Integer status code  [0:successful, -1:error].
-     *
-     * @details
-     * This function switches the application window between full-screen and windowed modes
-     * and moves it to the monitor specified by the global variable imgMonNumInd.
      */
     int switchWindowMode(int, bool);
 
@@ -475,8 +498,14 @@ public:
 
 private:
     /**
-     * @brief Private helper methods to check shader compilation.
+     * @brief Helper function for resetting members.
      *
+     * This is useful for both the move constructor and the move assignment operator.
+     */
+    void _resetMembers();
+
+    /**
+     * @brief Private helper methods to check shader compilation.
      * @param shader The shader to check.
      * @param shader_type The type of shader to check.
      */
@@ -484,16 +513,18 @@ private:
 
     /**
      * @brief Private helper methods to check shader linking.
-     *
      * @param program The shader program to check.
      */
     bool _checkProgramLinking(GLuint program);
 
-    // Private method to check monitor index and id is valid
+    /**
+     * @brief  Private method to check monitor index and id is valid
+     * @param mon_ind Index of monitor ID to check.
+     */
     int _checkMonitor(int mon_ind);
 
     // Simple test of OpenGL and GLFW callbacks
-    void _testCallbacks(GLFWwindow *win);
+    void _testCallbacks();
 };
 
 #endif // MAZE_RENDER_CONTEXT_H
@@ -991,56 +1022,66 @@ extern const float WALL_IMAGE_WIDTH_NDC = (MAZE_WIDTH_NDC / (float(MAZE_SIZE) - 
 extern const float WALL_IMAGE_HEIGHT_NDC = (MAZE_HEIGHT_NDC / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
 
 // Global variable to set the OpenGL debug level.
-int DEBUG_LEVEL_GL = 3; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
+int DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
 
 // ================================================== FUNCTIONS ==================================================
 
-int initWallRenderObjects(MazeRenderContext &out_renCtx,
-                          float *vertices, size_t verticesSize,
-                          unsigned int *indices, size_t indicesSize)
-{
-    int status = 0;
+/**
+ * @brief Updates the stored warped wall image vertices based on the control point array.
+ *
+ * @param img_wall_mat cv::Mat image matrix for the base wall image.
+ * @param img_mode_mon_mat cv::Mat image matrix for the monitor mode image.
+ * @param img_mode_cal_mat cv::Mat image matrix for the calibration image.
+ * @param _HMAT_GRID_ARR 3x3 array of Homography matrices used to warp the wall image.
+ * @param[out] out_wallTexture OpenGL texture ID for the wall image.
+ *
+ * @return Integer status code [0:successful, -1:error].
+ */
+int updateWallTexture(
+    cv::Mat, cv::Mat, cv::Mat,
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &,
+    GLuint &);
 
-    // Generate and bind an Element Buffer Object (EBO)
-    glGenBuffers(1, &out_renCtx.ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, out_renCtx.ebo);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+/**
+ * @brief Converts an OpenCV Mat image into an OpenGL texture and returns the texture ID.
+ *
+ * @param image The cv::Mat image that needs to be converted.
+ * @param GLuint Reference to the GLuint ID of the generated texture.
+ *
+ * @return Integer status code [0:successful, -1:error].
+ *
+ * @details
+ * This function takes an OpenCV Mat image as input and converts it into an OpenGL texture.
+ * The OpenCV image is first converted from BGR to RGB format. Then, a new OpenGL texture is
+ * generated and the converted image data is stored in this texture.
+ *
+ * The texture parameters for minification and magnification filters are set to GL_LINEAR.
+ *
+ * Note: This function assumes that the input image is of type CV_8UC3 and has no alpha channel.
+ */
 
-    // Initialize the EBO with index data
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesSize, indices, GL_DYNAMIC_DRAW);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+int loadTexture(cv::Mat, GLuint &);
 
-    // Generate and bind a Vertex Array Object (VAO)
-    glGenVertexArrays(1, &out_renCtx.vao);
-    glBindVertexArray(out_renCtx.vao);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+/**
+ * @brief Renders a all wall images from the computed texture2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
+ *
+ * @param _renCtx Reference to an instance of the out_renCtx class.
+ *
+ * @return Integer status code  [0:successful, -1:error].
+ */
+int renderWallImage(MazeRenderContext &_renCtx);
 
-    // Generate and bind a Vertex Buffer Object (VBO)
-    glGenBuffers(1, &out_renCtx.vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, out_renCtx.vbo);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Initialize the VBO with vertex data
-    glBufferData(GL_ARRAY_BUFFER, verticesSize, vertices, GL_STATIC_DRAW);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Specify the format of the vertex data for the position attribute
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0); // Enable the position attribute
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Specify the format of the vertex data for the texture coordinate attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1); // Enable the texture coordinate attribute
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Unbind the VAO to prevent accidental modification
-    glBindVertexArray(0);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Return GL status
-    return status;
-}
+/**
+ * @brief Initialize OpenGL resources for wall image render objects.
+ *
+ * @param[out] out_renCtx Reference to an instance of the out_renCtx class.
+ *
+ * @return Integer status code [0:successful, -1:error].
+ *
+ * @details
+ * Initializes the Vertex Array Object (VAO), Vertex Buffer Object (VBO) and Element Buffer Object (EBO).
+ */
+int initWallRenderObjects(MazeRenderContext &out_renCtx, float *vertices, size_t verticesSize, unsigned int *indices, size_t indicesSize);
 
 /**
  * @brief Formats the file name for the XML file based on the active calibration mode and monitor.
@@ -1206,8 +1247,9 @@ bool dbRunDT(int);
  * @param do_reset If true, resets the start time. If false, prints the elapsed time.
  * @param line Line number where the function is called.
  * @param file_path File path where the function is called.
+ * @param do_print_each_call If true, prints the info for each call.
  *
- * @example dbLogDT(true, __LINE__, __FILE__);
+ * @example dbLogDT(false, __LINE__, __FILE__);
  */
 void dbLogDT(bool = false, int = 0, const char * = nullptr);
 
