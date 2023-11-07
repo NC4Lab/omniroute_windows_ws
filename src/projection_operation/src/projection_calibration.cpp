@@ -384,6 +384,9 @@ int MazeRenderContext::switchWindowMode(int mon_ind_new, bool do_fullscreen)
         glfwSetWindowMonitor(windowID, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * WINDOW_ASPECT_RATIO), 500, 0); // Set windowed mode position and size
     }
 
+    // Make sure winsow always stays on top in fullscreen mode
+    setWindowStackOrder(do_fullscreen);
+
     // Update window title with window and monitor indices
     std::string new_title = "Window[" + std::to_string(windowInd) + "] Monitor[" + std::to_string(mon_ind_new) + "]";
     glfwSetWindowTitle(windowID, new_title.c_str());
@@ -392,17 +395,35 @@ int MazeRenderContext::switchWindowMode(int mon_ind_new, bool do_fullscreen)
     return checkErrorGLFW(__LINE__, __FILE__, "MazeRenderContext::switchWindowMode");
 }
 
-void MazeRenderContext::flashBackgroundColor(const cv::Scalar &color, float duration)
+int MazeRenderContext::setWindowStackOrder(bool is_top_always)
+{
+    // Set the GLFW_FLOATING attribute based on the alwaysOnTop boolean
+    glfwSetWindowAttrib(windowID, GLFW_FLOATING, is_top_always ? GLFW_TRUE : GLFW_FALSE);
+
+    // Check if the window is minimized (iconified)
+    if (glfwGetWindowAttrib(windowID, GLFW_ICONIFIED))
+    {
+        // If the window is minimized and is_top_always is true, restore the window
+        if (is_top_always)
+            glfwRestoreWindow(windowID);
+    }
+
+    // It may be useful to also call this here to process events such as restore
+    glfwPollEvents();
+    return checkErrorGLFW(__LINE__, __FILE__, "MazeRenderContext::_setWindowStackOrder");
+}
+
+void MazeRenderContext::flashBackgroundColor(const cv::Scalar &color, int duration)
 {
     // Set the new clear color using BGR values from cv::Scalar
-    glClearColor(color[2], color[1], color[0], 1.0f); // RGBA
+    glClearColor(color[0], color[1], color[2], 1.0f); // RGBA
 
     // Clear the window with the new color
     glClear(GL_COLOR_BUFFER_BIT);
     glfwSwapBuffers(windowID);
 
     // Wait for the duration of the flash
-    std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<int>(duration * 1000)));
+    std::this_thread::sleep_for(std::chrono::milliseconds(duration));
 
     // Reset the clear color (assuming the default is black)
     glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
@@ -1113,8 +1134,13 @@ int checkErrorGLFW(int line, const char *file_str, const char *msg_str)
 void initCtrlPtCoords(std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR)
 {
     // Specify the control point limits
-    const float cp_x = MAZE_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
+    float cp_x = MAZE_WIDTH_NDC / 2;        // starting X-coordinate in NDC coordinates
     const float cp_y = MAZE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates
+
+    // Add an x offset based on the calibration mode
+    float offset_x = 0.5f * static_cast<float>(MAZE_WIDTH_NDC);
+    cp_x += (I.calMode == 0) ? -offset_x : (I.calMode == 2) ? offset_x
+                                                            : 0;
 
     // Iterate through control point outer array (maze vertices)
     for (float mv_i = 0; mv_i < 4; mv_i++) // image bottom to top
@@ -1502,20 +1528,20 @@ GLuint loadTexture(cv::Mat image)
     return textureID;
 }
 
-int renderWallImage(const MazeRenderContext &mazeRenderContext)
+int renderWallImage(const MazeRenderContext &renCtx)
 {
     // Use the shader program for wall rendering
-    glUseProgram(mazeRenderContext.shaderProgram);
+    glUseProgram(renCtx.shaderProgram);
 
     // Bind the texture for the walls
     glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, mazeRenderContext.textureID);
+    glBindTexture(GL_TEXTURE_2D, renCtx.textureID);
 
     // Bind the Vertex Array Object(VAO) specific to the current wall
-    glBindVertexArray(mazeRenderContext.vao);
+    glBindVertexArray(renCtx.vao);
 
     // Bind the common Element Buffer Object (EBO)
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, mazeRenderContext.ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, renCtx.ebo);
 
     // Draw the rectangle (2 triangles) for the current wall
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
@@ -1703,7 +1729,7 @@ int main(int argc, char **argv)
 
     // _______________ MAIN LOOP _______________
 
-    bool is_error = false;
+    int status = 0;
     while (!glfwWindowShouldClose(RenContx[0].windowID) && ros::ok())
     {
 
@@ -1712,14 +1738,35 @@ int main(int argc, char **argv)
         // Load/save XML file
         if (F.loadXML || F.saveXML)
         {
-            std::string file_path = frmtFilePathxml(I.winMon, I.calMode, CONFIG_DIR_PATH);
-            if (F.saveXML) // Load XML file
-                saveHMATxml(file_path, HMAT_GRID_ARR);
-            else if (F.loadXML) // Save XML file
-                loadHMATxml(file_path, HMAT_GRID_ARR);
-            RenContx[0].flashBackgroundColor(cv::Scalar(0.1f, 0.0f, 0.0f), 0.5f);
+            std::string file_path_hmat = frmtFilePathxml(0, I.winMon, I.calMode, CONFIG_DIR_PATH);
+            std::string file_path_cp = frmtFilePathxml(1, I.winMon, I.calMode, CONFIG_DIR_PATH);
+
+            // Save XML file
+            if (F.saveXML)
+            {
+                status = saveHMATxml(file_path_hmat, HMAT_GRID_ARR);
+                status = saveCPxml(file_path_cp, CP_GRID_ARR);
+            }
             F.saveXML = false;
+
+            // Load XML file
+            if (F.loadXML)
+            {
+                status = loadHMATxml(file_path_hmat, HMAT_GRID_ARR);
+                status = loadCPxml(file_path_cp, CP_GRID_ARR);
+                F.updateWallTexture = true;
+            }
             F.loadXML = false;
+
+            // Flash the background to indicate the file was loaded/saved
+            if (status >= 0)
+                RenContx[0].flashBackgroundColor(cv::Scalar(0.0f, 0.25f, 0.0f), 500);
+            else
+            {
+                RenContx[0].flashBackgroundColor(cv::Scalar(0.25f, 0.0f, 0.0f), 500);
+                ROS_ERROR("[main] Failed to load/save XML file");
+                break;
+            }
         }
 
         // Update the window monitor and mode
@@ -1728,7 +1775,7 @@ int main(int argc, char **argv)
             if (RenContx[0].switchWindowMode(I.winMon, F.setFullscreen) < 0)
             {
                 ROS_ERROR("[main] Update window monitor mode threw an error");
-                is_error = true;
+                status = -1;
                 break;
             }
             F.switchWindowMode = false;
@@ -1749,7 +1796,7 @@ int main(int argc, char **argv)
             if (updateHomography(CP_GRID_ARR, HMAT_GRID_ARR) < 0)
             {
                 ROS_ERROR("[main] Update of wall vertices datasets failed");
-                is_error = true;
+                status = -1;
                 break;
             }
 
@@ -1757,7 +1804,7 @@ int main(int argc, char **argv)
             if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], HMAT_GRID_ARR, RenContx[0].textureID) < 0)
             {
                 ROS_ERROR("[main] Update of wall homography datasets failed");
-                is_error = true;
+                status = -1;
                 break;
             }
             F.updateWallTexture = false;
@@ -1769,15 +1816,18 @@ int main(int argc, char **argv)
         glClear(GL_COLOR_BUFFER_BIT);
         if (checkErrorGLFW(__LINE__, __FILE__, "[main] Error flagged following glclear()"))
         {
-            is_error = true;
+            status = -1;
             break;
         }
+
+        // Make sure winsow always stays on top in fullscreen mode
+        RenContx[0].setWindowStackOrder(F.setFullscreen);
 
         // Draw/update wall images
         if (renderWallImage(RenContx[0]) < 0)
         {
             ROS_ERROR("[main] Draw walls threw an error");
-            is_error = true;
+            status = -1;
             break;
         }
 
@@ -1785,7 +1835,7 @@ int main(int argc, char **argv)
         if (renderControlPoints(CP_GRID_ARR, CP_RENDERERS) < 0)
         {
             ROS_ERROR("[main] Draw control point threw an error");
-            is_error = true;
+            status = -1;
             break;
         }
 
@@ -1793,7 +1843,7 @@ int main(int argc, char **argv)
         glfwSwapBuffers(RenContx[0].windowID);
         if (checkErrorGLFW(__LINE__, __FILE__, "[main] Error flagged following glfwSwapBuffers()") < 0)
         {
-            is_error = true;
+            status = -1;
             break;
         }
 
@@ -1815,7 +1865,7 @@ int main(int argc, char **argv)
         ROS_INFO("[main] Loop Terminated:  GLFW window should close");
     else if (glfwGetKey(RenContx[0].windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         ROS_INFO("[main] Loop Terminated:  Escape key was pressed");
-    else if (is_error)
+    else if (status < 0)
         ROS_INFO("[main] Loop Terminated:  Error thrown");
     else
         ROS_INFO("[main] Loop Terminated:  Reason unknown");
@@ -1839,5 +1889,5 @@ int main(int argc, char **argv)
         ROS_INFO("[main] GLFW library terminated successfully");
 
     // Return success
-    return is_error ? -1 : 0;
+    return status;
 }

@@ -176,7 +176,6 @@ public:
      *
      * @param vertex_source Source code for the vertex shader stored as a C++ raw string literal.
      * @param fragment_source Source code for the fragment shader stored as a C++ raw string literal.
-     *
      * @return Integer status code  [0:successful, -1:error].
      *
      * @details
@@ -200,7 +199,6 @@ public:
 
     /**
      * @brief Cleans up shader objects.
-     *
      * @return Integer status code  [0:successful, -1:error].
      *
      * @details
@@ -217,7 +215,6 @@ public:
      *
      * @param mon_id_ind Index of the monitor to move the window to.
      * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
-     *
      * @return Integer status code  [0:successful, -1:error].
      *
      * @details
@@ -226,15 +223,30 @@ public:
      */
     int switchWindowMode(int, bool);
 
+        /**
+     * @brief Sets the GLFW window to always be on top or not.
+     *
+     * This function uses the GLFW library to set the given window's
+     * floating attribute, which determines whether it should always
+     * stay on top of other windows.
+     * 
+     * @note I don't think the glfwSetWindowAttrib() call does anything
+     *
+     * @param is_top_always A boolean flag to set or unset the window as always on top.
+     * @return Integer status code  [0:successful, -1:error].
+     */
+    int setWindowStackOrder(bool is_top_always);
+
+
     /**
      * @brief Function to set the background color and redraw the window
-     * 
+     *
      * @param color The color to set the background to.
-     * @param duration The duration to flash the background for (sec).
-     * 
-     * @example flashBackgroundColor(window, cv::Scalar(0.1f, 0.0f, 0.0f), 0.5f); 
+     * @param duration The duration to flash the background for (ms).
+     *
+     * @example flashBackgroundColor(window, cv::Scalar(0.1f, 0.0f, 0.0f), 0.5f);
      */
-    void flashBackgroundColor(const cv::Scalar &color, float duration);
+    void flashBackgroundColor(const cv::Scalar &color, int duration);
 
 private:
     /**
@@ -654,7 +666,7 @@ static struct CountStruct
 static struct IndStruct
 {
     int wallImage = 0; // Index of the image to be loaded
-    int calMode = 1;   // Index of the image to be loaded
+    int calMode = 1;   // Index of the current calibration mode walls[0: left, 1: middle, 2: right]
     int winMon = 0;    // Index of the active monitor to be loaded
     /**
      * @brief cpRowColMap maps a given row cpRowColMap[0] and column cpRowColMap[1] index to the 1D vector.

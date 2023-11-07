@@ -400,14 +400,36 @@ extern const float WALL_IMAGE_HEIGHT_NDC = (MAZE_HEIGHT_NDC / (float(MAZE_SIZE) 
  * @brief Formats the file name for the XML file based on the active calibration mode and monitor.
  *
  * Format:
- * - `cfg_m<number>_c<number>.xml`
+ * - `cfg_m<number>_c<number>_<data_type>.xml`
  *
+ * @param d_type Type of data being saved  [0: homography matrix, 1: for control points].
  * @param mon_id_ind Index of the active or desired monitor.
  * @param mode_cal_ind Index of the active or desired calibration mode.
  * @param config_dir_path Path to the directory where the XML file will be loaded/saved.
  *
  */
-std::string frmtFilePathxml(int, int, std::string);
+std::string frmtFilePathxml(int, int, int, std::string);
+
+/**
+ * @brief Prompts the user for a single digit input or an option to quit.
+ *
+ * @return A std::string containing the single digit entered by the user.
+ *         If the user enters 'q' or 'Q', an empty string is returned.
+ *
+ * @note To handle a cancellation, the calling code should check if the
+ *       returned string is empty.
+ *
+ * Example:
+ * @code
+ * std::string digit = promptForSingleDigitOrQuit();
+ * if (digit.empty()) {
+ *     // Handle the cancellation
+ * } else {
+ *     // Proceed with the operation using the digit
+ * }
+ * @endcode
+ */
+std::string promptForProjectorNumber(); 
 
 /**
  * @brief Saves the homography matrix array to an XML file.
@@ -427,13 +449,33 @@ int saveHMATxml(std::string, const std::array<std::array<cv::Mat, MAZE_SIZE>, MA
  * @brief Loads the homography matrix array from an XML file.
  *
  * @param full_path Path to the XML file.
- * @param out_HMAT_GRID_ARR Reference to 3x3 array of Homography matrices to be initialized with loaded values.
+ * @param[out] out_HMAT_GRID_ARR Reference to 3x3 array of Homography matrices to be initialized with loaded values.
  *
  * @return Integer status code [0:successful, -1:error].
  *
  * @note Uses pugiXML for XML parsing.
  */
 int loadHMATxml(std::string, std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
+
+/**
+ * @brief Saves the control point array to an XML file.
+ * 
+ * @param full_path The full path to the XML file.
+ * @param _CP_GRID_ARR The control point array to save.
+ * @return int Returns 0 on success, -1 on failure.
+ */
+int saveCPxml(const std::string &full_path, const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR);
+
+/**
+ * @brief Load the control point array from the XML file.
+ * 
+ * @param full_path The full path to the XML file.
+ * @param[out] Reference to the control point array to be initialized with loaded values.  
+ * 
+ * @return int Returns 0 on success, -1 on failure.
+ */
+int loadCPxml(const std::string &full_path, std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR);
+
 
 /**
  * @brief Checks if a given set of vertices defines a valid quadrilateral.

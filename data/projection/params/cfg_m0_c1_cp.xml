@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<CPGrid>
+	<ControlPoint row="0" col="0" x="-0.150000006" y="-0.300000012" />
+	<ControlPoint row="0" col="1" x="-0.0878679678" y="-0.300000012" />
+	<ControlPoint row="0" col="2" x="-0.0878679678" y="-0.175735936" />
+	<ControlPoint row="0" col="3" x="-0.150000006" y="-0.175735936" />
+	<ControlPoint row="1" col="0" x="0.150000006" y="-0.300000012" />
+	<ControlPoint row="1" col="1" x="0.212132037" y="-0.300000012" />
+	<ControlPoint row="1" col="2" x="0.212132037" y="-0.175735936" />
+	<ControlPoint row="1" col="3" x="0.150000006" y="-0.175735936" />
+	<ControlPoint row="2" col="0" x="0.150000006" y="0.300000012" />
+	<ControlPoint row="2" col="1" x="0.212132037" y="0.300000012" />
+	<ControlPoint row="2" col="2" x="0.212132037" y="0.424264073" />
+	<ControlPoint row="2" col="3" x="0.150000006" y="0.424264073" />
+	<ControlPoint row="3" col="0" x="-0.150000006" y="0.300000012" />
+	<ControlPoint row="3" col="1" x="-0.0878679678" y="0.300000012" />
+	<ControlPoint row="3" col="2" x="-0.0878679678" y="0.424264073" />
+	<ControlPoint row="3" col="3" x="-0.150000006" y="0.424264073" />
+</CPGrid>

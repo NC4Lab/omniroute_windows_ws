@@ -10,13 +10,47 @@
 
 // ================================================== FUNCTIONS ==================================================
 
-std::string frmtFilePathxml(int mon_id_ind, int mode_cal_ind, std::string config_dir_path)
+std::string frmtFilePathxml(int d_type, int mon_id_ind, int mode_cal_ind, std::string config_dir_path)
 {
+    // Get the sufix based on the data being saved
+    std::string sufix = d_type == 0 ? "_hmat" : "_cp";
+
+    // Format and return the file path
     std::string file_path =
         config_dir_path + "/" +
-        "cfg_m" + std::to_string(mon_id_ind) + "_c" + std::to_string(mode_cal_ind) +
-        ".xml";
+        "cfg_m" + std::to_string(mon_id_ind) + "_c" + std::to_string(mode_cal_ind) + sufix + ".xml";
     return file_path;
+}
+
+std::string promptForProjectorNumber()
+{
+    std::string input;
+    while (true)
+    {
+        std::cout << "Enter the number of the projector being calibrated [0,1,2,3], or press 'q' to quit: ";
+        std::cin >> input;
+
+        // Check for quit command
+        if (input == "q" || input == "Q")
+        {
+            std::cout << "Operation cancelled by the user." << std::endl;
+            return ""; // Return an empty string or a specific value to indicate cancellation
+        }
+
+        // Check if the input is a single digit
+        if (input.length() == 1 && std::isdigit(input[0]))
+        {
+            return input;
+        }
+        else
+        {
+            std::cout << "Invalid input. Please enter a single numeric digit or 'q' to quit." << std::endl;
+        }
+
+        // Clear the input stream in case of invalid input (e.g., if more than one character was entered)
+        std::cin.clear();
+        std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    }
 }
 
 int saveHMATxml(const std::string full_path,
@@ -65,11 +99,11 @@ int saveHMATxml(const std::string full_path,
     bool save_succeeded = doc.save_file(full_path.c_str());
     if (!save_succeeded)
     {
-        ROS_ERROR("[saveHMATxml] Failed to Save Homography Matrix from XML File[%s]", full_path.c_str());
+        ROS_ERROR("[saveHMATxml] Failed to save homography matrix to XML File[%s]", full_path.c_str());
         return -1;
     }
 
-    ROS_INFO("[saveHMATxml] Saved homography matrix to XML File[%s]", full_path.c_str());
+    ROS_INFO("[saveHMATxml] Saved the homography matrix to XML File[%s]", full_path.c_str());
     return 0;
 }
 
@@ -83,7 +117,7 @@ int loadHMATxml(const std::string full_path,
     pugi::xml_parse_result result = doc.load_file(full_path.c_str());
     if (!result)
     {
-        ROS_ERROR("[loadHMATxml] Failed to Load Homography Matrix from XML File[%s]", full_path.c_str());
+        ROS_ERROR("[loadHMATxml] Failed to load homography matrix from XML File[%s]", full_path.c_str());
         return -1;
     }
 
@@ -91,7 +125,7 @@ int loadHMATxml(const std::string full_path,
     pugi::xml_node hmat_grid_node = doc.child("HMATGrid");
     if (hmat_grid_node.empty())
     {
-        ROS_ERROR("[loadHMATxml] The 'HMATGrid' Node is Missing in the XML File[%s]", full_path.c_str());
+        ROS_ERROR("[loadHMATxml] The 'HMATGrid' node is missing in the XML File[%s]", full_path.c_str());
         return -1;
     }
 
@@ -138,8 +172,75 @@ int loadHMATxml(const std::string full_path,
     }
 
     // Return success code
-     ROS_INFO("[loadHMATxml] Loaded saved homography matrix from XML File[%s]", full_path.c_str());
+    ROS_INFO("[loadHMATxml] Loaded the saved homography matrix from XML File[%s]", full_path.c_str());
     return 0;
+}
+
+int saveCPxml(const std::string &full_path, const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR)
+{
+    pugi::xml_document doc;
+    pugi::xml_node cp_grid_node = doc.append_child("CPGrid");
+
+    for (int i = 0; i < 4; ++i)
+    {
+        for (int j = 0; j < 4; ++j)
+        {
+            pugi::xml_node cp_node = cp_grid_node.append_child("ControlPoint");
+            cp_node.append_attribute("row") = i;
+            cp_node.append_attribute("col") = j;
+            cp_node.append_attribute("x") = _CP_GRID_ARR[i][j].x;
+            cp_node.append_attribute("y") = _CP_GRID_ARR[i][j].y;
+        }
+    }
+
+    // Save the document to the provided file path
+    if (!doc.save_file(full_path.c_str()))
+    {
+        ROS_ERROR("[saveCPxml] Failed to save control point array to XML File[%s]", full_path.c_str());
+        return -1;
+    }
+
+    ROS_INFO("[saveCPxml] Saved control point array to XML File[%s]", full_path.c_str());
+    return 0;
+}
+
+int loadCPxml(const std::string &full_path, std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR)
+{
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_file(full_path.c_str());
+
+    // Check if the XML file was loaded successfully
+    if (!result)
+    {
+        ROS_ERROR("[loadCPxml] Failed to load the control point array from XML File[%s]", full_path.c_str());
+        return -1;
+    }
+    pugi::xml_node cp_grid_node = doc.child("CPGrid");
+    if (cp_grid_node.empty())
+    {
+        ROS_ERROR("[loadCPxml] The 'CPGrid' node is missing in the XML File[%s]", full_path.c_str());
+        return -1;
+    }
+
+    for (pugi::xml_node cp_node = cp_grid_node.child("ControlPoint");
+         cp_node;
+         cp_node = cp_node.next_sibling("ControlPoint"))
+    {
+        int row = cp_node.attribute("row").as_int();
+        int col = cp_node.attribute("col").as_int();
+
+        if (row < 0 || row >= 4 || col < 0 || col >= 4)
+        {
+            // Indicate invalid row or column attributes
+            return -2;
+        }
+
+        float x = cp_node.attribute("x").as_float();
+        float y = cp_node.attribute("y").as_float();
+        out_CP_GRID_ARR[row][col] = cv::Point2f(x, y);
+    }
+
+    return 0; // Indicate success
 }
 
 int checkQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
