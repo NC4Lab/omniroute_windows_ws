@@ -1433,6 +1433,85 @@ int xmlSaveHMAT(const cv::Mat &H, int mon_ind, int cal_ind, int grid_row, int gr
     return 0;
 }
 
+int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &out_H)
+{
+    // Get the full file path and attribute string for the given calibration mode
+    std::string file_path;
+    std::string cal_mode;
+    xmlFrmtFileStrings(mon_ind, cal_ind, file_path, cal_mode);
+
+    // Attempt to load the XML file
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_file(file_path.c_str());
+
+    // Check if the file was loaded successfully
+    if (!result)
+    {
+        ROS_ERROR("[xmlLoadHMAT] Failed to load XML File[%s]", file_path.c_str());
+        return -1;
+    }
+
+    // Look for the calibration node with the matching mode attribute
+    pugi::xml_node calibration_node;
+    for (pugi::xml_node node = doc.child("Root").child("calibration");
+         node; node = node.next_sibling("calibration"))
+    {
+        if (node.attribute("mode").value() == cal_mode)
+        {
+            calibration_node = node;
+            break;
+        }
+    }
+
+    if (!calibration_node)
+    {
+        ROS_ERROR("[xmlLoadHMAT] No calibration mode[%s] found in XML File[%s]", cal_mode.c_str(), file_path.c_str());
+        return -1;
+    }
+
+    // Search for an HMAT node with the same grid_row and grid_col
+    pugi::xml_node hmat_node;
+    for (pugi::xml_node node = calibration_node.child("HMAT");
+         node; node = node.next_sibling("HMAT"))
+    {
+        if (node.attribute("grid_row").as_int() == grid_row &&
+            node.attribute("grid_col").as_int() == grid_col)
+        {
+            hmat_node = node;
+            break;
+        }
+    }
+
+    if (!hmat_node)
+    {
+        ROS_ERROR("[xmlLoadHMAT] No HMAT with grid_row[%d] and grid_col[%d] found in calibration mode[%s]",
+                  grid_row, grid_col, cal_mode.c_str());
+        return -1;
+    }
+
+    // Load the matrix data
+    std::vector<double> matrix_data;
+    for (pugi::xml_node row_node = hmat_node.child("row"); row_node; row_node = row_node.next_sibling("row"))
+    {
+        for (pugi::xml_node cell_node = row_node.child("cell"); cell_node; cell_node = cell_node.next_sibling("cell"))
+        {
+            matrix_data.push_back(std::stod(cell_node.child_value()));
+        }
+    }
+
+    // Ensure the matrix data is the right size for a homography matrix
+    if (matrix_data.size() != 9)
+    {
+        ROS_ERROR("[xmlLoadHMAT] Incorrect number of elements in HMAT. Expected 9, got %zu", matrix_data.size());
+        return -1;
+    }
+
+    // Assign the matrix data to the output matrix
+    out_H = cv::Mat(3, 3, CV_64F, &matrix_data[0]).clone(); // Clone to ensure continuous memory
+
+    return 0;
+}
+
 // // Function to load a cv::Mat homography matrix from an XML file
 // int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &out_H)
 // {
