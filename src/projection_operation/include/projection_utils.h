@@ -1055,27 +1055,12 @@ extern const float WALL_IMAGE_HEIGHT_NDC = (MAZE_HEIGHT_NDC / (float(MAZE_SIZE) 
 // Global variable to set the OpenGL debug level.
 const int DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
 
-/**
- * @brief Tuple for maze homography matrices for differn calibration modes.
- *
- * Contains:
- * - Three 2D arrays of cv::Mat for cell-wise homographies.
- * - One cv::Mat for global calibration.
- *
- * Usage:
- * - Access cell matrix: `std::get<0>(HMAT_TUPLE)[i][j]`
- * - Store cell matrix: `cv::Mat& H = std::get<0>(HMAT_TUPLE)[i][j]`
- * - Access calibration matrix: `std::get<3>(HMAT_TUPLE)`
- * - Store cell matrix: `cv::Mat& H = std::get<3>(HMAT_TUPLE)`
- */
-std::tuple<
-    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, // [0] Left walls calibration matrices
-    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, // [1] Middle walls calibration matrices
-    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, // [2] Right walls calibration matrices
-    cv::Mat                                                // [3] Maze floor calibration matrix
-    >
-    HMAT_TUPLE;
-const int N_CAL_MODES = 4; // Number of calibration modes
+// Number of calibration modes
+const int N_CAL_MODES = 3; 
+
+// 3x3X3 data contianer for storing wall homography matrices for each wall image and each calibration mode
+std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> WALL_HMAT_ARR; // Wall homography matrix array
+
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -1211,84 +1196,6 @@ int saveHMATxml(const std::string full_path,
  * @return Integer status code [-1:error, 0:successful].
  */
 int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &out_H);
-
-/**
- * @brief Saves homography matrices from a tuple to an XML file.
- *
- * The function iterates over the calibration matrices stored within a tuple
- * and saves each matrix to the XML file for given calibration mode index.
- *
- * @param _HMAT_TUPLE Tuple containing calibration matrices for the maze.
- * @param mon_ind Monitor index for the active monitor.
- * @param cal_ind Calibration index to select the appropriate matrices.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int xmlSaveTupleHMATs(
-    const std::tuple<
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        cv::Mat> &_HMAT_TUPLE,
-    int mon_ind, int cal_ind);
-
-/**
- * @brief Saves homography matrices from a tuple to an XML file.
- *
- * The function iterates over the calibration matrices stored within a tuple
- * and saves each matrix to the XML file for given calibration mode index.
- *
- * @param mon_ind Monitor index for the active monitor.
- * @param cal_ind Calibration index to select the appropriate matrices.
- * @param[out] out_HMAT_TUPLE Reference to tuple to store calibration matrices.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int xmlLoadTupleHMATs(
-    int mon_ind, int cal_ind,
-    std::tuple<
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        cv::Mat> &_HMAT_TUPLE);
-
-/**
- * @brief Extracts a homography matrix from a tuple.
- *
- * @param _HMAT_TUPLE The tuple containing homography matrices.
- * @param cal_ind The index specifying which calibration matrix to retrieve.
- * @param grid_row Row index for the array of homography matrices.
- * @param grid_col Column index for the array of homography matrices.
- * @param[out] out_H Reference to output cv::Mat where the result is stored.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int getTupleHMAT(
-    const std::tuple<
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        cv::Mat> &_HMAT_TUPLE,
-    int cal_ind, int grid_row, int grid_col, cv::Mat &out_H);
-
-/**
- * @brief Puts a homography matrix into the tuple based.
- *
- * @param H The homography matrix to store.
- * @param cal_ind The index specifying which calibration matrix to retrieve.
- * @param grid_row Row index for the array of homography matrices.
- * @param grid_col Column index for the array of homography matrices.
- * @param[out] out_HMAT_TUPLE Reference to the tuple to store the homography matrix.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int setTupleHMAT(
-    const cv::Mat &H, int cal_ind, int grid_row, int grid_col,
-    std::tuple<
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        cv::Mat> &out_HMAT_TUPLE);
 
 /**
  * @brief Checks if a given set of vertices defines a valid quadrilateral.

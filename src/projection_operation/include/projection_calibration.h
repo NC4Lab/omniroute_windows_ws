@@ -60,13 +60,13 @@ std::array<std::array<CircleRenderer, 4>, 4> CP_CIRCREN_ARR;
  */
 static struct FlagStruct
 {
-    bool dbRun = false;                   // Flag to indicate if something should be run for debugging
-    bool loadXML = false;                 // Flag to indicate if the XML file needs to be loaded
-    bool saveXML = false;                 // Flag to indicate if the XML file needs to be saved
-    bool switchWindowMode = false;        // Flag to indicate if the window mode needs to be updated
-    bool initControlPoints = false; // Flag to indicate if the control point markers need to be reinitialized
-    bool updateWallTextures = false;      // Flag to indicate if wall vertices, homography and texture need to be updated
-    bool fullscreenMode = false;          // Flag to indicate if the window is in full screen mode
+    bool dbRun = false;              // Flag to indicate if something should be run for debugging
+    bool loadXML = false;            // Flag to indicate if the XML file needs to be loaded
+    bool saveXML = false;            // Flag to indicate if the XML file needs to be saved
+    bool switchWindowMode = false;   // Flag to indicate if the window mode needs to be updated
+    bool initControlPoints = false;  // Flag to indicate if the control point markers need to be reinitialized
+    bool updateWallTextures = false; // Flag to indicate if wall vertices, homography and texture need to be updated
+    bool fullscreenMode = false;     // Flag to indicate if the window is in full screen mode
 } F;
 
 /**
@@ -84,7 +84,7 @@ static struct CountStruct
 static struct IndStruct
 {
     int wallImage = 0; // Index of the image to be loaded
-    int calMode = 1;   // Index of the current calibration mode walls[0: left, 1: middle, 2: right, 3:floor]
+    int calMode = 1;   // Index of the current calibration mode walls[0: left, 1: middle, 2: right]
     int winMon = 0;    // Index of the active monitor to be loaded
     /**
      * @brief cpRowColMap maps a given row cpRowColMap[0] and column cpRowColMap[1] index to the 1D vector.
@@ -100,7 +100,7 @@ static struct IndStruct
     std::array<std::array<int, 2>, 2> cpMap = {{{0, 1},
                                                 {3, 2}}};
     std::array<int, 2> cpMazeVertSel = {0, 0}; // Selected maze vertex [row, col]
-    std::array<int, 2> cpWallVertSel = {0, 0}; // Selected wall vertex [row, col]
+    std::array<int, 2> cpWallVertSel = {1, 0}; // Selected wall vertex [row, col]
     const int cpWVOrigin = 3;                  // Vertex index of the wall image origin (bottom-left)
     // std::array<int, 2> cpSelected = {0, 0};
 } I;
@@ -158,12 +158,12 @@ cv::Mat floorImgMat; // Floor image texture matrix
  * ## Keybindings:
  * @see README.md
  */
-void callbackKeyBinding(GLFWwindow *, int, int, int, int);
+void callbackKfeyBinding(GLFWwindow *, int, int, int, int);
 
 /**
  * @brief Initializes values for the verteces of the coner walls which will be used as calibraton control points.
  *
- * @param cal_ind Index of the active or desired calibration mode.
+ * @param cal_ind Index of the active calibration mode.
  * @param[out] out_CP_GRID_ARR Reference to the 4x4 array containing the coordinates of the corner wall's vertices.
  *
  * @details
@@ -200,39 +200,33 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &, std::
 /**
  * @brief Computes updated Homography matrices for all walls.
  *
- * @param cal_ind Index of the active or desired calibration mode.
+ * @param cal_ind Index of the active calibration mode.
  * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
- * @param[out] out_HMAT_TUPLE Reference to tuple to store calibration matrices.
+ * @param[out] out_WALL_HMAT_ARR Reference to array to store calibration matrices.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int updateWallHomographys(
     int cal_ind,
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
-    std::tuple<
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        cv::Mat> &out_HMAT_TUPLE);
+    std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &out_WALL_HMAT_ARR);
 
 /**
  * @brief Updates the stored warped wall image vertices based on the control point array.
  *
+ * @param cal_ind Index of the active calibration mode.
  * @param img_wall_mat cv::Mat image matrix for the base wall image.
  * @param img_mon_mat cv::Mat image matrix for the monitor mode image.
  * @param img_cal_mat cv::Mat image matrix for the calibration image.
- * @param _HMAT_TUPLE Tuple containing calibration matrices for the maze.
+ * @param _WALL_HMAT_ARR Array containing calibration matrices for the maze.
  * @param[out] out_wallTexture OpenGL texture ID for the wall image.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int updateWallTextures(
+    int cal_ind,
     cv::Mat img_wall_mat, cv::Mat img_mon_mat, cv::Mat img_cal_mat,
-    const std::tuple<
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        cv::Mat> &_HMAT_TUPLE,
+    const std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &_WALL_HMAT_ARR,
     GLuint &out_WALL_TEXTURE_ID);
 
 /**

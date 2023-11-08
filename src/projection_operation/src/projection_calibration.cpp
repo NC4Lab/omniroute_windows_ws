@@ -250,7 +250,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             float delta_y = cp_origin_new.y - cp_origin_save.y;
 
             // Check if the origin vertex of the wall was moved (e.g., bottom-left)
-            if (wv_ind == I.cpWVOrigin && (delta_x > 0.0f || delta_y > 0.0f))
+            if (wv_ind == I.cpWVOrigin && (abs(delta_x) > 0.0f || abs(delta_y) > 0.0f))
             {
                 // Update all other vertices based on the change in the origin
                 for (int i = 0; i < 4; ++i) // Assuming there are 4 vertices
@@ -269,13 +269,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 void initControlPoints(int cal_ind, std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR)
 {
     // Specify the control point limits
-    float cp_x = MAZE_WIDTH_NDC / 2;        // starting X-coordinate in NDC coordinates
-    const float cp_y = MAZE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates
-
-    // Add an x offset based on the calibration mode
-    float offset_x = 0.5f * static_cast<float>(MAZE_WIDTH_NDC);
-    cp_x += (cal_ind == 0) ? -offset_x : (cal_ind == 2) ? offset_x
-                                                        : 0;
+    float cp_x = MAZE_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
+    float cp_y = MAZE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates                                        
 
     // Iterate through control point outer array (maze vertices)
     for (float mv_i = 0; mv_i < 4; mv_i++) // image bottom to top
@@ -382,11 +377,7 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRI
 int updateWallHomographys(
     int cal_ind,
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
-    std::tuple<
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        cv::Mat> &out_HMAT_TUPLE)
+    std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &out_WALL_HMAT_ARR)
 {
     // Define origin plane vertices
     std::vector<cv::Point2f> source_vertices_pxl = {
@@ -443,8 +434,7 @@ int updateWallHomographys(
             }
 
             // Store the homography matrix
-            if (setTupleHMAT(H, cal_ind, gr_i, gc_i, out_HMAT_TUPLE) < 0)
-                return -1;
+            out_WALL_HMAT_ARR[cal_ind][gr_i][gc_i] = H;
         }
     }
 
@@ -458,12 +448,9 @@ int updateWallHomographys(
 }
 
 int updateWallTextures(
+    int cal_ind,
     cv::Mat img_wall_mat, cv::Mat img_mon_mat, cv::Mat img_cal_mat,
-    const std::tuple<
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
-        cv::Mat> &_HMAT_TUPLE,
+    const std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &_WALL_HMAT_ARR,
     GLuint &out_WALL_TEXTURE_ID)
 {
     // Initialize the image to be used as the texture
@@ -499,9 +486,7 @@ int updateWallTextures(
             }
 
             // Get homography matrix for this wall
-            cv::Mat H;
-            if (getTupleHMAT(_HMAT_TUPLE, I.calMode, gr_i, gc_i, H) < 0)
-                return -1;
+            cv::Mat H = _WALL_HMAT_ARR[cal_ind][gr_i][gc_i];
 
             // Warp Perspective
             cv::Mat im_warp;
@@ -533,23 +518,11 @@ void appInitDatasets()
     ROS_INFO("[appInitDatasets] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_IMAGE_WIDTH_NDC, WALL_IMAGE_HEIGHT_NDC);
     ROS_INFO("[appInitDatasets] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
 
-    // Initialize the tupple homography matrix arrays
-    for (int gr_i = 0; gr_i < MAZE_SIZE; ++gr_i)
-    {
-        for (int gc_i = 0; gc_i < MAZE_SIZE; ++gc_i)
-        {
-            std::get<0>(HMAT_TUPLE)[gr_i][gc_i] = cv::Mat::eye(3, 3, CV_64F);
-            std::get<1>(HMAT_TUPLE)[gr_i][gc_i] = cv::Mat::eye(3, 3, CV_64F);
-            std::get<2>(HMAT_TUPLE)[gr_i][gc_i] = cv::Mat::eye(3, 3, CV_64F);
-        }
-    }
-    std::get<3>(HMAT_TUPLE) = cv::Mat::eye(3, 3, CV_64F); // Initialize the last cv::Mat element
-
     // Initialize control point coordinate dataset
     initControlPoints(I.calMode, CP_GRID_ARR);
 
     // Initialize wall homography matrices array
-    if (updateWallHomographys(I.calMode, CP_GRID_ARR, HMAT_TUPLE) < 0)
+    if (updateWallHomographys(I.calMode, CP_GRID_ARR, WALL_HMAT_ARR) < 0)
         throw std::runtime_error("[appInitDatasets] Failed to initialize wall parameters");
 
     ROS_INFO("SETUP: Data Structures Initialized");
@@ -601,7 +574,7 @@ void appInitOpenGL()
         throw std::runtime_error("[appInitOpenGL] Failed to initialize control point variables");
 
     // Initialize wall image texture
-    if (updateWallTextures(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], HMAT_TUPLE, PROJ_GL[0].textureID) < 0)
+    if (updateWallTextures(I.calMode, wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_ARR, PROJ_GL[0].textureID) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize wall texture");
 
     ROS_INFO("SETUP: OpenGL Initialized");
@@ -613,8 +586,14 @@ void appInitFileXML()
     {
         for (int cal_ind = 0; cal_ind < N_CAL_MODES; ++cal_ind)
         {
-            if (xmlSaveTupleHMATs(HMAT_TUPLE, mon_ind, cal_ind) < 0)
-                throw std::runtime_error("[appInitFileXML] Failed to save homography tuple XML file");
+            for (int gr_i = 0; gr_i < MAZE_SIZE; ++gr_i)
+            {
+                for (int gc_i = 0; gc_i < MAZE_SIZE; ++gc_i)
+                {
+                    if (xmlSaveHMAT(WALL_HMAT_ARR[I.calMode][gr_i][gc_i], I.winMon, I.calMode, gr_i, gc_i) < 0)
+                        throw std::runtime_error("[appInitFileXML] Error returned from xmlSaveHMAT");
+                }
+            }
         }
         // TEMP
         return;
@@ -632,30 +611,29 @@ void appMainLoop()
         // Load/save XML file
         if (F.loadXML || F.saveXML)
         {
-            // Save XML file
-            if (F.saveXML)
+            for (int gr_i = 0; gr_i < MAZE_SIZE; ++gr_i)
             {
-                status = xmlSaveTupleHMATs(HMAT_TUPLE, I.winMon, I.calMode);
+                for (int gc_i = 0; gc_i < MAZE_SIZE; ++gc_i)
+                {
+                    // Save XML file
+                    if (F.saveXML)
+                    {
+                        if (xmlSaveHMAT(WALL_HMAT_ARR[I.calMode][gr_i][gc_i], I.winMon, I.calMode, gr_i, gc_i) < 0)
+                            throw std::runtime_error("[appMainLoop] Error returned from xmlSaveHMAT");
+                        F.saveXML = false;
+                    }
+                    // Load XML file
+                    if (F.loadXML)
+                    {
+                        if (xmlLoadHMAT(I.winMon, I.calMode, gr_i, gc_i, WALL_HMAT_ARR[I.calMode][gr_i][gc_i]) < 0)
+                            throw std::runtime_error("[appMainLoop] Error returned from xmlLoadHMAT");
+                        F.loadXML = false;
+                    }
+                }
             }
-            F.saveXML = false;
-
-            // Load XML file
-            if (F.loadXML)
-            {
-                status = xmlLoadTupleHMATs(I.winMon, I.calMode, HMAT_TUPLE);
-                F.updateWallTextures = true;
-            }
-            F.loadXML = false;
 
             // Flash the background to indicate the file was loaded/saved
-            if (status >= 0)
-                PROJ_GL[0].flashBackgroundColor(cv::Scalar(0.0f, 0.25f, 0.0f), 500);
-            else
-            {
-                PROJ_GL[0].flashBackgroundColor(cv::Scalar(0.25f, 0.0f, 0.0f), 500);
-                throw std::runtime_error("[appMainLoop] Error return from load/save XML function");
-                break;
-            }
+            PROJ_GL[0].flashBackgroundColor(cv::Scalar(0.0f, 0.25f, 0.0f), 500);
         }
 
         // Update the window monitor and mode
@@ -681,11 +659,11 @@ void appMainLoop()
         if (F.updateWallTextures)
         {
             // Update wall homography matrices array
-            if (updateWallHomographys(I.calMode, CP_GRID_ARR, HMAT_TUPLE) < 0)
+            if (updateWallHomographys(I.calMode, CP_GRID_ARR, WALL_HMAT_ARR) < 0)
                 throw std::runtime_error("[appMainLoop] Error returned from updateWallHomographys");
 
             // Update wall image texture
-            if (updateWallTextures(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], HMAT_TUPLE, PROJ_GL[0].textureID) < 0)
+            if (updateWallTextures(I.calMode, wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], WALL_HMAT_ARR, PROJ_GL[0].textureID) < 0)
                 throw std::runtime_error("[appMainLoop] Error returned from updateWallTextures");
 
             F.updateWallTextures = false;
