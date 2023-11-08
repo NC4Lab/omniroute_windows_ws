@@ -356,7 +356,7 @@ public:
      * @param line Line number where the function is called.
      * @param file_str File name where the function is called.
      * @param msg_str Optional message to provide additional context (default to nullptr).
-     * @return Integer status code  [0:successful, -1:error].
+     * @return Integer status code  [-1:error, 0:successful].
      *
      * @example CheckErrorOpenGL(__LINE__, __FILE__);
      */
@@ -369,7 +369,7 @@ public:
      * @param line Line number where the function is called.
      * @param file_str File name where the function is called.
      * @param msg_str Optional message to provide additional context (default to nullptr).
-     * @return Integer status code  [0:successful, -1:error].
+     * @return Integer status code  [-1:error, 0:successful].
      *
      * @example CheckErrorGLFW(__LINE__, __FILE__);
      */
@@ -404,7 +404,7 @@ public:
      *
      * @param vertex_source Source code for the vertex shader stored as a C++ raw string literal.
      * @param fragment_source Source code for the fragment shader stored as a C++ raw string literal.
-     * @return Integer status code  [0:successful, -1:error].
+     * @return Integer status code  [-1:error, 0:successful].
      *
      * @details
      * This function encapsulates the process of creating, compiling, and linking an OpenGL shader program.
@@ -431,7 +431,7 @@ public:
      *
      * Make sure to call this method after your shader program has been linked.
      *
-     * @return Integer status code  [0:successful, -1:error].
+     * @return Integer status code  [-1:error, 0:successful].
      */
     int MazeRenderContext::validateShaderProgram();
 
@@ -461,6 +461,36 @@ public:
     int cleanupContext(bool log_errors = false);
 
     /**
+     * @brief Sets up the system for a new rendering.
+     *
+     * Basically a wrapper for glClear(GL_COLOR_BUFFER_BIT) which
+     * clears the color buffers of the back buffer for a new frame.
+     *
+     * @return Integer status code  [-1:error, 0:successful].
+     */
+    int prepareFrame();
+
+    /**
+     * @brief Swap and poll the buffer.
+     *
+     * Basically a wrapper for glfwSwapBuffers() and glfwPollEvents() which
+     * swaps the front and back buffers of the window and processes events.
+     *
+     * @return Integer status code  [-1:error, 0:successful]. 
+     */
+    int bufferSwapPoll();
+
+    /**
+     * @brief Check if the user has requested to exit the program.
+     *
+     * This function checks if the user has pressed the escape key
+     * or if the window has been closed.
+     *
+    * @return Integer status code  [-1:error, 0:no change, 1:window closed, 2:esc key pressed].
+     */
+    int checkExitRequest();
+
+    /**
      * @brief Changes the display mode and monitor of the application window.
      *
      * This function switches the application window between full-screen and windowed modes
@@ -468,7 +498,7 @@ public:
      *
      * @param mon_id_ind Index of the monitor to move the window to.
      * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
-     * @return Integer status code  [0:successful, -1:error].
+     * @return Integer status code  [-1:error, 0:successful].
      */
     int switchWindowMode(int, bool);
 
@@ -482,7 +512,7 @@ public:
      * @note I don't think the glfwSetWindowAttrib() call does anything
      *
      * @param is_top_always A boolean flag to set or unset the window as always on top.
-     * @return Integer status code  [0:successful, -1:error].
+     * @return Integer status code  [-1:error, 0:successful].
      */
     int setWindowStackOrder(bool is_top_always);
 
@@ -681,7 +711,7 @@ public:
     /**
      * @brief Compiles, links shaders, and gets uniform locations.
      * @param aspect_ratio The aspect ratio to be set for the shader.
-     * @return Integer status code  [0:successful, -1:error].
+     * @return Integer status code  [-1:error, 0:successful].
      *
      * @details
      * This static method compiles the vertex and fragment shaders,
@@ -692,7 +722,7 @@ public:
 
     /**
      * @brief Cleans up shader objects and other shared resources.
-     * @return Integer status code  [0:successful, -1:error].
+     * @return Integer status code  [-1:error, 0:successful].
      *
      * @details
      * This function should be called when the application is terminating
@@ -1027,61 +1057,67 @@ int DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High
 // ================================================== FUNCTIONS ==================================================
 
 /**
- * @brief Updates the stored warped wall image vertices based on the control point array.
+ * @brief Manages timed delays within a loop.
  *
- * @param img_wall_mat cv::Mat image matrix for the base wall image.
- * @param img_mode_mon_mat cv::Mat image matrix for the monitor mode image.
- * @param img_mode_cal_mat cv::Mat image matrix for the calibration image.
- * @param _HMAT_GRID_ARR 3x3 array of Homography matrices used to warp the wall image.
- * @param[out] out_wallTexture OpenGL texture ID for the wall image.
- *
- * @return Integer status code [0:successful, -1:error].
- */
-int updateWallTexture(
-    cv::Mat, cv::Mat, cv::Mat,
-    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &,
-    GLuint &);
-
-/**
- * @brief Converts an OpenCV Mat image into an OpenGL texture and returns the texture ID.
- *
- * @param image The cv::Mat image that needs to be converted.
- * @param GLuint Reference to the GLuint ID of the generated texture.
- *
- * @return Integer status code [0:successful, -1:error].
+ * @param dt_wait Latency in milliseconds for the delay; used only on the initial call.
  *
  * @details
- * This function takes an OpenCV Mat image as input and converts it into an OpenGL texture.
- * The OpenCV image is first converted from BGR to RGB format. Then, a new OpenGL texture is
- * generated and the converted image data is stored in this texture.
+ * Maintains a static timestamp to enforce a delay relative to `ros::Time::now()`.
+ * Returns false if the delay has not elapsed, true otherwise, resetting the timer.
  *
- * The texture parameters for minification and magnification filters are set to GL_LINEAR.
- *
- * Note: This function assumes that the input image is of type CV_8UC3 and has no alpha channel.
+ * @return True if the delay has elapsed, otherwise false.
  */
-
-int loadTexture(cv::Mat, GLuint &);
+bool dbRunDT(int);
 
 /**
- * @brief Renders a all wall images from the computed texture2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
- *
- * @param _renCtx Reference to an instance of the out_renCtx class.
- *
- * @return Integer status code  [0:successful, -1:error].
- */
-int renderWallImage(MazeRenderContext &_renCtx);
-
-/**
- * @brief Initialize OpenGL resources for wall image render objects.
- *
- * @param[out] out_renCtx Reference to an instance of the out_renCtx class.
- *
- * @return Integer status code [0:successful, -1:error].
+ * @brief Track and print the elapsed time between calls with line and function info.
  *
  * @details
- * Initializes the Vertex Array Object (VAO), Vertex Buffer Object (VBO) and Element Buffer Object (EBO).
+ * Call this function with `do_reset` set to true to start timing,
+ * and call it again with `do_reset` set to false to print the elapsed time.
+ *
+ * @param do_reset If true, resets the start time. If false, prints the elapsed time.
+ * @param line Line number where the function is called.
+ * @param file_path File path where the function is called.
+ * @param do_print_each_call If true, prints the info for each call.
+ *
+ * @example dbTraceCalls(false, __LINE__, __FILE__);
  */
-int initWallRenderObjects(MazeRenderContext &out_renCtx, float *vertices, size_t verticesSize, unsigned int *indices, size_t indicesSize);
+void dbTraceCalls(bool = false, int = 0, const char * = nullptr);
+
+/**
+ * @brief Pauses program and waits for any keypress.
+ */
+void dbWaitForInput();
+
+/**
+ * @brief Prints the coordinates of a quadrilateral's vertices.
+ *
+ * @param quad_vertices The quadrilateral's vertices.
+ *
+ * @note Use this regular expression to find the ros info and time stamp:
+ *   \[\s*([A-Z]+)\]\s*\[([\d\.]+)\]:
+ */
+void dbLogQuadVertices(const std::vector<cv::Point2f> &);
+
+/**
+ * @brief Prints the coordinates of all entries in the control point array.
+ */
+void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &);
+
+/**
+ * @brief Prints the coordinates of all entries in the warped wall vertices array.
+ *
+ * @param _WALL_WARP_COORDS Reference to the warped wall vertices array.
+ */
+void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &);
+
+/**
+ * @brief Prints the coordinates of all entries in the homography matrix.
+ *
+ * @param _HMAT The homography matrix.
+ */
+void dbLogHomMat(const cv::Mat &);
 
 /**
  * @brief Formats the file name for the XML file based on the active calibration mode and monitor.
@@ -1124,7 +1160,7 @@ std::string promptForProjectorNumber();
  * @param full_path Path to the XML file.
  * @param _HMAT_GRID_ARR Reference to the 3x3 array of Homography matrices to be saved.
  *
- * @return Integer status code [0:successful, -1:error].
+ * @return Integer status code [-1:error, 0:successful].
  *
  * @details
  * This function uses the pugixml library to create an XML document and populate it with
@@ -1138,7 +1174,7 @@ int saveHMATxml(std::string, const std::array<std::array<cv::Mat, MAZE_SIZE>, MA
  * @param full_path Path to the XML file.
  * @param[out] out_HMAT_GRID_ARR Reference to 3x3 array of Homography matrices to be initialized with loaded values.
  *
- * @return Integer status code [0:successful, -1:error].
+ * @return Integer status code [-1:error, 0:successful].
  *
  * @note Uses pugiXML for XML parsing.
  */
@@ -1218,73 +1254,90 @@ float bilinearInterpolation(float, float, float, float, int, int, int);
  * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
  * @param[out] out_HMAT_GRID_ARR updated 3x3 array of Homography matrices used to warp the wall image.
  *
- * @return Integer status code [0:successful, -1:error].
+ * @return Integer status code [-1:error, 0:successful].
  */
 int updateHomography(
     const std::array<std::array<cv::Point2f, 4>, 4> &,
     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
 
 /**
- * @brief Manages timed delays within a loop.
+ * @brief Loads PNG images with alpha channel from specified file paths and stores them in a vector as cv::Mat objects.
  *
- * @param dt_wait Latency in milliseconds for the delay; used only on the initial call.
+ * @param img_paths_vec A vector of file paths to the images to be loaded.
+ * @param[out] out_img_mat_vec Reference to a vector of cv::Mat where the loaded images will be stored.
  *
- * @details
- * Maintains a static timestamp to enforce a delay relative to `ros::Time::now()`.
- * Returns false if the delay has not elapsed, true otherwise, resetting the timer.
- *
- * @return True if the delay has elapsed, otherwise false.
- */
-bool dbRunDT(int);
-
-/**
- * @brief Track and print the elapsed time between calls.
+ * @return Integer status code [-1:error, 0:successful].
  *
  * @details
- * Call this function with `do_reset` set to true to start timing,
- * and call it again with `do_reset` set to false to print the elapsed time.
+ * This function takes a vector of file paths and iteratively loads each PNG image
+ * with an alpha channel using OpenCV's imread function. It checks that the image
+ * has the correct dimensions and the presence of an alpha channel. The function
+ * returns 0 if all images are loaded successfully and -1 if any error occurs.
  *
- * @param do_reset If true, resets the start time. If false, prints the elapsed time.
- * @param line Line number where the function is called.
- * @param file_path File path where the function is called.
- * @param do_print_each_call If true, prints the info for each call.
- *
- * @example dbLogDT(false, __LINE__, __FILE__);
+ * Note on exporting from Adobe Illustrator:
+ * - Select the Export As function and select PNG format.
+ * - Tick the 'Use Arboard' option and click 'Export'.
+ * - Set the 'Resolution' to 'Screen (72 ppi)' or 'Other' and then input '72 PPI'
+ * - Set the 'Anti-aliasing' option ', choose 'Art Optimized (Supersampling)'.
+ * - Tick the 'Transparency' checkbox in the PNG export options to include the alpha channel.
+ * - Confirm the PNG is exported with a bit depth that supports alpha (typically PNG-24).
  */
-void dbLogDT(bool = false, int = 0, const char * = nullptr);
+int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Mat> &out_img_mat_vec);
 
 /**
- * @brief Pauses program and waits for any keypress.
+ * @brief Merges a mask image over a base image using the alpha channel and stores the result.
+ *
+ * @param base_img_path Output cv::Mat containing the base image.
+ * @param[out] out_base_img cv::Mat containing the base image for merging.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ *
+ * @details
+ * This function overlays the mask image on top of the base image using the alpha channel
+ * of the mask image. Pixels from the mask image are copied over to the base image based on
+ * the alpha value - if the alpha value is not fully transparent (0), the pixel is copied.
  */
-void dbWaitForInput();
+int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img);
 
 /**
- * @brief Prints the coordinates of a quadrilateral's vertices.
+ * @brief Converts an OpenCV Mat image into an OpenGL texture and returns the texture ID.
  *
- * @param quad_vertices The quadrilateral's vertices.
+ * @param image The cv::Mat image that needs to be converted.
+ * @param GLuint Reference to the GLuint ID of the generated texture.
  *
- * @note Use this regular expression to find the ros info and time stamp:
- *   \[\s*([A-Z]+)\]\s*\[([\d\.]+)\]:
+ * @return Integer status code [-1:error, 0:successful].
+ *
+ * @details
+ * This function takes an OpenCV Mat image as input and converts it into an OpenGL texture.
+ * The OpenCV image is first converted from BGR to RGB format. Then, a new OpenGL texture is
+ * generated and the converted image data is stored in this texture.
+ *
+ * The texture parameters for minification and magnification filters are set to GL_LINEAR.
+ *
+ * Note: This function assumes that the input image is of type CV_8UC3 and has no alpha channel.
  */
-void dbLogQuadVertices(const std::vector<cv::Point2f> &);
+
+int loadTexture(cv::Mat, GLuint &);
 
 /**
- * @brief Prints the coordinates of all entries in the control point array.
+ * @brief Renders a all wall images from the computed texture2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
+ *
+ * @param _renCtx Reference to an instance of the out_renCtx class.
+ *
+ * @return Integer status code  [-1:error, 0:successful].
  */
-void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &);
+int renderWallImage(MazeRenderContext &_renCtx);
 
 /**
- * @brief Prints the coordinates of all entries in the warped wall vertices array.
+ * @brief Initialize OpenGL resources for wall image render objects.
  *
- * @param _WALL_WARP_COORDS Reference to the warped wall vertices array.
- */
-void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &);
-
-/**
- * @brief Prints the coordinates of all entries in the homography matrix.
+ * @param[out] out_renCtx Reference to an instance of the out_renCtx class.
  *
- * @param _HMAT The homography matrix.
+ * @return Integer status code [-1:error, 0:successful].
+ *
+ * @details
+ * Initializes the Vertex Array Object (VAO), Vertex Buffer Object (VBO) and Element Buffer Object (EBO).
  */
-void dbLogHomMat(const cv::Mat &);
+int initWallRenderObjects(MazeRenderContext &out_renCtx, float *vertices, size_t verticesSize, unsigned int *indices, size_t indicesSize);
 
 #endif

@@ -101,7 +101,7 @@ void MazeRenderContext::CallbackErrorGLFW(int error, const char *description)
 
 int MazeRenderContext::CheckErrorOpenGL(int line, const char *file_str, const char *msg_str)
 {
-    ROS_INFO("        [CheckErrorOpenGL] DEBUG: File[%s] Line[%d]", file_str, line); // TEMP
+    // ROS_INFO("        [CheckErrorOpenGL] DEBUG: File[%s] Line[%d]", file_str, line); // TEMP
     GLenum gl_err;
     while ((gl_err = glGetError()) != GL_NO_ERROR)
     {
@@ -114,7 +114,7 @@ int MazeRenderContext::CheckErrorOpenGL(int line, const char *file_str, const ch
 
 int MazeRenderContext::CheckErrorGLFW(int line, const char *file_str, const char *msg_str)
 {
-    ROS_INFO("        [CheckErrorGLFW] DEBUG: File[%s] Line[%d]", file_str, line); // TEMP
+    // ROS_INFO("        [CheckErrorGLFW] DEBUG: File[%s] Line[%d]", file_str, line); // TEMP
     const char *description;
     int glfw_err = glfwGetError(&description);
     if (glfw_err != GLFW_NO_ERROR)
@@ -315,7 +315,6 @@ int MazeRenderContext::validateShaderProgram()
         return -1;
     }
 
-    ROS_INFO("[MazeRenderContext::validateShaderProgram] Shader program validated successfully.");
     return 0;
 }
 
@@ -378,6 +377,47 @@ int MazeRenderContext::cleanupContext(bool log_errors)
     }
 
     return status ? -1 : 0;
+}
+
+int MazeRenderContext::prepareFrame()
+{
+    glClear(GL_COLOR_BUFFER_BIT);
+    return CheckErrorOpenGL(__LINE__, __FILE__);
+}
+
+int MazeRenderContext::bufferSwapPoll()
+{
+    // Swap buffers and poll events
+    glfwSwapBuffers(windowID);
+
+    // Poll events
+    glfwPollEvents();
+
+    return CheckErrorGLFW(__LINE__, __FILE__);
+}
+
+int MazeRenderContext::checkExitRequest()
+{
+    int status = 0;
+
+    // Check if the window should close
+    if (glfwWindowShouldClose(windowID))
+    {
+        ROS_INFO("[MazeRenderContext::checkExitRequest] Window[%d] Monitor[%d] Close Requested", windowInd, monitorInd);
+        return 1;
+    }
+
+    // Check if the escape key is pressed
+    if (glfwGetKey(windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    {
+        ROS_INFO("[MazeRenderContext::checkExitRequest] Window[%d] Monitor[%d] Escape Key Pressed", windowInd, monitorInd);
+        return 2;
+    }
+
+    if (CheckErrorGLFW(__LINE__, __FILE__) < 0)
+        return -1;
+
+    return 0;
 }
 
 int MazeRenderContext::CleanupGraphicsLibraries()
@@ -917,189 +957,220 @@ void CircleRenderer::_computeVertices(cv::Point2f position, float radius, unsign
 
 // ================================================== FUNCTIONS ==================================================
 
-int updateWallTexture(
-    cv::Mat img_wall_mat, cv::Mat img_mode_mon_mat, cv::Mat img_mode_cal_mat,
-    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_HMAT_GRID_ARR,
-    GLuint &out_WALL_TEXTURE_ID)
+bool dbRunDT(int dt_wait)
 {
-    // Initialize the image to be used as the texture
-    cv::Mat im_wall_merge = cv::Mat::zeros(WINDOW_HEIGHT_PXL, WINDOW_WIDTH_PXL, CV_8UC4);
+    // Initialize with 0 to return true on the first call
+    static ros::Time ts_wait = ros::Time(0);
+    ros::Time now = ros::Time::now();
 
-    // Iterate through the maze grid rows
-    for (float gr_i = 0; gr_i < MAZE_SIZE; gr_i++) // image bottom to top
+    // Check if ts_wait is set to zero or the current time is past ts_wait
+    if (ts_wait == ros::Time(0) || now > ts_wait)
     {
-        // Iterate through each column in the maze row
-        for (float gc_i = 0; gc_i < MAZE_SIZE; gc_i++) // image left to right
+        // Set the next wait timestamp
+        ts_wait = now + ros::Duration(0, dt_wait * 1000000); // Convert ms to ns
+        return true;
+    }
+
+    return false;
+}
+
+void dbTraceCalls(bool do_reset, int line, const char *file_path)
+{
+    static int cnt_calls = 0;
+    static ros::Time start_time;
+    static int line_start = 0;
+    static std::string file_name_start = "";
+
+    // Function to extract file name from file path
+    auto extractFileName = [](const char *path) -> std::string
+    {
+        if (path == nullptr)
         {
-            // Copy wall image
-            cv::Mat img_copy;
-            img_wall_mat.copyTo(img_copy);
+            return std::string("NULL");
+        }
+        const char *file_name = strrchr(path, '\\'); // Windows file path separator
+        if (!file_name)
+            file_name = strrchr(path, '/'); // In case of Unix-style paths
+        if (file_name)
+        {
+            return std::string(file_name + 1); // Skip past the last separator
+        }
+        return std::string(path); // No separator found, return the whole string
+    };
 
-            // Get the maze vertex indice cooresponding to the selected control point
-            int mv_ind = I.cpMap[I.cpMazeVertSel[0]][I.cpMazeVertSel[1]];
-
-            //  Create merged image for the wall corresponding to the selected control point
-            if (
-                (mv_ind == 0 && gr_i == 0 && gc_i == 0) ||
-                (mv_ind == 1 && gr_i == 0 && gc_i == MAZE_SIZE - 1) ||
-                (mv_ind == 3 && gr_i == MAZE_SIZE - 1 && gc_i == 0) ||
-                (mv_ind == 2 && gr_i == MAZE_SIZE - 1 && gc_i == MAZE_SIZE - 1))
-            {
-                // Merge test pattern and active monitor image
-                if (mergeImgMat(img_mode_mon_mat, img_copy) < 0)
-                    return -1;
-
-                // Merge previous image and active calibration image
-                if (mergeImgMat(img_mode_cal_mat, img_copy) < 0)
-                    return -1;
-            }
-
-            // Get homography matrix for this wall
-            cv::Mat H = _HMAT_GRID_ARR[gr_i][gc_i];
-
-            // Warp Perspective
-            cv::Mat im_warp;
-            cv::warpPerspective(img_copy, im_warp, H, cv::Size(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL));
-
-            // Merge the warped image with the final image
-            if (mergeImgMat(im_warp, im_wall_merge) < 0)
-                return -1;
-
-            // // TEMP
-            // cv::namedWindow("Warped Image Display", cv::WINDOW_AUTOSIZE);
-            // cv::imshow("Warped Image Display", im_warp);
-            // cv::waitKey(0);
-            // cv::destroyWindow("Warped Image Display");
-            // break;
+    // Reset start time
+    if (do_reset)
+    {
+        cnt_calls = 0;
+        line_start = line;
+        file_name_start = extractFileName(file_path);
+        start_time = ros::Time::now();
+    }
+    // Print elapsed time
+    else
+    {
+        cnt_calls++;
+        ros::Duration elapsed_time = ros::Time::now() - start_time;
+        std::string file_name_current = extractFileName(file_path);
+        if (line_start == 0 || line == 0)
+        {
+            ROS_INFO("Call[%d]: Elapsed Time: %f milliseconds", cnt_calls, elapsed_time.toNSec() / 1e6);
+        }
+        else
+        {
+            ROS_INFO("Call[%d]: Elapsed Time from %s[%d] to %s[%d] is %0.2f milliseconds",
+                     cnt_calls, file_name_start.c_str(), line_start, file_name_current.c_str(), line,
+                     elapsed_time.toNSec() / 1e6);
         }
     }
-
-    // Make the new texture and return status
-    return loadTexture(im_wall_merge, out_WALL_TEXTURE_ID);
 }
 
-int loadTexture(cv::Mat image, GLuint &textureID)
+void dbWaitForInput()
 {
-    int status = 0;
-
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Convert image from BGR to RGB
-    cv::Mat image_rgb;
-    cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
-
-    // Handle alignment
-    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Create texture
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_rgb.cols,
-                 image_rgb.rows, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                 image_rgb.data);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    return status;
+    ROS_INFO("Paused for Debugging: Press Enter to Continue...");
+    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 }
 
-int renderWallImage(MazeRenderContext &_renCtx)
+void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
 {
-    int status = 0;
-
-    // Check the shader program for errors
-    if (_renCtx.validateShaderProgram())
+    if (quad_vertices.size() != 4)
     {
-        ROS_ERROR("[renderWallImage] Shader program validation failed");
-        return -1;
+        ROS_ERROR("[dbLogQuadVertices] Invalid number of vertices. Expected 4.");
+        return;
     }
-    glfwMakeContextCurrent(_renCtx.windowID);
-    status = MazeRenderContext::CheckErrorGLFW(__LINE__, __FILE__);
 
-    // Use the shader program for wall rendering
-    glUseProgram(_renCtx.shaderProgram);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+    ROS_INFO("         Quad Vertices             ");
+    ROS_INFO("===================================");
+    ROS_INFO("    |     Left     |     Right    |");
 
-    // Bind the texture for the walls
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, _renCtx.textureID);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+    if (std::any_of(quad_vertices.begin(), quad_vertices.end(), [](const cv::Point2f &point)
+                    { return point.x > 10.0f || point.y > 10.0f; }))
+    {
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("    |V0  X , Y     |V1  X , Y     |");
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("Top | %+5.0f, %+5.0f | %+5.0f, %+5.0f |",
+                 quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("    |V3  X , Y     |V2  X , Y     |");
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("Btm | %+5.0f, %+5.0f | %+5.0f, %+5.0f |",
+                 quad_vertices[3].x, quad_vertices[3].y, quad_vertices[2].x, quad_vertices[2].y);
+    }
+    else
+    {
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("    |V0  X , Y     |V1  X , Y     |");
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("Top | %+5.2f, %+5.2f | %+5.2f, %+5.2f |",
+                 quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("    |V3  X , Y     |V2  X , Y     |");
+        ROS_INFO("-----------------------------------");
+        ROS_INFO("Btm | %+5.2f, %+5.2f | %+5.2f, %+5.2f |",
+                 quad_vertices[3].x, quad_vertices[3].y, quad_vertices[2].x, quad_vertices[2].y);
+    }
 
-    // Bind the Vertex Array Object(VAO) specific to the current wall
-    glBindVertexArray(_renCtx.vao);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Bind the common Element Buffer Object (EBO)
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _renCtx.ebo);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Draw the rectangle (2 triangles) for the current wall
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Unbind the VAO to prevent accidental modification
-    glBindVertexArray(0);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Unset the shader program
-    glUseProgram(0);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    return status;
+    ROS_INFO("===================================");
 }
 
-int initWallRenderObjects(MazeRenderContext &out_renCtx,
-                          float *vertices, size_t verticesSize,
-                          unsigned int *indices, size_t indicesSize)
+void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &r_ctrl_pnt_coords)
 {
-    int status = 0;
+    ROS_INFO("        Control Point Coordinates        ");
+    ROS_INFO("=========================================");
+    ROS_INFO("        |      Left     |     Right     |");
 
-    glfwMakeContextCurrent(out_renCtx.windowID);
-    status = MazeRenderContext::CheckErrorGLFW(__LINE__, __FILE__);
+    // Loop through each control point
+    for (int cp = 0; cp < 4; ++cp)
+    {
+        // Fetch the vertices for the current control point
+        auto &quad_vertices = r_ctrl_pnt_coords[cp];
 
-    // Generate and bind an Element Buffer Object (EBO)
-    glGenBuffers(1, &out_renCtx.ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, out_renCtx.ebo);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+        // Print the top row coordinates
+        ROS_INFO("=========================================");
+        ROS_INFO("        |V0   X , Y     |V1   X , Y     ||");
+        ROS_INFO("-----------------------------------------");
+        ROS_INFO("[%d] Top | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
+                 cp,
+                 quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
 
-    // Initialize the EBO with index data
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesSize, indices, GL_DYNAMIC_DRAW);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+        // Print the bottom row coordinates
+        ROS_INFO("---------------------------------------");
+        ROS_INFO("        |V3   X , Y     |V2   X , Y     |");
+        ROS_INFO("---------------------------------------");
+        ROS_INFO("[%d] Btm | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
+                 cp,
+                 quad_vertices[3].x, quad_vertices[3].y, quad_vertices[2].x, quad_vertices[2].y);
+    }
+    ROS_INFO("=========================================");
+}
 
-    // Generate and bind a Vertex Array Object (VAO)
-    glGenVertexArrays(1, &out_renCtx.vao);
-    glBindVertexArray(out_renCtx.vao);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &_WALL_WARP_COORDS)
+{
+    ROS_INFO("                                       Warped Wall Coordinates                                               ");
+    ROS_INFO("=============================================================================================================");
+    ROS_INFO("        ||   (0) Left    |   (0) Right   ||   (1) Left    |   (1) Right   ||   (2) Left    |   (2) Right   ||");
+    ROS_INFO("-------------------------------------------------------------------------------------------------------------");
 
-    // Generate and bind a Vertex Buffer Object (VBO)
-    glGenBuffers(1, &out_renCtx.vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, out_renCtx.vbo);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+    // Loop through each row and column in the maze
+    for (int row = 0; row < MAZE_SIZE; ++row)
+    {
+        ROS_INFO("        ||   X   ,   Y   |   X   ,   Y   ||   X   ,   Y   |   X   ,   Y   ||   X   ,   Y   |   X   ,   Y   ||");
+        ROS_INFO("-------------------------------------------------------------------------------------------------------------");
 
-    // Initialize the VBO with vertex data
-    glBufferData(GL_ARRAY_BUFFER, verticesSize, vertices, GL_STATIC_DRAW);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+        // Buffer to hold the formatted string for each row
+        char buffer[256];
 
-    // Specify the format of the vertex data for the position attribute
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0); // Enable the position attribute
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+        // Format and print the Top row coordinates
+        snprintf(buffer, sizeof(buffer), "(%d) Top ||", row);
+        for (int col = 0; col < MAZE_SIZE; ++col)
+        {
+            // Fetch the quad vertices for the current [row][col]
+            auto &quad_vertices = _WALL_WARP_COORDS[row][col];
+            snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
+                     quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
+        }
+        ROS_INFO("%s", buffer);
 
-    // Specify the format of the vertex data for the texture coordinate attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1); // Enable the texture coordinate attribute
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+        // Format and print the Bottom row coordinates
+        snprintf(buffer, sizeof(buffer), "(%d) Btm ||", row);
+        for (int col = 0; col < MAZE_SIZE; ++col)
+        {
+            // Fetch the quad vertices for the current [row][col]
+            auto &quad = _WALL_WARP_COORDS[row][col];
+            snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
+                     quad[3].x, quad[3].y, quad[2].x, quad[2].y);
+        }
+        ROS_INFO("%s", buffer);
 
-    // Unbind the VAO to prevent accidental modification
-    glBindVertexArray(0);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+        ROS_INFO("-------------------------------------------------------------------------------------------------------------");
+    }
+}
 
-    // Return GL status
-    return status;
+void dbLogHomMat(const cv::Mat &r_HMAT)
+{
+    // Check if the input matrix is 3x3
+    if (r_HMAT.rows != 3 || r_HMAT.cols != 3)
+    {
+        ROS_WARN("The input matrix is not 3x3. Cannot print.");
+        return;
+    }
+
+    ROS_INFO("         Homography Matrix        ");
+    ROS_INFO("==================================");
+    ROS_INFO("          |  C0   |  C1   |  C2   |");
+    ROS_INFO("----------------------------------");
+
+    for (int i = 0; i < 3; ++i)
+    {
+        ROS_INFO("R%d        | %+5.2f | %+5.2f | %+5.2f |", i,
+                 r_HMAT.at<double>(i, 0),
+                 r_HMAT.at<double>(i, 1),
+                 r_HMAT.at<double>(i, 2));
+    }
+
+    // Separator line
+    ROS_INFO("==================================");
 }
 
 std::string frmtFilePathxml(int d_type, int mon_id_ind, int mode_cal_ind, std::string config_dir_path)
@@ -1471,218 +1542,230 @@ int updateHomography(
     return 0;
 }
 
-bool dbRunDT(int dt_wait)
+int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Mat> &out_img_mat_vec)
 {
-    // Initialize with 0 to return true on the first call
-    static ros::Time ts_wait = ros::Time(0);
-    ros::Time now = ros::Time::now();
+    out_img_mat_vec.clear(); // Ensure the output vector is empty before starting
 
-    // Check if ts_wait is set to zero or the current time is past ts_wait
-    if (ts_wait == ros::Time(0) || now > ts_wait)
+    for (const std::string &img_path : img_paths_vec)
     {
-        // Set the next wait timestamp
-        ts_wait = now + ros::Duration(0, dt_wait * 1000000); // Convert ms to ns
-        return true;
+        // Load image using OpenCV
+        cv::Mat img = cv::imread(img_path, cv::IMREAD_UNCHANGED);
+
+        // Check if image is loaded successfully
+        if (img.empty())
+        {
+            ROS_ERROR("[loadImgMat] Failed to load image from path: %s", img_path.c_str());
+            return -1;
+        }
+
+        // Check if image has an alpha channel
+        if (img.channels() != 4)
+        {
+            ROS_ERROR("[loadImgMat] Image does not have an alpha channel: %s", img_path.c_str());
+            return -1;
+        }
+
+        // Check if image dimensions are as expected
+        if (img.cols != WALL_IMAGE_WIDTH_PXL || img.rows != WALL_IMAGE_HEIGHT_PXL)
+        {
+            ROS_ERROR("[loadImgMat] Image dimensions do not match expected size: %s", img_path.c_str());
+            return -1;
+        }
+
+        // Determine depth
+        std::string depth_str;
+        switch (img.depth())
+        {
+        case CV_8U:
+            depth_str = "CV_8U";
+            break;
+        case CV_8S:
+            depth_str = "CV_8S";
+            break;
+        case CV_16U:
+            depth_str = "CV_16U";
+            break;
+        case CV_16S:
+            depth_str = "CV_16S";
+            break;
+        case CV_32S:
+            depth_str = "CV_32S";
+            break;
+        case CV_32F:
+            depth_str = "CV_32F";
+            break;
+        case CV_64F:
+            depth_str = "CV_64F";
+            break;
+        default:
+            depth_str = "Unknown";
+            break;
+        }
+
+        // Store the loaded image in the output vector
+        out_img_mat_vec.push_back(img);
+
+        // Log the image information
+        ROS_INFO("[loadImgMat] Successfully loaded image: Channels[%d] Depth[%s] Path[%s]",
+                 img.channels(), depth_str.c_str(), img_path.c_str());
     }
 
-    return false;
+    // Return success
+    return 0;
 }
 
-void dbLogDT(bool do_reset, int line, const char *file_path)
+int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img)
 {
-    static int cnt_calls = 0;
-    static ros::Time start_time;
-    static int line_start = 0;
-    static std::string file_name_start = "";
-
-    // Function to extract file name from file path
-    auto extractFileName = [](const char *path) -> std::string
+    // Check if images are loaded successfully
+    if (out_base_img.empty() || mask_img.empty())
     {
-        if (path == nullptr)
-        {
-            return std::string("NULL");
-        }
-        const char *file_name = strrchr(path, '\\'); // Windows file path separator
-        if (!file_name)
-            file_name = strrchr(path, '/'); // In case of Unix-style paths
-        if (file_name)
-        {
-            return std::string(file_name + 1); // Skip past the last separator
-        }
-        return std::string(path); // No separator found, return the whole string
-    };
-
-    // Reset start time
-    if (do_reset)
-    {
-        cnt_calls = 0;
-        line_start = line;
-        file_name_start = extractFileName(file_path);
-        start_time = ros::Time::now();
+        ROS_ERROR("[mergeImgMat] Error: Could not read one or both images.");
+        return -1;
     }
-    // Print elapsed time
-    else
+
+    // Check dimensions
+    if (out_base_img.size() != mask_img.size())
     {
-        cnt_calls++;
-        ros::Duration elapsed_time = ros::Time::now() - start_time;
-        std::string file_name_current = extractFileName(file_path);
-        if (line_start == 0 || line == 0)
+        ROS_ERROR("[mergeImgMat] Error: Image dimensions do not match. "
+                  "Base image(%d, %d), Mask image(%d, %d)",
+                  out_base_img.cols, out_base_img.rows,
+                  mask_img.cols, mask_img.rows);
+        return -1;
+    }
+
+    // Loop through each pixel
+    for (int y = 0; y < out_base_img.rows; ++y)
+    {
+        for (int x = 0; x < out_base_img.cols; ++x)
         {
-            ROS_INFO("Call[%d]: Elapsed Time: %f milliseconds", cnt_calls, elapsed_time.toNSec() / 1e6);
-        }
-        else
-        {
-            ROS_INFO("Call[%d]: Elapsed Time from %s[%d] to %s[%d] is %0.2f milliseconds",
-                     cnt_calls, file_name_start.c_str(), line_start, file_name_current.c_str(), line,
-                     elapsed_time.toNSec() / 1e6);
+            const cv::Vec4b &base_pixel = out_base_img.at<cv::Vec4b>(y, x);
+            const cv::Vec4b &mask_pixel = mask_img.at<cv::Vec4b>(y, x);
+
+            // If the alpha channel of the mask pixel is not fully transparent, overlay it
+            if (mask_pixel[3] != 0)
+            {
+                out_base_img.at<cv::Vec4b>(y, x) = mask_pixel;
+            }
         }
     }
+
+    return 0;
 }
 
-void dbWaitForInput()
+int loadTexture(cv::Mat image, GLuint &textureID)
 {
-    ROS_INFO("Paused for Debugging: Press Enter to Continue...");
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+    int status = 0;
+
+    glGenTextures(1, &textureID);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Convert image from BGR to RGB
+    cv::Mat image_rgb;
+    cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
+
+    // Handle alignment
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Create texture
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_rgb.cols,
+                 image_rgb.rows, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                 image_rgb.data);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    return status;
 }
 
-void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
+int initWallRenderObjects(MazeRenderContext &out_renCtx,
+                          float *vertices, size_t verticesSize,
+                          unsigned int *indices, size_t indicesSize)
 {
-    if (quad_vertices.size() != 4)
-    {
-        ROS_ERROR("[dbLogQuadVertices] Invalid number of vertices. Expected 4.");
-        return;
-    }
+    int status = 0;
 
-    ROS_INFO("         Quad Vertices             ");
-    ROS_INFO("===================================");
-    ROS_INFO("    |     Left     |     Right    |");
+    glfwMakeContextCurrent(out_renCtx.windowID);
+    status = MazeRenderContext::CheckErrorGLFW(__LINE__, __FILE__);
 
-    if (std::any_of(quad_vertices.begin(), quad_vertices.end(), [](const cv::Point2f &point)
-                    { return point.x > 10.0f || point.y > 10.0f; }))
-    {
-        ROS_INFO("-----------------------------------");
-        ROS_INFO("    |V0  X , Y     |V1  X , Y     |");
-        ROS_INFO("-----------------------------------");
-        ROS_INFO("Top | %+5.0f, %+5.0f | %+5.0f, %+5.0f |",
-                 quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
-        ROS_INFO("-----------------------------------");
-        ROS_INFO("    |V3  X , Y     |V2  X , Y     |");
-        ROS_INFO("-----------------------------------");
-        ROS_INFO("Btm | %+5.0f, %+5.0f | %+5.0f, %+5.0f |",
-                 quad_vertices[3].x, quad_vertices[3].y, quad_vertices[2].x, quad_vertices[2].y);
-    }
-    else
-    {
-        ROS_INFO("-----------------------------------");
-        ROS_INFO("    |V0  X , Y     |V1  X , Y     |");
-        ROS_INFO("-----------------------------------");
-        ROS_INFO("Top | %+5.2f, %+5.2f | %+5.2f, %+5.2f |",
-                 quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
-        ROS_INFO("-----------------------------------");
-        ROS_INFO("    |V3  X , Y     |V2  X , Y     |");
-        ROS_INFO("-----------------------------------");
-        ROS_INFO("Btm | %+5.2f, %+5.2f | %+5.2f, %+5.2f |",
-                 quad_vertices[3].x, quad_vertices[3].y, quad_vertices[2].x, quad_vertices[2].y);
-    }
+    // Generate and bind an Element Buffer Object (EBO)
+    glGenBuffers(1, &out_renCtx.ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, out_renCtx.ebo);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
 
-    ROS_INFO("===================================");
+    // Initialize the EBO with index data
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesSize, indices, GL_DYNAMIC_DRAW);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Generate and bind a Vertex Array Object (VAO)
+    glGenVertexArrays(1, &out_renCtx.vao);
+    glBindVertexArray(out_renCtx.vao);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Generate and bind a Vertex Buffer Object (VBO)
+    glGenBuffers(1, &out_renCtx.vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, out_renCtx.vbo);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Initialize the VBO with vertex data
+    glBufferData(GL_ARRAY_BUFFER, verticesSize, vertices, GL_STATIC_DRAW);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Specify the format of the vertex data for the position attribute
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0); // Enable the position attribute
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Specify the format of the vertex data for the texture coordinate attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1); // Enable the texture coordinate attribute
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Unbind the VAO to prevent accidental modification
+    glBindVertexArray(0);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Return GL status
+    return status;
 }
 
-void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &r_ctrl_pnt_coords)
+int renderWallImage(MazeRenderContext &_renCtx)
 {
-    ROS_INFO("        Control Point Coordinates        ");
-    ROS_INFO("=========================================");
-    ROS_INFO("        |      Left     |     Right     |");
+    int status = 0;
 
-    // Loop through each control point
-    for (int cp = 0; cp < 4; ++cp)
+    // Check the shader program for errors
+    if (_renCtx.validateShaderProgram())
     {
-        // Fetch the vertices for the current control point
-        auto &quad_vertices = r_ctrl_pnt_coords[cp];
-
-        // Print the top row coordinates
-        ROS_INFO("=========================================");
-        ROS_INFO("        |V0   X , Y     |V1   X , Y     ||");
-        ROS_INFO("-----------------------------------------");
-        ROS_INFO("[%d] Top | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
-                 cp,
-                 quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
-
-        // Print the bottom row coordinates
-        ROS_INFO("---------------------------------------");
-        ROS_INFO("        |V3   X , Y     |V2   X , Y     |");
-        ROS_INFO("---------------------------------------");
-        ROS_INFO("[%d] Btm | %+5.2f , %+5.2f | %+5.2f , %+5.2f |",
-                 cp,
-                 quad_vertices[3].x, quad_vertices[3].y, quad_vertices[2].x, quad_vertices[2].y);
+        ROS_ERROR("[renderWallImage] Shader program validation failed");
+        return -1;
     }
-    ROS_INFO("=========================================");
-}
+    glfwMakeContextCurrent(_renCtx.windowID);
+    status = MazeRenderContext::CheckErrorGLFW(__LINE__, __FILE__);
 
-void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &_WALL_WARP_COORDS)
-{
-    ROS_INFO("                                       Warped Wall Coordinates                                               ");
-    ROS_INFO("=============================================================================================================");
-    ROS_INFO("        ||   (0) Left    |   (0) Right   ||   (1) Left    |   (1) Right   ||   (2) Left    |   (2) Right   ||");
-    ROS_INFO("-------------------------------------------------------------------------------------------------------------");
+    // Use the shader program for wall rendering
+    glUseProgram(_renCtx.shaderProgram);
 
-    // Loop through each row and column in the maze
-    for (int row = 0; row < MAZE_SIZE; ++row)
-    {
-        ROS_INFO("        ||   X   ,   Y   |   X   ,   Y   ||   X   ,   Y   |   X   ,   Y   ||   X   ,   Y   |   X   ,   Y   ||");
-        ROS_INFO("-------------------------------------------------------------------------------------------------------------");
+    // Bind the texture for the walls
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, _renCtx.textureID);
 
-        // Buffer to hold the formatted string for each row
-        char buffer[256];
+    // Bind the Vertex Array Object(VAO) specific to the current wall
+    glBindVertexArray(_renCtx.vao);
 
-        // Format and print the Top row coordinates
-        snprintf(buffer, sizeof(buffer), "(%d) Top ||", row);
-        for (int col = 0; col < MAZE_SIZE; ++col)
-        {
-            // Fetch the quad vertices for the current [row][col]
-            auto &quad_vertices = _WALL_WARP_COORDS[row][col];
-            snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
-                     quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
-        }
-        ROS_INFO("%s", buffer);
+    // Bind the common Element Buffer Object (EBO)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _renCtx.ebo);
 
-        // Format and print the Bottom row coordinates
-        snprintf(buffer, sizeof(buffer), "(%d) Btm ||", row);
-        for (int col = 0; col < MAZE_SIZE; ++col)
-        {
-            // Fetch the quad vertices for the current [row][col]
-            auto &quad = _WALL_WARP_COORDS[row][col];
-            snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
-                     quad[3].x, quad[3].y, quad[2].x, quad[2].y);
-        }
-        ROS_INFO("%s", buffer);
+    // Draw the rectangle (2 triangles) for the current wall
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
-        ROS_INFO("-------------------------------------------------------------------------------------------------------------");
-    }
-}
+    // Unbind the VAO to prevent accidental modification
+    glBindVertexArray(0);
 
-void dbLogHomMat(const cv::Mat &r_HMAT)
-{
-    // Check if the input matrix is 3x3
-    if (r_HMAT.rows != 3 || r_HMAT.cols != 3)
-    {
-        ROS_WARN("The input matrix is not 3x3. Cannot print.");
-        return;
-    }
+    // Unset the shader program
+    glUseProgram(0);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
 
-    ROS_INFO("         Homography Matrix        ");
-    ROS_INFO("==================================");
-    ROS_INFO("          |  C0   |  C1   |  C2   |");
-    ROS_INFO("----------------------------------");
-
-    for (int i = 0; i < 3; ++i)
-    {
-        ROS_INFO("R%d        | %+5.2f | %+5.2f | %+5.2f |", i,
-                 r_HMAT.at<double>(i, 0),
-                 r_HMAT.at<double>(i, 1),
-                 r_HMAT.at<double>(i, 2));
-    }
-
-    // Separator line
-    ROS_INFO("==================================");
+    return status;
 }

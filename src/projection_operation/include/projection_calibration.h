@@ -163,51 +163,12 @@ void callbackKeyBinding(GLFWwindow *, int, int, int, int);
 void initCtrlPtCoords(std::array<std::array<cv::Point2f, 4>, 4> &);
 
 /**
- * @brief Loads PNG images with alpha channel from specified file paths and stores them in a vector as cv::Mat objects.
- *
- * @param img_paths_vec A vector of file paths to the images to be loaded.
- * @param[out] out_img_mat_vec Reference to a vector of cv::Mat where the loaded images will be stored.
- *
- * @return Integer status code [0:successful, -1:error].
- *
- * @details
- * This function takes a vector of file paths and iteratively loads each PNG image
- * with an alpha channel using OpenCV's imread function. It checks that the image
- * has the correct dimensions and the presence of an alpha channel. The function
- * returns 0 if all images are loaded successfully and -1 if any error occurs.
- *
- * Note on exporting from Adobe Illustrator:
- * - Select the Export As function and select PNG format.
- * - Tick the 'Use Arboard' option and click 'Export'.
- * - Set the 'Resolution' to 'Screen (72 ppi)' or 'Other' and then input '72 PPI'
- * - Set the 'Anti-aliasing' option ', choose 'Art Optimized (Supersampling)'.
- * - Tick the 'Transparency' checkbox in the PNG export options to include the alpha channel.
- * - Confirm the PNG is exported with a bit depth that supports alpha (typically PNG-24).
- */
-int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Mat> &out_img_mat_vec);
-
-/**
- * @brief Merges a mask image over a base image using the alpha channel and stores the result.
- *
- * @param base_img_path Output cv::Mat containing the base image.
- * @param[out] out_base_img cv::Mat containing the base image for merging.
- *
- * @return Integer status code [0:successful, -1:error].
- *
- * @details
- * This function overlays the mask image on top of the base image using the alpha channel
- * of the mask image. Pixels from the mask image are copied over to the base image based on
- * the alpha value - if the alpha value is not fully transparent (0), the pixel is copied.
- */
-int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img);
-
-/**
  * @brief Initialize OpenGL resources for CircleRenderer objects.
  *
  * @param _CP_GRID_ARR The 4x4 array containing the coordinates of the corner wall's vertices.
  * @param[out] out_CP_RENDERERS The 4x4 array of CircleRenderer objects used to draw the control points.
  *
- * @return Integer status code [0:successful, -1:error].
+ * @return Integer status code [-1:error, 0:successful].
  *
  * @details
  * Initializes the vertex buffer, shader program, and default values
@@ -221,9 +182,25 @@ int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &,
  * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
  * @param[out] out_CP_RENDERERS The 4x4 array of CircleRenderer objects used to draw the control points.
  *
- * @return Integer status code [0:successful, -1:error].
+ * @return Integer status code [-1:error, 0:successful].
  */
 int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &, std::array<std::array<CircleRenderer, 4>, 4> &);
+
+/**
+ * @brief Updates the stored warped wall image vertices based on the control point array.
+ *
+ * @param img_wall_mat cv::Mat image matrix for the base wall image.
+ * @param img_mode_mon_mat cv::Mat image matrix for the monitor mode image.
+ * @param img_mode_cal_mat cv::Mat image matrix for the calibration image.
+ * @param _HMAT_GRID_ARR 3x3 array of Homography matrices used to warp the wall image.
+ * @param[out] out_wallTexture OpenGL texture ID for the wall image.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int updateWallTexture(
+    cv::Mat, cv::Mat, cv::Mat,
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &,
+    GLuint &);
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.
@@ -232,7 +209,7 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &, std::
  * @param  argc  Number of command-line arguments.
  * @param  argv  Array of command-line arguments.
  *
- * @return Integer status code [0:successful, -1:error].
+ * @return Integer status code [-1:error, 0:successful].
  *
  * @details
  * This program initializes ROS, DevIL, and GLFW, and then enters a main loop

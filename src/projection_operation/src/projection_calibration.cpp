@@ -308,116 +308,6 @@ void initCtrlPtCoords(std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR
     }
 }
 
-int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Mat> &out_img_mat_vec)
-{
-    out_img_mat_vec.clear(); // Ensure the output vector is empty before starting
-
-    for (const std::string &img_path : img_paths_vec)
-    {
-        // Load image using OpenCV
-        cv::Mat img = cv::imread(img_path, cv::IMREAD_UNCHANGED);
-
-        // Check if image is loaded successfully
-        if (img.empty())
-        {
-            ROS_ERROR("[loadImgMat] Failed to load image from path: %s", img_path.c_str());
-            return -1;
-        }
-
-        // Check if image has an alpha channel
-        if (img.channels() != 4)
-        {
-            ROS_ERROR("[loadImgMat] Image does not have an alpha channel: %s", img_path.c_str());
-            return -1;
-        }
-
-        // Check if image dimensions are as expected
-        if (img.cols != WALL_IMAGE_WIDTH_PXL || img.rows != WALL_IMAGE_HEIGHT_PXL)
-        {
-            ROS_ERROR("[loadImgMat] Image dimensions do not match expected size: %s", img_path.c_str());
-            return -1;
-        }
-
-        // Determine depth
-        std::string depth_str;
-        switch (img.depth())
-        {
-        case CV_8U:
-            depth_str = "CV_8U";
-            break;
-        case CV_8S:
-            depth_str = "CV_8S";
-            break;
-        case CV_16U:
-            depth_str = "CV_16U";
-            break;
-        case CV_16S:
-            depth_str = "CV_16S";
-            break;
-        case CV_32S:
-            depth_str = "CV_32S";
-            break;
-        case CV_32F:
-            depth_str = "CV_32F";
-            break;
-        case CV_64F:
-            depth_str = "CV_64F";
-            break;
-        default:
-            depth_str = "Unknown";
-            break;
-        }
-
-        // Store the loaded image in the output vector
-        out_img_mat_vec.push_back(img);
-
-        // Log the image information
-        ROS_INFO("[loadImgMat] Successfully loaded image: Channels[%d] Depth[%s] Path[%s]",
-                 img.channels(), depth_str.c_str(), img_path.c_str());
-    }
-
-    // Return success
-    return 0;
-}
-
-int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img)
-{
-    // Check if images are loaded successfully
-    if (out_base_img.empty() || mask_img.empty())
-    {
-        ROS_ERROR("[mergeImgMat] Error: Could not read one or both images.");
-        return -1;
-    }
-
-    // Check dimensions
-    if (out_base_img.size() != mask_img.size())
-    {
-        ROS_ERROR("[mergeImgMat] Error: Image dimensions do not match. "
-                  "Base image(%d, %d), Mask image(%d, %d)",
-                  out_base_img.cols, out_base_img.rows,
-                  mask_img.cols, mask_img.rows);
-        return -1;
-    }
-
-    // Loop through each pixel
-    for (int y = 0; y < out_base_img.rows; ++y)
-    {
-        for (int x = 0; x < out_base_img.cols; ++x)
-        {
-            const cv::Vec4b &base_pixel = out_base_img.at<cv::Vec4b>(y, x);
-            const cv::Vec4b &mask_pixel = mask_img.at<cv::Vec4b>(y, x);
-
-            // If the alpha channel of the mask pixel is not fully transparent, overlay it
-            if (mask_pixel[3] != 0)
-            {
-                out_base_img.at<cv::Vec4b>(y, x) = mask_pixel;
-            }
-        }
-    }
-
-    return 0;
-}
-
 int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
                               std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
 {
@@ -487,6 +377,67 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRI
 
     // Return GL status
     return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "renderControlPoints");
+}
+
+int updateWallTexture(
+    cv::Mat img_wall_mat, cv::Mat img_mode_mon_mat, cv::Mat img_mode_cal_mat,
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_HMAT_GRID_ARR,
+    GLuint &out_WALL_TEXTURE_ID)
+{
+    // Initialize the image to be used as the texture
+    cv::Mat im_wall_merge = cv::Mat::zeros(WINDOW_HEIGHT_PXL, WINDOW_WIDTH_PXL, CV_8UC4);
+
+    // Iterate through the maze grid rows
+    for (float gr_i = 0; gr_i < MAZE_SIZE; gr_i++) // image bottom to top
+    {
+        // Iterate through each column in the maze row
+        for (float gc_i = 0; gc_i < MAZE_SIZE; gc_i++) // image left to right
+        {
+            // Copy wall image
+            cv::Mat img_copy;
+            img_wall_mat.copyTo(img_copy);
+
+            // Get the maze vertex indice cooresponding to the selected control point
+            int mv_ind = I.cpMap[I.cpMazeVertSel[0]][I.cpMazeVertSel[1]];
+
+            //  Create merged image for the wall corresponding to the selected control point
+            if (
+                (mv_ind == 0 && gr_i == 0 && gc_i == 0) ||
+                (mv_ind == 1 && gr_i == 0 && gc_i == MAZE_SIZE - 1) ||
+                (mv_ind == 3 && gr_i == MAZE_SIZE - 1 && gc_i == 0) ||
+                (mv_ind == 2 && gr_i == MAZE_SIZE - 1 && gc_i == MAZE_SIZE - 1))
+            {
+                // Merge test pattern and active monitor image
+                if (mergeImgMat(img_mode_mon_mat, img_copy) < 0)
+                    return -1;
+
+                // Merge previous image and active calibration image
+                if (mergeImgMat(img_mode_cal_mat, img_copy) < 0)
+                    return -1;
+            }
+
+            // Get homography matrix for this wall
+            cv::Mat H = _HMAT_GRID_ARR[gr_i][gc_i];
+
+            // Warp Perspective
+            cv::Mat im_warp;
+            cv::warpPerspective(img_copy, im_warp, H, cv::Size(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL));
+
+            // Merge the warped image with the final image
+            if (mergeImgMat(im_warp, im_wall_merge) < 0)
+                return -1;
+
+            // // TEMP
+            // cv::namedWindow("Warped Image Display", cv::WINDOW_AUTOSIZE);
+            // cv::imshow("Warped Image Display", im_warp);
+            // cv::waitKey(0);
+            // cv::destroyWindow("Warped Image Display");
+            // break;
+        }
+    }
+
+    // Make the new texture and return status
+    return loadTexture(im_wall_merge, out_WALL_TEXTURE_ID);
 }
 
 int main(int argc, char **argv)
@@ -605,7 +556,7 @@ int main(int argc, char **argv)
     // _______________ MAIN LOOP _______________
 
     int status = 0;
-    while (!glfwWindowShouldClose(RenContx[0].windowID) && ros::ok())
+    while (status == 0)
     {
 
         // --------------- Check Kayboard Callback Flags ---------------
@@ -687,9 +638,8 @@ int main(int argc, char **argv)
 
         // --------------- Handle Image Processing for Next Frame ---------------
 
-        // Clear back buffer for new frame
-        glClear(GL_COLOR_BUFFER_BIT);
-        if (MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "[main] Error flagged following glclear()"))
+        // Prepare the frame for rendering (clear the back buffer)
+        if (RenContx[0].prepareFrame() < 0)
         {
             status = -1;
             break;
@@ -715,33 +665,34 @@ int main(int argc, char **argv)
         }
 
         // Swap buffers and poll events
-        glfwSwapBuffers(RenContx[0].windowID);
-        if (MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "[main] Error flagged following glfwSwapBuffers()") < 0)
+        if (RenContx[0].bufferSwapPoll() < 0)
         {
             status = -1;
             break;
         }
 
-        // Poll events
-        glfwPollEvents();
-
-        // Exit condition
-        if (glfwGetKey(RenContx[0].windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS || glfwWindowShouldClose(RenContx[0].windowID))
+        // Check if ROS shutdown
+        if (!ros::ok())
+        {
+            ROS_ERROR("[main] Unextpected ROS shutdown");
+            status = -1;
             break;
+        }
+
+        // Check for exit
+        status = RenContx[0].checkExitRequest();
     }
 
     // _______________ CLEANUP _______________
     ROS_INFO("SHUTTING DOWN");
 
     // Check which condition caused the loop to exit
-    if (!ros::ok())
-        ROS_INFO("[main] Loop Terminated:  ROS node is no longer in a good state");
-    else if (glfwWindowShouldClose(RenContx[0].windowID))
-        ROS_INFO("[main] Loop Terminated:  GLFW window should close");
-    else if (glfwGetKey(RenContx[0].windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        ROS_INFO("[main] Loop Terminated:  Escape key was pressed");
-    else if (status < 0)
+    if (status < 0)
         ROS_INFO("[main] Loop Terminated:  Error thrown");
+    else if (status == 1)
+        ROS_INFO("[main] Loop Terminated:  GLFW window should close");
+    else if (status == 2)
+        ROS_INFO("[main] Loop Terminated:  Escape key was pressed");
     else
         ROS_INFO("[main] Loop Terminated:  Reason unknown");
 
