@@ -137,7 +137,7 @@ int checkErrorGLFW(int, const char *, const char * = nullptr);
  * @param pp_window_id GLFWwindow pointer array, where each pointer corresponds to a projector window.
  * @param win_ind Index of the window for which the setup is to be done.
  * @param pp_r_monitor_id Reference to the GLFWmonitor pointer array.
- * @param mon_id_ind Index of the monitor to move the window to.
+ * @param mon_ind Index of the monitor to move the window to.
  * @param r_fbo_id Reference to the GLuint variable where the generated FBO ID will be stored.
  * @param r_fbo_texture_id Reference to the GLuint variable where the generated FBO texture ID will be stored.
  *
@@ -162,7 +162,7 @@ int setupProjGLFW(GLFWwindow **, int, GLFWmonitor **&, int, GLuint &, GLuint &);
  * @param p_window_id Pointer to the GLFWwindow pointer that will be updated.
  * @param win_ind Index of the window for which the setup is to be done.
  * @param pp_r_monitor_id Reference to the GLFWmonitor pointer array.
- * @param mon_id_ind Index of the monitor to move the window to.
+ * @param mon_ind Index of the monitor to move the window to.
  * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
  *
  * @return 0 on successful execution, -1 on failure.

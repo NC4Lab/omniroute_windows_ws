@@ -1182,18 +1182,6 @@ void dbLogHomMat(const cv::Mat &r_HMAT)
     ROS_INFO("==================================");
 }
 
-std::string frmtFilePathXML(int d_type, int mon_id_ind, int mode_cal_ind, std::string config_dir_path)
-{
-    // Get the sufix based on the data being saved
-    std::string sufix = d_type == 0 ? "_hmat" : "_cp";
-
-    // Format and return the file path
-    std::string file_path =
-        config_dir_path + "/" +
-        "cfg_m" + std::to_string(mon_id_ind) + "_c" + std::to_string(mode_cal_ind) + sufix + ".xml";
-    return file_path;
-}
-
 std::string promptForProjectorNumber()
 {
     std::string input;
@@ -1225,6 +1213,126 @@ std::string promptForProjectorNumber()
     }
 }
 
+/**
+ * @brief Formats the file name for the XML file based on the active calibration mode and monitor.
+ *
+ * Format:
+ * - `hmats_m<number>.xml`
+ * - `hmats_m0.xml`
+ *
+ * @param mon_ind Index of the active or desired monitor.
+ * @param cal_ind Index of the active or desired calibration mode.
+ * @param[out] out_path Reference to string that will store the path to the XML file.
+ * @param[out] out_tag Reference to string that will store the tag for the calibration mode.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int xmlFrmtFileStrings(int mon_ind, int cal_ind, std::string &out_path, std::string &out_tag)
+{
+    // Format the output tag
+    out_path =
+        CONFIG_DIR_PATH + "/" +
+        "hmats" +
+        "_m" + std::to_string(mon_ind) +
+        ".xml";
+
+    // Get the calibration mode xml tag
+    switch (cal_ind)
+    {
+    case 0:
+        out_tag = "cwl";
+        break;
+    case 1:
+        out_tag = "cwm";
+        break;
+    case 2:
+        out_tag = "cwr";
+        break;
+    case 3:
+        out_tag = "cmf";
+        break;
+    default:
+        // Handle the error or unexpected cal_ind value
+        ROS_ERROR("[frmtFilePathXML] Invalid cal_ind[%d]", cal_ind);
+        return -1;
+    }
+
+    return 0;
+}
+
+int xmlSaveHMAT(const cv::Mat &H, int mon_ind, int cal_ind, int grid_row, int grid_col)
+{
+    // Get the full file path and tag for the given calibration mode
+    std::string file_path;
+    std::string cal_tag;
+    xmlFrmtFileStrings(mon_ind, cal_ind, file_path, cal_tag);
+
+    // Create an XML document object
+    pugi::xml_document doc;
+    pugi::xml_node root_node;
+
+    // Load the existing file or create a new one if it doesn't exist
+    pugi::xml_parse_result result = doc.load_file(file_path.c_str());
+    if (!result)
+    {
+        // Create a new root node if the file doesn't exist
+        root_node = doc.append_child("Root");
+    }
+    else
+    {
+        // Get the root node
+        root_node = doc.child("Root");
+    }
+
+    // Find or create the parent element under the root node
+    pugi::xml_node parent_node = root_node.child(cal_tag.c_str());
+    if (!parent_node)
+    {
+        // If the parent tag doesn't exist, create it
+        parent_node = root_node.append_child(cal_tag.c_str());
+    }
+
+    // Create a child node for storing the homography matrix with row and col attributes
+    pugi::xml_node hmat_node = parent_node.append_child("HMAT");
+    hmat_node.append_attribute("grid_row") = grid_row;
+    hmat_node.append_attribute("grid_col") = grid_col;
+
+    // TEMP
+    //ROS_INFO("!!!!! grid_row[%d] grid_col[%d]", grid_row, grid_col);
+
+    // Iterate over the rows of the matrix
+    for (int i = 0; i < H.rows; ++i)
+    {
+        // Create a row node
+        pugi::xml_node row_node = hmat_node.append_child("row");
+
+        // Iterate over the elements in the row
+        for (int j = 0; j < H.cols; ++j)
+        {
+            // Get the value from the matrix
+            double value = H.at<double>(i, j); // Ensure the matrix type is double
+
+            // Create a cell node and set its value
+            pugi::xml_node cell_node = row_node.append_child("cell");
+            cell_node.append_child(pugi::node_pcdata).set_value(std::to_string(value).c_str());
+        }
+    }
+
+    // Save the document to the provided file path and check if it was successful
+    bool save_succeeded = doc.save_file(file_path.c_str());
+    if (!save_succeeded)
+    {
+        ROS_ERROR("[xmlSaveHMAT] Failed to save homography matrix to XML File[%s]", file_path.c_str());
+        return -1;
+    }
+
+    // TEMP
+    // dbWaitForInput();
+
+    return 0;
+}
+
+// TEMP
 int saveHMATxml(const std::string full_path,
                 const std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_HMAT_GRID_ARR)
 {
@@ -1279,140 +1387,228 @@ int saveHMATxml(const std::string full_path,
     return 0;
 }
 
-int loadHMATxml(const std::string full_path,
-                std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &out_HMAT_GRID_ARR)
+int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &out_H)
 {
+    // Get the full file path amd tag for the given calibration mode
+    std::string file_path;
+    std::string cal_tag;
+    xmlFrmtFileStrings(mon_ind, cal_ind, file_path, cal_tag);
+
     // Create an XML document
     pugi::xml_document doc;
 
     // Parse the XML file
-    pugi::xml_parse_result result = doc.load_file(full_path.c_str());
+    pugi::xml_parse_result result = doc.load_file(file_path.c_str());
     if (!result)
     {
-        ROS_ERROR("[loadHMATxml] Failed to load homography matrix from XML File[%s]", full_path.c_str());
+        ROS_ERROR("[xmlLoadHMAT] Failed to load homography matrix from XML File[%s]", file_path.c_str());
         return -1;
     }
 
-    // Get the root node for the homography matrix grid
-    pugi::xml_node hmat_grid_node = doc.child("HMATGrid");
-    if (hmat_grid_node.empty())
+    // Get the root node
+    pugi::xml_node root_node = doc.child("Root");
+    if (root_node.empty())
     {
-        ROS_ERROR("[loadHMATxml] The 'HMATGrid' node is missing in the XML File[%s]", full_path.c_str());
+        ROS_ERROR("[xmlLoadHMAT] The 'Root' node is missing in the XML File[%s]", file_path.c_str());
         return -1;
     }
 
-    // Iterate over each matrix node in the grid
-    for (pugi::xml_node current_hmat_node = hmat_grid_node.child("HMAT");
-         current_hmat_node;
-         current_hmat_node = current_hmat_node.next_sibling("HMAT"))
+    // Find the parent element under the root node
+    pugi::xml_node parent_node = root_node.child(cal_tag.c_str());
+    if (parent_node.empty())
     {
-        // Get grid position attributes
-        int grid_row = current_hmat_node.attribute("row").as_int();
-        int grid_col = current_hmat_node.attribute("col").as_int();
+        ROS_ERROR("[xmlLoadHMAT] The '%s' node is missing in the XML File[%s]", cal_tag.c_str(), file_path.c_str());
+        return -1;
+    }
 
-        // Check if grid positions are within bounds
-        if (grid_row < 0 || grid_row >= MAZE_SIZE ||
-            grid_col < 0 || grid_col >= MAZE_SIZE)
+    // Find the specific HMAT node with the given row and col attributes
+    for (pugi::xml_node hmat_node = parent_node.child("HMAT");
+         hmat_node;
+         hmat_node = hmat_node.next_sibling("HMAT"))
+    {
+        if (hmat_node.attribute("grid_row").as_int() == grid_row &&
+            hmat_node.attribute("grid_col").as_int() == grid_col)
         {
-            continue; // Skip to the next HMAT node
-        }
+            // Initialize a temporary matrix to store the values
+            cv::Mat H = cv::Mat::zeros(MAZE_SIZE, MAZE_SIZE, CV_64F);
 
-        // Initialize a temporary matrix to store the values
-        cv::Mat current_hmat = cv::Mat::zeros(3, 3, CV_32F);
-
-        // Iterate over each row node within the current matrix node
-        int i = 0; // Row counter
-        for (pugi::xml_node row_node = current_hmat_node.child("row");
-             row_node && i < MAZE_SIZE;
-             row_node = row_node.next_sibling("row"), ++i)
-        {
-            int j = 0; // Column counter
-
-            // Iterate over each cell node within the row
-            for (pugi::xml_node cell_node = row_node.child("cell");
-                 cell_node && j < MAZE_SIZE;
-                 cell_node = cell_node.next_sibling("cell"), ++j)
+            // Iterate over each row node within the HMAT node
+            int i = 0; // Row counter
+            for (pugi::xml_node row_node = hmat_node.child("row");
+                 row_node && i < MAZE_SIZE;
+                 row_node = row_node.next_sibling("row"), ++i)
             {
-                // Get the value from the cell and store it in the matrix
-                float value = std::stof(cell_node.child_value());
-                current_hmat.at<float>(i, j) = value;
+                int j = 0; // Column counter
+
+                // Iterate over each cell node within the row
+                for (pugi::xml_node cell_node = row_node.child("cell");
+                     cell_node && j < MAZE_SIZE;
+                     cell_node = cell_node.next_sibling("cell"), ++j)
+                {
+                    // Get the value from the cell and store it in the matrix
+                    double value = std::stod(cell_node.child_value());
+                    H.at<double>(i, j) = value;
+                }
+            }
+
+            // Copy the temporary matrix to the output parameter
+            out_H = H;
+            ROS_INFO("[xmlLoadHMAT] Loaded the homography matrix from XML File[%s]", file_path.c_str());
+            return 0;
+        }
+    }
+
+    // If the specific HMAT node was not found, return an error
+    ROS_ERROR("[xmlLoadHMAT] The specified HMAT node with grid_row %d and grid_col %d under '%s' is missing in the XML File[%s]",
+              grid_row, grid_col, cal_tag.c_str(), file_path.c_str());
+    return -1;
+}
+
+int xmlSaveTupleHMATs(
+    const std::tuple<
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        cv::Mat> &_HMAT_TUPLE,
+    int mon_ind, int cal_ind)
+{
+    // Handle wall homography matrices
+    if (cal_ind < N_CAL_MODES - 1)
+    {
+        for (int gr_i = 0; gr_i < MAZE_SIZE; ++gr_i)
+        {
+            for (int gc_i = 0; gc_i < MAZE_SIZE; ++gc_i)
+            {
+                cv::Mat H;
+                if (getTupleHMAT(_HMAT_TUPLE, cal_ind, gr_i, gc_i, H) < 0)
+                    return -1;
+                if (xmlSaveHMAT(H, mon_ind, cal_ind, gr_i, gc_i) < 0)
+                    return -1;
             }
         }
-
-        // Store the matrix in the output array
-        out_HMAT_GRID_ARR[grid_row][grid_col] = current_hmat;
     }
-
-    // Return success code
-    ROS_INFO("[loadHMATxml] Loaded the saved homography matrix from XML File[%s]", full_path.c_str());
+    // Handle single homography matrix
+    else
+    {
+        cv::Mat H;
+        if (getTupleHMAT(_HMAT_TUPLE, cal_ind, 0, 0, H) < 0)
+            return -1;
+        if (xmlSaveHMAT(H, mon_ind, cal_ind, 0, 0) < 0)
+            return -1;
+    }
+    
     return 0;
 }
 
-int saveCPxml(const std::string &full_path, const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR)
+int xmlLoadTupleHMATs(
+    int mon_ind, int cal_ind,
+    std::tuple<
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        cv::Mat> &_HMAT_TUPLE)
 {
-    pugi::xml_document doc;
-    pugi::xml_node cp_grid_node = doc.append_child("CPGrid");
-
-    for (int i = 0; i < 4; ++i)
+    // Handle wall homography matrices
+    if (cal_ind < N_CAL_MODES - 4)
     {
-        for (int j = 0; j < 4; ++j)
+        for (int gr_i = 0; gr_i < MAZE_SIZE; ++gr_i)
         {
-            pugi::xml_node cp_node = cp_grid_node.append_child("ControlPoint");
-            cp_node.append_attribute("row") = i;
-            cp_node.append_attribute("col") = j;
-            cp_node.append_attribute("x") = _CP_GRID_ARR[i][j].x;
-            cp_node.append_attribute("y") = _CP_GRID_ARR[i][j].y;
+            for (int gc_i = 0; gc_i < MAZE_SIZE; ++gc_i)
+            {
+                cv::Mat H;
+                if (xmlLoadHMAT(mon_ind, cal_ind, gr_i, gc_i, H) < 0)
+                    return -1;
+                if (setTupleHMAT(H, cal_ind, gr_i, gc_i, _HMAT_TUPLE) < 0)
+                    return -1;
+            }
         }
     }
-
-    // Save the document to the provided file path
-    if (!doc.save_file(full_path.c_str()))
+    // Handle single homography matrix
+    else
     {
-        ROS_ERROR("[saveCPxml] Failed to save control point array to XML File[%s]", full_path.c_str());
-        return -1;
+        cv::Mat H;
+        if (xmlLoadHMAT(mon_ind, cal_ind, 0, 0, H) < 0)
+            return -1;
+        if (setTupleHMAT(H, cal_ind, 0, 0, _HMAT_TUPLE) < 0)
+            return -1;
     }
-
-    ROS_INFO("[saveCPxml] Saved control point array to XML File[%s]", full_path.c_str());
     return 0;
 }
 
-int loadCPxml(const std::string &full_path, std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR)
+int getTupleHMAT(
+    const std::tuple<
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        cv::Mat> &_HMAT_TUPLE,
+    int cal_ind, int grid_row, int grid_col, cv::Mat &out_H)
 {
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(full_path.c_str());
-
-    // Check if the XML file was loaded successfully
-    if (!result)
+    // Check if the input matrix is 3x3
+    if (grid_row < 0 || grid_row >= MAZE_SIZE || grid_col < 0 || grid_col >= MAZE_SIZE)
     {
-        ROS_ERROR("[loadCPxml] Failed to load the control point array from XML File[%s]", full_path.c_str());
-        return -1;
-    }
-    pugi::xml_node cp_grid_node = doc.child("CPGrid");
-    if (cp_grid_node.empty())
-    {
-        ROS_ERROR("[loadCPxml] The 'CPGrid' node is missing in the XML File[%s]", full_path.c_str());
+        ROS_ERROR("[getTupleHMAT] Invalid grid_row[%d] or grid_col[%d] value", grid_row, grid_col);
         return -1;
     }
 
-    for (pugi::xml_node cp_node = cp_grid_node.child("ControlPoint");
-         cp_node;
-         cp_node = cp_node.next_sibling("ControlPoint"))
+    switch (cal_ind)
     {
-        int row = cp_node.attribute("row").as_int();
-        int col = cp_node.attribute("col").as_int();
-
-        if (row < 0 || row >= 4 || col < 0 || col >= 4)
-        {
-            // Indicate invalid row or column attributes
-            return -2;
-        }
-
-        float x = cp_node.attribute("x").as_float();
-        float y = cp_node.attribute("y").as_float();
-        out_CP_GRID_ARR[row][col] = cv::Point2f(x, y);
+    case 0:
+        out_H = std::get<0>(_HMAT_TUPLE)[grid_row][grid_col];
+        break;
+    case 1:
+        out_H = std::get<1>(_HMAT_TUPLE)[grid_row][grid_col];
+        break;
+    case 2:
+        out_H = std::get<2>(_HMAT_TUPLE)[grid_row][grid_col];
+        break;
+    case 3:
+        out_H = std::get<3>(_HMAT_TUPLE);
+        break;
+    default:
+        // Handle the error or unexpected cal_ind value
+        ROS_ERROR("[getTupleHMAT] Invalid cal_ind[%d]", cal_ind);
+        return -1;
     }
 
-    return 0; // Indicate success
+    return 0;
+}
+
+int setTupleHMAT(
+    const cv::Mat &H, int cal_ind, int grid_row, int grid_col,
+    std::tuple<
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        cv::Mat> &out_HMAT_TUPLE)
+{
+    // Check if the input matrix is 3x3
+    if (grid_row < 0 || grid_row >= MAZE_SIZE || grid_col < 0 || grid_col >= MAZE_SIZE)
+    {
+        ROS_ERROR("[setTupleHMAT] Invalid grid_row[%d] or grid_col[%d] value", grid_row, grid_col);
+        return -1;
+    }
+
+    switch (cal_ind)
+    {
+    case 0:
+        std::get<0>(out_HMAT_TUPLE)[grid_row][grid_col] = H;
+        break;
+    case 1:
+        std::get<1>(out_HMAT_TUPLE)[grid_row][grid_col] = H;
+        break;
+    case 2:
+        std::get<2>(out_HMAT_TUPLE)[grid_row][grid_col] = H;
+        break;
+    case 3:
+        std::get<3>(out_HMAT_TUPLE) = H;
+        break;
+    default:
+        // Handle the error or unexpected cal_ind value
+        ROS_ERROR("[setTupleHMAT] Invalid cal_ind[%d]", cal_ind);
+        return -1;
+    }
+
+    return 0;
 }
 
 int checkQuadVertices(const std::vector<cv::Point2f> &quad_vertices)

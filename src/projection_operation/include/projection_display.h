@@ -95,7 +95,7 @@ void callbackKeyBinding(GLFWwindow *, int, int, int, int);
  * @brief Loads the images and homography matices array for the application.
  * 
  * This function uses OpenCV to load wall images into memory.
- * It uses loadHMATxml() to load the homography matrices from XML files.
+ * It uses xmlLoadHMAT() to load the homography matrices from XML files.
  * 
  * @throws std::runtime_error if image or xml loading fails.
  */
@@ -109,7 +109,7 @@ void appLoadData();
  * 
  * @throws std::runtime_error if OpenGL initialization fails.
  */
-void appInitializeOpenGL();
+void appInitOpenGL();
 
 /**
  * @brief The main loop of the application.

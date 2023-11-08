@@ -2,48 +2,48 @@
 <HMATGrid>
 	<HMAT row="0" col="0">
 		<row>
-			<cell>-8529.801758</cell>
-			<cell>1.941150</cell>
-			<cell>-8756011822257184554019192832.000000</cell>
+			<cell>0.000000</cell>
+			<cell>1.875000</cell>
+			<cell>0.000000</cell>
 		</row>
 		<row>
-			<cell>6936430599248358808748032.000000</cell>
-			<cell>1.738794</cell>
-			<cell>-18102782841806572826556624797696.000000</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
 		</row>
 		<row>
-			<cell>0.009683</cell>
-			<cell>0.756171</cell>
-			<cell>1426091.875000</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
 		</row>
 	</HMAT>
 	<HMAT row="0" col="1">
 		<row>
 			<cell>0.000000</cell>
-			<cell>1.880085</cell>
+			<cell>1.875000</cell>
 			<cell>0.000000</cell>
 		</row>
 		<row>
-			<cell>6936435210934377236135936.000000</cell>
-			<cell>1.613794</cell>
-			<cell>-16578157477888.000000</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
 		</row>
 		<row>
-			<cell>0.009683</cell>
-			<cell>0.693671</cell>
-			<cell>0.000028</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
 		</row>
 	</HMAT>
 	<HMAT row="0" col="2">
 		<row>
-			<cell>31464311606935184411197440.000000</cell>
-			<cell>1.698822</cell>
+			<cell>0.000000</cell>
+			<cell>1.875000</cell>
 			<cell>0.000000</cell>
 		</row>
 		<row>
 			<cell>0.000000</cell>
 			<cell>0.000000</cell>
-			<cell>0.000008</cell>
+			<cell>0.000000</cell>
 		</row>
 		<row>
 			<cell>0.000000</cell>
@@ -53,48 +53,48 @@
 	</HMAT>
 	<HMAT row="1" col="0">
 		<row>
-			<cell>-0.000000</cell>
-			<cell>1.865856</cell>
-			<cell>6978901921635065837649920.000000</cell>
+			<cell>0.000000</cell>
+			<cell>1.875000</cell>
+			<cell>0.000000</cell>
 		</row>
 		<row>
-			<cell>-0.000000</cell>
-			<cell>1.662853</cell>
-			<cell>-0.000000</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
 		</row>
 		<row>
-			<cell>-0.470990</cell>
-			<cell>0.693671</cell>
-			<cell>68050595709190144.000000</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
 		</row>
 	</HMAT>
 	<HMAT row="1" col="1">
 		<row>
-			<cell>-0.000000</cell>
-			<cell>1.804790</cell>
+			<cell>0.000000</cell>
+			<cell>1.875000</cell>
 			<cell>0.000000</cell>
 		</row>
 		<row>
-			<cell>-0.000000</cell>
-			<cell>1.537853</cell>
-			<cell>-482649919426642989648082901139456.000000</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
 		</row>
 		<row>
-			<cell>-0.470990</cell>
-			<cell>0.631171</cell>
-			<cell>68050664428666880.000000</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
+			<cell>0.000000</cell>
 		</row>
 	</HMAT>
 	<HMAT row="1" col="2">
 		<row>
-			<cell>31464311606935184411197440.000000</cell>
-			<cell>1.698822</cell>
+			<cell>0.000000</cell>
+			<cell>1.875000</cell>
 			<cell>0.000000</cell>
 		</row>
 		<row>
 			<cell>0.000000</cell>
 			<cell>0.000000</cell>
-			<cell>0.000008</cell>
+			<cell>0.000000</cell>
 		</row>
 		<row>
 			<cell>0.000000</cell>
@@ -104,14 +104,14 @@
 	</HMAT>
 	<HMAT row="2" col="0">
 		<row>
-			<cell>31464311606935184411197440.000000</cell>
-			<cell>1.698822</cell>
+			<cell>0.000000</cell>
+			<cell>1.875000</cell>
 			<cell>0.000000</cell>
 		</row>
 		<row>
 			<cell>0.000000</cell>
 			<cell>0.000000</cell>
-			<cell>0.000008</cell>
+			<cell>0.000000</cell>
 		</row>
 		<row>
 			<cell>0.000000</cell>
@@ -121,14 +121,14 @@
 	</HMAT>
 	<HMAT row="2" col="1">
 		<row>
-			<cell>31464311606935184411197440.000000</cell>
-			<cell>1.698822</cell>
+			<cell>0.000000</cell>
+			<cell>1.875000</cell>
 			<cell>0.000000</cell>
 		</row>
 		<row>
 			<cell>0.000000</cell>
 			<cell>0.000000</cell>
-			<cell>0.000008</cell>
+			<cell>0.000000</cell>
 		</row>
 		<row>
 			<cell>0.000000</cell>
@@ -138,14 +138,14 @@
 	</HMAT>
 	<HMAT row="2" col="2">
 		<row>
-			<cell>31464311606935184411197440.000000</cell>
-			<cell>1.698822</cell>
+			<cell>0.000000</cell>
+			<cell>1.875000</cell>
 			<cell>0.000000</cell>
 		</row>
 		<row>
 			<cell>0.000000</cell>
 			<cell>0.000000</cell>
-			<cell>0.000008</cell>
+			<cell>0.000000</cell>
 		</row>
 		<row>
 			<cell>0.000000</cell>

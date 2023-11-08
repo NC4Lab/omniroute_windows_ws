@@ -48,8 +48,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     {
         for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
         {
-            int mon_id_ind = isWinOnProj ? projMonIndArr[proj_i] : winMonIndDefault; // Show image on default or projector monitor
-            updateWindowMonMode(p_windowIDVec[proj_i], proj_i, pp_monitorIDVec, mon_id_ind, isFullScreen);
+            int mon_ind = isWinOnProj ? projMonIndArr[proj_i] : winMonIndDefault; // Show image on default or projector monitor
+            updateWindowMonMode(p_windowIDVec[proj_i], proj_i, pp_monitorIDVec, mon_ind, isFullScreen);
         }
     }
 }
@@ -98,7 +98,7 @@ int setupProjGLFW(
     GLFWwindow **pp_window_id,
     int win_ind,
     GLFWmonitor **&pp_r_monitor_id,
-    int mon_id_ind,
+    int mon_ind,
     GLuint &r_fbo_id,
     GLuint &r_fbo_texture_id)
 {
@@ -143,14 +143,14 @@ int setupProjGLFW(
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     // Set window to wondowed mode on the second monitor
-    if (updateWindowMonMode(pp_window_id[win_ind], win_ind, pp_r_monitor_id, mon_id_ind, isFullScreen) != 0)
+    if (updateWindowMonMode(pp_window_id[win_ind], win_ind, pp_r_monitor_id, mon_ind, isFullScreen) != 0)
     {
-        ROS_ERROR("[GLFW] Failed to Update Window[%d] Monitor[%d] Mode", win_ind, mon_id_ind);
+        ROS_ERROR("[GLFW] Failed to Update Window[%d] Monitor[%d] Mode", win_ind, mon_ind);
         return -1;
     }
     else
     {
-        ROS_INFO("[GLFW] Setup Window[%d] On Monitor[%d]", win_ind, mon_id_ind);
+        ROS_INFO("[GLFW] Setup Window[%d] On Monitor[%d]", win_ind, mon_ind);
     }
 
     // Check for GL errors
@@ -159,7 +159,7 @@ int setupProjGLFW(
     return 0;
 }
 
-int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_r_monitor_id, int mon_id_ind, bool is_fullscreen)
+int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_r_monitor_id, int mon_ind, bool is_fullscreen)
 {
     int x_pos, y_pos;
 
@@ -167,7 +167,7 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
     glfwMakeContextCurrent(p_window_id);
 
     // Get GLFWmonitor for active monitor
-    GLFWmonitor *p_monitor_id = pp_r_monitor_id[mon_id_ind];
+    GLFWmonitor *p_monitor_id = pp_r_monitor_id[mon_ind];
 
     // Update window size and position
     if (p_monitor_id)
@@ -176,7 +176,7 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
         const GLFWvidmode *mode = glfwGetVideoMode(p_monitor_id);
         if (!mode)
         {
-            ROS_ERROR("[WIN MODE] Failed to Get Video Mode: Monitor[%d]", mon_id_ind);
+            ROS_ERROR("[WIN MODE] Failed to Get Video Mode: Monitor[%d]", mon_ind);
             return -1;
         }
 
@@ -186,7 +186,7 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
         glfwSetWindowMonitor(p_window_id, p_monitor_id, x_pos, y_pos, mode->width, mode->height, mode->refreshRate);
         if (!p_monitor_id)
         {
-            ROS_ERROR("[WIN MODE] Invalid Monitor Pointer: Monitor[%d]", mon_id_ind);
+            ROS_ERROR("[WIN MODE] Invalid Monitor Pointer: Monitor[%d]", mon_ind);
             return -1;
         }
 
@@ -199,7 +199,7 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
             // Validate monitor position
             if (monitor_x < 0 || monitor_y < 0)
             {
-                ROS_WARN("[WIN MODE] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_id_ind, monitor_x, monitor_y);
+                ROS_WARN("[WIN MODE] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_ind, monitor_x, monitor_y);
                 return 0;
             }
 
@@ -212,14 +212,14 @@ int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_
         }
 
         // Update window title
-        std::string new_title = "Window[" + std::to_string(win_ind) + "] Monitor[" + std::to_string(mon_id_ind) + "]";
+        std::string new_title = "Window[" + std::to_string(win_ind) + "] Monitor[" + std::to_string(mon_ind) + "]";
         glfwSetWindowTitle(p_window_id, new_title.c_str());
 
-        ROS_INFO("RAN: Update Window: Monitor[%d] Format[%s] X[%d] Y[%d]", mon_id_ind, is_fullscreen ? "fullscreen" : "windowed", x_pos, y_pos);
+        ROS_INFO("RAN: Update Window: Monitor[%d] Format[%s] X[%d] Y[%d]", mon_ind, is_fullscreen ? "fullscreen" : "windowed", x_pos, y_pos);
     }
     else
     {
-        ROS_ERROR("[GLFW] Monitor[%d] Not Found", mon_id_ind);
+        ROS_ERROR("[GLFW] Monitor[%d] Not Found", mon_ind);
         return -1;
     }
 
@@ -263,7 +263,7 @@ int drawQuadImage(std::vector<cv::Point2f> quad_vertices_vec)
 
 int drawWalls(
     int proj_ind,
-    int mon_id_ind,
+    int mon_ind,
     GLFWwindow *p_window_id,
     GLuint fbo_texture_id,
     std::vector<ILuint> &r_image_id_vec)
@@ -280,8 +280,8 @@ int drawWalls(
         cv::Mat hom_mat = cv::Mat::eye(3, 3, CV_32F);
 
         // Load the image transform coordinates from the XML file
-        std::string file_path = frmtFilePathXML(mon_id_ind, cal_i, CONFIG_DIR_PATH);
-        if (loadHMATxml(hom_mat, ctrl_point_params, file_path, 0) != 0)
+        std::string file_path = frmtFilePathXML(mon_ind, cal_i, CONFIG_DIR_PATH);
+        if (xmlLoadHMAT(hom_mat, ctrl_point_params, file_path, 0) != 0)
         {
             ROS_ERROR("XML: Missing XML File[%s]", file_path.c_str());
             return -1;
@@ -387,10 +387,10 @@ int main(int argc, char **argv)
     // Create GLFW window
     for (int proj_i = 0; proj_i < nProjectors; ++proj_i)
     {
-        int mon_id_ind = winMonIndDefault; // Show image on default monitor
-        // int mon_id_ind =  projMonIndArr[proj_i]; // Show image on projector monitor
+        int mon_ind = winMonIndDefault; // Show image on default monitor
+        // int mon_ind =  projMonIndArr[proj_i]; // Show image on projector monitor
 
-        if (setupProjGLFW(p_windowIDVec, proj_i, pp_monitorIDVec, mon_id_ind, fboIDVec[proj_i], fboTextureIDVec[proj_i]) != 0)
+        if (setupProjGLFW(p_windowIDVec, proj_i, pp_monitorIDVec, mon_ind, fboIDVec[proj_i], fboTextureIDVec[proj_i]) != 0)
         {
             ROS_ERROR("[GLFW] Setup Failed for Window[%d]", proj_i);
             return -1;

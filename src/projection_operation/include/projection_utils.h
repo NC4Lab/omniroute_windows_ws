@@ -217,6 +217,7 @@
 #include <string>
 #include <cstring>
 #include <cmath>
+#include <tuple>
 
 // PugiXML for XML parsing
 #include "pugixml.hpp"
@@ -463,7 +464,7 @@ public:
     /**
      * @brief Sets up the system for a new rendering.
      *
-     * Makes this the current GL context and clears the color 
+     * Makes this the current GL context and clears the color
      * buffers of the back buffer for a new frame.
      *
      * @return Integer status code  [-1:error, 0:successful].
@@ -476,7 +477,7 @@ public:
      * Basically a wrapper for glfwSwapBuffers() and glfwPollEvents() which
      * swaps the front and back buffers of the window and processes events.
      *
-     * @return Integer status code  [-1:error, 0:successful]. 
+     * @return Integer status code  [-1:error, 0:successful].
      */
     int bufferSwapPoll();
 
@@ -486,7 +487,7 @@ public:
      * This function checks if the user has pressed the escape key
      * or if the window has been closed.
      *
-    * @return Integer status code  [-1:error, 0:no change, 1:window closed, 2:esc key pressed].
+     * @return Integer status code  [-1:error, 0:no change, 1:window closed, 2:esc key pressed].
      */
     int checkExitRequest();
 
@@ -496,7 +497,7 @@ public:
      * This function switches the application window between full-screen and windowed modes
      * and moves it to the monitor specified by the global variable imgMonNumInd.
      *
-     * @param mon_id_ind Index of the monitor to move the window to.
+     * @param mon_ind Index of the monitor to move the window to.
      * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
      * @return Integer status code  [-1:error, 0:successful].
      */
@@ -1052,7 +1053,29 @@ extern const float WALL_IMAGE_WIDTH_NDC = (MAZE_WIDTH_NDC / (float(MAZE_SIZE) - 
 extern const float WALL_IMAGE_HEIGHT_NDC = (MAZE_HEIGHT_NDC / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
 
 // Global variable to set the OpenGL debug level.
-int DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
+const int DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
+
+/**
+ * @brief Tuple for maze homography matrices for differn calibration modes.
+ *
+ * Contains:
+ * - Three 2D arrays of cv::Mat for cell-wise homographies.
+ * - One cv::Mat for global calibration.
+ *
+ * Usage:
+ * - Access cell matrix: `std::get<0>(HMAT_TUPLE)[i][j]`
+ * - Store cell matrix: `cv::Mat& H = std::get<0>(HMAT_TUPLE)[i][j]`
+ * - Access calibration matrix: `std::get<3>(HMAT_TUPLE)`
+ * - Store cell matrix: `cv::Mat& H = std::get<3>(HMAT_TUPLE)`
+ */
+std::tuple<
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, // [0] Left walls calibration matrices
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, // [1] Middle walls calibration matrices
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, // [2] Right walls calibration matrices
+    cv::Mat                                                // [3] Maze floor calibration matrix
+    >
+    HMAT_TUPLE;
+const int N_CAL_MODES = 4; // Number of calibration modes
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -1120,20 +1143,6 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
 void dbLogHomMat(const cv::Mat &);
 
 /**
- * @brief Formats the file name for the XML file based on the active calibration mode and monitor.
- *
- * Format:
- * - `cfg_m<number>_c<number>_<data_type>.xml`
- *
- * @param d_type Type of data being saved  [0: homography matrix, 1: for control points].
- * @param mon_id_ind Index of the active or desired monitor.
- * @param mode_cal_ind Index of the active or desired calibration mode.
- * @param config_dir_path Path to the directory where the XML file will be loaded/saved.
- *
- */
-std::string frmtFilePathXML(int, int, int, std::string);
-
-/**
  * @brief Prompts the user for a single digit input or an option to quit.
  *
  * @return A std::string containing the single digit entered by the user.
@@ -1155,49 +1164,131 @@ std::string frmtFilePathXML(int, int, int, std::string);
 std::string promptForProjectorNumber();
 
 /**
- * @brief Saves the homography matrix array to an XML file.
+ * @brief Formats the file name for the XML file based on the active calibration mode and monitor.
  *
- * @param full_path Path to the XML file.
- * @param _HMAT_GRID_ARR Reference to the 3x3 array of Homography matrices to be saved.
+ * Format:
+ * - `hmats_m<number>.xml`
+ * - `hmats_m0.xml`
+ *
+ * @param mon_ind Index of the active or desired monitor.
+ * @param cal_ind Index of the active or desired calibration mode.
+ * @param[out] out_path Reference to string that will store the path to the XML file.
+ * @param[out] out_tag Reference to string that will store the tag for the calibration mode.
  *
  * @return Integer status code [-1:error, 0:successful].
+ */
+int xmlFrmtFileStrings(int, int, std::string &, std::string &);
+
+/**
+ * Save a single cv::Mat homography matrix to an XML file.
  *
- * @details
  * This function uses the pugixml library to create an XML document and populate it with
  * the homography matrix for each wall in a 3x3 grid.
- */
-int saveHMATxml(std::string, const std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
-
-/**
- * @brief Loads the homography matrix array from an XML file.
  *
- * @param full_path Path to the XML file.
- * @param[out] out_HMAT_GRID_ARR Reference to 3x3 array of Homography matrices to be initialized with loaded values.
+ * @param H The homography matrix to save.
+ * @param mon_ind Monitor index for the active monitor.
+ * @param cal_ind Index of the active or desired calibration mode.
+ * @param grid_row Row index for the array of homography matrices to save.
+ * @param grid_col Column index for the array of homography matrices save.
  *
  * @return Integer status code [-1:error, 0:successful].
- *
- * @note Uses pugiXML for XML parsing.
  */
-int loadHMATxml(std::string, std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
+int xmlSaveHMAT(const cv::Mat &H, int mon_ind, int cal_ind, int grid_row, int grid_col);
+
+// TEMP
+int saveHMATxml(const std::string full_path,
+                const std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_HMAT_GRID_ARR);
 
 /**
- * @brief Saves the control point array to an XML file.
+ * Load a single cv::Mat homography matrix from an XML file.
  *
- * @param full_path The full path to the XML file.
- * @param _CP_GRID_ARR The control point array to save.
- * @return int Returns 0 on success, -1 on failure.
+ * @param mon_ind Monitor index for the active monitor.
+ * @param cal_ind Index of the active or desired calibration mode.
+ * @param grid_row Row index for the array of homography matrices to load.
+ * @param grid_col Column index for the array of homography matrices to load.
+ * @param[out] out_H The output homography matrix.
+ *
+ * @return Integer status code [-1:error, 0:successful].
  */
-int saveCPxml(const std::string &full_path, const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR);
+int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &out_H);
 
 /**
- * @brief Load the control point array from the XML file.
+ * @brief Saves homography matrices from a tuple to an XML file.
  *
- * @param full_path The full path to the XML file.
- * @param[out] Reference to the control point array to be initialized with loaded values.
+ * The function iterates over the calibration matrices stored within a tuple
+ * and saves each matrix to the XML file for given calibration mode index.
  *
- * @return int Returns 0 on success, -1 on failure.
+ * @param _HMAT_TUPLE Tuple containing calibration matrices for the maze.
+ * @param mon_ind Monitor index for the active monitor.
+ * @param cal_ind Calibration index to select the appropriate matrices.
+ *
+ * @return Integer status code [-1:error, 0:successful].
  */
-int loadCPxml(const std::string &full_path, std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR);
+int xmlSaveTupleHMATs(
+    const std::tuple<
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        cv::Mat> &_HMAT_TUPLE,
+    int mon_ind, int cal_ind);
+
+/**
+ * @brief Saves homography matrices from a tuple to an XML file.
+ *
+ * The function iterates over the calibration matrices stored within a tuple
+ * and saves each matrix to the XML file for given calibration mode index.
+ *
+ * @param mon_ind Monitor index for the active monitor.
+ * @param cal_ind Calibration index to select the appropriate matrices.
+ * @param[out] out_HMAT_TUPLE Reference to tuple to store calibration matrices.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int xmlLoadTupleHMATs(
+    int mon_ind, int cal_ind,
+    std::tuple<
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        cv::Mat> &_HMAT_TUPLE);
+
+/**
+ * @brief Extracts a homography matrix from a tuple.
+ *
+ * @param _HMAT_TUPLE The tuple containing homography matrices.
+ * @param cal_ind The index specifying which calibration matrix to retrieve.
+ * @param grid_row Row index for the array of homography matrices.
+ * @param grid_col Column index for the array of homography matrices.
+ * @param[out] out_H Reference to output cv::Mat where the result is stored.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int getTupleHMAT(
+    const std::tuple<
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        cv::Mat> &_HMAT_TUPLE,
+    int cal_ind, int grid_row, int grid_col, cv::Mat &out_H);
+
+/**
+ * @brief Puts a homography matrix into the tuple based.
+ *
+ * @param H The homography matrix to store.
+ * @param cal_ind The index specifying which calibration matrix to retrieve.
+ * @param grid_row Row index for the array of homography matrices.
+ * @param grid_col Column index for the array of homography matrices.
+ * @param[out] out_HMAT_TUPLE Reference to the tuple to store the homography matrix.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int setTupleHMAT(
+    const cv::Mat &H, int cal_ind, int grid_row, int grid_col,
+    std::tuple<
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        cv::Mat> &out_HMAT_TUPLE);
 
 /**
  * @brief Checks if a given set of vertices defines a valid quadrilateral.

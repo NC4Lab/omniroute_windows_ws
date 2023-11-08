@@ -46,11 +46,6 @@ const GLfloat cpSelectedMakerRadius = 0.005f;                          // Select
 std::array<std::array<cv::Point2f, 4>, 4> CP_GRID_ARR;
 
 /**
- * @brief  3x3 data contianer for storing the 3x3 homography matrix for each wall image
- */
-std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> HMAT_GRID_ARR;
-
-/**
  * @brief  OpenGL context objects.
  */
 std::array<MazeRenderContext, 1> PROJ_GL;
@@ -69,9 +64,9 @@ static struct FlagStruct
     bool loadXML = false;                 // Flag to indicate if the XML file needs to be loaded
     bool saveXML = false;                 // Flag to indicate if the XML file needs to be saved
     bool switchWindowMode = false;        // Flag to indicate if the window mode needs to be updated
-    bool initControlPointMarkers = false; // Flag to indicate if the control point markers need to be reinitialized
-    bool updateWallTextures = false;       // Flag to indicate if wall vertices, homography and texture need to be updated
-    bool fullscreenMode = false;           // Flag to indicate if the window is in full screen mode
+    bool initControlPoints = false; // Flag to indicate if the control point markers need to be reinitialized
+    bool updateWallTextures = false;      // Flag to indicate if wall vertices, homography and texture need to be updated
+    bool fullscreenMode = false;          // Flag to indicate if the window is in full screen mode
 } F;
 
 /**
@@ -79,9 +74,8 @@ static struct FlagStruct
  */
 static struct CountStruct
 {
-    int monitors;       // Number of monitors connected to the system
-    int wallImages = 4; // Number of wall images
-    int calModes = 3;   // Number of calibration modes
+    int monitors;             // Number of monitors connected to the system
+    const int wallImages = 4; // Number of wall images
 } N;
 
 /**
@@ -90,7 +84,7 @@ static struct CountStruct
 static struct IndStruct
 {
     int wallImage = 0; // Index of the image to be loaded
-    int calMode = 1;   // Index of the current calibration mode walls[0: left, 1: middle, 2: right]
+    int calMode = 1;   // Index of the current calibration mode walls[0: left, 1: middle, 2: right, 3:floor]
     int winMon = 0;    // Index of the active monitor to be loaded
     /**
      * @brief cpRowColMap maps a given row cpRowColMap[0] and column cpRowColMap[1] index to the 1D vector.
@@ -117,10 +111,10 @@ std::string calib_image_path = IMAGE_TOP_DIR_PATH + "/calibration";
 // Image file paths
 std::vector<std::string> wallImgPathVec = {
     // List of image file paths
-    calib_image_path + "/1_test_pattern.png",
-    calib_image_path + "/2_manu_pirate.png",
-    calib_image_path + "/3_earthlings.png",
-    calib_image_path + "/4_all_white.png",
+    calib_image_path + "/0_tp_wall.png",
+    calib_image_path + "/1_tp_wall.png",
+    calib_image_path + "/2_tp_wall.png",
+    calib_image_path + "/3_tp_wall.png",
 };
 std::vector<std::string> monImgPathVec = {
     // List of monitor number image file paths
@@ -142,6 +136,9 @@ std::vector<std::string> calImgPathVec = {
 std::vector<cv::Mat> wallImgMatVec; // Vector of wall image texture matrices
 std::vector<cv::Mat> monImgMatVec;  // Vector of monitor mode image texture matrices
 std::vector<cv::Mat> calImgMatVec;  // Vector of calibration mode image texture matrices
+
+// Scalar to store the floor image in cv::Mat format
+cv::Mat floorImgMat; // Floor image texture matrix
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -166,6 +163,7 @@ void callbackKeyBinding(GLFWwindow *, int, int, int, int);
 /**
  * @brief Initializes values for the verteces of the coner walls which will be used as calibraton control points.
  *
+ * @param cal_ind Index of the active or desired calibration mode.
  * @param[out] out_CP_GRID_ARR Reference to the 4x4 array containing the coordinates of the corner wall's vertices.
  *
  * @details
@@ -173,7 +171,7 @@ void callbackKeyBinding(GLFWwindow *, int, int, int, int);
  * The vertices for the entire projected image are calculated based on the dimensions that enclose
  * all control points (i.e., boundary dimensions in the control point plane).
  */
-void initCtrlPtCoords(std::array<std::array<cv::Point2f, 4>, 4> &);
+void initControlPoints(int, std::array<std::array<cv::Point2f, 4>, 4> &);
 
 /**
  * @brief Initialize OpenGL resources for CircleRenderer objects.
@@ -202,75 +200,93 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &, std::
 /**
  * @brief Computes updated Homography matrices for all walls.
  *
+ * @param cal_ind Index of the active or desired calibration mode.
  * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
- * @param[out] out_HMAT_GRID_ARR updated 3x3 array of Homography matrices used to warp the wall image.
+ * @param[out] out_HMAT_TUPLE Reference to tuple to store calibration matrices.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int updateWallHomographys(
-    const std::array<std::array<cv::Point2f, 4>, 4> &,
-    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
+    int cal_ind,
+    const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
+    std::tuple<
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        cv::Mat> &out_HMAT_TUPLE);
 
 /**
  * @brief Updates the stored warped wall image vertices based on the control point array.
  *
  * @param img_wall_mat cv::Mat image matrix for the base wall image.
- * @param img_mode_mon_mat cv::Mat image matrix for the monitor mode image.
- * @param img_mode_cal_mat cv::Mat image matrix for the calibration image.
- * @param _HMAT_GRID_ARR 3x3 array of Homography matrices used to warp the wall image.
+ * @param img_mon_mat cv::Mat image matrix for the monitor mode image.
+ * @param img_cal_mat cv::Mat image matrix for the calibration image.
+ * @param _HMAT_TUPLE Tuple containing calibration matrices for the maze.
  * @param[out] out_wallTexture OpenGL texture ID for the wall image.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int updateWallTextures(
-    cv::Mat, cv::Mat, cv::Mat,
-    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &,
-    GLuint &);
+    cv::Mat img_wall_mat, cv::Mat img_mon_mat, cv::Mat img_cal_mat,
+    const std::tuple<
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>,
+        cv::Mat> &_HMAT_TUPLE,
+    GLuint &out_WALL_TEXTURE_ID);
 
 /**
  * @brief Initializes the datasets for the application.
- * 
+ *
  * This function logs the setup parameters, initializes control
  * point coordinates, and computes wall homography matrices.
- * 
+ *
  * @throws std::runtime_error if initialization fails.
  */
-void appInitializeDatasets();
+void appInitDatasets();
 
 /**
  * @brief Loads the necessary images for the application.
- * 
+ *
  * This function uses OpenCV to load wall images, monitor number images,
  * and calibration mode images into memory.
- * 
+ *
  * @throws std::runtime_error if image loading fails.
  */
 void appLoadImages();
 
 /**
  * @brief Initializes OpenGL settings and creates shader programs.
- * 
+ *
  * This function sets up the graphics libraries, initializes the rendering
  * context, and creates shader programs for wall image and control point rendering.
- * 
+ *
  * @throws std::runtime_error if OpenGL initialization fails.
  */
-void appInitializeOpenGL();
+void appInitOpenGL();
+
+/**
+ * @brief Initalizes a new homography matrix xml file with
+ * identity matrices for all elements if none exists.
+ *
+ * @throws std::runtime_error if image loading fails.
+ */
+void appInitFileXML();
 
 /**
  * @brief The main loop of the application.
- * 
+ *
  * Handles the application's main loop, including checking keyboard callbacks,
  * updating window mode, and rendering frames. Exits on window close, escape key,
  * or when an error occurs.
- * 
+ *
  * @throws std::runtime_error if an error occurs during execution.
  */
 void appMainLoop();
 
 /**
  * @brief Cleans up resources upon application shutdown.
- * 
+ *
  * This function deletes the CircleRenderer class shader program, cleans up
  * OpenGL wall image objects, and terminates the graphics library.
  */

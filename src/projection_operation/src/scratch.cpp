@@ -410,7 +410,7 @@
 
 //         else if (key == GLFW_KEY_R)
 //         {
-//             F.initControlPointMarkers = true;
+//             F.initControlPoints = true;
 //         }
 //     }
 
@@ -426,13 +426,13 @@
 //             // Listen for arrow key input to switch through calibration modes
 //             if (key == GLFW_KEY_LEFT)
 //             {
-//                 I.calMode = (I.calMode > 0) ? I.calMode - 1 : N.calModes - 1;
-//                 F.initControlPointMarkers = true;
+//                 I.calMode = (I.calMode > 0) ? I.calMode - 1 : N_CAL_MODES - 1;
+//                 F.initControlPoints = true;
 //             }
 //             else if (key == GLFW_KEY_RIGHT)
 //             {
-//                 I.calMode = (I.calMode < N.calModes - 1) ? I.calMode + 1 : 0;
-//                 F.initControlPointMarkers = true;
+//                 I.calMode = (I.calMode < N_CAL_MODES - 1) ? I.calMode + 1 : 0;
+//                 F.initControlPoints = true;
 //             }
 //         }
 
@@ -601,19 +601,19 @@
 //     return 0;
 // }
 
-// int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_r_monitor_id, int mon_id_ind, bool is_fullscreen)
+// int updateWindowMonMode(GLFWwindow *p_window_id, int win_ind, GLFWmonitor **&pp_r_monitor_id, int mon_ind, bool is_fullscreen)
 // {
-//     static int imp_mon_id_ind_last = mon_id_ind;
+//     static int imp_mon_id_ind_last = mon_ind;
 //     static bool is_fullscreen_last = !is_fullscreen;
 
 //     // Check if monitor or fullscreen mode has changed
-//     if (imp_mon_id_ind_last == mon_id_ind && is_fullscreen_last == is_fullscreen)
+//     if (imp_mon_id_ind_last == mon_ind && is_fullscreen_last == is_fullscreen)
 //     {
 //         return 0;
 //     }
 
 //     // Get GLFWmonitor for active monitor
-//     GLFWmonitor *p_monitor_id = pp_r_monitor_id[mon_id_ind];
+//     GLFWmonitor *p_monitor_id = pp_r_monitor_id[mon_ind];
 
 //     // Update window size and position
 //     if (p_monitor_id)
@@ -622,7 +622,7 @@
 //         const GLFWvidmode *mode = glfwGetVideoMode(p_monitor_id);
 //         if (!mode)
 //         {
-//             ROS_ERROR("[WIN MODE] Failed to Get Video Mode: Monitor[%d]", mon_id_ind);
+//             ROS_ERROR("[WIN MODE] Failed to Get Video Mode: Monitor[%d]", mon_ind);
 //             return -1;
 //         }
 
@@ -630,7 +630,7 @@
 //         glfwSetWindowMonitor(p_window_id, p_monitor_id, 0, 0, mode->width, mode->height, mode->refreshRate);
 //         if (!p_monitor_id)
 //         {
-//             ROS_ERROR("[WIN MODE] Invalid Monitor Pointer: Monitor[%d]", mon_id_ind);
+//             ROS_ERROR("[WIN MODE] Invalid Monitor Pointer: Monitor[%d]", mon_ind);
 //             return -1;
 //         }
 
@@ -643,7 +643,7 @@
 //             // Validate monitor position
 //             if (monitor_x < 0 || monitor_y < 0)
 //             {
-//                 ROS_WARN("[WIN MODE] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_id_ind, monitor_x, monitor_y);
+//                 ROS_WARN("[WIN MODE] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_ind, monitor_x, monitor_y);
 //                 return 0;
 //             }
 
@@ -652,19 +652,19 @@
 //         }
 
 //         // Update window title
-//         std::string new_title = "Window[" + std::to_string(win_ind) + "] Monitor[" + std::to_string(mon_id_ind) + "]";
+//         std::string new_title = "Window[" + std::to_string(win_ind) + "] Monitor[" + std::to_string(mon_ind) + "]";
 //         glfwSetWindowTitle(p_window_id, new_title.c_str());
 
-//         ROS_INFO("[WIN MODE] Move Window: Monitor[%d] Format[%s]", mon_id_ind, is_fullscreen ? "fullscreen" : "windowed");
+//         ROS_INFO("[WIN MODE] Move Window: Monitor[%d] Format[%s]", mon_ind, is_fullscreen ? "fullscreen" : "windowed");
 //     }
 //     else
 //     {
-//         ROS_WARN("[WIN MODE] Failed Move Window: Monitor[%d] Format[%s]", mon_id_ind, is_fullscreen ? "fullscreen" : "windowed");
+//         ROS_WARN("[WIN MODE] Failed Move Window: Monitor[%d] Format[%s]", mon_ind, is_fullscreen ? "fullscreen" : "windowed");
 //         return 0;
 //     }
 
 //     // Update last monitor and fullscreen mode
-//     imp_mon_id_ind_last = mon_id_ind;
+//     imp_mon_id_ind_last = mon_ind;
 //     is_fullscreen_last = is_fullscreen;
 
 //     return 0;
@@ -1088,7 +1088,7 @@
 // }
 
 // int updateWallTextures(
-//     cv::Mat img_wall_mat, cv::Mat img_mode_mon_mat, cv::Mat img_mode_cal_mat,
+//     cv::Mat img_wall_mat, cv::Mat img_mon_mat, cv::Mat img_cal_mat,
 //     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_HMAT_GRID_ARR,
 //     GLuint &out_WALL_TEXTURE_ID)
 // {
@@ -1114,11 +1114,11 @@
 //             {
 //                 ;
 //                 // Merge test pattern and active monitor image
-//                 if (mergeImgMat(img_mode_mon_mat, img_copy) != 0)
+//                 if (mergeImgMat(img_mon_mat, img_copy) != 0)
 //                     return -1;
 
 //                 // Merge previous image and active calibration image
-//                 if (mergeImgMat(img_mode_cal_mat, img_copy) != 0)
+//                 if (mergeImgMat(img_cal_mat, img_copy) != 0)
 //                     return -1;
 //             }
 
@@ -1276,7 +1276,7 @@
 //     // --------------- VARIABLE SETUP ---------------
 
 //     // Initialize control point coordinate dataset
-//     initCtrlPtCoords(CP_GRID_ARR);
+//     initControlPoints(CP_GRID_ARR);
 
 //     // Initialize wall homography matrices array
 //     if (updateWallHomographys(CP_GRID_ARR, HMAT_GRID_ARR) != 0)
@@ -1329,10 +1329,10 @@
 //         }
 
 //         // Initialize/reinitialize control point coordinate dataset
-//         if (F.initControlPointMarkers)
+//         if (F.initControlPoints)
 //         {
-//             initCtrlPtCoords(CP_GRID_ARR);
-//             F.initControlPointMarkers = false;
+//             initControlPoints(CP_GRID_ARR);
+//             F.initControlPoints = false;
 //         }
 
 //         // Recompute wall parameters and update wall image texture

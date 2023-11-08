@@ -23,31 +23,31 @@ void appLoadData()
         throw std::runtime_error("[appLoadData] Failed to load wall images");
 }
 
-void appInitializeOpenGL()
+void appInitOpenGL()
 {
     for (int proj_i = 0; proj_i < N.projectors; ++proj_i)
     {
         // Initialize GLFW and OpenGL settings
         if (MazeRenderContext::SetupGraphicsLibraries(N.monitors) < 0)
-            throw std::runtime_error("[appInitializeOpenGL] Failed to initialize graphics");
+            throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
 
         // Initialze render context for each projector
         if (PROJ_GL_ARR[proj_i].initContext(0, 0, callbackKeyBinding) < 0)
-            throw std::runtime_error("[appInitializeOpenGL] Failed to initialize render context");
+            throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
 
         // Initialize OpenGL wall image objects
         if (initWallRenderObjects(PROJ_GL_ARR[proj_i],
                                   WALL_GL_VERTICES, sizeof(WALL_GL_VERTICES),
                                   WALL_GL_INDICES, sizeof(WALL_GL_INDICES)) < 0)
-            throw std::runtime_error("[appInitializeOpenGL] Failed to initialize opengl wall image objects");
+            throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
 
         // Update monitor and window mode settings
         if (PROJ_GL_ARR[proj_i].switchWindowMode(projMonIndArr[proj_i], F.fullscreenMode) < 0)
-            throw std::runtime_error("[appInitializeOpenGL] Failed Initial update of window monitor mode");
+            throw std::runtime_error("[appInitOpenGL] Failed Initial update of window monitor mode");
 
         // Create the shader program for wall image rendering
         if (PROJ_GL_ARR[proj_i].compileAndLinkShaders(WALL_VERTEX_SOURCE, WALL_FRAGMENT_SOURCE) < 0)
-            throw std::runtime_error("[appInitializeOpenGL] Failed to compile and link wall shader");
+            throw std::runtime_error("[appInitOpenGL] Failed to compile and link wall shader");
     }
 
     ROS_INFO("SETUP: OpenGL Initialized");
@@ -70,7 +70,7 @@ void appMainLoop()
     //         // Save XML file
     //         if (F.saveXML)
     //         {
-    //             status = saveHMATxml(file_path_hmat, HMAT_GRID_ARR);
+    //             status = xmlSaveHMAT(file_path_hmat, HMAT_GRID_ARR);
     //             status = saveCPxml(file_path_cp, CP_GRID_ARR);
     //         }
     //         F.saveXML = false;
@@ -78,7 +78,7 @@ void appMainLoop()
     //         // Load XML file
     //         if (F.loadXML)
     //         {
-    //             status = loadHMATxml(file_path_hmat, HMAT_GRID_ARR);
+    //             status = xmlLoadHMAT(file_path_hmat, HMAT_GRID_ARR);
     //             status = loadCPxml(file_path_cp, CP_GRID_ARR);
     //             F.updateWallTextures = true;
     //         }
@@ -186,7 +186,7 @@ int main(int argc, char **argv)
     try
     {
         appLoadData();
-        appInitializeOpenGL();
+        appInitOpenGL();
         appMainLoop();
     }
     catch (const std::exception &e)
