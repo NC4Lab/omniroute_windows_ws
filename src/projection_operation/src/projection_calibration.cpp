@@ -25,7 +25,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // Set/unset Fullscreen
         if (key == GLFW_KEY_F)
         {
-            F.setFullscreen = !F.setFullscreen;
+            F.fullscreenMode = !F.fullscreenMode;
             F.switchWindowMode = true;
         }
 
@@ -80,22 +80,22 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         else if (key == GLFW_KEY_F1)
         {
             I.wallImage = N.wallImages > 0 ? 0 : I.wallImage;
-            F.updateWallTexture = true;
+            F.updateWallTextures = true;
         }
         else if (key == GLFW_KEY_F2)
         {
             I.wallImage = N.wallImages > 1 ? 1 : I.wallImage;
-            F.updateWallTexture = true;
+            F.updateWallTextures = true;
         }
         else if (key == GLFW_KEY_F3)
         {
             I.wallImage = N.wallImages > 2 ? 2 : I.wallImage;
-            F.updateWallTexture = true;
+            F.updateWallTextures = true;
         }
         else if (key == GLFW_KEY_F4)
         {
             I.wallImage = N.wallImages > 3 ? 3 : I.wallImage;
-            F.updateWallTexture = true;
+            F.updateWallTextures = true;
         }
 
         // ---------- Control Point Reset [R] ----------
@@ -163,7 +163,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             {
                 // Set flag to update the wall texture if the maze vertex was changed
                 /// @note this is ensures the mode images are udated to the new
-                F.updateWallTexture = true;
+                F.updateWallTextures = true;
 
                 // Set the wall vertex to the ortin if the maze vertex is changed
                 for (int i = 0; i < 2; ++i)
@@ -224,22 +224,22 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             if (key == GLFW_KEY_LEFT)
             {
                 CP_GRID_ARR[mv_ind][wv_ind].x -= pos_inc; // Move left
-                F.updateWallTexture = true;
+                F.updateWallTextures = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
                 CP_GRID_ARR[mv_ind][wv_ind].x += pos_inc; // Move right
-                F.updateWallTexture = true;
+                F.updateWallTextures = true;
             }
             else if (key == GLFW_KEY_UP)
             {
                 CP_GRID_ARR[mv_ind][wv_ind].y -= pos_inc; // Move up
-                F.updateWallTexture = true;
+                F.updateWallTextures = true;
             }
             else if (key == GLFW_KEY_DOWN)
             {
                 CP_GRID_ARR[mv_ind][wv_ind].y += pos_inc; // Move down
-                F.updateWallTexture = true;
+                F.updateWallTextures = true;
             }
 
             // Shift all control points if origin moved
@@ -379,7 +379,83 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRI
     return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "renderControlPoints");
 }
 
-int updateWallTexture(
+int updateWallHomographys(
+    const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &out_HMAT_GRID_ARR)
+{
+    // Define origin plane vertices
+    std::vector<cv::Point2f> source_vertices_pxl = {
+        cv::Point2f(0.0f, 0.0f),                                  // Top-left
+        cv::Point2f(WALL_IMAGE_WIDTH_PXL, 0.0f),                  // Top-right
+        cv::Point2f(WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL), // Bottom-right
+        cv::Point2f(0.0f, WALL_IMAGE_HEIGHT_PXL)};                // Bottom-left
+
+    // // TEMP
+    // ROS_INFO("Source Vertices:");
+    // dbLogQuadVertices(source_vertices_pxl);
+
+    // Iterate trough grid/wall rows
+    for (float gr_i = 0; gr_i < MAZE_SIZE; gr_i++) // image bottom to top
+    {
+        // Iterate trough grid/wall columns
+        for (float gc_i = 0; gc_i < MAZE_SIZE; gc_i++) // image left to right
+        {
+            std::vector<cv::Point2f> target_vertices_ndc(4);
+            for (int p_i = 0; p_i < 4; p_i++)
+            {
+                // Get the wall vertex values for each maze corner for the interpolation function
+                ///@note that y values must be flipped to account for the image origin being in the top-left corner
+                cv::Point2f p_a = _CP_GRID_ARR[0][p_i]; // bottom-left interp == top left NDC
+                cv::Point2f p_b = _CP_GRID_ARR[1][p_i]; // bottom-right interp == top right NDC
+                cv::Point2f p_c = _CP_GRID_ARR[3][p_i]; // top-left interp == bottom left NDC
+                cv::Point2f p_d = _CP_GRID_ARR[2][p_i]; // top-right interp == bottom right NDC
+
+                // Get the interpolated vertex x-coordinate
+                cv::Point2f p_interp(
+                    bilinearInterpolation(p_a.x, p_b.x, p_c.x, p_d.x, gr_i, gc_i, MAZE_SIZE),  // x
+                    bilinearInterpolation(p_a.y, p_b.y, p_c.y, p_d.y, gr_i, gc_i, MAZE_SIZE)); // y
+
+                // Store the warped vertex coordinates
+                target_vertices_ndc[p_i] = p_interp;
+            }
+
+            // Convert to pixel coordinates for OpenCV's findHomography function
+            std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
+
+            // Check that the target plane vertices are valid
+            int resp = checkQuadVertices(target_vertices_pxl);
+            if (resp < 0)
+            {
+                ROS_WARN("[updateWallHomographys] Target Plane Vertices Invalid: Reason[%s]",
+                         resp == -1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
+                return -1;
+            }
+
+            // Use OpenCV's findHomography function to compute the homography matrix
+            cv::Mat H = cv::findHomography(source_vertices_pxl, target_vertices_pxl);
+
+            // Check for valid homography matrix
+            if (H.empty())
+            {
+                ROS_ERROR("[updateWallHomographys] Failed to Compute Homography Matrix");
+                return -1;
+            }
+
+            // Store the homography matrix
+            out_HMAT_GRID_ARR[gr_i][gc_i] = H;
+        }
+    }
+
+    // TEMP
+    // dbLogCtrlPointCoordinates(_CP_GRID_ARR);
+    // TEMP
+    // return -1;
+
+    // Return success
+    return 0;
+}
+
+int updateWallTextures(
     cv::Mat img_wall_mat, cv::Mat img_mode_mon_mat, cv::Mat img_mode_cal_mat,
     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_HMAT_GRID_ARR,
     GLuint &out_WALL_TEXTURE_ID)
@@ -440,121 +516,85 @@ int updateWallTexture(
     return loadTexture(im_wall_merge, out_WALL_TEXTURE_ID);
 }
 
-int main(int argc, char **argv)
+void appInitializeDatasets()
 {
-
-    //  _______________ SETUP _______________
-
-    // ROS Initialization
-    ros::init(argc, argv, "projection_calibration", ros::init_options::AnonymousName);
-    ros::NodeHandle n;
-    ros::NodeHandle nh("~");
-    ROS_INFO("RUNNING MAIN");
-
     // Log setup parameters
-    ROS_INFO("[main] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
-    ROS_INFO("[main] Display: Width[%d] Height[%d] AR[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, WINDOW_ASPECT_RATIO);
-    ROS_INFO("[main] Wall (Pxl): Width[%d] Height[%d]", WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL);
-    ROS_INFO("[main] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_IMAGE_WIDTH_NDC, WALL_IMAGE_HEIGHT_NDC);
-    ROS_INFO("[main] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
-
-    // --------------- VARIABLE SETUP ---------------
+    ROS_INFO("[appInitializeDatasets] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
+    ROS_INFO("[appInitializeDatasets] Display: Width[%d] Height[%d] AR[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, WINDOW_ASPECT_RATIO);
+    ROS_INFO("[appInitializeDatasets] Wall (Pxl): Width[%d] Height[%d]", WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL);
+    ROS_INFO("[appInitializeDatasets] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_IMAGE_WIDTH_NDC, WALL_IMAGE_HEIGHT_NDC);
+    ROS_INFO("[appInitializeDatasets] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
 
     // Initialize control point coordinate dataset
     initCtrlPtCoords(CP_GRID_ARR);
 
+    // Initialize homography matrices array
+    cv::Mat eye_mat = cv::Mat::eye(3, 3, CV_64F);
+    for (float gr_i = 0; gr_i < MAZE_SIZE; gr_i++)
+        for (float gc_i = 0; gc_i < MAZE_SIZE; gc_i++)
+            HMAT_GRID_ARR[gr_i][gc_i] = eye_mat;
+
     // Initialize wall homography matrices array
-    if (updateHomography(CP_GRID_ARR, HMAT_GRID_ARR) < 0)
-    {
-        ROS_ERROR("[main] Failed to initialize wall parameters");
-        return -1;
-    }
+    if (updateWallHomographys(CP_GRID_ARR, HMAT_GRID_ARR) < 0)
+        throw std::runtime_error("[appInitializeDatasets] Failed to initialize wall parameters");
 
-    // --------------- OpenGL SETUP ---------------
+    ROS_INFO("SETUP: Data Structures Initialized");
+}
 
-    // Declare MazeRenderContext instance
-    std::array<MazeRenderContext, 1> RenContx;
+void appLoadImages()
+{
+    // Load images using OpenCV
+    if (loadImgMat(wallImgPathVec, wallImgMatVec) < 0)
+        throw std::runtime_error("[appLoadImages] Failed to load wall images");
+    if (loadImgMat(monImgPathVec, monImgMatVec) < 0)
+        throw std::runtime_error("[appLoadImages] Failed to load monitor number images");
+    if (loadImgMat(calImgPathVec, calImgMatVec) < 0)
+        throw std::runtime_error("[appLoadImages] Failed to load calibration mode images");
 
+    ROS_INFO("SETUP: Images Loaded");
+}
+
+void appInitializeOpenGL()
+{
     // Initialize GLFW and OpenGL settings
     if (MazeRenderContext::SetupGraphicsLibraries(N.monitors) < 0)
-    {
-        ROS_ERROR("[main] Failed to initialize graphics");
-        return -1;
-    }
+        throw std::runtime_error("[appInitializeOpenGL] Failed to initialize graphics");
 
     // Initialze render context
-    /// @note this is where we would loop through our windows if there were more
-    if (RenContx[0].initContext(0, 0, callbackKeyBinding) < 0)
-    {
-        ROS_ERROR("[main] Failed to initialize render context");
-        return -1;
-    }
+    if (PROJ_GL[0].initContext(0, 0, callbackKeyBinding) < 0)
+        throw std::runtime_error("[appInitializeOpenGL] Failed to initialize render context");
 
     // Initialize OpenGL wall image objects
-    if (initWallRenderObjects(RenContx[0],
+    if (initWallRenderObjects(PROJ_GL[0],
                               WALL_GL_VERTICES, sizeof(WALL_GL_VERTICES),
                               WALL_GL_INDICES, sizeof(WALL_GL_INDICES)) < 0)
-    {
-        ROS_ERROR("[main] Failed to initialize opengl wall image objects");
-        return -1;
-    }
+        throw std::runtime_error("[appInitializeOpenGL] Failed to initialize opengl wall image objects");
 
     // Update monitor and window mode settings
-    /// @note consider moving into class setup
-    if (RenContx[0].switchWindowMode(I.winMon, F.setFullscreen) < 0)
-    {
-        ROS_ERROR("[main] Failed Initial update of window monitor mode");
-        return -1;
-    }
+    if (PROJ_GL[0].switchWindowMode(I.winMon, F.fullscreenMode) < 0)
+        throw std::runtime_error("[appInitializeOpenGL] Failed Initial update of window monitor mode");
 
     // Create the shader program for wall image rendering
-    if (RenContx[0].compileAndLinkShaders(wallVertexSource, wallFragmentSource) < 0)
-    {
-        ROS_ERROR("[main] Failed to compile and link wall shader");
-        return -1;
-    }
+    if (PROJ_GL[0].compileAndLinkShaders(WALL_VERTEX_SOURCE, WALL_FRAGMENT_SOURCE) < 0)
+        throw std::runtime_error("[appInitializeOpenGL] Failed to compile and link wall shader");
 
     // Create the shader program for CircleRenderer class control point rendering
     if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_ASPECT_RATIO) < 0)
-    {
-        ROS_ERROR("[main] Failed to compile and link circlerenderer class shader");
-        return -1;
-    }
+        throw std::runtime_error("[appInitializeOpenGL] Failed to compile and link circlerenderer class shader");
+
     // Initialize the CircleRenderer class objects array
-    if (initCircleRendererObjects(CP_GRID_ARR, CP_RENDERERS) < 0)
-    {
-        ROS_ERROR("[main] Failed to initialize control point variables");
-        return -1;
-    }
-
-    // --------------- RENDER IMAGE LOADING  ---------------
-
-    // Load images using OpenCV
-    if (loadImgMat(wallImgPathVec, wallImgMatVec) < 0)
-    {
-        ROS_ERROR("[main] Failed to load wall images");
-        return -1;
-    }
-    if (loadImgMat(monImgPathVec, monImgMatVec) < 0)
-    {
-        ROS_ERROR("[main] Failed to load monitor number images");
-        return -1;
-    }
-    if (loadImgMat(calImgPathVec, calImgMatVec) < 0)
-    {
-        ROS_ERROR("[main] Failed to load calibration mode images");
-        return -1;
-    }
+    if (initCircleRendererObjects(CP_GRID_ARR, CP_CIRCREN_ARR) < 0)
+        throw std::runtime_error("[appInitializeOpenGL] Failed to initialize control point variables");
 
     // Initialize wall image texture
-    if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], HMAT_GRID_ARR, RenContx[0].textureID) < 0)
-    {
-        ROS_ERROR("[main] Failed to initialize wall texture");
-        return -1;
-    }
+    if (updateWallTextures(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], HMAT_GRID_ARR, PROJ_GL[0].textureID) < 0)
+        throw std::runtime_error("[appInitializeOpenGL] Failed to initialize wall texture");
 
-    // _______________ MAIN LOOP _______________
+    ROS_INFO("SETUP: OpenGL Initialized");
+}
 
+void appMainLoop()
+{
     int status = 0;
     while (status == 0)
     {
@@ -564,8 +604,8 @@ int main(int argc, char **argv)
         // Load/save XML file
         if (F.loadXML || F.saveXML)
         {
-            std::string file_path_hmat = frmtFilePathxml(0, I.winMon, I.calMode, CONFIG_DIR_PATH);
-            std::string file_path_cp = frmtFilePathxml(1, I.winMon, I.calMode, CONFIG_DIR_PATH);
+            std::string file_path_hmat = frmtFilePathXML(0, I.winMon, I.calMode, CONFIG_DIR_PATH);
+            std::string file_path_cp = frmtFilePathXML(1, I.winMon, I.calMode, CONFIG_DIR_PATH);
 
             // Save XML file
             if (F.saveXML)
@@ -580,17 +620,17 @@ int main(int argc, char **argv)
             {
                 status = loadHMATxml(file_path_hmat, HMAT_GRID_ARR);
                 status = loadCPxml(file_path_cp, CP_GRID_ARR);
-                F.updateWallTexture = true;
+                F.updateWallTextures = true;
             }
             F.loadXML = false;
 
             // Flash the background to indicate the file was loaded/saved
             if (status >= 0)
-                RenContx[0].flashBackgroundColor(cv::Scalar(0.0f, 0.25f, 0.0f), 500);
+                PROJ_GL[0].flashBackgroundColor(cv::Scalar(0.0f, 0.25f, 0.0f), 500);
             else
             {
-                RenContx[0].flashBackgroundColor(cv::Scalar(0.25f, 0.0f, 0.0f), 500);
-                ROS_ERROR("[main] Failed to load/save XML file");
+                PROJ_GL[0].flashBackgroundColor(cv::Scalar(0.25f, 0.0f, 0.0f), 500);
+                throw std::runtime_error("[appMainLoop] Error return from load/save XML function");
                 break;
             }
         }
@@ -598,12 +638,9 @@ int main(int argc, char **argv)
         // Update the window monitor and mode
         if (F.switchWindowMode)
         {
-            if (RenContx[0].switchWindowMode(I.winMon, F.setFullscreen) < 0)
-            {
-                ROS_ERROR("[main] Update window monitor mode threw an error");
-                status = -1;
-                break;
-            }
+            if (PROJ_GL[0].switchWindowMode(I.winMon, F.fullscreenMode) < 0)
+                throw std::runtime_error("[appMainLoop] Error returned from updateWallHomographys");
+
             F.switchWindowMode = false;
         }
 
@@ -612,108 +649,105 @@ int main(int argc, char **argv)
         {
             initCtrlPtCoords(CP_GRID_ARR);
             F.initControlPointMarkers = false;
-            F.updateWallTexture = true;
+            F.updateWallTextures = true;
         }
 
         // Recompute wall parameters and update wall image texture
-        if (F.updateWallTexture)
+        if (F.updateWallTextures)
         {
             // Update wall homography matrices array
-            if (updateHomography(CP_GRID_ARR, HMAT_GRID_ARR) < 0)
-            {
-                ROS_ERROR("[main] Update of wall vertices datasets failed");
-                status = -1;
-                break;
-            }
+            if (updateWallHomographys(CP_GRID_ARR, HMAT_GRID_ARR) < 0)
+                throw std::runtime_error("[appMainLoop] Error returned from updateWallHomographys");
 
             // Update wall image texture
-            if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], HMAT_GRID_ARR, RenContx[0].textureID) < 0)
-            {
-                ROS_ERROR("[main] Update of wall homography datasets failed");
-                status = -1;
-                break;
-            }
-            F.updateWallTexture = false;
+            if (updateWallTextures(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], HMAT_GRID_ARR, PROJ_GL[0].textureID) < 0)
+                throw std::runtime_error("[appMainLoop] Error returned from updateWallTextures");
+
+            F.updateWallTextures = false;
         }
 
         // --------------- Handle Image Processing for Next Frame ---------------
 
-        // Prepare the frame for rendering (clear the back buffer)
-        if (RenContx[0].prepareFrame() < 0)
-        {
-            status = -1;
-            break;
-        }
+        // Prepare the frame for rendering (make context clear the back buffer)
+        if (PROJ_GL[0].initWindow() < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from MazeRenderContext::initWindow");
 
         // Make sure winsow always stays on top in fullscreen mode
-        RenContx[0].setWindowStackOrder(F.setFullscreen);
+        if (PROJ_GL[0].setWindowStackOrder(F.fullscreenMode) < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from MazeRenderContext::setWindowStackOrder");
 
         // Draw/update wall images
-        if (renderWallImage(RenContx[0]) < 0)
-        {
-            ROS_ERROR("[main] Draw walls threw an error");
-            status = -1;
-            break;
-        }
+        if (renderWallImage(PROJ_GL[0]) < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from renderWallImage");
 
         // Draw/update control point markers
-        if (renderControlPoints(CP_GRID_ARR, CP_RENDERERS) < 0)
-        {
-            ROS_ERROR("[main] Draw control point threw an error");
-            status = -1;
-            break;
-        }
+        if (renderControlPoints(CP_GRID_ARR, CP_CIRCREN_ARR) < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from renderControlPoints");
 
         // Swap buffers and poll events
-        if (RenContx[0].bufferSwapPoll() < 0)
-        {
-            status = -1;
-            break;
-        }
+        if (PROJ_GL[0].bufferSwapPoll() < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from MazeRenderContext::bufferSwapPoll");
 
         // Check if ROS shutdown
         if (!ros::ok())
-        {
-            ROS_ERROR("[main] Unextpected ROS shutdown");
-            status = -1;
-            break;
-        }
+            throw std::runtime_error("[appMainLoop] Unextpected ROS shutdown");
 
         // Check for exit
-        status = RenContx[0].checkExitRequest();
+        status = PROJ_GL[0].checkExitRequest();
+        if (status < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from MazeRenderContext::checkExitRequest");
     }
 
-    // _______________ CLEANUP _______________
-    ROS_INFO("SHUTTING DOWN");
-
     // Check which condition caused the loop to exit
-    if (status < 0)
-        ROS_INFO("[main] Loop Terminated:  Error thrown");
-    else if (status == 1)
-        ROS_INFO("[main] Loop Terminated:  GLFW window should close");
+    if (status == 1)
+        ROS_INFO("[appMainLoop] Loop Terminated:  GLFW window should close");
     else if (status == 2)
-        ROS_INFO("[main] Loop Terminated:  Escape key was pressed");
+        ROS_INFO("[appMainLoop] Loop Terminated:  Escape key was pressed");
     else
-        ROS_INFO("[main] Loop Terminated:  Reason unknown");
+        ROS_INFO("[appMainLoop] Loop Terminated:  Reason unknown");
+}
+
+void appCleanup()
+{
+    ROS_INFO("[appCleanup] Shutting Down Projection Calibration Node...");
 
     // Delete CircleRenderer class shader program
     if (CircleRenderer::CleanupClassResources() < 0)
-        ROS_WARN("[main] Failed to delete CircleRenderer shader program");
+        ROS_WARN("[appCleanup] Failed to delete CircleRenderer shader program");
     else
-        ROS_INFO("[main] CircleRenderer shader program deleted successfully");
+        ROS_INFO("[appCleanup] CircleRenderer shader program deleted successfully");
 
     // Clean up OpenGL wall image objects
-    if (RenContx[0].cleanupContext() != 0)
-        ROS_WARN("[main] Error during cleanup of MazeRenderContext instance");
+    if (PROJ_GL[0].cleanupContext() != 0)
+        ROS_WARN("[appCleanup] Error during cleanup of MazeRenderContext instance");
     else
-        ROS_INFO("[main] MazeRenderContext instance cleaned up successfully");
+        ROS_INFO("[appCleanup] MazeRenderContext instance cleaned up successfully");
 
     // Terminate graphics
     if (MazeRenderContext::CleanupGraphicsLibraries() < 0)
-        ROS_WARN("[main] Failed to terminate GLFW library");
+        ROS_WARN("[appCleanup] Failed to terminate GLFW library");
     else
-        ROS_INFO("[main] GLFW library terminated successfully");
+        ROS_INFO("[appCleanup] GLFW library terminated successfully");
+}
 
-    // Return success
-    return status;
+int main(int argc, char **argv)
+{
+    ros::init(argc, argv, "projection_calibration", ros::init_options::AnonymousName);
+    ros::NodeHandle n;
+    ros::NodeHandle nh("~");
+
+    try
+    {
+        appInitializeDatasets();
+        appLoadImages();
+        appInitializeOpenGL();
+        appMainLoop();
+    }
+    catch (const std::exception &e)
+    {
+        ROS_ERROR("!!EXCEPTION CAUGHT!!: %s", e.what());
+        void appCleanup();
+        return -1;
+    }
+    return 0;
 }

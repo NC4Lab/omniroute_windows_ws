@@ -379,10 +379,19 @@ int MazeRenderContext::cleanupContext(bool log_errors)
     return status ? -1 : 0;
 }
 
-int MazeRenderContext::prepareFrame()
+int MazeRenderContext::initWindow()
 {
+    int status = 0;
+
+    // Set the GLFW window as the current OpenGL context
+    glfwMakeContextCurrent(windowID);
+    status = CheckErrorGLFW(__LINE__, __FILE__);
+
+    // Clear the back buffer for a new frame
     glClear(GL_COLOR_BUFFER_BIT);
-    return CheckErrorOpenGL(__LINE__, __FILE__);
+    status = CheckErrorOpenGL(__LINE__, __FILE__);
+
+    return status;
 }
 
 int MazeRenderContext::bufferSwapPoll()
@@ -1173,7 +1182,7 @@ void dbLogHomMat(const cv::Mat &r_HMAT)
     ROS_INFO("==================================");
 }
 
-std::string frmtFilePathxml(int d_type, int mon_id_ind, int mode_cal_ind, std::string config_dir_path)
+std::string frmtFilePathXML(int d_type, int mon_id_ind, int mode_cal_ind, std::string config_dir_path)
 {
     // Get the sufix based on the data being saved
     std::string sufix = d_type == 0 ? "_hmat" : "_cp";
@@ -1464,82 +1473,6 @@ float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, 
 
     // Return the final interpolated value.
     return interp_val;
-}
-
-int updateHomography(
-    const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
-    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &out_HMAT_GRID_ARR)
-{
-    // Define origin plane vertices
-    std::vector<cv::Point2f> source_vertices_pxl = {
-        cv::Point2f(0.0f, 0.0f),                                  // Top-left
-        cv::Point2f(WALL_IMAGE_WIDTH_PXL, 0.0f),                  // Top-right
-        cv::Point2f(WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL), // Bottom-right
-        cv::Point2f(0.0f, WALL_IMAGE_HEIGHT_PXL)};                // Bottom-left
-
-    // // TEMP
-    // ROS_INFO("Source Vertices:");
-    // dbLogQuadVertices(source_vertices_pxl);
-
-    // Iterate trough grid/wall rows
-    for (float gr_i = 0; gr_i < MAZE_SIZE; gr_i++) // image bottom to top
-    {
-        // Iterate trough grid/wall columns
-        for (float gc_i = 0; gc_i < MAZE_SIZE; gc_i++) // image left to right
-        {
-            std::vector<cv::Point2f> target_vertices_ndc(4);
-            for (int p_i = 0; p_i < 4; p_i++)
-            {
-                // Get the wall vertex values for each maze corner for the interpolation function
-                ///@note that y values must be flipped to account for the image origin being in the top-left corner
-                cv::Point2f p_a = _CP_GRID_ARR[0][p_i]; // bottom-left interp == top left NDC
-                cv::Point2f p_b = _CP_GRID_ARR[1][p_i]; // bottom-right interp == top right NDC
-                cv::Point2f p_c = _CP_GRID_ARR[3][p_i]; // top-left interp == bottom left NDC
-                cv::Point2f p_d = _CP_GRID_ARR[2][p_i]; // top-right interp == bottom right NDC
-
-                // Get the interpolated vertex x-coordinate
-                cv::Point2f p_interp(
-                    bilinearInterpolation(p_a.x, p_b.x, p_c.x, p_d.x, gr_i, gc_i, MAZE_SIZE),  // x
-                    bilinearInterpolation(p_a.y, p_b.y, p_c.y, p_d.y, gr_i, gc_i, MAZE_SIZE)); // y
-
-                // Store the warped vertex coordinates
-                target_vertices_ndc[p_i] = p_interp;
-            }
-
-            // Convert to pixel coordinates for OpenCV's findHomography function
-            std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
-
-            // Check that the target plane vertices are valid
-            int resp = checkQuadVertices(target_vertices_pxl);
-            if (resp < 0)
-            {
-                ROS_WARN("[updateHomography] Target Plane Vertices Invalid: Reason[%s]",
-                         resp == -1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
-                return -1;
-            }
-
-            // Use OpenCV's findHomography function to compute the homography matrix
-            cv::Mat H = cv::findHomography(source_vertices_pxl, target_vertices_pxl);
-
-            // Check for valid homography matrix
-            if (H.empty())
-            {
-                ROS_ERROR("[updateHomography] Failed to Compute Homography Matrix");
-                return -1;
-            }
-
-            // Store the homography matrix
-            out_HMAT_GRID_ARR[gr_i][gc_i] = H;
-        }
-    }
-
-    // TEMP
-    // dbLogCtrlPointCoordinates(_CP_GRID_ARR);
-    // TEMP
-    // return -1;
-
-    // Return success
-    return 0;
 }
 
 int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Mat> &out_img_mat_vec)

@@ -15,117 +15,120 @@
 // ================================================== VARIABLES ==================================================
 
 /**
- * @class Circle
- * @brief Encapsulates a circle's properties and its rendering.
- *
- * This class is designed to represent a circle with various attributes such as
- * position, color, and scale. It also provides functionality to compute vertex
- * data for rendering the circle in OpenGL and update its transformation matrix.
+ * @brief Struct for holding the 3x3 arrays of homography matrix for each calibratrion mode.
  */
-class Circle
+struct HomographyStruct
 {
-public:
-    /**
-     * @brief Vertex shader source code with aspect ratio correction.
-     *
-     * @note The shader program will reverse the y axis to match image coordinate systems used by OpenCV.
-     *
-     * @details
-     * This GLSL vertex shader code corrects for the aspect ratio of the display
-     * when rendering circle vertices.
-     *
-     * - `#version 330 core`: Specifies that we're using GLSL version 3.30 with the core profile.
-     * - `layout (location = 0) in vec2 aPos;`: Defines the input vertex attribute at location 0.
-     * - `uniform mat4 transform;`: A uniform for the transformation matrix.
-     * - `uniform float aspectRatio;`: A uniform for the aspect ratio correction. Also flips the y-coordinate.
-     * - `void main() { ... }`: The main function that applies transformation and aspect ratio correction.
-     *
-     * Use this shader source by compiling it into a vertex shader object and linking it into a shader program.
-     * Set the `aspectRatio` uniform before drawing to correct the y-coordinate of vertices based on the display aspect ratio.
-     */
-    static constexpr const char *vertexShaderSource = R"glsl(
-    #version 330 core
-    layout (location = 0) in vec2 aPos;
-    uniform mat4 transform;
-    uniform float aspectRatio; // Uniform for the aspect ratio
-
-    void main() {
-        vec2 correctedPos = aPos;
-        correctedPos.y *= -aspectRatio; // Flip the y-coordinate and correct the aspect ratio
-        gl_Position = transform * vec4(correctedPos, 0.0, 1.0);
-    }
-    )glsl";
-    /**
-     * @brief Fragment shader source code for circle coloring.
-     *
-     * @details
-     * This is a GLSL fragment shader source code stored as a C++ raw string literal.
-     * - `#version 330 core`: Specifies that the GLSL version is 3.30 and we're using the core profile.
-     * - `out vec4 FragColor;`: Declares an output variable for the final fragment color.
-     * - `uniform vec4 color;`: Declares a uniform variable for the color, which can be set dynamically via OpenGL calls.
-     * - `void main() { ... }`: Main function of the fragment shader, sets the fragment color to the uniform color value.
-     */
-    static constexpr const char *fragmentShaderSource = R"glsl(
-        #version 330 core
-        out vec4 FragColor;
-        uniform vec4 color;
-
-        void main() {
-            FragColor = color;
-        }
-    )glsl";
-
-    std::vector<float> circVertices; // Vertex data for the circle's geometry.
-    GLuint VAO;                      // Vertex Array Object for the circle.
-    GLuint VBO;                      // Vertex Buffer Object for the circle's vertices.
-    int circIndex;                   // Index of the circle, used for identification.
-    cv::Scalar circColor;            // Color of the circle.
-    cv::Point2f circPosition;        // Position of the circle in 2D space.
-    float cirRadius;                 // Radius of the circle.
-    float circRotationAngle;         // Rotation angle of the circle in degrees.
-    cv::Point2f circScalingFactors;  // Scaling factors for the circle's x and y dimensions.
-    unsigned int numSegments;        // Number of segments used to approximate the circle geometry.
-    float aspectRatio;               // Aspect ratio of the rendering surface.
-    cv::Mat transformationMatrix;    // Transformation matrix for the circle's vertices.
-    bool doUpdateOpenGLVertices;     // Flag to indicate if OpenGL vertices need to be updated.
-
-    /**
-     * @brief Construct a new Circle object.
-     *
-     * @param idx Index of the circle.
-     * @param pos Initial position of the circle.
-     * @param rad Radius of the circle.
-     * @param col Color of the circle.
-     * @param segments Number of segments to approximate the circle.
-     * @param aspect Aspect ratio of the rendering surface.
-     */
-    Circle(int idx, cv::Point2f pos, float rad, cv::Scalar col, unsigned int segments, float aspect);
-
-    /**
-     * @brief Destroy the Circle object.
-     *
-     * Cleans up the OpenGL objects associated with the circle.
-     */
-    ~Circle();
-
-    void setPosition(cv::Point2f pos);
-    void setRadius(float rad);
-    void setRotationAngle(float angle);
-    void setScaling(cv::Point2f scaling_factors);
-    void setColor(cv::Scalar col);
-    void recomputeParameters();
-    void draw(GLuint shaderProgram, GLint colorLocation, GLint transformLocation);
-
-private:
-    void _computeVertices(cv::Point2f position, float radius, unsigned int numSegments, std::vector<float> &circVertices);
-    void _setupRenderBuffers();
-    void _updateOpenGLVertices();
-    void _computeTransformation();
-    std::array<float, 16> _cvMatToGlArray(const cv::Mat &mat);
-
-    // Consider making constants such as pi as a private static constexpr member.
-    static constexpr float PI = 3.14159265358979323846f;
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> wallGridLeft;
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> wallGridMiddle;
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> wallGridRight;
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> mazeFloor;
 };
+
+/**
+ * @brief  4x3x3 data contianer for storing the 3x3 homography matrix for each wall image
+ */
+std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> HMAT_GRID_ARR;
+
+/**
+ * @brief  Array of OpenGL context objects.
+ */
+std::array<MazeRenderContext, 4> PROJ_GL_ARR;
+
+/**
+ * @brief Struct for global flags.
+ */
+static struct FlagStruct
+{
+    bool loadXML = false;           // Flag to indicate if the XML file needs to be loaded
+    bool saveXML = false;           // Flag to indicate if the XML file needs to be saved
+    bool switchWindowMode = false;  // Flag to indicate if the window mode needs to be updated
+    bool updateWallTextures = false; // Flag to indicate if wall vertices, homography and texture need to be updated
+    bool fullscreenMode = false;    // Flag to indicate if the window needs to be set to full screen mode
+} F;
+
+// Struct for global counts
+static struct CountStruct
+{
+    int monitors;       // Number of monitors connected to the system
+    int projectors = 2; // Number of projectors  (hardcoded)
+    int wallImages = 6; // Number of wall images
+} N;
+
+// Specify the montior index for each prjector
+std::vector<int> projMonIndArr = {
+    // Index of the monitor associeted to each projector (hardcoded)
+    1,
+    2,
+};
+
+// Sub-directory paths
+std::string wall_image_path = IMAGE_TOP_DIR_PATH + "/calibration";
+
+std::vector<std::string> wallImgPathVec = {
+    // List of image file paths
+    wall_image_path + "/blank.bmp",    // [0] Blank image
+    wall_image_path + "/square.bmp",   // [1] Square image
+    wall_image_path + "/circle.bmp",   // [2] Circle image
+    wall_image_path + "/triangle.bmp", // [3] Triangle image
+    wall_image_path + "/star.bmp",     // [4] Star image
+    wall_image_path + "/pentagon.bmp", // [5] Pentagon image
+};
+
+// Vectors to store the loaded images in cv::Mat format
+std::vector<cv::Mat> wallImgMatVec; // Vector of wall image texture matrices
+
+// ================================================== FUNCTIONS ==================================================
+
+/**
+ * @brief GLFW key callback function to handle key events and execute corresponding actions.
+ *
+ * @param window Pointer to the GLFW window that received the event.
+ * @param key The keyboard key that was pressed or released.
+ * @param scancode The system-specific scancode of the key.
+ * @param action GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT.
+ * @param mods Bit field describing which modifier keys were held down.
+ */
+void callbackKeyBinding(GLFWwindow *, int, int, int, int);
+
+/**
+ * @brief Loads the images and homography matices array for the application.
+ * 
+ * This function uses OpenCV to load wall images into memory.
+ * It uses loadHMATxml() to load the homography matrices from XML files.
+ * 
+ * @throws std::runtime_error if image or xml loading fails.
+ */
+void appLoadData();
+
+/**
+ * @brief Initializes OpenGL settings and creates shader programs.
+ * 
+ * This function sets up the graphics libraries, initializes the rendering
+ * context, and creates shader programs for wall image and control point rendering.
+ * 
+ * @throws std::runtime_error if OpenGL initialization fails.
+ */
+void appInitializeOpenGL();
+
+/**
+ * @brief The main loop of the application.
+ * 
+ * Handles the application's main loop, including checking keyboard callbacks,
+ * updating window mode, and rendering frames. Exits on window close, escape key,
+ * or when an error occurs.
+ * 
+ * @throws std::runtime_error if an error occurs during execution.
+ */
+void appMainLoop();
+
+/**
+ * @brief Cleans up resources upon application shutdown.
+ * 
+ * This function deletes the CircleRenderer class shader program, cleans up
+ * OpenGL wall image objects, and terminates the graphics library.
+ */
+void appCleanup();
 
 /**
  * @brief  Entry point for the projection_display ROS node.

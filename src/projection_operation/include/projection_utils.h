@@ -463,12 +463,12 @@ public:
     /**
      * @brief Sets up the system for a new rendering.
      *
-     * Basically a wrapper for glClear(GL_COLOR_BUFFER_BIT) which
-     * clears the color buffers of the back buffer for a new frame.
+     * Makes this the current GL context and clears the color 
+     * buffers of the back buffer for a new frame.
      *
      * @return Integer status code  [-1:error, 0:successful].
      */
-    int prepareFrame();
+    int initWindow();
 
     /**
      * @brief Swap and poll the buffer.
@@ -852,7 +852,7 @@ unsigned int WALL_GL_INDICES[] = {
  * - `out vec2 Texcoord;`: Declares an output variable that will be passed to the fragment shader.
  * - `void main() { ... }`: Main function where the vertex shader performs its work.
  */
-const char *wallVertexSource = R"glsl(
+const char *WALL_VERTEX_SOURCE = R"glsl(
     #version 330 core
     in vec2 position;
     in vec2 texcoord;
@@ -875,7 +875,7 @@ const char *wallVertexSource = R"glsl(
  * - `uniform sampler2D tex;`: Declares a uniform variable representing a 2D texture.
  * - `void main() { ... }`: Main function of the fragment shader, samples the texture at the given coordinates and sets the output color.
  */
-const char *wallFragmentSource = R"glsl(
+const char *WALL_FRAGMENT_SOURCE = R"glsl(
     #version 330 core
     in vec2 Texcoord;
     out vec4 outColor;
@@ -1131,7 +1131,7 @@ void dbLogHomMat(const cv::Mat &);
  * @param config_dir_path Path to the directory where the XML file will be loaded/saved.
  *
  */
-std::string frmtFilePathxml(int, int, int, std::string);
+std::string frmtFilePathXML(int, int, int, std::string);
 
 /**
  * @brief Prompts the user for a single digit input or an option to quit.
@@ -1247,18 +1247,6 @@ std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &, int, 
  * @return The interpolated value at the specified grid point.
  */
 float bilinearInterpolation(float, float, float, float, int, int, int);
-
-/**
- * @brief Computes updated Homography matrices for all walls.
- *
- * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
- * @param[out] out_HMAT_GRID_ARR updated 3x3 array of Homography matrices used to warp the wall image.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int updateHomography(
-    const std::array<std::array<cv::Point2f, 4>, 4> &,
-    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
 
 /**
  * @brief Loads PNG images with alpha channel from specified file paths and stores them in a vector as cv::Mat objects.

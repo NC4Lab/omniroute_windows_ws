@@ -67,7 +67,7 @@ GLFWmonitor **pp_monitorIDVec = nullptr;
  * This function is set as the GLFW key callback and gets called whenever a key event occurs.
  * It handles various key events for control points, monitor handling, XML operations, and more.
  *
- * ## Keybindings:
+ * ## Keybindings: @see README.md
  *
  * @param window Pointer to the GLFW window that received the event.
  * @param key The keyboard key that was pressed or released.

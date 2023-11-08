@@ -45,15 +45,24 @@ const GLfloat cpSelectedMakerRadius = 0.005f;                          // Select
  */
 std::array<std::array<cv::Point2f, 4>, 4> CP_GRID_ARR;
 
-// Create an associateed 4x4 array of the CircleRenderer class objects
-std::array<std::array<CircleRenderer, 4>, 4> CP_RENDERERS;
-
 /**
  * @brief  3x3 data contianer for storing the 3x3 homography matrix for each wall image
  */
 std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> HMAT_GRID_ARR;
 
-// Struct for global flags
+/**
+ * @brief  OpenGL context objects.
+ */
+std::array<MazeRenderContext, 1> PROJ_GL;
+
+/**
+ * @brief  4x4 array of the CircleRenderer class objects.
+ */
+std::array<std::array<CircleRenderer, 4>, 4> CP_CIRCREN_ARR;
+
+/**
+ * @brief Struct for global flags.
+ */
 static struct FlagStruct
 {
     bool dbRun = false;                   // Flag to indicate if something should be run for debugging
@@ -61,11 +70,13 @@ static struct FlagStruct
     bool saveXML = false;                 // Flag to indicate if the XML file needs to be saved
     bool switchWindowMode = false;        // Flag to indicate if the window mode needs to be updated
     bool initControlPointMarkers = false; // Flag to indicate if the control point markers need to be reinitialized
-    bool updateWallTexture = false;       // Flag to indicate if wall vertices, homography and texture need to be updated
-    bool setFullscreen = false;           // Flag to indicate if the window needs to be set to full screen mode
+    bool updateWallTextures = false;       // Flag to indicate if wall vertices, homography and texture need to be updated
+    bool fullscreenMode = false;           // Flag to indicate if the window is in full screen mode
 } F;
 
-// Struct for global counts
+/**
+ * @brief Struct for global counts.
+ */
 static struct CountStruct
 {
     int monitors;       // Number of monitors connected to the system
@@ -73,7 +84,9 @@ static struct CountStruct
     int calModes = 3;   // Number of calibration modes
 } N;
 
-// Struct for global indices
+/**
+ * @brief Struct for global indices.
+ */
 static struct IndStruct
 {
     int wallImage = 0; // Index of the image to be loaded
@@ -187,6 +200,18 @@ int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &,
 int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &, std::array<std::array<CircleRenderer, 4>, 4> &);
 
 /**
+ * @brief Computes updated Homography matrices for all walls.
+ *
+ * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
+ * @param[out] out_HMAT_GRID_ARR updated 3x3 array of Homography matrices used to warp the wall image.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int updateWallHomographys(
+    const std::array<std::array<cv::Point2f, 4>, 4> &,
+    std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &);
+
+/**
  * @brief Updates the stored warped wall image vertices based on the control point array.
  *
  * @param img_wall_mat cv::Mat image matrix for the base wall image.
@@ -197,10 +222,59 @@ int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &, std::
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int updateWallTexture(
+int updateWallTextures(
     cv::Mat, cv::Mat, cv::Mat,
     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &,
     GLuint &);
+
+/**
+ * @brief Initializes the datasets for the application.
+ * 
+ * This function logs the setup parameters, initializes control
+ * point coordinates, and computes wall homography matrices.
+ * 
+ * @throws std::runtime_error if initialization fails.
+ */
+void appInitializeDatasets();
+
+/**
+ * @brief Loads the necessary images for the application.
+ * 
+ * This function uses OpenCV to load wall images, monitor number images,
+ * and calibration mode images into memory.
+ * 
+ * @throws std::runtime_error if image loading fails.
+ */
+void appLoadImages();
+
+/**
+ * @brief Initializes OpenGL settings and creates shader programs.
+ * 
+ * This function sets up the graphics libraries, initializes the rendering
+ * context, and creates shader programs for wall image and control point rendering.
+ * 
+ * @throws std::runtime_error if OpenGL initialization fails.
+ */
+void appInitializeOpenGL();
+
+/**
+ * @brief The main loop of the application.
+ * 
+ * Handles the application's main loop, including checking keyboard callbacks,
+ * updating window mode, and rendering frames. Exits on window close, escape key,
+ * or when an error occurs.
+ * 
+ * @throws std::runtime_error if an error occurs during execution.
+ */
+void appMainLoop();
+
+/**
+ * @brief Cleans up resources upon application shutdown.
+ * 
+ * This function deletes the CircleRenderer class shader program, cleans up
+ * OpenGL wall image objects, and terminates the graphics library.
+ */
+void appCleanup();
 
 /**
  * @brief  Entry point for the projection_calibration ROS node.

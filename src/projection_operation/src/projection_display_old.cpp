@@ -280,7 +280,7 @@ int drawWalls(
         cv::Mat hom_mat = cv::Mat::eye(3, 3, CV_32F);
 
         // Load the image transform coordinates from the XML file
-        std::string file_path = frmtFilePathxml(mon_id_ind, cal_i, CONFIG_DIR_PATH);
+        std::string file_path = frmtFilePathXML(mon_id_ind, cal_i, CONFIG_DIR_PATH);
         if (loadHMATxml(hom_mat, ctrl_point_params, file_path, 0) != 0)
         {
             ROS_ERROR("XML: Missing XML File[%s]", file_path.c_str());

@@ -337,7 +337,7 @@
 //         // Set/unset Fullscreen
 //         if (key == GLFW_KEY_F)
 //         {
-//             F.setFullscreen = !F.setFullscreen;
+//             F.fullscreenMode = !F.fullscreenMode;
 //             F.updateWindowMonMode = true;
 //         }
 
@@ -501,22 +501,22 @@
 //             if (key == GLFW_KEY_LEFT)
 //             {
 //                 CP_GRID_ARR[I.cpSelected[0]][I.cpSelected[1]].x -= pos_inc; // Move left
-//                 F.updateWallTexture = true;
+//                 F.updateWallTextures = true;
 //             }
 //             else if (key == GLFW_KEY_RIGHT)
 //             {
 //                 CP_GRID_ARR[I.cpSelected[0]][I.cpSelected[1]].x += pos_inc; // Move right
-//                 F.updateWallTexture = true;
+//                 F.updateWallTextures = true;
 //             }
 //             else if (key == GLFW_KEY_UP)
 //             {
 //                 CP_GRID_ARR[I.cpSelected[0]][I.cpSelected[1]].y += pos_inc; // Move up
-//                 F.updateWallTexture = true;
+//                 F.updateWallTextures = true;
 //             }
 //             else if (key == GLFW_KEY_DOWN)
 //             {
 //                 CP_GRID_ARR[I.cpSelected[0]][I.cpSelected[1]].y -= pos_inc; // Move down
-//                 F.updateWallTexture = true;
+//                 F.updateWallTextures = true;
 //             }
 
 //             // Shift all control points if origin moved
@@ -1087,7 +1087,7 @@
 //     return 0;
 // }
 
-// int updateWallTexture(
+// int updateWallTextures(
 //     cv::Mat img_wall_mat, cv::Mat img_mode_mon_mat, cv::Mat img_mode_cal_mat,
 //     std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_HMAT_GRID_ARR,
 //     GLuint &out_WALL_TEXTURE_ID)
@@ -1236,12 +1236,12 @@
 //     ROS_INFO("[SETUP] GLFW Initialized: Version: %d.%d.%d", glfw_major, glfw_minor, glfw_rev);
 
 //     // Update monitor and window mode settings
-//     updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, I.winMon, F.setFullscreen);
+//     updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, I.winMon, F.fullscreenMode);
 
 //     // --------------- RENDER SHADER SETUP ---------------
 
 //     // Create the shader program for wall image rendering
-//     if (compileAndLinkShaders(wallVertexSource, wallFragmentSource, WALL_SHADER) != 0)
+//     if (compileAndLinkShaders(WALL_VERTEX_SOURCE, WALL_FRAGMENT_SOURCE, WALL_SHADER) != 0)
 //     {
 //         ROS_ERROR("[SETUP] Failed to Compile and Link Wall Shader");
 //         return -1;
@@ -1279,14 +1279,14 @@
 //     initCtrlPtCoords(CP_GRID_ARR);
 
 //     // Initialize wall homography matrices array
-//     if (updateHomography(CP_GRID_ARR, HMAT_GRID_ARR) != 0)
+//     if (updateWallHomographys(CP_GRID_ARR, HMAT_GRID_ARR) != 0)
 //     {
 //         ROS_ERROR("[SETUP] Failed to Initialize Wall Parameters");
 //         return -1;
 //     }
 
 //     // Initialize wall image texture
-//     if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], HMAT_GRID_ARR, WALL_TEXTURE_ID) != 0)
+//     if (updateWallTextures(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], HMAT_GRID_ARR, WALL_TEXTURE_ID) != 0)
 //     {
 //         ROS_ERROR("[SETUP] Failed to Initialize Wall Texture");
 //         return -1;
@@ -1303,7 +1303,7 @@
 //         // Load XML file
 //         if (F.loadXML)
 //         {
-//             std::string file_path = frmtFilePathxml(I.winMon, I.calMode, CONFIG_DIR_PATH);
+//             std::string file_path = frmtFilePathXML(I.winMon, I.calMode, CONFIG_DIR_PATH);
 //             /// @todo Ad save xml back in
 //             F.loadXML = false;
 //         }
@@ -1311,7 +1311,7 @@
 //         // Save XML file
 //         if (F.saveXML)
 //         {
-//             std::string file_path = frmtFilePathxml(I.winMon, I.calMode, CONFIG_DIR_PATH);
+//             std::string file_path = frmtFilePathXML(I.winMon, I.calMode, CONFIG_DIR_PATH);
 //             /// @todo Ad save xml back in
 //             F.saveXML = false;
 //         }
@@ -1319,7 +1319,7 @@
 //         // Update the window monitor and mode
 //         if (F.updateWindowMonMode)
 //         {
-//             if (updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, I.winMon, F.setFullscreen) != 0)
+//             if (updateWindowMonMode(p_window_id, 0, pp_monitor_id_Vec, I.winMon, F.fullscreenMode) != 0)
 //             {
 //                 ROS_ERROR("[MAIN] Update Window Monitor Mode Threw an Error");
 //                 is_error = true;
@@ -1336,10 +1336,10 @@
 //         }
 
 //         // Recompute wall parameters and update wall image texture
-//         if (F.updateWallTexture)
+//         if (F.updateWallTextures)
 //         {
 //             // Update wall homography matrices array
-//             if (updateHomography(CP_GRID_ARR, HMAT_GRID_ARR) != 0)
+//             if (updateWallHomographys(CP_GRID_ARR, HMAT_GRID_ARR) != 0)
 //             {
 //                 ROS_ERROR("[MAIN] Update of Wall Vertices Datasets Failed");
 //                 is_error = true;
@@ -1347,13 +1347,13 @@
 //             }
 
 //             // Update wall image texture
-//             if (updateWallTexture(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], HMAT_GRID_ARR, WALL_TEXTURE_ID) != 0)
+//             if (updateWallTextures(wallImgMatVec[I.wallImage], monImgMatVec[I.winMon], calImgMatVec[I.calMode], HMAT_GRID_ARR, WALL_TEXTURE_ID) != 0)
 //             {
 //                 ROS_ERROR("[MAIN] Update of Wall Homography Datasets Failed");
 //                 is_error = true;
 //                 break;
 //             }
-//             F.updateWallTexture = false;
+//             F.updateWallTextures = false;
 //         }
 
 //         // --------------- Handle Image Processing for Next Frame ---------------
