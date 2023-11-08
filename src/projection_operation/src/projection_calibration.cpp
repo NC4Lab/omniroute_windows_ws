@@ -270,28 +270,33 @@ void initControlPoints(int cal_ind, std::array<std::array<cv::Point2f, 4>, 4> &o
 {
     // Specify the control point limits
     float cp_x = MAZE_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
-    float cp_y = MAZE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates                                        
+    float cp_y = MAZE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates
+
+    // Add an x offset based on the calibration mode
+    float offset_x = 0.5f * static_cast<float>(WALL_IMAGE_WIDTH_NDC);
+    offset_x *= (I.calMode == 0) ? -1 : (I.calMode == 2) ? 1
+                                                         : 0;
 
     // Iterate through control point outer array (maze vertices)
-    for (float mv_i = 0; mv_i < 4; mv_i++) // image bottom to top
+    for (int mv_i = 0; mv_i < 4; mv_i++) // image bottom to top
     {
         cv::Point2f p_org;
 
         // 0: image top-left
         if (mv_i == 0)
-            p_org = cv::Point2f(-cp_x, -cp_y);
+            p_org = cv::Point2f(-cp_x + offset_x, -cp_y);
 
         // 1: image top-right
         else if (mv_i == 1)
-            p_org = cv::Point2f(+cp_x, -cp_y);
+            p_org = cv::Point2f(+cp_x + offset_x, -cp_y);
 
         // 2: image bottom-right
         else if (mv_i == 2)
-            p_org = cv::Point2f(+cp_x, +cp_y);
+            p_org = cv::Point2f(+cp_x + offset_x, +cp_y);
 
         // 3: image bottom-left
         else if (mv_i == 3)
-            p_org = cv::Point2f(-cp_x, +cp_y);
+            p_org = cv::Point2f(-cp_x + offset_x, +cp_y);
 
         // Set x y values for each wall vertex
         out_CP_GRID_ARR[mv_i] = {
@@ -307,7 +312,7 @@ int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_
                               std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
 {
     // Iterate through control point outer array (maze vertices)
-    for (float mv_i = 0; mv_i < 4; mv_i++) // image bottom to top
+    for (int mv_i = 0; mv_i < 4; mv_i++) // image bottom to top
     {
         // Iterate through control point inner array (wall vertices)
         for (int wv_i = 0; wv_i < 4; ++wv_i)
@@ -438,11 +443,6 @@ int updateWallHomographys(
         }
     }
 
-    // TEMP
-    // dbLogCtrlPointCoordinates(_CP_GRID_ARR);
-    // TEMP
-    // return -1;
-
     // Return success
     return 0;
 }
@@ -457,10 +457,10 @@ int updateWallTextures(
     cv::Mat im_wall_merge = cv::Mat::zeros(WINDOW_HEIGHT_PXL, WINDOW_WIDTH_PXL, CV_8UC4);
 
     // Iterate through the maze grid rows
-    for (float gr_i = 0; gr_i < MAZE_SIZE; gr_i++) // image bottom to top
+    for (int gr_i = 0; gr_i < MAZE_SIZE; gr_i++) // image bottom to top
     {
         // Iterate through each column in the maze row
-        for (float gc_i = 0; gc_i < MAZE_SIZE; gc_i++) // image left to right
+        for (int gc_i = 0; gc_i < MAZE_SIZE; gc_i++) // image left to right
         {
             // Copy wall image
             cv::Mat img_copy;
@@ -495,13 +495,6 @@ int updateWallTextures(
             // Merge the warped image with the final image
             if (mergeImgMat(im_warp, im_wall_merge) < 0)
                 return -1;
-
-            // // TEMP
-            // cv::namedWindow("Warped Image Display", cv::WINDOW_AUTOSIZE);
-            // cv::imshow("Warped Image Display", im_warp);
-            // cv::waitKey(0);
-            // cv::destroyWindow("Warped Image Display");
-            // break;
         }
     }
 
@@ -517,6 +510,8 @@ void appInitDatasets()
     ROS_INFO("[appInitDatasets] Wall (Pxl): Width[%d] Height[%d]", WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL);
     ROS_INFO("[appInitDatasets] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_IMAGE_WIDTH_NDC, WALL_IMAGE_HEIGHT_NDC);
     ROS_INFO("[appInitDatasets] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
+
+    // Initialzie the hology arrays for all calibration modes and save to XML
 
     // Initialize control point coordinate dataset
     initControlPoints(I.calMode, CP_GRID_ARR);
@@ -582,21 +577,23 @@ void appInitOpenGL()
 
 void appInitFileXML()
 {
-    for (int mon_ind = 0; mon_ind < N.monitors; ++mon_ind)
+    std::array<std::array<cv::Point2f, 4>, 4> _CP_GRID_ARR;
+    std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> _WALL_HMAT_ARR;
+
+    for (int cal_ind = 0; cal_ind < N_CAL_MODES; ++cal_ind)
     {
-        for (int cal_ind = 0; cal_ind < N_CAL_MODES; ++cal_ind)
+        initControlPoints(cal_ind, _CP_GRID_ARR);
+        if (updateWallHomographys(cal_ind, _CP_GRID_ARR, _WALL_HMAT_ARR) < 0)
+            throw std::runtime_error("[appInitDatasets] Failed to initialize wall parameters");
+
+        for (int gr_i = 0; gr_i < MAZE_SIZE; ++gr_i)
         {
-            for (int gr_i = 0; gr_i < MAZE_SIZE; ++gr_i)
+            for (int gc_i = 0; gc_i < MAZE_SIZE; ++gc_i)
             {
-                for (int gc_i = 0; gc_i < MAZE_SIZE; ++gc_i)
-                {
-                    if (xmlSaveHMAT(WALL_HMAT_ARR[I.calMode][gr_i][gc_i], I.winMon, I.calMode, gr_i, gc_i) < 0)
-                        throw std::runtime_error("[appInitFileXML] Error returned from xmlSaveHMAT");
-                }
+                if (xmlSaveHMAT(_WALL_HMAT_ARR[cal_ind][gr_i][gc_i], I.winMon, cal_ind, gr_i, gc_i) < 0)
+                    throw std::runtime_error("[appInitFileXML] Error returned from xmlSaveHMAT");
             }
         }
-        // TEMP
-        return;
     }
 }
 
@@ -605,12 +602,15 @@ void appMainLoop()
     int status = 0;
     while (status == 0)
     {
-
         // --------------- Check Kayboard Callback Flags ---------------
 
         // Load/save XML file
         if (F.loadXML || F.saveXML)
         {
+            // TEMP
+            ROS_INFO("TEST 1A %s", F.saveXML ? "SAVE" : "LOAD");
+            dbLogHomMat(WALL_HMAT_ARR[I.calMode][0][0]);
+
             for (int gr_i = 0; gr_i < MAZE_SIZE; ++gr_i)
             {
                 for (int gc_i = 0; gc_i < MAZE_SIZE; ++gc_i)
@@ -620,17 +620,20 @@ void appMainLoop()
                     {
                         if (xmlSaveHMAT(WALL_HMAT_ARR[I.calMode][gr_i][gc_i], I.winMon, I.calMode, gr_i, gc_i) < 0)
                             throw std::runtime_error("[appMainLoop] Error returned from xmlSaveHMAT");
-                        F.saveXML = false;
                     }
                     // Load XML file
                     if (F.loadXML)
                     {
                         if (xmlLoadHMAT(I.winMon, I.calMode, gr_i, gc_i, WALL_HMAT_ARR[I.calMode][gr_i][gc_i]) < 0)
                             throw std::runtime_error("[appMainLoop] Error returned from xmlLoadHMAT");
-                        F.loadXML = false;
                     }
                 }
             }
+            // TEMP
+            ROS_INFO("TEST 2A %s", F.saveXML ? "SAVE" : "LOAD");
+            dbLogHomMat(WALL_HMAT_ARR[I.calMode][0][0]);
+            F.saveXML = false;
+            F.loadXML = false;
 
             // Flash the background to indicate the file was loaded/saved
             PROJ_GL[0].flashBackgroundColor(cv::Scalar(0.0f, 0.25f, 0.0f), 500);

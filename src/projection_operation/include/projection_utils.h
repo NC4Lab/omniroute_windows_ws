@@ -1128,6 +1128,17 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
 void dbLogHomMat(const cv::Mat &);
 
 /**
+ * @brief Displays a warped image in a window.
+ *
+ * This function creates a window with the name "Warped Image Display" and
+ * displays the given image. The function waits for a key press before
+ * closing the window and returning.
+ *
+ * @param img_mat The image matrix to display.
+ */
+void dbDispImgMat(const cv::Mat& img_mat);
+
+/**
  * @brief Prompts the user for a single digit input or an option to quit.
  *
  * @return A std::string containing the single digit entered by the user.
