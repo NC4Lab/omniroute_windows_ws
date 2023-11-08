@@ -608,8 +608,11 @@ void appMainLoop()
         if (F.loadXML || F.saveXML)
         {
             // TEMP
-            ROS_INFO("TEST 1A %s", F.saveXML ? "SAVE" : "LOAD");
-            dbLogHomMat(WALL_HMAT_ARR[I.calMode][0][0]);
+            if (F.saveXML)
+            {
+                ROS_INFO("TEST 1A %s", F.saveXML ? "SAVE" : "LOAD");
+                dbLogHomMat(WALL_HMAT_ARR[I.calMode][0][0]);
+            }
 
             for (int gr_i = 0; gr_i < MAZE_SIZE; ++gr_i)
             {
@@ -629,9 +632,13 @@ void appMainLoop()
                     }
                 }
             }
-            // TEMP
-            ROS_INFO("TEST 2A %s", F.saveXML ? "SAVE" : "LOAD");
-            dbLogHomMat(WALL_HMAT_ARR[I.calMode][0][0]);
+            if (F.loadXML)
+            {
+                // TEMP
+                ROS_INFO("TEST 2A %s", F.saveXML ? "SAVE" : "LOAD");
+                dbLogHomMat(WALL_HMAT_ARR[I.calMode][0][0]);
+            }
+
             F.saveXML = false;
             F.loadXML = false;
 

@@ -1055,8 +1055,10 @@ extern const float WALL_IMAGE_HEIGHT_NDC = (MAZE_HEIGHT_NDC / (float(MAZE_SIZE) 
 // Global variable to set the OpenGL debug level.
 const int DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
 
-// Number of calibration modes
+// Number of calibration modes and strings for each mode
 const int N_CAL_MODES = 3; 
+std::vector<std::string> CAL_MADE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};
+
 
 // 3x3X3 data contianer for storing wall homography matrices for each wall image and each calibration mode
 std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> WALL_HMAT_ARR; // Wall homography matrix array
@@ -1190,10 +1192,6 @@ int xmlFrmtFileStrings(int, int, std::string &, std::string &);
  * @return Integer status code [-1:error, 0:successful].
  */
 int xmlSaveHMAT(const cv::Mat &H, int mon_ind, int cal_ind, int grid_row, int grid_col);
-
-// TEMP
-int saveHMATxml(const std::string full_path,
-                const std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE> &_HMAT_GRID_ARR);
 
 /**
  * Load a single cv::Mat homography matrix from an XML file.

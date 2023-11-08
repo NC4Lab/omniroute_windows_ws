@@ -84,7 +84,7 @@ static struct CountStruct
 static struct IndStruct
 {
     int wallImage = 0; // Index of the image to be loaded
-    int calMode = 1;   // Index of the current calibration mode walls[0: left, 1: middle, 2: right]
+    int calMode = 0;   // Index of the current calibration mode walls[0: left, 1: middle, 2: right]
     int winMon = 0;    // Index of the active monitor to be loaded
     /**
      * @brief cpRowColMap maps a given row cpRowColMap[0] and column cpRowColMap[1] index to the 1D vector.
