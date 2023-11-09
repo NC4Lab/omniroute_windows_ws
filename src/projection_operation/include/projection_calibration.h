@@ -48,25 +48,26 @@ std::array<std::array<cv::Point2f, 4>, 4> CP_GRID_ARR;
 /**
  * @brief  OpenGL context objects.
  */
-std::array<MazeRenderContext, 1> PROJ_GL;
+MazeRenderContext PROJ_GL;
 
 /**
  * @brief  4x4 array of the CircleRenderer class objects.
  */
-std::array<std::array<CircleRenderer, 4>, 4> CP_CIRCREN_ARR;
+std::array<std::array<CircleRenderer, 4>, 4> CP_GLOBJ_ARR;
 
 /**
  * @brief Struct for global flags.
  */
 static struct FlagStruct
 {
-    bool dbRun = false;              // Flag to indicate if something should be run for debugging
-    bool loadXML = false;            // Flag to indicate if the XML file needs to be loaded
-    bool saveXML = false;            // Flag to indicate if the XML file needs to be saved
-    bool switchWindowMode = false;   // Flag to indicate if the window mode needs to be updated
-    bool initControlPoints = false;  // Flag to indicate if the control point markers need to be reinitialized
-    bool updateWallTextures = false; // Flag to indicate if wall vertices, homography and texture need to be updated
-    bool fullscreenMode = false;     // Flag to indicate if the window is in full screen mode
+    bool db_run = false;                  // Flag to indicate if something should be run for debugging
+    bool xml_load_hmat = false;           // Flag to indicate if the XML file needs to be loaded
+    bool xml_save_hmat = false;           // Flag to indicate if the XML file needs to be saved
+    bool change_window_mode = false;      // Flag to indicate if the window mode needs to be updated
+    bool init_control_points = false;     // Flag to indicate if the control point markers need to be reinitialized
+    bool update_wall_textures = false;    // Flag to indicate if wall vertices, homography and texture need to be updated
+    bool update_wall_homographys = false; // Flag to indicate if wall vertices, homography and texture need to be updated
+    bool fullscreen_mode = false;         // Flag to indicate if the window is in full screen mode
 } F;
 
 /**
@@ -74,8 +75,8 @@ static struct FlagStruct
  */
 static struct CountStruct
 {
-    int monitors;             // Number of monitors connected to the system
-    const int wallImages = 4; // Number of wall images
+    int monitors;              // Number of monitors connected to the system
+    const int wall_images = 4; // Number of wall images
 } N;
 
 /**
@@ -83,9 +84,9 @@ static struct CountStruct
  */
 static struct IndStruct
 {
-    int wallImage = 0; // Index of the image to be loaded
-    int calMode = 0;   // Index of the current calibration mode walls[0: left, 1: middle, 2: right]
-    int winMon = 0;    // Index of the active monitor to be loaded
+    int wall_image = 0; // Index of the image to be loaded
+    int cal_mode = 1;   // Index of the current calibration mode walls[0: left, 1: middle, 2: right]
+    int monitor = 0;    // Index of the active monitor to be loaded
     /**
      * @brief cpRowColMap maps a given row cpRowColMap[0] and column cpRowColMap[1] index to the 1D vector.
      * To make things more complicated, this needs to account for the y axis being flipped.
@@ -97,11 +98,11 @@ static struct IndStruct
      *      - 2: OpenGL: Bottom-right   OpenCV: Top-right
      *      - 3: OpenGL: Bottom-left    OpenCV: Top-left
      */
-    std::array<std::array<int, 2>, 2> cpMap = {{{0, 1},
-                                                {3, 2}}};
-    std::array<int, 2> cpMazeVertSel = {0, 0}; // Selected maze vertex [row, col]
-    std::array<int, 2> cpWallVertSel = {1, 0}; // Selected wall vertex [row, col]
-    const int cpWVOrigin = 3;                  // Vertex index of the wall image origin (bottom-left)
+    std::array<std::array<int, 2>, 2> cp_map = {{{0, 1},
+                                                 {3, 2}}};
+    std::array<int, 2> cp_maze_vert_selected = {0, 0}; // Selected maze vertex [row, col]
+    std::array<int, 2> cp_wall_vert_selected = {1, 0}; // Selected wall vertex [row, col]
+    const int cp_wall_origin_vertex = 3;               // Vertex index of the wall image origin (bottom-left)
     // std::array<int, 2> cpSelected = {0, 0};
 } I;
 
@@ -198,7 +199,7 @@ int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &,
 int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &, std::array<std::array<CircleRenderer, 4>, 4> &);
 
 /**
- * @brief Computes updated Homography matrices for all walls.
+ * @brief Computes updated homography matrices for all walls.
  *
  * @param cal_ind Index of the active calibration mode.
  * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
@@ -212,7 +213,7 @@ int updateWallHomographys(
     std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &out_WALL_HMAT_ARR);
 
 /**
- * @brief Updates the stored warped wall image vertices based on the control point array.
+ * @brief Applies the homography matrices to warp wall image textures and combine them.
  *
  * @param cal_ind Index of the active calibration mode.
  * @param img_wall_mat cv::Mat image matrix for the base wall image.
@@ -237,7 +238,7 @@ int updateWallTextures(
  *
  * @throws std::runtime_error if initialization fails.
  */
-void appInitDatasets();
+void appInitVariables();
 
 /**
  * @brief Loads the necessary images for the application.
@@ -247,7 +248,7 @@ void appInitDatasets();
  *
  * @throws std::runtime_error if image loading fails.
  */
-void appLoadImages();
+void appLoadAssets();
 
 /**
  * @brief Initializes OpenGL settings and creates shader programs.

@@ -17,7 +17,9 @@ int MazeRenderContext::_NumMonitors = 0;
 // Constructor
 MazeRenderContext::MazeRenderContext()
     : shaderProgram(0), vao(0), vbo(0), ebo(0), textureID(0),
-      windowID(nullptr), monitorID(nullptr), windowInd(-1), monitorInd(-1)
+      windowID(nullptr), monitorID(nullptr),
+      windowWidth(800), windowHeight(600),
+      windowInd(-1), monitorInd(-1)
 {
     // Members are initialized to default values, setup is deferred
 }
@@ -37,8 +39,10 @@ MazeRenderContext::MazeRenderContext(MazeRenderContext &&other) noexcept
     : shaderProgram(other.shaderProgram), vao(other.vao), vbo(other.vbo),
       ebo(other.ebo), textureID(other.textureID),
       windowID(other.windowID), monitorID(other.monitorID),
+      windowWidth(other.windowWidth), windowHeight(other.windowHeight),
       windowInd(other.windowInd), monitorInd(other.monitorInd),
-      isContextInitialized(other.isContextInitialized)
+      isContextInitialized(other.isContextInitialized),
+      isFullScreen(other.isFullScreen)
 {
     // Reset the other's members to prevent double deletion
     other._resetMembers(); // Use a member function for resetting
@@ -63,9 +67,12 @@ MazeRenderContext &MazeRenderContext::operator=(MazeRenderContext &&other) noexc
         textureID = other.textureID;
         windowID = other.windowID;
         monitorID = other.monitorID;
+        windowHeight = other.windowHeight;
+        windowWidth = other.windowWidth;
         windowInd = other.windowInd;
         monitorInd = other.monitorInd;
         isContextInitialized = other.isContextInitialized;
+        isFullScreen = other.isFullScreen;
 
         // Reset the other's members to default values
         other._resetMembers();
@@ -162,23 +169,27 @@ int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon)
     return 0;
 }
 
-int MazeRenderContext::initContext(int win_ind, int mon_ind, KeyCallbackFunc key_callback)
+int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width, int win_height, KeyCallbackFunc key_callback)
 {
     int status = 0;
 
     // Check/set the new monitor id
-    if (_checkMonitor(mon_ind) < 0)
+    if (_setMonitor(mon_ind, monitorID, monitorInd) < 0)
     {
-        ROS_ERROR("[MazeRenderContext::initContext] Context Setup Failed: Window[%d] Monitor[%d]", win_ind, mon_ind);
+        ROS_ERROR("[MazeRenderContext::initWindowContext] Context Setup Failed: Window[%d] Monitor[%d]", win_ind, mon_ind);
         return -1;
     }
 
+    // Store the window size
+    windowWidth = win_width;
+    windowHeight = win_height;
+
     // Create a new GLFW window
-    windowID = glfwCreateWindow(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, "", monitorID, NULL); // Use the monitor in window creation
+    windowID = glfwCreateWindow(windowWidth, windowHeight, "", monitorID, NULL); // Use the monitor in window creation
     if (!windowID)
     {
         glfwTerminate();
-        ROS_ERROR("[MazeRenderContext::initContext] GLFW Failed to Create Window");
+        ROS_ERROR("[MazeRenderContext::initWindowContext] GLFW Failed to Create Window");
         return -1;
     }
     status = CheckErrorGLFW(__LINE__, __FILE__);
@@ -195,12 +206,13 @@ int MazeRenderContext::initContext(int win_ind, int mon_ind, KeyCallbackFunc key
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) || !gladLoadGL())
     {
         glfwDestroyWindow(windowID);
-        ROS_ERROR("[MazeRenderContext::initContext] Failed to load GLAD");
+        ROS_ERROR("[MazeRenderContext::initWindowContext] Failed to load GLAD");
         return -1;
     }
 
     // Set GLFW callbacks for keyboard events using the KeyCallbackFunc function pointer
-    glfwSetKeyCallback(windowID, key_callback);
+    if (key_callback != nullptr)
+        glfwSetKeyCallback(windowID, key_callback);
     status = CheckErrorGLFW(__LINE__, __FILE__);
 
     // Set GLFW callbacks for framebuffer size events
@@ -217,12 +229,12 @@ int MazeRenderContext::initContext(int win_ind, int mon_ind, KeyCallbackFunc key
     {
         // Log OpenGL versions
         const GLubyte *opengl_version = glGetString(GL_VERSION);
-        ROS_INFO("[main] OpenGL initialized: Version[%s]", opengl_version);
+        ROS_INFO("[MazeRenderContext::initWindowContext] OpenGL initialized: Version[%s]", opengl_version);
 
         // Log GLFW versions
         int glfw_major, glfw_minor, glfw_rev;
         glfwGetVersion(&glfw_major, &glfw_minor, &glfw_rev);
-        ROS_INFO("[main] GLFW initialized: Version[%d.%d.%d]", glfw_major, glfw_minor, glfw_rev);
+        ROS_INFO("[MazeRenderContext::initWindowContext]  GLFW initialized: Version[%d.%d.%d]", glfw_major, glfw_minor, glfw_rev);
         status = CheckErrorGLFW(__LINE__, __FILE__);
     }
 
@@ -234,7 +246,7 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
     // Check that context is initialized
     if (!isContextInitialized)
     {
-        ROS_ERROR("[compileAndLinkShaders] Context Not Initialized");
+        ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Context Not Initialized");
         return -1;
     }
 
@@ -245,7 +257,7 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
     if (!_checkShaderCompilation(temp_vertex_shader, "VERTEX"))
     {
         glDeleteShader(temp_vertex_shader);
-        ROS_ERROR("[compileAndLinkShaders] Vertex shader compilation failed.");
+        ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Vertex shader compilation failed.");
         return -1;
     }
 
@@ -257,7 +269,7 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
     {
         glDeleteShader(temp_vertex_shader);
         glDeleteShader(temp_fragment_shader);
-        ROS_ERROR("[compileAndLinkShaders] Fragment shader compilation failed.");
+        ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Fragment shader compilation failed.");
         return -1;
     }
 
@@ -271,7 +283,7 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
         glDeleteShader(temp_vertex_shader);
         glDeleteShader(temp_fragment_shader);
         glDeleteProgram(shaderProgram);
-        ROS_ERROR("[compileAndLinkShaders] Shader program linking failed.");
+        ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Shader program linking failed.");
         return -1;
     }
 
@@ -284,11 +296,11 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
     return CheckErrorOpenGL(__LINE__, __FILE__);
 }
 
-int MazeRenderContext::validateShaderProgram()
+int MazeRenderContext::checkShaderProgram()
 {
     if (shaderProgram == 0)
     {
-        ROS_ERROR("[MazeRenderContext::validateShaderProgram] No shader program to validate.");
+        ROS_ERROR("[MazeRenderContext::checkShaderProgram] No shader program to validate.");
         return -1;
     }
 
@@ -306,7 +318,7 @@ int MazeRenderContext::validateShaderProgram()
         glGetProgramInfoLog(shaderProgram, logLength, &logLength, &errorLog[0]);
 
         // Log the error
-        ROS_ERROR("[MazeRenderContext::validateShaderProgram] Shader program validation failed: %s", &errorLog[0]);
+        ROS_ERROR("[MazeRenderContext::checkShaderProgram] Shader program validation failed: %s", &errorLog[0]);
 
         // Optionally, delete the shader program if you won't need it after a failed validation
         // glDeleteProgram(shaderProgram);
@@ -448,18 +460,24 @@ int MazeRenderContext::CleanupGraphicsLibraries()
     return status;
 }
 
-int MazeRenderContext::switchWindowMode(int mon_ind_new, bool do_fullscreen)
+int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscreen, cv::Point offset_xy)
 {
+    int win_x, win_y;
+    int win_width, win_height;
+
+    // Update global
+    isFullScreen = do_fullscreen;
+
     // Check/set the new monitor id
-    if (_checkMonitor(mon_ind_new) < 0)
+    if (_setMonitor(mon_ind_new, monitorID, monitorInd) < 0)
     {
-        ROS_ERROR("[MazeRenderContext::initContext] Context Setup Failed: Window[%d] Monitor[%d]", windowInd, mon_ind_new);
+        ROS_ERROR("[MazeRenderContext::changeWindowDisplayMode] Context Setup Failed: Window[%d] Monitor[%d]", windowInd, mon_ind_new);
         return -1;
     }
 
     if (!monitorID)
     { // Early return if monitor pointer is invalid
-        ROS_ERROR("[switchWindowMode] Invalid Monitor Pointer: Monitor[%d]", mon_ind_new);
+        ROS_ERROR("[MazeRenderContext::changeWindowDisplayMode] Invalid Monitor Pointer: Monitor[%d]", mon_ind_new);
         return -1;
     }
 
@@ -467,39 +485,61 @@ int MazeRenderContext::switchWindowMode(int mon_ind_new, bool do_fullscreen)
     const GLFWvidmode *mode = glfwGetVideoMode(monitorID);
     if (!mode)
     { // Validate video mode retrieval
-        ROS_ERROR("[switchWindowMode] Failed to Get Video Mode: Monitor[%d]", mon_ind_new);
+        ROS_ERROR("[MazeRenderContext::changeWindowDisplayMode] Failed to Get Video Mode: Monitor[%d]", mon_ind_new);
         return -1;
     }
 
-    // Update window to full-screen or windowed mode based on 'do_fullscreen'
-    if (do_fullscreen)
+    // Set position to match fullscreeen
+    win_width = mode->width;
+    win_height = mode->height;
+    win_x = 0;
+    win_y = 0;
+
+    // Update window to full-screen or windowed mode based on 'isFullScreen'
+    if (isFullScreen)
     {
-        glfwSetWindowMonitor(windowID, monitorID, 0, 0, mode->width, mode->height, mode->refreshRate);
+        glfwSetWindowMonitor(windowID, monitorID, win_x, win_x, win_width, win_height, mode->refreshRate);
     }
     else
     {
-        int monitor_x, monitor_y;
-        glfwGetMonitorPos(monitorID, &monitor_x, &monitor_y); // Get monitor position
+        // Get monitor position
+        int monitor_x = 0, monitor_y = 0; // Initialize to default values
+        glfwGetMonitorPos(monitorID, &monitor_x, &monitor_y);
+
         if (monitor_x < 0 || monitor_y < 0)
         { // Validate monitor position
-            ROS_WARN("[switchWindowMode] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_ind_new, monitor_x, monitor_y);
+            ROS_WARN("[MazeRenderContext::changeWindowDisplayMode] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_ind_new, monitor_x, monitor_y);
             return 0;
         }
-        glfwSetWindowMonitor(windowID, NULL, monitor_x + 100, monitor_y + 100, (int)(500.0f * WINDOW_ASPECT_RATIO), 500, 0); // Set windowed mode position and size
-    }
 
-    // Make sure winsow always stays on top in fullscreen mode
-    setWindowStackOrder(do_fullscreen);
+        // Calculate window size based on aspect ratio of the inialized window dimensions
+        win_width = static_cast<int>(576.0f * (windowWidth / static_cast<float>(windowHeight)));
+        win_height = 576;
+
+        // Compute window position based on monitor position and offset with a minimum offset of 100 pixels
+        win_x = monitor_x + offset_xy.x + 100;
+        win_y = monitor_y + offset_xy.y + 100;
+
+        // Set windowed mode position and size and include offset
+        glfwSetWindowMonitor(windowID, NULL, win_x, win_y, win_width, win_height, 0);
+    }
 
     // Update window title with window and monitor indices
     std::string new_title = "Window[" + std::to_string(windowInd) + "] Monitor[" + std::to_string(mon_ind_new) + "]";
     glfwSetWindowTitle(windowID, new_title.c_str());
-    ROS_INFO("[switchWindowMode] Move Window: Monitor[%d] Format[%s]", mon_ind_new, do_fullscreen ? "fullscreen" : "windowed");
 
-    return CheckErrorGLFW(__LINE__, __FILE__, "MazeRenderContext::switchWindowMode");
+    ROS_INFO("[MazeRenderContext::changeWindowDisplayMode] Modified Window[%d]: Monitor[%d] Position[%d,%d,%d,%d] Format[%s]",
+             windowInd, mon_ind_new, win_x, win_y, win_width, win_height, isFullScreen ? "fullscreen" : "windowed");
+
+    return CheckErrorGLFW(__LINE__, __FILE__, "changeWindowDisplayMode");
+
+    ROS_INFO("[MazeRenderContext::changeWindowDisplayMode] Modified Window[%d]: Monitor[%d] Position[%d,%d,%d,%d] Format[%s]",
+             windowID, mon_ind_new, win_x, win_y, win_width, win_height, isFullScreen ? "fullscreen" : "windowed");
+
+    return CheckErrorGLFW(__LINE__, __FILE__);
 }
 
-int MazeRenderContext::setWindowStackOrder(bool is_top_always)
+int MazeRenderContext::forceWindowStackOrder(bool is_top_always)
 {
     // Set the GLFW_FLOATING attribute based on the alwaysOnTop boolean
     // glfwSetWindowAttrib(windowID, GLFW_FLOATING, is_top_always ? GLFW_TRUE : GLFW_FALSE);
@@ -514,7 +554,25 @@ int MazeRenderContext::setWindowStackOrder(bool is_top_always)
 
     // It may be useful to also call this here to process events such as restore
     glfwPollEvents();
-    return CheckErrorGLFW(__LINE__, __FILE__, "MazeRenderContext::_setWindowStackOrder");
+    return CheckErrorGLFW(__LINE__, __FILE__);
+}
+
+int MazeRenderContext::checkKeyInput(int key, int action, int mods)
+{
+    int status = 0;
+
+    // Check without mod
+    if (mods == 0x80000000)
+    {
+        int status = glfwGetKey(windowID, key) == action ? 1 : 0;
+    }
+    else
+    {
+        ///@todo Add check with mod
+    }
+
+    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
+    return status;
 }
 
 void MazeRenderContext::flashBackgroundColor(const cv::Scalar &color, int duration)
@@ -542,9 +600,12 @@ void MazeRenderContext::_resetMembers()
     textureID = 0;
     windowID = nullptr;
     monitorID = nullptr;
+    windowWidth = 800;
+    windowHeight = 600;
     windowInd = -1;
     monitorInd = -1;
     isContextInitialized = false;
+    isFullScreen = false;
 }
 
 bool MazeRenderContext::_checkShaderCompilation(GLuint shader, const std::string &shader_type)
@@ -555,7 +616,7 @@ bool MazeRenderContext::_checkShaderCompilation(GLuint shader, const std::string
     {
         char infoLog[1024];
         glGetShaderInfoLog(shader, 1024, nullptr, infoLog);
-        ROS_ERROR("[MazeRenderContext] %s shader compilation error: %s", shader_type.c_str(), infoLog);
+        ROS_ERROR("[MazeRenderContext::_checkShaderCompilation] %s shader compilation error: %s", shader_type.c_str(), infoLog);
         return false;
     }
     return true;
@@ -569,29 +630,32 @@ bool MazeRenderContext::_checkProgramLinking(GLuint program)
     {
         char infoLog[1024];
         glGetProgramInfoLog(program, 1024, nullptr, infoLog);
-        ROS_ERROR("[MazeRenderContext] Program linking error: %s", infoLog);
+        ROS_ERROR("[MazeRenderContext::_checkProgramLinking] Program linking error: %s", infoLog);
         return false;
     }
     return true;
 }
 
-int MazeRenderContext::_checkMonitor(int mon_ind)
+int MazeRenderContext::_setMonitor(int mon_ind, GLFWmonitor *&out_monitorID, int &out_monitorInd)
 {
     // Validate the inputs
     if (mon_ind >= _NumMonitors)
     {
-        ROS_ERROR("[MazeRenderContext::_checkMonitor] Monitor Index[%d] Exceeds Available Monitors[%d]", mon_ind, _NumMonitors);
+        ROS_ERROR("[MazeRenderContext::_setMonitor] Monitor Index[%d] Exceeds Available Monitors[%d]", mon_ind, _NumMonitors);
         return -1;
     }
 
-    // Set the monitor for this instance
-    monitorID = _PP_Monitor[mon_ind];
-    if (!monitorID)
+    // Check that the monitor pointer is valid
+    GLFWmonitor *monitor_id = _PP_Monitor[mon_ind];
+    if (!monitor_id)
     {
-        ROS_ERROR("[MazeRenderContext::initContext] Invalid monitor pointer for index %d", mon_ind);
+        ROS_ERROR("[MazeRenderContext::_setMonitor] Invalid monitor pointer for index %d", mon_ind);
         return -1;
     }
-    monitorInd = mon_ind; // Store the monitor index
+
+    // Set the references to the class intance monitor id and index
+    out_monitorID = monitor_id;
+    out_monitorInd = mon_ind;
 
     return 0;
 }
@@ -750,7 +814,7 @@ int CircleRenderer::CompileAndLinkCircleShaders(float aspect_ratio)
     if (!_CheckShaderCompilation(temp_vertex_shader, "VERTEX"))
     {
         glDeleteShader(temp_vertex_shader);
-        ROS_ERROR("[CircleRenderer] Vertex shader compilation failed.");
+        ROS_ERROR("[CircleRenderer::CompileAndLinkCircleShaders] Vertex shader compilation failed.");
         return -1;
     }
 
@@ -762,7 +826,7 @@ int CircleRenderer::CompileAndLinkCircleShaders(float aspect_ratio)
     {
         glDeleteShader(temp_vertex_shader);
         glDeleteShader(temp_fragment_shader);
-        ROS_ERROR("[CircleRenderer] Fragment shader compilation failed.");
+        ROS_ERROR("[CircleRenderer::CompileAndLinkCircleShaders] Fragment shader compilation failed.");
         return -1;
     }
 
@@ -776,7 +840,7 @@ int CircleRenderer::CompileAndLinkCircleShaders(float aspect_ratio)
         glDeleteShader(temp_vertex_shader);
         glDeleteShader(temp_fragment_shader);
         glDeleteProgram(_ShaderProgram);
-        ROS_ERROR("[CircleRenderer] Shader program linking failed.");
+        ROS_ERROR("[CircleRenderer::CompileAndLinkCircleShaders] Shader program linking failed.");
         return -1;
     }
 
@@ -794,7 +858,7 @@ int CircleRenderer::CompileAndLinkCircleShaders(float aspect_ratio)
     // Check for errors in getting uniforms
     if (_ColorLocation == -1 || _TransformLocation == -1 || _AspectRatioLocation == -1)
     {
-        ROS_ERROR("[CircleRenderer] Error getting uniform locations.");
+        ROS_ERROR("[CircleRenderer::CompileAndLinkCircleShaders] Error getting uniform locations.");
         return -1;
     }
 
@@ -846,7 +910,7 @@ bool CircleRenderer::_CheckShaderCompilation(GLuint shader, const std::string &s
         // Get and log the error message
         char infoLog[512];
         glGetShaderInfoLog(shader, 512, nullptr, infoLog);
-        ROS_ERROR("[CircleRenderer] %s shader compilation error: %s", shader_type.c_str(), infoLog);
+        ROS_ERROR("[CircleRenderer::CircleRenderer] %s shader compilation error: %s", shader_type.c_str(), infoLog);
         return false;
     }
     return true;
@@ -861,7 +925,7 @@ bool CircleRenderer::_CheckProgramLinking(GLuint program)
         // Get and log the error message
         char infoLog[512];
         glGetProgramInfoLog(program, 512, nullptr, infoLog);
-        ROS_ERROR("[CircleRenderer] Program linking error: %s", infoLog);
+        ROS_ERROR("[CircleRenderer::CircleRenderer] Program linking error: %s", infoLog);
         return false;
     }
     return true;
@@ -1231,11 +1295,11 @@ std::string promptForProjectorNumber()
  * @param mon_ind Index of the active or desired monitor.
  * @param cal_ind Index of the active or desired calibration mode.
  * @param[out] out_path Reference to string that will store the path to the XML file.
- * @param[out] out_tag Reference to string that will store the tag for the calibration mode.
+ * @param[out] out_mode Reference to string that will store the tag for the calibration mode.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int xmlFrmtFileStrings(int mon_ind, int cal_ind, std::string &out_path, std::string &out_tag)
+int xmlFrmtFileStrings(int mon_ind, int cal_ind, std::string &out_path, std::string &out_mode)
 {
     // Format the output tag
     out_path =
@@ -1248,16 +1312,16 @@ int xmlFrmtFileStrings(int mon_ind, int cal_ind, std::string &out_path, std::str
     switch (cal_ind)
     {
     case 0:
-        out_tag = "cwl";
+        out_mode = "cwl";
         break;
     case 1:
-        out_tag = "cwm";
+        out_mode = "cwm";
         break;
     case 2:
-        out_tag = "cwr";
+        out_mode = "cwr";
         break;
     case 3:
-        out_tag = "cmf";
+        out_mode = "cmf";
         break;
     default:
         // Handle the error or unexpected cal_ind value
@@ -1678,7 +1742,7 @@ int renderWallImage(MazeRenderContext &_renCtx)
     int status = 0;
 
     // Check the shader program for errors
-    if (_renCtx.validateShaderProgram())
+    if (_renCtx.checkShaderProgram())
     {
         ROS_ERROR("[renderWallImage] Shader program validation failed");
         return -1;

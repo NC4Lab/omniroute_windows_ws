@@ -169,8 +169,6 @@
  *
  */
 
-// TEMP #pragma once
-
 #ifndef _PROJECTION_UTILS_H
 #define _PROJECTION_UTILS_H
 
@@ -257,10 +255,13 @@ public:
     GLFWmonitor *monitorID;           // The monitor associated with this context
     int windowInd;                    // Index of the window associated with this context
     int monitorInd;                   // Index of the monitor associated with this context
+    int windowWidth;                  // Width of the window
+    int windowHeight;                 // Height of the window
     bool isContextInitialized;        // Flag indicating whether there context has been initialized
+    bool isFullScreen;                // Flag indicating whether the window is in full screen mode
 private:
-    static GLFWmonitor **_PP_Monitor;
-    static int _NumMonitors;
+    static GLFWmonitor **_PP_Monitor; // Pointer to the pointer to the GLFW monitors
+    static int _NumMonitors;          // Number of monitors connected to the system
 
 public:
     /**
@@ -395,10 +396,12 @@ public:
      *
      * @param win_ind Index of the window to initialize.
      * @param mon_ind Index of the monitor to use for the window.
+     * @param win_width Width of the window to create.
+     * @param win_height Height of the window to create.
      * @param key_callback Optional key callback function to set for the window (default to nullptr).
      * @return int Status of context initialization (0 for success, -1 for failure).
      */
-    int initContext(int win_ind, int mon_ind, KeyCallbackFunc key_callback = nullptr);
+    int initWindowContext(int win_ind, int mon_ind, int win_width, int win_height, KeyCallbackFunc key_callback = nullptr);
 
     /**
      * @brief Compiles and links shaders for a given class instance.
@@ -434,7 +437,7 @@ public:
      *
      * @return Integer status code  [-1:error, 0:successful].
      */
-    int MazeRenderContext::validateShaderProgram();
+    int MazeRenderContext::checkShaderProgram();
 
     /**
      * @brief Cleans up GLFW and resets monitor info.
@@ -499,9 +502,11 @@ public:
      *
      * @param mon_ind Index of the monitor to move the window to.
      * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
+     * @param offset_xy Optional offset to apply to window position (default to (0, 0)).
+     *
      * @return Integer status code  [-1:error, 0:successful].
      */
-    int switchWindowMode(int, bool);
+    int changeWindowDisplayMode(int mon_ind, bool is_fullscreen, cv::Point offset_xy = cv::Point(0.0f, 0.0f));
 
     /**
      * @brief Sets the GLFW window to always be on top or not.
@@ -511,11 +516,26 @@ public:
      * stay on top of other windows.
      *
      * @note I don't think the glfwSetWindowAttrib() call does anything
+     * This needs to be called continually in a main loop.
      *
      * @param is_top_always A boolean flag to set or unset the window as always on top.
      * @return Integer status code  [-1:error, 0:successful].
      */
-    int setWindowStackOrder(bool is_top_always);
+    int forceWindowStackOrder(bool is_top_always);
+
+    /**
+     * @brief Precesses key input from the user.
+     *
+     * Basically just a wrapper GLFW glfwGetKey as an alternative
+     * to the GLFW key callback.
+     *
+     * @param key The keyboard key that was pressed or released.
+     * @param action GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT.
+     * @param mods Bit field describing which modifier keys were held down .
+     *
+     * @return Integer status code  [-1:error, 0:successful].
+     */
+    int checkKeyInput(int key, int action, int mods = 0x80000000);
 
     /**
      * @brief Function to set the background color and redraw the window
@@ -551,8 +571,10 @@ private:
     /**
      * @brief  Private method to check monitor index and id is valid
      * @param mon_ind Index of monitor ID to check.
+     * @param out_monitorInd Refernce to global just to make it clear the value is being set.
+     * @param out_monitorID Refernce to global just to make it clear the value is being set.
      */
-    int _checkMonitor(int mon_ind);
+    int _setMonitor(int mon_ind, GLFWmonitor *&out_monitorID, int &out_monitorInd);
 
     // Simple test of OpenGL and GLFW callbacks
     void _testCallbacks();
@@ -1038,7 +1060,7 @@ extern const int MAZE_SIZE = 3;
 // Sprecify window resolution: 4K resolution (3840x2160)
 extern const int WINDOW_WIDTH_PXL = 3840;
 extern const int WINDOW_HEIGHT_PXL = 2160;
-extern const float WINDOW_ASPECT_RATIO = (float)WINDOW_WIDTH_PXL / (float)WINDOW_HEIGHT_PXL;
+extern const float WINDOW_ASPECT_RATIO = (float)WINDOW_WIDTH_PXL / WINDOW_HEIGHT_PXL;
 
 // Specify the maze width and height (NDC)
 const float MAZE_WIDTH_NDC = 0.3f;
@@ -1056,11 +1078,10 @@ extern const float WALL_IMAGE_HEIGHT_NDC = (MAZE_HEIGHT_NDC / (float(MAZE_SIZE) 
 const int DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
 
 // Number of calibration modes and strings for each mode
-const int N_CAL_MODES = 3; 
+const int N_CAL_MODES = 3;
 std::vector<std::string> CAL_MADE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};
 
-
-// 3x3X3 data contianer for storing wall homography matrices for each wall image and each calibration mode
+// 3x3x3 data contianer for storing wall homography matrices for each wall image and each calibration mode
 std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> WALL_HMAT_ARR; // Wall homography matrix array
 
 
@@ -1138,7 +1159,7 @@ void dbLogHomMat(const cv::Mat &);
  *
  * @param img_mat The image matrix to display.
  */
-void dbDispImgMat(const cv::Mat& img_mat);
+void dbDispImgMat(const cv::Mat &img_mat);
 
 /**
  * @brief Prompts the user for a single digit input or an option to quit.
@@ -1171,11 +1192,11 @@ std::string promptForProjectorNumber();
  * @param mon_ind Index of the active or desired monitor.
  * @param cal_ind Index of the active or desired calibration mode.
  * @param[out] out_path Reference to string that will store the path to the XML file.
- * @param[out] out_tag Reference to string that will store the tag for the calibration mode.
+ * @param[out] out_mode Reference to string that will store the tag for the calibration mode.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int xmlFrmtFileStrings(int, int, std::string &, std::string &);
+int xmlFrmtFileStrings(int mon_ind, int cal_ind, std::string & out_path, std::string &out_mode);
 
 /**
  * Save a single cv::Mat homography matrix to an XML file.
