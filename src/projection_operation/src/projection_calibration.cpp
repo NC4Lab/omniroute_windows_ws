@@ -280,7 +280,7 @@ void initControlPoints(int cal_ind, std::array<std::array<cv::Point2f, 4>, 4> &o
     float cp_y = MAZE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates
 
     // Add an x offset based on the calibration mode
-    float offset_x = 0.5f * static_cast<float>(WALL_IMAGE_WIDTH_NDC);
+    float offset_x = 1.0f * static_cast<float>(WALL_IMAGE_WIDTH_NDC);
     offset_x *= (I.cal_mode == 0) ? -1 : (I.cal_mode == 2) ? 1
                                                            : 0;
 

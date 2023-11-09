@@ -70,9 +70,7 @@ int updateWallTextures(
             for (int gc_i = 0; gc_i < MAZE_SIZE; gc_i++) // image left to right
             {
                 // Get the image index for the current wall
-                int wall_r = MAZE_SIZE - 1 - gr_i;
-                int wall_c = gc_i;
-                int img_ind = IMG_PROJ_MAP[proj_mon_ind][wall_r][wall_c][cal_i];
+                int img_ind = IMG_PROJ_MAP[proj_mon_ind][gr_i][gc_i][cal_i];
 
                 // Check for vaiid image
                 if (_wallImgMatVec[img_ind].empty())
