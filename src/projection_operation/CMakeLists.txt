@@ -232,7 +232,20 @@ add_custom_command(TARGET projection_display_node POST_BUILD
                    "$ENV{DevIL_DIR}/lib/x64/Release/ILUT.dll"
                    $<TARGET_FILE_DIR:projection_display_node>)
 
+
+# ==================== SETUP OPTITRACK STREAM TEST ====================
+
+# Create executable
+add_executable(optitrack_stream_test 
+  src/optitrack_stream_test.cpp
+)
+
+target_link_libraries(
+  optitrack_stream_test ${catkin_LIBRARIES}
+)
+
+
 # ==================== INSTALL TARGETS ====================
 
-install(TARGETS projection_calibration_node projection_display_node projection_utils
+install(TARGETS projection_calibration_node projection_display_node projection_utils optitrack_stream_test
 RUNTIME DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION})
