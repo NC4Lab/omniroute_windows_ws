@@ -922,6 +922,8 @@ extern const std::string IMAGE_TOP_DIR_PATH = workspace_path + "/data/projection
 /**
  * @brief 4D array of hardcoded image indices to display.
  *
+ * @todo: Change these to std::array
+ * 
  * This array is used to map specific image indices to a combination of
  * projector, chamber row, chamber column, calibration mode, and wall position.
  *
@@ -974,65 +976,26 @@ int TEMPLATE[4][3][3][3] = {
     },
 };
 
-// Actual hardcoded image indices used to display
-int IMG_PROJ_MAP[4][3][3][3] = {
-    // Projector 0: East
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {1, 1, 1}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {0, 0, 4}, {0, 2, 2}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-    // Projector 1: North
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 2, 2}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 1, 1}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 3, 3}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-    // Projector 2: West
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-    // Projector 3: South
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-};
-
 // // Actual hardcoded image indices used to display
+// /// @note Used for RTI grant 2023 
 // int IMG_PROJ_MAP[4][3][3][3] = {
 //     // Projector 0: East
 //     {
 //         // Chamber Row: Top, Column: Left, Center, Right
-//         {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//         {{0, 0, 0}, {1, 1, 1}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
 //         // Chamber Row: Middle
-//         {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//         {{0, 0, 0}, {0, 0, 4}, {0, 2, 2}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
 //         // Chamber Row: Bottom
-//         {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
 //     },
 //     // Projector 1: North
 //     {
 //         // Chamber Row: Top, Column: Left, Center, Right
-//         {{0, 0, 0}, {1, 2, 3}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//         {{0, 0, 0}, {0, 2, 2}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
 //         // Chamber Row: Middle
-//         {{1, 2, 3}, {0, 0, 0}, {3, 2, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//         {{0, 1, 1}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
 //         // Chamber Row: Bottom
-//         {{0, 0, 0}, {3, 2, 1}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+//         {{0, 0, 0}, {0, 0, 0}, {0, 3, 3}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
 //     },
 //     // Projector 2: West
 //     {
@@ -1053,6 +1016,46 @@ int IMG_PROJ_MAP[4][3][3][3] = {
 //         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
 //     },
 // };
+
+// Actual hardcoded image indices used to display
+int IMG_PROJ_MAP[4][3][3][3] = {
+    // Projector 0: East
+    {
+        // Chamber Row: Top, Column: Left, Center, Right
+        {{1, 2, 3}, {0, 0, 0}, {3, 2, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Middle
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Bottom
+        {{3, 4, 5}, {0, 0, 0}, {5, 4, 3}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+    },
+    // Projector 1: North
+    {
+        // Chamber Row: Top, Column: Left, Center, Right
+        {{0, 0, 0}, {1, 2, 3}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Middle
+        {{1, 2, 3}, {4, 4, 4}, {3, 2, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Bottom
+        {{0, 0, 0}, {3, 2, 1}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+    },
+    // Projector 2: West
+    {
+        // Chamber Row: Top, Column: Left, Center, Right
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Middle
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Bottom
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+    },
+    // Projector 3: South
+    {
+        // Chamber Row: Top, Column: Left, Center, Right
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Middle
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+        // Chamber Row: Bottom
+        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
+    },
+};
 
 // Number of rows and columns in the maze
 extern const int MAZE_SIZE = 3;
@@ -1080,10 +1083,6 @@ const int DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4
 // Number of calibration modes and strings for each mode
 const int N_CAL_MODES = 3;
 std::vector<std::string> CAL_MADE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};
-
-// 3x3x3 data contianer for storing wall homography matrices for each wall image and each calibration mode
-std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> WALL_HMAT_ARR; // Wall homography matrix array
-
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -1196,7 +1195,7 @@ std::string promptForProjectorNumber();
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int xmlFrmtFileStrings(int mon_ind, int cal_ind, std::string & out_path, std::string &out_mode);
+int xmlFrmtFileStrings(int mon_ind, int cal_ind, std::string &out_path, std::string &out_mode);
 
 /**
  * Save a single cv::Mat homography matrix to an XML file.
@@ -1204,7 +1203,7 @@ int xmlFrmtFileStrings(int mon_ind, int cal_ind, std::string & out_path, std::st
  * This function uses the pugixml library to create an XML document and populate it with
  * the homography matrix for each wall in a 3x3 grid.
  *
- * @param H The homography matrix to save.
+ * @param _H The homography matrix to save.
  * @param mon_ind Monitor index for the active monitor.
  * @param cal_ind Index of the active or desired calibration mode.
  * @param grid_row Row index for the array of homography matrices to save.
@@ -1212,7 +1211,7 @@ int xmlFrmtFileStrings(int mon_ind, int cal_ind, std::string & out_path, std::st
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int xmlSaveHMAT(const cv::Mat &H, int mon_ind, int cal_ind, int grid_row, int grid_col);
+int xmlSaveHMAT(const cv::Mat &_H, int mon_ind, int cal_ind, int grid_row, int grid_col);
 
 /**
  * Load a single cv::Mat homography matrix from an XML file.
@@ -1226,6 +1225,15 @@ int xmlSaveHMAT(const cv::Mat &H, int mon_ind, int cal_ind, int grid_row, int gr
  * @return Integer status code [-1:error, 0:successful].
  */
 int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &out_H);
+
+/**
+ * Checks for size and signulararity issues in a homography matrix.
+ *
+ * @param _H The homography matrix to check.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int checkHMAT(const cv::Mat &_H);
 
 /**
  * @brief Checks if a given set of vertices defines a valid quadrilateral.

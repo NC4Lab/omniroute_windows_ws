@@ -424,14 +424,14 @@ int MazeRenderContext::checkExitRequest()
     // Check if the window should close
     if (glfwWindowShouldClose(windowID))
     {
-        ROS_INFO("[MazeRenderContext::checkExitRequest] Window[%d] Monitor[%d] Close Requested", windowInd, monitorInd);
+        ROS_INFO("[MazeRenderContext::checkExitRequest] Close Requested: Window[%d] Monitor[%d]", windowInd, monitorInd);
         return 1;
     }
 
     // Check if the escape key is pressed
     if (glfwGetKey(windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
-        ROS_INFO("[MazeRenderContext::checkExitRequest] Window[%d] Monitor[%d] Escape Key Pressed", windowInd, monitorInd);
+        ROS_INFO("[MazeRenderContext::checkExitRequest] Escape Key Pressed: Window[%d] Monitor[%d]", windowInd, monitorInd);
         return 2;
     }
 
@@ -1332,7 +1332,7 @@ int xmlFrmtFileStrings(int mon_ind, int cal_ind, std::string &out_path, std::str
     return 0;
 }
 
-int xmlSaveHMAT(const cv::Mat &H, int mon_ind, int cal_ind, int grid_row, int grid_col)
+int xmlSaveHMAT(const cv::Mat &_H, int mon_ind, int cal_ind, int grid_row, int grid_col)
 {
     // Get the full file path and attribute string for the given calibration mode
     std::string file_path;
@@ -1389,13 +1389,13 @@ int xmlSaveHMAT(const cv::Mat &H, int mon_ind, int cal_ind, int grid_row, int gr
     new_hmat_node.append_attribute("grid_col") = grid_col;
 
     // Add the matrix data to the HMAT node
-    for (int r = 0; r < H.rows; ++r)
+    for (int r = 0; r < _H.rows; ++r)
     {
         pugi::xml_node row_node = new_hmat_node.append_child("row");
-        for (int c = 0; c < H.cols; ++c)
+        for (int c = 0; c < _H.cols; ++c)
         {
             pugi::xml_node cell_node = row_node.append_child("cell");
-            cell_node.append_child(pugi::node_pcdata).set_value(std::to_string(H.at<double>(r, c)).c_str());
+            cell_node.append_child(pugi::node_pcdata).set_value(std::to_string(_H.at<double>(r, c)).c_str());
         }
     }
 
@@ -1488,6 +1488,26 @@ int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &o
     return 0;
 }
 
+int checkHMAT(const cv::Mat &_H)
+{
+    // Check if the input matrix is 3x3
+    if (_H.empty() || _H.rows != 3 || _H.cols != 3)
+    {
+        ROS_ERROR("[updateWallTextures] Homography matrix size error: Size[%d][%d]", _H.rows, _H.cols);
+        return -1;
+    }
+
+    // Check for a non-singular matrix
+    double det = cv::determinant(_H);
+    if (fabs(det) < std::numeric_limits<double>::epsilon())
+    {
+        ROS_ERROR("Homography matrix is singular or near-singular with determinant %.6f", det);
+        return -1;
+    }
+
+    return 0;
+}
+
 int checkQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
 {
 
@@ -1551,7 +1571,7 @@ float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, 
 int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Mat> &out_img_mat_vec)
 {
     out_img_mat_vec.clear(); // Ensure the output vector is empty before starting
-
+    int img_cnt = 0;
     for (const std::string &img_path : img_paths_vec)
     {
         // Load image using OpenCV
@@ -1612,8 +1632,8 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
         out_img_mat_vec.push_back(img);
 
         // Log the image information
-        ROS_INFO("[loadImgMat] Successfully loaded image: Channels[%d] Depth[%s] Path[%s]",
-                 img.channels(), depth_str.c_str(), img_path.c_str());
+        ROS_INFO("[loadImgMat] Image[%d of %d] loaded sucesfully: Channels[%d] Depth[%s] Path[%s]",
+                 img_cnt++, img_paths_vec.size()-1, img.channels(), depth_str.c_str(), img_path.c_str());
     }
 
     // Return success

@@ -46,6 +46,13 @@ const GLfloat cpSelectedMakerRadius = 0.005f;                          // Select
 std::array<std::array<cv::Point2f, 4>, 4> CP_GRID_ARR;
 
 /**
+ * @brief 3x3x3 data contianer for storing wall homography matrices for each wall image and each calibration mode.
+ * 
+ * @note We remove calibration mode dimension.
+ */ 
+std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> WALL_HMAT_ARR; // Wall homography matrix array
+
+/**
  * @brief  OpenGL context objects.
  */
 MazeRenderContext PROJ_GL;
@@ -110,14 +117,14 @@ static struct IndStruct
 std::string calib_image_path = IMAGE_TOP_DIR_PATH + "/calibration";
 
 // Image file paths
-std::vector<std::string> wallImgPathVec = {
+std::vector<std::string> fiImgPathWallVec = {
     // List of image file paths
     calib_image_path + "/0_tp_wall.png",
     calib_image_path + "/1_tp_wall.png",
     calib_image_path + "/2_tp_wall.png",
     calib_image_path + "/3_tp_wall.png",
 };
-std::vector<std::string> monImgPathVec = {
+std::vector<std::string> fiImgPathMonVec = {
     // List of monitor number image file paths
     calib_image_path + "/m0.png",
     calib_image_path + "/m1.png",
@@ -126,7 +133,7 @@ std::vector<std::string> monImgPathVec = {
     calib_image_path + "/m4.png",
     calib_image_path + "/m5.png",
 };
-std::vector<std::string> calImgPathVec = {
+std::vector<std::string> fiImgPathCalVec = {
     // List of mode image file paths
     calib_image_path + "/cwl.png", // left walls
     calib_image_path + "/cwm.png", // middle walls

@@ -24,11 +24,20 @@ int procKeyPress()
     };
     int status;
 
-    // Check for fullscreen mode change
+    // Check for fullscreen mode change [F]
     status = loopCheck(GLFW_KEY_F, GLFW_RELEASE);
     if (status > 0)
     {
         F.fullscreen_mode = !F.fullscreen_mode;
+        F.change_window_mode = true;
+        return status;
+    }
+
+    // Check for move monitor command [M]
+    status = loopCheck(GLFW_KEY_M, GLFW_RELEASE);
+    if (status > 0)
+    {
+        F.windows_set_to_proj = !F.windows_set_to_proj;
         F.change_window_mode = true;
         return status;
     }
@@ -43,8 +52,9 @@ int procKeyPress()
 }
 
 int updateWallTextures(
+    int proj_mon_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
-    const std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &_WALL_HMAT_ARR,
+    const std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> &_WALL_HMAT_ARR_VEC,
     MazeRenderContext &out_progGL)
 {
     // Initialize the image to be used as the texture
@@ -62,14 +72,34 @@ int updateWallTextures(
                 // Get the image index for the current wall
                 int wall_r = MAZE_SIZE - 1 - gr_i;
                 int wall_c = gc_i;
-                int img_ind = IMG_PROJ_MAP[out_progGL.windowInd][wall_r][wall_c][cal_i];
+                int img_ind = IMG_PROJ_MAP[proj_mon_ind][wall_r][wall_c][cal_i];
+
+                // Check for vaiid image
+                if (_wallImgMatVec[img_ind].empty())
+                {
+                    ROS_ERROR("[updateWallTextures] Stored OpenCV image is empty: Window[%d] Monitor[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
+                              out_progGL.windowInd, proj_mon_ind, wall_r, wall_c, cal_i, img_ind);
+                    return -1;
+                }
 
                 // Copy wall image
                 cv::Mat img_copy;
                 _wallImgMatVec[img_ind].copyTo(img_copy);
+                if (img_copy.empty())
+                {
+                    ROS_ERROR("[updateWallTextures] OpenCV image copy failed: Window[%d] Monitor[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
+                              out_progGL.windowInd, proj_mon_ind, wall_r, wall_c, cal_i, img_ind);
+                    return -1;
+                }
 
                 // Get homography matrix for this wall
-                cv::Mat H = _WALL_HMAT_ARR[cal_i][gr_i][gc_i];
+                cv::Mat H = _WALL_HMAT_ARR_VEC[proj_mon_ind][cal_i][gr_i][gc_i];
+                if (checkHMAT(H) < 0)
+                {
+                    ROS_ERROR("[updateWallTextures] Homography matrix error: Window[%d] Wall[%d][%d] Calibration[%d]",
+                              out_progGL.windowInd, proj_mon_ind, wall_r, wall_c, cal_i, H.rows, H.cols);
+                    return -1;
+                }
 
                 // Warp Perspective
                 cv::Mat im_warp;
@@ -90,7 +120,7 @@ void appLoadAssets()
 {
 
     // Load images using OpenCV
-    if (loadImgMat(wallImgPathVec, wallImgMatVec) < 0)
+    if (loadImgMat(fiImgPathWallVec, wallImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
 
     // Load homography matrices from XML files
@@ -102,7 +132,7 @@ void appLoadAssets()
             {
                 for (int gc_i = 0; gc_i < MAZE_SIZE; ++gc_i)
                 {
-                    if (xmlLoadHMAT(mon_ind, cal_i, gr_i, gc_i, WALL_HMAT_ARR[cal_i][gr_i][gc_i]) < 0)
+                    if (xmlLoadHMAT(mon_ind, cal_i, gr_i, gc_i, WALL_HMAT_ARR_VEC[mon_ind][cal_i][gr_i][gc_i]) < 0)
                         throw std::runtime_error("[appMainLoop] Error returned from xmlLoadHMAT");
                 }
             }
@@ -119,7 +149,7 @@ void appInitVariables()
 
     for (int win_ind = 0; win_ind < N.projectors; ++win_ind)
     {
-        int offsetValue = static_cast<int>(500.0f * (win_ind + 0.1f));
+        int offsetValue = static_cast<int>(500.0f * (win_ind + 0.1f) * 0.2f);
         winOffsetVec.emplace_back(offsetValue, offsetValue);
     }
 
@@ -138,11 +168,12 @@ void appInitOpenGL()
         throw std::runtime_error("[appInitOpenGL] Monitor index exceeds available monitors");
 
     // Initialize OpenGL for each projector
+    int win_ind = 0;
     for (auto &projGl : PROJ_GL_VEC)
     {
 
         // Initialze render context for each projector
-        if (projGl.initWindowContext(0, 0, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL) < 0)
+        if (projGl.initWindowContext(win_ind++, I.starting_monitor, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
 
         // Initialize OpenGL wall image objects
@@ -151,8 +182,8 @@ void appInitOpenGL()
                                   WALL_GL_INDICES, sizeof(WALL_GL_INDICES)) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
 
-        // Set projectors to default monitor and include xy offset
-        if (projGl.changeWindowDisplayMode(I.proj_mon_vec[projGl.windowInd], F.fullscreen_mode, winOffsetVec[projGl.windowInd]) < 0)
+        // Set all projectors to the starting monitor and include xy offset
+        if (projGl.changeWindowDisplayMode(I.starting_monitor, F.fullscreen_mode, winOffsetVec[projGl.windowInd]) < 0)
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projGl.windowInd) + "]: Failed Initial update of window monitor mode");
 
         // Create the shader program for wall image rendering
@@ -160,7 +191,7 @@ void appInitOpenGL()
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projGl.windowInd) + "]: Failed to compile and link wall shader");
 
         // Initialize wall image texture
-        if (updateWallTextures(wallImgMatVec, WALL_HMAT_ARR_VEC[I.proj_mon_vec[projGl.windowInd]], projGl))
+        if (updateWallTextures(I.proj_mon_vec[projGl.windowInd], wallImgMatVec, WALL_HMAT_ARR_VEC, projGl))
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projGl.windowInd) + "]: Failed to initialize wall texture");
 
         ROS_INFO("[appInitOpenGL] OpenGL initialized: Window[%d] Monitor[%d]", projGl.windowInd, projGl.monitorInd);
@@ -184,7 +215,8 @@ void appMainLoop()
         {
             for (auto &projGl : PROJ_GL_VEC)
             {
-                if (projGl.changeWindowDisplayMode(I.proj_mon_vec[projGl.windowInd], F.fullscreen_mode) < 0)
+                int mon_ind = F.windows_set_to_proj ? I.proj_mon_vec[projGl.windowInd] : I.starting_monitor;
+                if (projGl.changeWindowDisplayMode(mon_ind, F.fullscreen_mode) < 0)
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projGl.windowInd) + "]: Error returned from MazeRenderContext::changeWindowDisplayMode");
             }
 
@@ -197,7 +229,7 @@ void appMainLoop()
             for (auto &projGl : PROJ_GL_VEC)
             {
                 // Initialize wall image texture
-                if (updateWallTextures(wallImgMatVec, WALL_HMAT_ARR_VEC[I.proj_mon_vec[projGl.windowInd]], projGl))
+                if (updateWallTextures(I.proj_mon_vec[projGl.windowInd], wallImgMatVec, WALL_HMAT_ARR_VEC, projGl))
                     throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projGl.windowInd) + "]: Failed to initialize wall texture");
             }
 
@@ -237,6 +269,9 @@ void appMainLoop()
 
             // Check for exit
             status = projGl.checkExitRequest();
+            if (status > 0)
+                break;
+            else
             if (status < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projGl.windowInd) + "]: Error returned from MazeRenderContext::checkExitRequest");
         }

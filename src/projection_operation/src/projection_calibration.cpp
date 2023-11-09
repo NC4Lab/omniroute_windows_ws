@@ -30,48 +30,53 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         }
 
         // Move the window to another monitor
-        else if (key == GLFW_KEY_0)
+        int mon_ind = I.monitor;
+        if (key == GLFW_KEY_0)
         {
-            I.monitor = 0;
-            F.change_window_mode = true;
+            mon_ind = 0;
         }
         else if (key == GLFW_KEY_1 && N.monitors > 1)
         {
-            I.monitor = 1;
-            F.change_window_mode = true;
+            mon_ind = 1;
         }
         else if (key == GLFW_KEY_2 && N.monitors > 2)
         {
-            I.monitor = 2;
-            F.change_window_mode = true;
+            mon_ind = 2;
         }
         else if (key == GLFW_KEY_3 && N.monitors > 3)
         {
-            I.monitor = 3;
-            F.change_window_mode = true;
+            mon_ind = 3;
         }
         else if (key == GLFW_KEY_4 && N.monitors > 4)
         {
-            I.monitor = 4;
-            F.change_window_mode = true;
+            mon_ind = 4;
         }
         else if (key == GLFW_KEY_5 && N.monitors > 5)
         {
-            I.monitor = 5;
+            mon_ind = 5;
+        }
+        // Check for monitor change
+        if (mon_ind != I.monitor)
+        {
+            // Update the monitor index
+            I.monitor = mon_ind;
+            // Set the window update flag
             F.change_window_mode = true;
+            // Set the reinstalize control points flag
+            F.init_control_points = true;
         }
 
         // ---------- XML Handling [ENTER, L] ----------
 
         // Save coordinates to XML
-        else if (key == GLFW_KEY_S)
+        if (key == GLFW_KEY_S)
         {
             F.xml_save_hmat = true;
             F.update_wall_textures = true;
         }
 
         // Load coordinates from XML
-        else if (key == GLFW_KEY_L)
+        if (key == GLFW_KEY_L)
         {
             F.xml_load_hmat = true;
             F.update_wall_textures = true;
@@ -79,7 +84,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         // ---------- Image selector keys [F1-F4] ----------
 
-        else if (key == GLFW_KEY_F1)
+        if (key == GLFW_KEY_F1)
         {
             I.wall_image = N.wall_images > 0 ? 0 : I.wall_image;
             F.update_wall_homographys = true;
@@ -102,7 +107,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         // ---------- Control Point Reset [R] ----------
 
-        else if (key == GLFW_KEY_R)
+        if (key == GLFW_KEY_R)
         {
             F.init_control_points = true;
         }
@@ -528,11 +533,11 @@ void appInitVariables()
 void appLoadAssets()
 {
     // Load images using OpenCV
-    if (loadImgMat(wallImgPathVec, wallImgMatVec) < 0)
+    if (loadImgMat(fiImgPathWallVec, wallImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
-    if (loadImgMat(monImgPathVec, monImgMatVec) < 0)
+    if (loadImgMat(fiImgPathMonVec, monImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV onitor number images");
-    if (loadImgMat(calImgPathVec, calImgMatVec) < 0)
+    if (loadImgMat(fiImgPathCalVec, calImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV calibration mode images");
 
     ROS_INFO("[appLoadAssets] OpentCV mat images loaded succesfully");
@@ -609,6 +614,7 @@ void appInitFileXML()
                         {
                             mon_missing_vec.push_back(mon_i);
                             isMonMissing = true; // Break out of the nested loops
+                            ROS_WARN("[appInitFileXML] Initilizing XML file for Monitor[%d]: %s", mon_i, file_path);
                         }
                     }
                 }
@@ -623,7 +629,6 @@ void appInitFileXML()
     // Loop through the missing projectors
     for (auto &mon_i : mon_missing_vec)
     {
-        ROS_WARN("[appInitFileXML] Initilizing XML file for Monitor[%d]", mon_i);
         for (int cal_ind = 0; cal_ind < N_CAL_MODES; ++cal_ind)
         {
             initControlPoints(cal_ind, _CP_GRID_ARR);
@@ -634,7 +639,7 @@ void appInitFileXML()
             {
                 for (int gc_i = 0; gc_i < MAZE_SIZE; ++gc_i)
                 {
-                    if (xmlSaveHMAT(_WALL_HMAT_ARR[cal_ind][gr_i][gc_i], I.monitor, cal_ind, gr_i, gc_i) < 0)
+                    if (xmlSaveHMAT(_WALL_HMAT_ARR[cal_ind][gr_i][gc_i], mon_i, cal_ind, gr_i, gc_i) < 0)
                         throw std::runtime_error("[appInitFileXML] Error returned from xmlSaveHMAT");
                 }
             }

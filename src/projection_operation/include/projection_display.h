@@ -30,7 +30,7 @@ static struct FlagStruct
  */
 static struct IndStruct
 {
-    int default_monitor = 1; // Default monitor index for the windows
+    int starting_monitor = 0; // Default starting monitor index for the windows
     std::vector<int> proj_mon_vec = {
         0,
         1,
@@ -63,7 +63,7 @@ std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_
 // Sub-directory paths
 std::string runtime_wall_image_path = IMAGE_TOP_DIR_PATH + "/runtime/shapes_outlined";
 
-std::vector<std::string> wallImgPathVec = {
+std::vector<std::string> fiImgPathWallVec = {
     // List of image file paths
     runtime_wall_image_path + "/blank.png",    // [0] Blank image
     runtime_wall_image_path + "/square.png",   // [1] Square image
@@ -89,15 +89,17 @@ int procKeyPress();
 /**
  * @brief Applies the homography matrices to warp wall image textures and combine them.
  *
+ * @param _proj_mon_ind Index of the monitor associated to the projector.
  * @param _wallImgMatVec Vectors containing the loaded images in cv::Mat format
- * @param _WALL_HMAT_ARR Array containing calibration matrices for the maze.
+ * @param _WALL_HMAT_ARR_VEC Big ass ugly vector of arrays of matrices of shit!
  * @param[out] out_progGL MazeRenderContext OpenGL context handler.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int updateWallTextures(
+    int proj_mon_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
-    const std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &_WALL_HMAT_ARR,
+    const std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> &_WALL_HMAT_ARR_VEC,
     MazeRenderContext &out_progGL);
 
 /**
