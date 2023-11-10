@@ -76,7 +76,7 @@ int updateWallTextures(
                 if (_wallImgMatVec[img_ind].empty())
                 {
                     ROS_ERROR("[updateWallTextures] Stored OpenCV image is empty: Window[%d] Monitor[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
-                              out_progGL.windowInd, proj_mon_ind, wall_r, wall_c, cal_i, img_ind);
+                              out_progGL.windowInd, proj_mon_ind, gr_i, gc_i, cal_i, img_ind);
                     return -1;
                 }
 
@@ -86,7 +86,7 @@ int updateWallTextures(
                 if (img_copy.empty())
                 {
                     ROS_ERROR("[updateWallTextures] OpenCV image copy failed: Window[%d] Monitor[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
-                              out_progGL.windowInd, proj_mon_ind, wall_r, wall_c, cal_i, img_ind);
+                              out_progGL.windowInd, proj_mon_ind, gr_i, gc_i, cal_i, img_ind);
                     return -1;
                 }
 
@@ -95,7 +95,7 @@ int updateWallTextures(
                 if (checkHMAT(H) < 0)
                 {
                     ROS_ERROR("[updateWallTextures] Homography matrix error: Window[%d] Wall[%d][%d] Calibration[%d]",
-                              out_progGL.windowInd, proj_mon_ind, wall_r, wall_c, cal_i, H.rows, H.cols);
+                              out_progGL.windowInd, proj_mon_ind, gr_i, gc_i, cal_i, H.rows, H.cols);
                     return -1;
                 }
 
