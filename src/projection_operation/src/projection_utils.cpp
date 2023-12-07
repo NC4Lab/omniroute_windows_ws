@@ -330,6 +330,45 @@ int MazeRenderContext::checkShaderProgram()
     return 0;
 }
 
+int MazeRenderContext::drawTexture()
+{
+    int status = 0;
+
+    // Check the shader program for errors
+    if (checkShaderProgram())
+    {
+        ROS_ERROR("[MazeRenderContext::drawTexture] Shader program validation failed");
+        return -1;
+    }
+    glfwMakeContextCurrent(windowID);
+    status = MazeRenderContext::CheckErrorGLFW(__LINE__, __FILE__);
+
+    // Use the shader program for wall rendering
+    glUseProgram(shaderProgram);
+
+    // Bind the texture for the image
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D, textureID);
+
+    // Bind the Vertex Array Object(VAO) specific to the current wall
+    glBindVertexArray(vao);
+
+    // Bind the common Element Buffer Object (EBO)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+
+    // Draw the rectangle (2 triangles) for the current wall
+    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
+
+    // Unbind the VAO to prevent accidental modification
+    glBindVertexArray(0);
+
+    // Unset the shader program
+    glUseProgram(0);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    return status;
+}
+
 int MazeRenderContext::cleanupContext(bool log_errors)
 {
     int status = 0;
@@ -1754,44 +1793,5 @@ int initWallRenderObjects(MazeRenderContext &out_renCtx,
     status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
 
     // Return GL status
-    return status;
-}
-
-int renderWallImage(MazeRenderContext &_renCtx)
-{
-    int status = 0;
-
-    // Check the shader program for errors
-    if (_renCtx.checkShaderProgram())
-    {
-        ROS_ERROR("[renderWallImage] Shader program validation failed");
-        return -1;
-    }
-    glfwMakeContextCurrent(_renCtx.windowID);
-    status = MazeRenderContext::CheckErrorGLFW(__LINE__, __FILE__);
-
-    // Use the shader program for wall rendering
-    glUseProgram(_renCtx.shaderProgram);
-
-    // Bind the texture for the walls
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, _renCtx.textureID);
-
-    // Bind the Vertex Array Object(VAO) specific to the current wall
-    glBindVertexArray(_renCtx.vao);
-
-    // Bind the common Element Buffer Object (EBO)
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _renCtx.ebo);
-
-    // Draw the rectangle (2 triangles) for the current wall
-    glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-
-    // Unbind the VAO to prevent accidental modification
-    glBindVertexArray(0);
-
-    // Unset the shader program
-    glUseProgram(0);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
     return status;
 }

@@ -550,21 +550,21 @@ void appInitOpenGL()
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
 
     // Initialze render context
-    if (PROJ_GL.initWindowContext(0, 0, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, callbackKeyBinding) < 0)
+    if (projCtx.initWindowContext(0, 0, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, callbackKeyBinding) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
 
     // Initialize OpenGL wall image objects
-    if (initWallRenderObjects(PROJ_GL,
+    if (initWallRenderObjects(projCtx,
                               WALL_GL_VERTICES, sizeof(WALL_GL_VERTICES),
                               WALL_GL_INDICES, sizeof(WALL_GL_INDICES)) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
 
     // Update monitor and window mode settings
-    if (PROJ_GL.changeWindowDisplayMode(I.monitor, F.fullscreen_mode) < 0)
+    if (projCtx.changeWindowDisplayMode(I.monitor, F.fullscreen_mode) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed Initial update of window monitor mode");
 
     // Create the shader program for wall image rendering
-    if (PROJ_GL.compileAndLinkShaders(WALL_VERTEX_SOURCE, WALL_FRAGMENT_SOURCE) < 0)
+    if (projCtx.compileAndLinkShaders(WALL_VERTEX_SOURCE, WALL_FRAGMENT_SOURCE) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to compile and link wall shader");
 
     // Create the shader program for CircleRenderer class control point rendering
@@ -576,7 +576,7 @@ void appInitOpenGL()
         throw std::runtime_error("[appInitOpenGL] Failed to initialize control point variables");
 
     // Initialize wall image texture
-    if (updateWallTextures(I.cal_mode, wallImgMatVec[I.wall_image], monImgMatVec[I.monitor], calImgMatVec[I.cal_mode], WALL_HMAT_ARR, PROJ_GL.textureID) < 0)
+    if (updateWallTextures(I.cal_mode, wallImgMatVec[I.wall_image], monImgMatVec[I.monitor], calImgMatVec[I.cal_mode], WALL_HMAT_ARR, projCtx.textureID) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize wall texture");
 
     ROS_INFO("[appInitOpenGL] OpenGL context and objects initialized succesfully");
@@ -677,13 +677,13 @@ void appMainLoop()
             }
 
             // Flash the background to indicate the file was loaded/saved
-            PROJ_GL.flashBackgroundColor(cv::Scalar(0.0f, 0.25f, 0.0f), 10);
+            projCtx.flashBackgroundColor(cv::Scalar(0.0f, 0.25f, 0.0f), 10);
         }
 
         // Update the window monitor and mode
         if (F.change_window_mode)
         {
-            if (PROJ_GL.changeWindowDisplayMode(I.monitor, F.fullscreen_mode) < 0)
+            if (projCtx.changeWindowDisplayMode(I.monitor, F.fullscreen_mode) < 0)
                 throw std::runtime_error("[appMainLoop] Error returned from changeWindowDisplayMode");
         }
 
@@ -706,7 +706,7 @@ void appMainLoop()
             F.update_wall_homographys ||
             F.init_control_points)
         {
-            if (updateWallTextures(I.cal_mode, wallImgMatVec[I.wall_image], monImgMatVec[I.monitor], calImgMatVec[I.cal_mode], WALL_HMAT_ARR, PROJ_GL.textureID) < 0)
+            if (updateWallTextures(I.cal_mode, wallImgMatVec[I.wall_image], monImgMatVec[I.monitor], calImgMatVec[I.cal_mode], WALL_HMAT_ARR, projCtx.textureID) < 0)
                 throw std::runtime_error("[appMainLoop] Error returned from updateWallTextures");
         }
 
@@ -721,31 +721,31 @@ void appMainLoop()
         // --------------- Handle Rendering for Next Frame ---------------
 
         // Prepare the frame for rendering (make context clear the back buffer)
-        if (PROJ_GL.initWindow() < 0)
+        if (projCtx.initWindow() < 0)
             throw std::runtime_error("[appMainLoop] Error returned from MazeRenderContext::initWindow");
 
         // Make sure winsow always stays on top in fullscreen mode
-        if (PROJ_GL.forceWindowStackOrder(F.fullscreen_mode) < 0)
+        if (projCtx.forceWindowStackOrder(F.fullscreen_mode) < 0)
             throw std::runtime_error("[appMainLoop] Error returned from MazeRenderContext::forceWindowStackOrder");
 
         // Draw/update wall images
-        if (renderWallImage(PROJ_GL) < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from renderWallImage");
+        if (projCtx.drawTexture() < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from drawTexture");
 
         // Draw/update control point markers
         if (renderControlPoints(CP_GRID_ARR, CP_GLOBJ_ARR) < 0)
             throw std::runtime_error("[appMainLoop] Error returned from renderControlPoints");
 
         // Swap buffers and poll events
-        if (PROJ_GL.bufferSwapPoll() < 0)
+        if (projCtx.bufferSwapPoll() < 0)
             throw std::runtime_error("[appMainLoop] Error returned from MazeRenderContext::bufferSwapPoll");
 
         // Check if ROS shutdown
         if (!ros::ok())
-            throw std::runtime_error("[appMainLoop] Unextpected ROS shutdown");
+            throw std::runtime_error("[appMainLoop] Unexpected ROS shutdown");
 
         // Check for exit
-        status = PROJ_GL.checkExitRequest();
+        status = projCtx.checkExitRequest();
         if (status < 0)
             throw std::runtime_error("[appMainLoop] Error returned from MazeRenderContext::checkExitRequest");
     }
@@ -770,7 +770,7 @@ void appCleanup()
         ROS_INFO("[appCleanup] CircleRenderer shader program deleted successfully");
 
     // Clean up OpenGL wall image objects
-    if (PROJ_GL.cleanupContext() != 0)
+    if (projCtx.cleanupContext() != 0)
         ROS_WARN("[appCleanup] Error during cleanup of MazeRenderContext instance");
     else
         ROS_INFO("[appCleanup] MazeRenderContext instance cleaned up successfully");

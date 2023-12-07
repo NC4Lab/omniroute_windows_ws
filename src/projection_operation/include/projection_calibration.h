@@ -55,7 +55,7 @@ std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> W
 /**
  * @brief  OpenGL context objects.
  */
-MazeRenderContext PROJ_GL;
+MazeRenderContext projCtx;
 
 /**
  * @brief  4x4 array of the CircleRenderer class objects.

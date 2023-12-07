@@ -52,7 +52,7 @@ std::vector<cv::Point> winOffsetVec;
 /**
  * @brief  Array of OpenGL context objects.
  */
-std::vector<MazeRenderContext> PROJ_GL_VEC(N.projectors);
+std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projectors);
 
 /**
  * @brief A n_projectors sized element veoctor containing a 3x3x3 data contianer for storing 3x3 homography matrices (UGLY!)

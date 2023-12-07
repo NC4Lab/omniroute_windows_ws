@@ -358,7 +358,7 @@ public:
      * @param line Line number where the function is called.
      * @param file_str File name where the function is called.
      * @param msg_str Optional message to provide additional context (default to nullptr).
-     * @return Integer status code  [-1:error, 0:successful].
+     * @return Integer status code [-1:error, 0:successful].
      *
      * @example CheckErrorOpenGL(__LINE__, __FILE__);
      */
@@ -371,7 +371,7 @@ public:
      * @param line Line number where the function is called.
      * @param file_str File name where the function is called.
      * @param msg_str Optional message to provide additional context (default to nullptr).
-     * @return Integer status code  [-1:error, 0:successful].
+     * @return Integer status code [-1:error, 0:successful].
      *
      * @example CheckErrorGLFW(__LINE__, __FILE__);
      */
@@ -408,7 +408,7 @@ public:
      *
      * @param vertex_source Source code for the vertex shader stored as a C++ raw string literal.
      * @param fragment_source Source code for the fragment shader stored as a C++ raw string literal.
-     * @return Integer status code  [-1:error, 0:successful].
+     * @return Integer status code [-1:error, 0:successful].
      *
      * @details
      * This function encapsulates the process of creating, compiling, and linking an OpenGL shader program.
@@ -435,9 +435,16 @@ public:
      *
      * Make sure to call this method after your shader program has been linked.
      *
-     * @return Integer status code  [-1:error, 0:successful].
+     * @return Integer status code [-1:error, 0:successful].
      */
     int MazeRenderContext::checkShaderProgram();
+
+    /**
+     * @brief Renders the current texture stored in a given class instance.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int MazeRenderContext::drawTexture();
 
     /**
      * @brief Cleans up GLFW and resets monitor info.
@@ -470,7 +477,7 @@ public:
      * Makes this the current GL context and clears the color
      * buffers of the back buffer for a new frame.
      *
-     * @return Integer status code  [-1:error, 0:successful].
+     * @return Integer status code [-1:error, 0:successful].
      */
     int initWindow();
 
@@ -480,7 +487,7 @@ public:
      * Basically a wrapper for glfwSwapBuffers() and glfwPollEvents() which
      * swaps the front and back buffers of the window and processes events.
      *
-     * @return Integer status code  [-1:error, 0:successful].
+     * @return Integer status code [-1:error, 0:successful].
      */
     int bufferSwapPoll();
 
@@ -504,7 +511,7 @@ public:
      * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
      * @param offset_xy Optional offset to apply to window position (default to (0, 0)).
      *
-     * @return Integer status code  [-1:error, 0:successful].
+     * @return Integer status code [-1:error, 0:successful].
      */
     int changeWindowDisplayMode(int mon_ind, bool is_fullscreen, cv::Point offset_xy = cv::Point(0.0f, 0.0f));
 
@@ -519,7 +526,7 @@ public:
      * This needs to be called continually in a main loop.
      *
      * @param is_top_always A boolean flag to set or unset the window as always on top.
-     * @return Integer status code  [-1:error, 0:successful].
+     * @return Integer status code [-1:error, 0:successful].
      */
     int forceWindowStackOrder(bool is_top_always);
 
@@ -533,7 +540,7 @@ public:
      * @param action GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT.
      * @param mods Bit field describing which modifier keys were held down .
      *
-     * @return Integer status code  [-1:error, 0:successful].
+     * @return Integer status code [-1:error, 0:successful].
      */
     int checkKeyInput(int key, int action, int mods = 0x80000000);
 
@@ -734,7 +741,7 @@ public:
     /**
      * @brief Compiles, links shaders, and gets uniform locations.
      * @param aspect_ratio The aspect ratio to be set for the shader.
-     * @return Integer status code  [-1:error, 0:successful].
+     * @return Integer status code [-1:error, 0:successful].
      *
      * @details
      * This static method compiles the vertex and fragment shaders,
@@ -745,7 +752,7 @@ public:
 
     /**
      * @brief Cleans up shader objects and other shared resources.
-     * @return Integer status code  [-1:error, 0:successful].
+     * @return Integer status code [-1:error, 0:successful].
      *
      * @details
      * This function should be called when the application is terminating
@@ -923,7 +930,7 @@ extern const std::string IMAGE_TOP_DIR_PATH = workspace_path + "/data/projection
  * @brief 4D array of hardcoded image indices to display.
  *
  * @todo: Change these to std::array
- * 
+ *
  * This array is used to map specific image indices to a combination of
  * projector, chamber row, chamber column, calibration mode, and wall position.
  *
@@ -977,7 +984,7 @@ int TEMPLATE[4][3][3][3] = {
 };
 
 // // Actual hardcoded image indices used to display
-// /// @note Used for RTI grant 2023 
+// /// @note Used for RTI grant 2023
 // int IMG_PROJ_MAP[4][3][3][3] = {
 //     // Projector 0: East
 //     {
@@ -1342,16 +1349,6 @@ int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img);
  */
 
 int loadTexture(cv::Mat, GLuint &);
-
-/**
- * @brief Renders a all wall images from the computed texture2D maze grid by drawing each cell (e.g., wall) with texture mapping and perspective warping.
- *
- * @param _renCtx Reference to an instance of the out_renCtx class.
- *
- * @return Integer status code  [-1:error, 0:successful].
- */
-int renderWallImage(MazeRenderContext &_renCtx);
-
 /**
  * @brief Initialize OpenGL resources for wall image render objects.
  *
