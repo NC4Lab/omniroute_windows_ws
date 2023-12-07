@@ -158,34 +158,34 @@
 	<calibration mode="cwm">
 		<HMAT grid_row="0" grid_col="0">
 			<row>
-				<cell>0.397645</cell>
+				<cell>0.897333</cell>
 				<cell>0.000000</cell>
-				<cell>1632.000000</cell>
+				<cell>1593.599976</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
+				<cell>0.221644</cell>
 				<cell>0.248528</cell>
-				<cell>756.000000</cell>
+				<cell>759.779907</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
+				<cell>0.000292</cell>
 				<cell>0.000000</cell>
 				<cell>1.000000</cell>
 			</row>
 		</HMAT>
 		<HMAT grid_row="0" grid_col="1">
 			<row>
-				<cell>0.397645</cell>
+				<cell>0.679943</cell>
 				<cell>0.000000</cell>
-				<cell>1920.000000</cell>
+				<cell>1900.800049</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
+				<cell>0.105911</cell>
 				<cell>0.248528</cell>
-				<cell>756.000000</cell>
+				<cell>757.889954</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
+				<cell>0.000140</cell>
 				<cell>0.000000</cell>
 				<cell>1.000000</cell>
 			</row>
@@ -209,34 +209,34 @@
 		</HMAT>
 		<HMAT grid_row="1" grid_col="0">
 			<row>
-				<cell>0.397645</cell>
+				<cell>0.639700</cell>
 				<cell>0.000000</cell>
-				<cell>1632.000000</cell>
+				<cell>1612.799927</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
+				<cell>0.151191</cell>
 				<cell>0.248528</cell>
-				<cell>1080.000000</cell>
+				<cell>1081.890015</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
+				<cell>0.000140</cell>
 				<cell>0.000000</cell>
 				<cell>1.000000</cell>
 			</row>
 		</HMAT>
 		<HMAT grid_row="1" grid_col="1">
 			<row>
-				<cell>0.397645</cell>
+				<cell>0.536551</cell>
 				<cell>0.000000</cell>
-				<cell>1920.000000</cell>
+				<cell>1910.400024</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
+				<cell>0.073977</cell>
 				<cell>0.248528</cell>
-				<cell>1080.000000</cell>
+				<cell>1080.944946</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
+				<cell>0.000068</cell>
 				<cell>0.000000</cell>
 				<cell>1.000000</cell>
 			</row>

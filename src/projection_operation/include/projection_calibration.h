@@ -166,7 +166,7 @@ cv::Mat floorImgMat; // Floor image texture matrix
  * ## Keybindings:
  * @see README.md
  */
-void callbackKfeyBinding(GLFWwindow *, int, int, int, int);
+void callbackKeyBinding(GLFWwindow *, int, int, int, int);
 
 /**
  * @brief Initializes values for the verteces of the coner walls which will be used as calibraton control points.
