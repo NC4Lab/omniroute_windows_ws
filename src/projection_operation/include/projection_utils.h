@@ -1121,8 +1121,8 @@ extern const int WINDOW_HEIGHT_PXL = 2160;
 extern const float WINDOW_ASPECT_RATIO = (float)WINDOW_WIDTH_PXL / WINDOW_HEIGHT_PXL;
 
 // Maze floor width and height (pixels)
-const int FLOOR_IMAGE_WIDTH_PXL = 900;
-const int FLOOR_IMAGE_HEIGHT_PXL = 900;
+const int FLOOR_IMAGE_WIDTH_PXL = 1800;
+const int FLOOR_IMAGE_HEIGHT_PXL = 1800;
 
 // Maze floor width and height (NDC)
 const float FLOOR_WIDTH_NDC = 0.3f;

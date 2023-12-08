@@ -58,28 +58,13 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // Check for monitor change
         if (mon_ind != I.monitor)
         {
+            ROS_INFO("[callbackKeyBinding] Initiated change monitor from %d to %d", I.monitor, mon_ind);
             // Update the monitor index
             I.monitor = mon_ind;
             // Set the window update flag
             F.change_window_mode = true;
             // Set the reinstalize control points flag
             F.init_control_points = true;
-        }
-
-        // ---------- XML Handling [ENTER, L] ----------
-
-        // Save coordinates to XML
-        if (key == GLFW_KEY_S)
-        {
-            F.xml_save_hmat = true;
-            F.update_textures = true;
-        }
-
-        // Load coordinates from XML
-        if (key == GLFW_KEY_L)
-        {
-            F.xml_load_hmat = true;
-            F.update_textures = true;
         }
 
         // ---------- Image selector keys [F1-F4] ----------
@@ -96,16 +81,42 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             img_ind = 3;
 
         // Check for image change
-        if ((img_ind != (I.cal_mode < 3) ? I.wall_image : I.floor_image) &&
-            (img_ind < (I.cal_mode < 3) ? N.wall_images : N.floor_images))
+        if ((I.cal_mode < 3) &&
+            (img_ind != I.wall_image) &&
+            (img_ind < N.wall_image))
         {
-            // Update the image index and set flag
-            if (I.cal_mode < 3)
-                I.wall_image = img_ind;
-            else if (I.cal_mode == 3)
-                I.floor_image = img_ind;
-
+            ROS_INFO("[callbackKeyBinding] Initiated change image from %d to %d", I.wall_image, img_ind);
+            // Update the image index
+            I.wall_image = img_ind;
             // Set the update texture flag
+            F.update_homographys = true;
+        }
+        if ((I.cal_mode == 3) &&
+            (img_ind != I.floor_image) &&
+            (img_ind < N.floor_image))
+        {
+            ROS_INFO("[callbackKeyBinding] Initiated change image from %d to %d", I.floor_image, img_ind);
+            // Update the image index
+            I.floor_image = img_ind;
+            // Set the update texture flag
+            F.update_homographys = true;
+        }
+
+        // ---------- XML Handling [ENTER, L] ----------
+
+        // Save coordinates to XML
+        if (key == GLFW_KEY_S)
+        {
+            ROS_INFO("[callbackKeyBinding] Initiated save XML");
+            F.xml_save_hmat = true;
+            F.update_textures = true;
+        }
+
+        // Load coordinates from XML
+        if (key == GLFW_KEY_L)
+        {
+            ROS_INFO("[callbackKeyBinding] Initiated load XML");
+            F.xml_load_hmat = true;
             F.update_textures = true;
         }
 
@@ -113,6 +124,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         if (key == GLFW_KEY_R)
         {
+            ROS_INFO("[callbackKeyBinding] Initiated control point reset");
             F.init_control_points = true;
         }
     }
@@ -125,7 +137,6 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         if ((mods & GLFW_MOD_CONTROL) && (mods & GLFW_MOD_SHIFT))
         {
-
             // Listen for arrow key input to switch through calibration modes
             if (key == GLFW_KEY_LEFT)
             {
@@ -141,7 +152,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         // ---------- Contol point maze vertex selector keys [CTRL [LEFT, RIGHT, UP, DOWN]] ----------
 
-        else if (mods & GLFW_MOD_CONTROL)
+        else if (mods & GLFW_MOD_CONTROL && I.cal_mode < 3)
         {
             bool is_vert_changed = false;
 
@@ -172,8 +183,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
             if (is_vert_changed)
             {
-                // Set flag to update the wall texture if the maze vertex was changed
-                /// @note this is ensures the mode images are udated to the new
+                // Set flag to update the wall homography matrix when the vertex is changed
                 F.update_homographys = true;
 
                 // Set the wall vertex to the ortin if the maze vertex is changed
@@ -783,7 +793,7 @@ void appMainLoop()
             // Update floor texture
             else if (I.cal_mode == 3)
             {
-                if (updateTextures(I.cal_mode, testFloorImgMatVec[I.wall_image], monFloorImgMatVec[I.monitor], calImgMatVec[I.cal_mode], HMAT_ARR, projCtx.textureID) < 0)
+                if (updateTextures(I.cal_mode, testFloorImgMatVec[I.floor_image], monFloorImgMatVec[I.monitor], calImgMatVec[I.cal_mode], HMAT_ARR, projCtx.textureID) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from updateTextures for floor images");
             }
         }

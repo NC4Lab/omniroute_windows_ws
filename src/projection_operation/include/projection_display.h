@@ -45,7 +45,7 @@ static struct CountStruct
 {
     int monitors;              // Number of monitors connected to the system
     const int projectors = 2;  // Number of projectors  (hardcoded)
-    const int wall_images = 6; // Number of wall images
+    const int wall_image = 6; // Number of wall images
 } N;
 
 /**

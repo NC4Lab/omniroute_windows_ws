@@ -81,8 +81,8 @@ static struct FlagStruct
 static struct CountStruct
 {
     int monitors;               // Number of monitors connected to the system
-    const int wall_images = 4;  // Number of wall test images
-    const int floor_images = 4; // Number of floor test images
+    const int wall_image = 4;  // Number of wall test images
+    const int floor_image = 2; // Number of floor test images
 } N;
 
 /**
@@ -133,7 +133,7 @@ std::vector<std::string> fiImgPathWallVec = {
  */
 std::vector<std::string> fiImgPathFloorVec = {
     calib_image_path + "/0_test_floor.png",
-     calib_image_path + "/1_test_floor.png",
+    calib_image_path + "/1_test_floor.png",
 };
 /**
  * @brief List of monitor number image file paths
