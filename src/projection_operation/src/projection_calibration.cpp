@@ -534,6 +534,8 @@ void appInitVariables()
     // Log setup parameters
     ROS_INFO("[appInitVariables] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
     ROS_INFO("[appInitVariables] Display: Width[%d] Height[%d] AR[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, WINDOW_ASPECT_RATIO);
+    ROS_INFO("[appInitVariables] Floor (Pxl): Width[%d] Height[%d]", FLOOR_IMAGE_WIDTH_PXL, FLOOR_IMAGE_HEIGHT_PXL);
+    ROS_INFO("[appInitVariables] Floor (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", FLOOR_WIDTH_NDC, FLOOR_HEIGHT_NDC);
     ROS_INFO("[appInitVariables] Wall (Pxl): Width[%d] Height[%d]", WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL);
     ROS_INFO("[appInitVariables] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_IMAGE_WIDTH_NDC, WALL_IMAGE_HEIGHT_NDC);
     ROS_INFO("[appInitVariables] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);

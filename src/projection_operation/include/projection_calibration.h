@@ -114,21 +114,30 @@ static struct IndStruct
     // std::array<int, 2> cpSelected = {0, 0};
 } I;
 
-// Sub-directory paths
+/**
+ * @brief Image file sub-directory path
+ */
 std::string calib_image_path = IMAGE_TOP_DIR_PATH + "/calibration";
 
-// List of test wall image file paths
+/**
+ * @brief List of test wall image file paths
+ */
 std::vector<std::string> fiImgPathWallVec = {
     calib_image_path + "/0_test_wall.png",
     calib_image_path + "/1_test_wall.png",
     calib_image_path + "/2_test_wall.png",
     calib_image_path + "/3_test_wall.png",
 };
-// List of test floor image file paths
+/**
+ * @brief List of test floor image file paths
+ */
 std::vector<std::string> fiImgPathFloorVec = {
     calib_image_path + "/0_test_floor.png",
+     calib_image_path + "/1_test_floor.png",
 };
-// List of monitor number image file paths
+/**
+ * @brief List of monitor number image file paths
+ */
 std::vector<std::string> fiImgPathMonWallVec = {
     calib_image_path + "/w_m0.png",
     calib_image_path + "/w_m1.png",
@@ -137,7 +146,9 @@ std::vector<std::string> fiImgPathMonWallVec = {
     calib_image_path + "/w_m4.png",
     calib_image_path + "/w_m5.png",
 };
-// List of monitor number image file paths
+/**
+ * @brief List of monitor number image file paths
+ */
 std::vector<std::string> fiImgPathMonFloorVec = {
     calib_image_path + "/f_m0.png",
     calib_image_path + "/f_m1.png",
@@ -146,7 +157,9 @@ std::vector<std::string> fiImgPathMonFloorVec = {
     calib_image_path + "/f_m4.png",
     calib_image_path + "/f_m5.png",
 };
-// List of mode image file paths
+/**
+ * @brief List of mode image file paths
+ */
 std::vector<std::string> fiImgPathCalVec = {
     calib_image_path + "/w_c0.png", // left walls
     calib_image_path + "/w_c1.png", // middle walls
@@ -161,8 +174,10 @@ std::vector<cv::Mat> monWallImgMatVec;   // Vector of monitor mode image texture
 std::vector<cv::Mat> monFloorImgMatVec;  // Vector of monitor mode image texture matrices for floor calibration
 std::vector<cv::Mat> calImgMatVec;       // Vector of calibration mode image texture matrices
 
-// Scalar to store the floor image in cv::Mat format
-cv::Mat floorImgMat; // Floor image texture matrix
+/**
+ * @brief Scalar to store the floor image as a cv::Mat
+ */
+cv::Mat floorImgMat;
 
 // ================================================== FUNCTIONS ==================================================
 

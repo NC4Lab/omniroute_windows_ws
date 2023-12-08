@@ -19,10 +19,10 @@
  */
 static struct FlagStruct
 {
-    bool change_window_mode = false;   // Flag to indicate if all window modes needs to be updated
-    bool update_textures = false; // Flag to indicate if wall vertices, homography and texture need to be updated
-    bool windows_set_to_proj = false;  // Flag to indicate if the windows are set to their respective projectors
-    bool fullscreen_mode = false;      // Flag to indicate if the window is in full screen mode
+    bool change_window_mode = false;  // Flag to indicate if all window modes needs to be updated
+    bool update_textures = false;     // Flag to indicate if wall vertices, homography and texture need to be updated
+    bool windows_set_to_proj = false; // Flag to indicate if the windows are set to their respective projectors
+    bool fullscreen_mode = false;     // Flag to indicate if the window is in full screen mode
 } F;
 
 /**
@@ -38,7 +38,9 @@ static struct IndStruct
 
 } I;
 
-// Struct for global counts
+/**
+ * @brief Struct for global counts
+ */
 static struct CountStruct
 {
     int monitors;              // Number of monitors connected to the system
@@ -46,7 +48,9 @@ static struct CountStruct
     const int wall_images = 6; // Number of wall images
 } N;
 
-// Offset for the window position
+/**
+ * @brief Offset for the window position
+ */
 std::vector<cv::Point> winOffsetVec;
 
 /**
@@ -57,20 +61,29 @@ std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projectors);
 /**
  * @brief A n_projectors sized element veoctor containing a 3x3x3 data contianer for storing 3x3 homography matrices (UGLY!)
  */
-//
 std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> HMAT_ARR_VEC(N.projectors);
 
-// Sub-directory paths
+/**
+ * @brief Image file sub-directory path
+ */ 
 std::string runtime_wall_image_path = IMAGE_TOP_DIR_PATH + "/runtime/shapes_outlined";
 
+/**
+ * @brief List of wall image file paths
+ */
 std::vector<std::string> fiImgPathWallVec = {
-    // List of image file paths
-    runtime_wall_image_path + "/blank.png",    // [0] Blank image
-    runtime_wall_image_path + "/square.png",   // [1] Square image
-    runtime_wall_image_path + "/circle.png",   // [2] Circle image
-    runtime_wall_image_path + "/triangle.png", // [3] Triangle image
-    runtime_wall_image_path + "/star.png",     // [4] Star image
-    runtime_wall_image_path + "/pentagon.png", // [5] Pentagon image
+    runtime_wall_image_path + "/w_blank.png",    // [0] Blank image
+    runtime_wall_image_path + "/w_square.png",   // [1] Square image
+    runtime_wall_image_path + "/w_circle.png",   // [2] Circle image
+    runtime_wall_image_path + "/w_triangle.png", // [3] Triangle image
+    runtime_wall_image_path + "/w_star.png",     // [4] Star image
+    runtime_wall_image_path + "/w_pentagon.png", // [5] Pentagon image
+};
+/**
+ * @brief List of floor image file paths
+ */
+std::vector<std::string> fiImgPathFloorVec = {
+    runtime_wall_image_path + "/0_test_floor.png",
 };
 
 // Vectors to store the loaded images in cv::Mat format
