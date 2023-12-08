@@ -46,16 +46,9 @@ const GLfloat cpSelectedMakerRadius = 0.005f;                          // Select
 std::array<std::array<cv::Point2f, 4>, 4> CP_GRID_ARR;
 
 /**
- * @brief 3x3x3 data contianer for storing wall homography matrices for each wall image and each calibration mode.
- *
- * @todo Remove calibration mode dimension.
+ * @brief 3x3xN data contianer for storing wall homography matrices for each wall image and each calibration mode.
  */
-std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> WALL_HMAT_ARR;
-
-/**
- * @brief Homography matrix for floor image warping.
- */
-cv::Mat floorHMAT;
+std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> HMAT_ARR;
 
 /**
  * @brief  OpenGL context objects.
@@ -72,14 +65,14 @@ std::array<std::array<CircleRenderer, 4>, 4> CP_GLOBJ_ARR;
  */
 static struct FlagStruct
 {
-    bool db_run = false;                  // Flag to indicate if something should be run for debugging
-    bool xml_load_hmat = false;           // Flag to indicate if the XML file needs to be loaded
-    bool xml_save_hmat = false;           // Flag to indicate if the XML file needs to be saved
-    bool change_window_mode = false;      // Flag to indicate if the window mode needs to be updated
-    bool init_control_points = false;     // Flag to indicate if the control point markers need to be reinitialized
-    bool update_wall_textures = false;    // Flag to indicate if wall vertices, homography and texture need to be updated
-    bool update_wall_homographys = false; // Flag to indicate if wall vertices, homography and texture need to be updated
-    bool fullscreen_mode = false;         // Flag to indicate if the window is in full screen mode
+    bool db_run = false;              // Flag to indicate if something should be run for debugging
+    bool xml_load_hmat = false;       // Flag to indicate if the XML file needs to be loaded
+    bool xml_save_hmat = false;       // Flag to indicate if the XML file needs to be saved
+    bool change_window_mode = false;  // Flag to indicate if the window mode needs to be updated
+    bool init_control_points = false; // Flag to indicate if the control point markers need to be reinitialized
+    bool update_textures = false;     // Flag to indicate if image vertices, homography and texture need to be updated
+    bool update_homographys = false;  // Flag to indicate if image vertices, homography and texture need to be updated
+    bool fullscreen_mode = false;     // Flag to indicate if the window is in full screen mode
 } F;
 
 /**
@@ -87,8 +80,9 @@ static struct FlagStruct
  */
 static struct CountStruct
 {
-    int monitors;              // Number of monitors connected to the system
-    const int wall_images = 4; // Number of wall images
+    int monitors;               // Number of monitors connected to the system
+    const int wall_images = 4;  // Number of wall test images
+    const int floor_images = 4; // Number of floor test images
 } N;
 
 /**
@@ -96,9 +90,11 @@ static struct CountStruct
  */
 static struct IndStruct
 {
-    int wall_image = 0;                   // Index of the image to be loaded
-    std::array<int, 2> CAL_MODE = {1, 1}; // Index of the calibration mode [floor[0: default, 1: na, 2: na], walls[0: left, 1: middle, 2: right]]
-    int monitor = 0;                      // Index of the active monitor to be loaded
+    int monitor = 0;     // Index of the active monitor to be loaded
+    int cal_mode = 2;    // Index of the calibration mode [0: walls left, 1: walls middle, 2: walls right, 3: floor]]
+    int wall_image = 0;  // Index of the test wall image to be loaded
+    int floor_image = 0; // Index of the test wall image to be loaded
+
     /**
      * @brief cpRowColMap maps a given row cpRowColMap[0] and column cpRowColMap[1] index to the 1D vector.
      * To make things more complicated, this needs to account for the y axis being flipped.
@@ -121,16 +117,19 @@ static struct IndStruct
 // Sub-directory paths
 std::string calib_image_path = IMAGE_TOP_DIR_PATH + "/calibration";
 
-// Image file paths
+// List of test wall image file paths
 std::vector<std::string> fiImgPathWallVec = {
-    // List of image file paths
     calib_image_path + "/0_test_wall.png",
     calib_image_path + "/1_test_wall.png",
     calib_image_path + "/2_test_wall.png",
     calib_image_path + "/3_test_wall.png",
 };
-std::vector<std::string> fiImgPathMonVec = {
-    // List of monitor number image file paths
+// List of test floor image file paths
+std::vector<std::string> fiImgPathFloorVec = {
+    calib_image_path + "/0_test_floor.png",
+};
+// List of monitor number image file paths
+std::vector<std::string> fiImgPathMonWallVec = {
     calib_image_path + "/w_m0.png",
     calib_image_path + "/w_m1.png",
     calib_image_path + "/w_m2.png",
@@ -138,17 +137,29 @@ std::vector<std::string> fiImgPathMonVec = {
     calib_image_path + "/w_m4.png",
     calib_image_path + "/w_m5.png",
 };
+// List of monitor number image file paths
+std::vector<std::string> fiImgPathMonFloorVec = {
+    calib_image_path + "/f_m0.png",
+    calib_image_path + "/f_m1.png",
+    calib_image_path + "/f_m2.png",
+    calib_image_path + "/f_m3.png",
+    calib_image_path + "/f_m4.png",
+    calib_image_path + "/f_m5.png",
+};
+// List of mode image file paths
 std::vector<std::string> fiImgPathCalVec = {
-    // List of mode image file paths
     calib_image_path + "/w_c0.png", // left walls
     calib_image_path + "/w_c1.png", // middle walls
     calib_image_path + "/w_c2.png", // right walls
+    calib_image_path + "/f_c0.png", // maze floor
 };
 
 // Vectors to store the loaded images in cv::Mat format
-std::vector<cv::Mat> wallImgMatVec; // Vector of wall image texture matrices
-std::vector<cv::Mat> monImgMatVec;  // Vector of monitor mode image texture matrices
-std::vector<cv::Mat> calImgMatVec;  // Vector of calibration mode image texture matrices
+std::vector<cv::Mat> testWallImgMatVec;  // Vector of wall test image texture matrices
+std::vector<cv::Mat> testFloorImgMatVec; // Vector of floor test image texture matrices
+std::vector<cv::Mat> monWallImgMatVec;   // Vector of monitor mode image texture matrices for wall calibration
+std::vector<cv::Mat> monFloorImgMatVec;  // Vector of monitor mode image texture matrices for floor calibration
+std::vector<cv::Mat> calImgMatVec;       // Vector of calibration mode image texture matrices
 
 // Scalar to store the floor image in cv::Mat format
 cv::Mat floorImgMat; // Floor image texture matrix
@@ -212,12 +223,14 @@ int initCircleRendererObjects(
 /**
  * @brief Draws control points associated with each corner wall.
  *
+ * @param cal_ind Index of the active calibration mode.
  * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
  * @param[out] out_CP_RENDERERS The 4x4 array of CircleRenderer objects used to draw the control points.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int renderControlPoints(
+    int cal_ind,
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
     std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS);
 
@@ -226,14 +239,14 @@ int renderControlPoints(
  *
  * @param cal_ind Index of the active calibration mode.
  * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
- * @param[out] out_WALL_HMAT_ARR Reference to array to store calibration matrices.
+ * @param[out] out_HMAT_ARR Reference to array to store calibration matrices.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int updateWallHomographys(
     int cal_ind,
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
-    std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &out_WALL_HMAT_ARR);
+    std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &out_HMAT_ARR);
 
 /**
  * @brief Computes updated homography matrices for the floor image.
@@ -248,22 +261,24 @@ int updateFloorHomography(
     cv::Mat &out_H);
 
 /**
- * @brief Applies the homography matrices to warp wall image textures and combine them.
+ * @brief Applies the homography matrices to warp image textures and combine them.
  *
  * @param cal_ind Index of the active calibration mode.
  * @param img_wall_mat cv::Mat image matrix for the base wall image.
  * @param img_mon_mat cv::Mat image matrix for the monitor mode image.
  * @param img_cal_mat cv::Mat image matrix for the calibration image.
- * @param _WALL_HMAT_ARR Array containing calibration matrices for the maze.
- * @param[out] out_wallTexture OpenGL texture ID for the wall image.
+ * @param _HMAT_ARR Array containing calibration matrices for the maze.
+ * @param[out] out_texture_id OpenGL texture ID for the wall image.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int updateWallTextures(
+int updateTextures(
     int cal_ind,
-    cv::Mat img_wall_mat, cv::Mat img_mon_mat, cv::Mat img_cal_mat,
-    const std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &_WALL_HMAT_ARR,
-    GLuint &out_WALL_TEXTURE_ID);
+    cv::Mat img_wall_mat,
+    cv::Mat img_mon_mat,
+    cv::Mat img_cal_mat,
+    const std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &_HMAT_ARR,
+    GLuint &out_texture_id);
 
 /**
  * @brief Initializes the datasets for the application.
@@ -298,6 +313,8 @@ void appInitOpenGL();
 /**
  * @brief Initalizes a new homography matrix xml file with
  * identity matrices for all elements if none exists.
+ *
+ * @note Files need to be manually deleted if they need to be reinitialized.
  *
  * @throws std::runtime_error if image loading fails.
  */

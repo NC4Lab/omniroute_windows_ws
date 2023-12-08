@@ -1120,27 +1120,27 @@ extern const int WINDOW_WIDTH_PXL = 3840;
 extern const int WINDOW_HEIGHT_PXL = 2160;
 extern const float WINDOW_ASPECT_RATIO = (float)WINDOW_WIDTH_PXL / WINDOW_HEIGHT_PXL;
 
-// Maze width and height (pixels)
+// Maze floor width and height (pixels)
 const int FLOOR_IMAGE_WIDTH_PXL = 900;
 const int FLOOR_IMAGE_HEIGHT_PXL = 900;
 
-// Maze width and height (NDC)
-const float MAZE_WIDTH_NDC = 0.3f;
-const float MAZE_HEIGHT_NDC = 0.6f;
+// Maze floor width and height (NDC)
+const float FLOOR_WIDTH_NDC = 0.3f;
+const float FLOOR_HEIGHT_NDC = 0.6f;
 
 // Wall image size (pixels)
 extern const int WALL_IMAGE_WIDTH_PXL = 300;
 extern const int WALL_IMAGE_HEIGHT_PXL = 540;
 
 // Default wall width and height (NDC)
-extern const float WALL_IMAGE_WIDTH_NDC = (MAZE_WIDTH_NDC / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));   // Wall width based on octogonal geometry in NDC
-extern const float WALL_IMAGE_HEIGHT_NDC = (MAZE_HEIGHT_NDC / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
+extern const float WALL_IMAGE_WIDTH_NDC = (FLOOR_WIDTH_NDC / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));   // Wall width based on octogonal geometry in NDC
+extern const float WALL_IMAGE_HEIGHT_NDC = (FLOOR_HEIGHT_NDC / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
 
 // Global variable to set the OpenGL debug level.
 const int DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
 
 // Number of calibration modes and strings for each mode
-const int N_CAL_MODES = 4; // [0: left, 1: middle, 2: right, 3: floor]
+const int N_CAL_MODES = 4; // [0: walls left, 1: walls middle, 2: walls right, 3: floor]
 std::vector<std::string> CAL_MADE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};
 
 // ================================================== FUNCTIONS ==================================================
@@ -1252,15 +1252,13 @@ std::string promptForProjectorNumber();
  * @param mon_ind Index of the active or desired monitor.
  * @param cal_ind Index of the active or desired calibration mode.
  * @param[out] out_path Reference to string that will store the path to the XML file.
- * @param[out] out_mode Reference to string that will store the tag for the calibration mode.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int xmlFrmtFileStrings(
     int mon_ind,
     int cal_ind,
-    std::string &out_path,
-    std::string &out_mode);
+    std::string &out_path);
 
 /**
  * Save a single cv::Mat homography matrix to an XML file.

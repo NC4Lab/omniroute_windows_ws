@@ -20,7 +20,7 @@
 static struct FlagStruct
 {
     bool change_window_mode = false;   // Flag to indicate if all window modes needs to be updated
-    bool update_wall_textures = false; // Flag to indicate if wall vertices, homography and texture need to be updated
+    bool update_textures = false; // Flag to indicate if wall vertices, homography and texture need to be updated
     bool windows_set_to_proj = false;  // Flag to indicate if the windows are set to their respective projectors
     bool fullscreen_mode = false;      // Flag to indicate if the window is in full screen mode
 } F;
@@ -58,7 +58,7 @@ std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projectors);
  * @brief A n_projectors sized element veoctor containing a 3x3x3 data contianer for storing 3x3 homography matrices (UGLY!)
  */
 //
-std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> WALL_HMAT_ARR_VEC(N.projectors);
+std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> HMAT_ARR_VEC(N.projectors);
 
 // Sub-directory paths
 std::string runtime_wall_image_path = IMAGE_TOP_DIR_PATH + "/runtime/shapes_outlined";
@@ -74,7 +74,7 @@ std::vector<std::string> fiImgPathWallVec = {
 };
 
 // Vectors to store the loaded images in cv::Mat format
-std::vector<cv::Mat> wallImgMatVec; // Vector of wall image texture matrices
+std::vector<cv::Mat> testWallImgMatVec; // Vector of wall image texture matrices
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -91,7 +91,7 @@ int procKeyPress();
  *
  * @param _proj_mon_ind Index of the monitor associated to the projector.
  * @param _wallImgMatVec Vectors containing the loaded images in cv::Mat format
- * @param _WALL_HMAT_ARR_VEC Big ass ugly vector of arrays of matrices of shit!
+ * @param _HMAT_ARR_VEC Big ass ugly vector of arrays of matrices of shit!
  * @param[out] out_progGL MazeRenderContext OpenGL context handler.
  *
  * @return Integer status code [-1:error, 0:successful].
@@ -99,7 +99,7 @@ int procKeyPress();
 int updateWallTextures(
     int proj_mon_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
-    const std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> &_WALL_HMAT_ARR_VEC,
+    const std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> &_HMAT_ARR_VEC,
     MazeRenderContext &out_progGL);
 
 /**

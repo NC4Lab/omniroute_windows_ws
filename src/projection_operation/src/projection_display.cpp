@@ -54,7 +54,7 @@ int procKeyPress()
 int updateWallTextures(
     int proj_mon_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
-    const std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> &_WALL_HMAT_ARR_VEC,
+    const std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> &_HMAT_ARR_VEC,
     MazeRenderContext &out_progGL)
 {
     // Initialize the image to be used as the texture
@@ -91,7 +91,7 @@ int updateWallTextures(
                 }
 
                 // Get homography matrix for this wall
-                cv::Mat H = _WALL_HMAT_ARR_VEC[proj_mon_ind][cal_i][gr_i][gc_i];
+                cv::Mat H = _HMAT_ARR_VEC[proj_mon_ind][cal_i][gr_i][gc_i];
                 if (checkHMAT(H) < 0)
                 {
                     ROS_ERROR("[updateWallTextures] Homography matrix error: Window[%d] Wall[%d][%d] Calibration[%d]",
@@ -118,7 +118,7 @@ void appLoadAssets()
 {
 
     // Load images using OpenCV
-    if (loadImgMat(fiImgPathWallVec, wallImgMatVec) < 0)
+    if (loadImgMat(fiImgPathWallVec, testWallImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
 
     // Load homography matrices from XML files
@@ -130,7 +130,7 @@ void appLoadAssets()
             {
                 for (int gc_i = 0; gc_i < MAZE_SIZE; ++gc_i)
                 {
-                    if (xmlLoadHMAT(mon_ind, cal_i, gr_i, gc_i, WALL_HMAT_ARR_VEC[mon_ind][cal_i][gr_i][gc_i]) < 0)
+                    if (xmlLoadHMAT(mon_ind, cal_i, gr_i, gc_i, HMAT_ARR_VEC[mon_ind][cal_i][gr_i][gc_i]) < 0)
                         throw std::runtime_error("[appMainLoop] Error returned from xmlLoadHMAT");
                 }
             }
@@ -189,7 +189,7 @@ void appInitOpenGL()
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to compile and link wall shader");
 
         // Initialize wall image texture
-        if (updateWallTextures(I.proj_mon_vec[projCtx.windowInd], wallImgMatVec, WALL_HMAT_ARR_VEC, projCtx))
+        if (updateWallTextures(I.proj_mon_vec[projCtx.windowInd], testWallImgMatVec, HMAT_ARR_VEC, projCtx))
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to initialize wall texture");
 
         ROS_INFO("[appInitOpenGL] OpenGL initialized: Window[%d] Monitor[%d]", projCtx.windowInd, projCtx.monitorInd);
@@ -222,23 +222,23 @@ void appMainLoop()
         }
 
         // Recompute wall parameters and update wall image texture
-        if (F.update_wall_textures)
+        if (F.update_textures)
         {
             for (auto &projCtx : PROJ_CTX_VEC)
             {
                 // Initialize wall image texture
-                if (updateWallTextures(I.proj_mon_vec[projCtx.windowInd], wallImgMatVec, WALL_HMAT_ARR_VEC, projCtx))
+                if (updateWallTextures(I.proj_mon_vec[projCtx.windowInd], testWallImgMatVec, HMAT_ARR_VEC, projCtx))
                     throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to initialize wall texture");
             }
 
-            F.update_wall_textures = false;
+            F.update_textures = false;
         }
 
         // Reset keybinding flags
         F.change_window_mode = false;
-        F.update_wall_textures = false;
+        F.update_textures = false;
         F.windows_set_to_proj = false;
-        F.update_wall_textures = false;
+        F.update_textures = false;
 
         // --------------- Handle Image Processing for Next Frame ---------------
 

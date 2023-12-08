@@ -465,4 +465,23 @@
 			</row>
 		</HMAT>
 	</calibration>
+	<calibration mode="cmf">
+		<HMAT grid_row="0" grid_col="0">
+			<row>
+				<cell>0.640000</cell>
+				<cell>0.000000</cell>
+				<cell>1632.000000</cell>
+			</row>
+			<row>
+				<cell>0.000000</cell>
+				<cell>0.720000</cell>
+				<cell>756.000000</cell>
+			</row>
+			<row>
+				<cell>0.000000</cell>
+				<cell>0.000000</cell>
+				<cell>1.000000</cell>
+			</row>
+		</HMAT>
+	</calibration>
 </Root>

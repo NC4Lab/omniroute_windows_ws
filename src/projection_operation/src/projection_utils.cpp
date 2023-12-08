@@ -1324,21 +1324,7 @@ std::string promptForProjectorNumber()
     }
 }
 
-/**
- * @brief Formats the file name for the XML file based on the active calibration mode and monitor.
- *
- * Format:
- * - `hmats_m<number>.xml`
- * - `hmats_m0.xml`
- *
- * @param mon_ind Index of the active or desired monitor.
- * @param cal_ind Index of the active or desired calibration mode.
- * @param[out] out_path Reference to string that will store the path to the XML file.
- * @param[out] out_mode Reference to string that will store the tag for the calibration mode.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int xmlFrmtFileStrings(int mon_ind, int cal_ind, std::string &out_path, std::string &out_mode)
+int xmlFrmtFileStrings(int mon_ind, int cal_ind, std::string &out_path)
 {
     // Format the output tag
     out_path =
@@ -1347,27 +1333,6 @@ int xmlFrmtFileStrings(int mon_ind, int cal_ind, std::string &out_path, std::str
         "_m" + std::to_string(mon_ind) +
         ".xml";
 
-    // Get the calibration mode xml tag
-    switch (cal_ind)
-    {
-    case 0:
-        out_mode = "cwl";
-        break;
-    case 1:
-        out_mode = "cwm";
-        break;
-    case 2:
-        out_mode = "cwr";
-        break;
-    case 3:
-        out_mode = "cmf";
-        break;
-    default:
-        // Handle the error or unexpected cal_ind value
-        ROS_ERROR("[frmtFilePathXML] Invalid cal_ind[%d]", cal_ind);
-        return -1;
-    }
-
     return 0;
 }
 
@@ -1375,8 +1340,8 @@ int xmlSaveHMAT(const cv::Mat &_H, int mon_ind, int cal_ind, int grid_row, int g
 {
     // Get the full file path and attribute string for the given calibration mode
     std::string file_path;
-    std::string CAL_MODE;
-    xmlFrmtFileStrings(mon_ind, cal_ind, file_path, CAL_MODE);
+    xmlFrmtFileStrings(mon_ind, cal_ind, file_path);
+    std::string cal_mode = CAL_MADE_STR_VEC[cal_ind];
 
     // Attempt to load the XML file
     pugi::xml_document doc;
@@ -1395,7 +1360,7 @@ int xmlSaveHMAT(const cv::Mat &_H, int mon_ind, int cal_ind, int grid_row, int g
     for (pugi::xml_node node = root_node.child("calibration");
          node; node = node.next_sibling("calibration"))
     {
-        if (node.attribute("mode").value() == CAL_MODE)
+        if (node.attribute("mode").value() == cal_mode)
         {
             calibration_node = node;
             break;
@@ -1406,7 +1371,7 @@ int xmlSaveHMAT(const cv::Mat &_H, int mon_ind, int cal_ind, int grid_row, int g
     if (!calibration_node)
     {
         calibration_node = root_node.append_child("calibration");
-        calibration_node.append_attribute("mode") = CAL_MODE.c_str();
+        calibration_node.append_attribute("mode") = cal_mode.c_str();
     }
 
     // Search for an existing HMAT with the same grid_row and grid_col
@@ -1452,8 +1417,8 @@ int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &o
 {
     // Get the full file path and attribute string for the given calibration mode
     std::string file_path;
-    std::string CAL_MODE;
-    xmlFrmtFileStrings(mon_ind, cal_ind, file_path, CAL_MODE);
+    xmlFrmtFileStrings(mon_ind, cal_ind, file_path);
+    std::string cal_mode = CAL_MADE_STR_VEC[cal_ind];
 
     // Attempt to load the XML file
     pugi::xml_document doc;
@@ -1471,7 +1436,7 @@ int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &o
     for (pugi::xml_node node = doc.child("Root").child("calibration");
          node; node = node.next_sibling("calibration"))
     {
-        if (node.attribute("mode").value() == CAL_MODE)
+        if (node.attribute("mode").value() == cal_mode)
         {
             calibration_node = node;
             break;
@@ -1480,7 +1445,7 @@ int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &o
 
     if (!calibration_node)
     {
-        ROS_ERROR("[xmlLoadHMAT] No calibration mode[%s] found in XML File[%s]", CAL_MODE.c_str(), file_path.c_str());
+        ROS_ERROR("[xmlLoadHMAT] No calibration mode[%s] found in XML File[%s]", cal_mode.c_str(), file_path.c_str());
         return -1;
     }
 
@@ -1500,7 +1465,7 @@ int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &o
     if (!hmat_node)
     {
         ROS_ERROR("[xmlLoadHMAT] No HMAT with grid_row[%d] and grid_col[%d] found in calibration mode[%s]",
-                  grid_row, grid_col, CAL_MODE.c_str());
+                  grid_row, grid_col, cal_mode.c_str());
         return -1;
     }
 
@@ -1664,13 +1629,6 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
             return -1;
         }
 
-        // Check if image dimensions are as expected
-        if (img.cols != WALL_IMAGE_WIDTH_PXL || img.rows != WALL_IMAGE_HEIGHT_PXL)
-        {
-            ROS_ERROR("[loadImgMat] Image dimensions do not match expected size: %s", img_path.c_str());
-            return -1;
-        }
-
         // Determine depth
         std::string depth_str;
         switch (img.depth())
@@ -1705,8 +1663,8 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
         out_img_mat_vec.push_back(img);
 
         // Log the image information
-        ROS_INFO("[loadImgMat] Image[%d of %d] loaded sucesfully: Channels[%d] Depth[%s] Path[%s]",
-                 img_cnt++, img_paths_vec.size() - 1, img.channels(), depth_str.c_str(), img_path.c_str());
+        ROS_INFO("[loadImgMat] Image[%d of %d] loaded sucesfully: Size[%d,%d] Channels[%d] Depth[%s] Path[%s]",
+                 img_cnt++, img_paths_vec.size() - 1, img.cols, img.rows, img.channels(), depth_str.c_str(), img_path.c_str());
     }
 
     // Return success
