@@ -47,10 +47,15 @@ std::array<std::array<cv::Point2f, 4>, 4> CP_GRID_ARR;
 
 /**
  * @brief 3x3x3 data contianer for storing wall homography matrices for each wall image and each calibration mode.
- * 
- * @note We remove calibration mode dimension.
- */ 
-std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> WALL_HMAT_ARR; // Wall homography matrix array
+ *
+ * @todo Remove calibration mode dimension.
+ */
+std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> WALL_HMAT_ARR;
+
+/**
+ * @brief Homography matrix for floor image warping.
+ */
+cv::Mat floorHMAT;
 
 /**
  * @brief  OpenGL context objects.
@@ -91,9 +96,9 @@ static struct CountStruct
  */
 static struct IndStruct
 {
-    int wall_image = 0; // Index of the image to be loaded
-    int cal_mode = 1;   // Index of the current calibration mode walls[0: left, 1: middle, 2: right]
-    int monitor = 0;    // Index of the active monitor to be loaded
+    int wall_image = 0;                   // Index of the image to be loaded
+    std::array<int, 2> CAL_MODE = {1, 1}; // Index of the calibration mode [floor[0: default, 1: na, 2: na], walls[0: left, 1: middle, 2: right]]
+    int monitor = 0;                      // Index of the active monitor to be loaded
     /**
      * @brief cpRowColMap maps a given row cpRowColMap[0] and column cpRowColMap[1] index to the 1D vector.
      * To make things more complicated, this needs to account for the y axis being flipped.
@@ -105,7 +110,7 @@ static struct IndStruct
      *      - 2: OpenGL: Bottom-right   OpenCV: Top-right
      *      - 3: OpenGL: Bottom-left    OpenCV: Top-left
      */
-    std::array<std::array<int, 2>, 2> cp_map = {{{0, 1},
+    std::array<std::array<int, 2>, 2> CP_MAP = {{{0, 1},
                                                  {3, 2}}};
     std::array<int, 2> cp_maze_vert_selected = {0, 0}; // Selected maze vertex [row, col]
     std::array<int, 2> cp_wall_vert_selected = {1, 0}; // Selected wall vertex [row, col]
@@ -119,25 +124,25 @@ std::string calib_image_path = IMAGE_TOP_DIR_PATH + "/calibration";
 // Image file paths
 std::vector<std::string> fiImgPathWallVec = {
     // List of image file paths
-    calib_image_path + "/0_tp_wall.png",
-    calib_image_path + "/1_tp_wall.png",
-    calib_image_path + "/2_tp_wall.png",
-    calib_image_path + "/3_tp_wall.png",
+    calib_image_path + "/0_test_wall.png",
+    calib_image_path + "/1_test_wall.png",
+    calib_image_path + "/2_test_wall.png",
+    calib_image_path + "/3_test_wall.png",
 };
 std::vector<std::string> fiImgPathMonVec = {
     // List of monitor number image file paths
-    calib_image_path + "/m0.png",
-    calib_image_path + "/m1.png",
-    calib_image_path + "/m2.png",
-    calib_image_path + "/m3.png",
-    calib_image_path + "/m4.png",
-    calib_image_path + "/m5.png",
+    calib_image_path + "/w_m0.png",
+    calib_image_path + "/w_m1.png",
+    calib_image_path + "/w_m2.png",
+    calib_image_path + "/w_m3.png",
+    calib_image_path + "/w_m4.png",
+    calib_image_path + "/w_m5.png",
 };
 std::vector<std::string> fiImgPathCalVec = {
     // List of mode image file paths
-    calib_image_path + "/cwl.png", // left walls
-    calib_image_path + "/cwm.png", // middle walls
-    calib_image_path + "/cwr.png", // right walls
+    calib_image_path + "/w_c0.png", // left walls
+    calib_image_path + "/w_c1.png", // middle walls
+    calib_image_path + "/w_c2.png", // right walls
 };
 
 // Vectors to store the loaded images in cv::Mat format
@@ -166,7 +171,12 @@ cv::Mat floorImgMat; // Floor image texture matrix
  * ## Keybindings:
  * @see README.md
  */
-void callbackKeyBinding(GLFWwindow *, int, int, int, int);
+void callbackKeyBinding(
+    GLFWwindow *window,
+    int key,
+    int scancode,
+    int action,
+    int mods);
 
 /**
  * @brief Initializes values for the verteces of the coner walls which will be used as calibraton control points.
@@ -179,7 +189,9 @@ void callbackKeyBinding(GLFWwindow *, int, int, int, int);
  * The vertices for the entire projected image are calculated based on the dimensions that enclose
  * all control points (i.e., boundary dimensions in the control point plane).
  */
-void initControlPoints(int, std::array<std::array<cv::Point2f, 4>, 4> &);
+void initControlPoints(
+    int cal_ind,
+    std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR);
 
 /**
  * @brief Initialize OpenGL resources for CircleRenderer objects.
@@ -193,7 +205,9 @@ void initControlPoints(int, std::array<std::array<cv::Point2f, 4>, 4> &);
  * Initializes the vertex buffer, shader program, and default values
  * for the control point markers.
  */
-int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &, std::array<std::array<CircleRenderer, 4>, 4> &);
+int initCircleRendererObjects(
+    const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
+    std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS);
 
 /**
  * @brief Draws control points associated with each corner wall.
@@ -203,7 +217,9 @@ int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &,
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int renderControlPoints(const std::array<std::array<cv::Point2f, 4>, 4> &, std::array<std::array<CircleRenderer, 4>, 4> &);
+int renderControlPoints(
+    const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
+    std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS);
 
 /**
  * @brief Computes updated homography matrices for all walls.
@@ -218,6 +234,18 @@ int updateWallHomographys(
     int cal_ind,
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
     std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &out_WALL_HMAT_ARR);
+
+/**
+ * @brief Computes updated homography matrices for the floor image.
+ *
+ * @param _CP_ARR The control point coordinates used to warp the floor image.
+ * @param[out] out_H The output homography matrix.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int updateFloorHomography(
+    const std::array<cv::Point2f, 4> &_CP_ARR,
+    cv::Mat &out_H);
 
 /**
  * @brief Applies the homography matrices to warp wall image textures and combine them.
@@ -307,6 +335,6 @@ void appCleanup();
  * This program initializes ROS, DevIL, and GLFW, and then enters a main loop
  * to handle image projection and calibration tasks.
  */
-int main(int, char **);
+int main(int argc, char **argv);
 
 #endif

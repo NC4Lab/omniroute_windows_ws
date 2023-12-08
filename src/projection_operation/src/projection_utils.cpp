@@ -1375,8 +1375,8 @@ int xmlSaveHMAT(const cv::Mat &_H, int mon_ind, int cal_ind, int grid_row, int g
 {
     // Get the full file path and attribute string for the given calibration mode
     std::string file_path;
-    std::string cal_mode;
-    xmlFrmtFileStrings(mon_ind, cal_ind, file_path, cal_mode);
+    std::string CAL_MODE;
+    xmlFrmtFileStrings(mon_ind, cal_ind, file_path, CAL_MODE);
 
     // Attempt to load the XML file
     pugi::xml_document doc;
@@ -1395,7 +1395,7 @@ int xmlSaveHMAT(const cv::Mat &_H, int mon_ind, int cal_ind, int grid_row, int g
     for (pugi::xml_node node = root_node.child("calibration");
          node; node = node.next_sibling("calibration"))
     {
-        if (node.attribute("mode").value() == cal_mode)
+        if (node.attribute("mode").value() == CAL_MODE)
         {
             calibration_node = node;
             break;
@@ -1406,7 +1406,7 @@ int xmlSaveHMAT(const cv::Mat &_H, int mon_ind, int cal_ind, int grid_row, int g
     if (!calibration_node)
     {
         calibration_node = root_node.append_child("calibration");
-        calibration_node.append_attribute("mode") = cal_mode.c_str();
+        calibration_node.append_attribute("mode") = CAL_MODE.c_str();
     }
 
     // Search for an existing HMAT with the same grid_row and grid_col
@@ -1452,8 +1452,8 @@ int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &o
 {
     // Get the full file path and attribute string for the given calibration mode
     std::string file_path;
-    std::string cal_mode;
-    xmlFrmtFileStrings(mon_ind, cal_ind, file_path, cal_mode);
+    std::string CAL_MODE;
+    xmlFrmtFileStrings(mon_ind, cal_ind, file_path, CAL_MODE);
 
     // Attempt to load the XML file
     pugi::xml_document doc;
@@ -1471,7 +1471,7 @@ int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &o
     for (pugi::xml_node node = doc.child("Root").child("calibration");
          node; node = node.next_sibling("calibration"))
     {
-        if (node.attribute("mode").value() == cal_mode)
+        if (node.attribute("mode").value() == CAL_MODE)
         {
             calibration_node = node;
             break;
@@ -1480,7 +1480,7 @@ int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &o
 
     if (!calibration_node)
     {
-        ROS_ERROR("[xmlLoadHMAT] No calibration mode[%s] found in XML File[%s]", cal_mode.c_str(), file_path.c_str());
+        ROS_ERROR("[xmlLoadHMAT] No calibration mode[%s] found in XML File[%s]", CAL_MODE.c_str(), file_path.c_str());
         return -1;
     }
 
@@ -1500,7 +1500,7 @@ int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &o
     if (!hmat_node)
     {
         ROS_ERROR("[xmlLoadHMAT] No HMAT with grid_row[%d] and grid_col[%d] found in calibration mode[%s]",
-                  grid_row, grid_col, cal_mode.c_str());
+                  grid_row, grid_col, CAL_MODE.c_str());
         return -1;
     }
 
@@ -1591,6 +1591,40 @@ std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &quad_ve
     return quad_vertices_pxl;
 }
 
+int computeHomographyMatrix(const std::vector<cv::Point2f> &source_vertices_pxl,
+                            const std::vector<cv::Point2f> &target_vertices_ndc,
+                            cv::Mat &out_H)
+{
+
+    // Convert to pixel coordinates for OpenCV's findHomography function
+    std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
+
+    // Check that the target plane vertices are valid
+    int resp = checkQuadVertices(target_vertices_pxl);
+    if (resp < 0)
+    {
+        ROS_WARN("[computeHomographyMatrix] Target Plane Vertices Invalid: Reason[%s]",
+                 resp == -1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
+        return -1;
+    }
+
+    // Use OpenCV's findHomography function to compute the homography matrix
+    cv::Mat H = cv::findHomography(source_vertices_pxl, target_vertices_pxl);
+
+    // Check for valid homography matrix
+    if (H.empty())
+    {
+        ROS_ERROR("[computeHomographyMatrix] Failed to Compute Homography Matrix");
+        return -1;
+    }
+
+    // Update the output matrix
+    out_H = H.clone();
+
+    // Return success
+    return 0;
+}
+
 float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size)
 {
     // Calculate the relative position within the grid.
@@ -1672,7 +1706,7 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
 
         // Log the image information
         ROS_INFO("[loadImgMat] Image[%d of %d] loaded sucesfully: Channels[%d] Depth[%s] Path[%s]",
-                 img_cnt++, img_paths_vec.size()-1, img.channels(), depth_str.c_str(), img_path.c_str());
+                 img_cnt++, img_paths_vec.size() - 1, img.channels(), depth_str.c_str(), img_path.c_str());
     }
 
     // Return success
@@ -1717,17 +1751,17 @@ int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img)
     return 0;
 }
 
-int loadTexture(cv::Mat image, GLuint &textureID)
+int loadTexture(cv::Mat img_mat, GLuint &texture_id)
 {
     int status = 0;
 
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
+    glGenTextures(1, &texture_id);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
     status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
 
     // Convert image from BGR to RGB
     cv::Mat image_rgb;
-    cv::cvtColor(image, image_rgb, cv::COLOR_BGR2RGB);
+    cv::cvtColor(img_mat, image_rgb, cv::COLOR_BGR2RGB);
 
     // Handle alignment
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);

@@ -322,7 +322,10 @@ public:
      * @param width The new width of the framebuffer.
      * @param height The new height of the framebuffer.
      */
-    static void CallbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height);
+    static void CallbackFrameBufferSizeGLFW(
+        GLFWwindow *window,
+        int width,
+        int height);
 
     /**
      * @brief Callback function for handling OpenGL errors.
@@ -338,7 +341,14 @@ public:
      * @param message The error message.
      * @param userParam User-defined parameter.
      */
-    static void CallbackDebugOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam);
+    static void CallbackDebugOpenGL(
+        GLenum source,
+        GLenum type,
+        GLuint id,
+        GLenum severity,
+        GLsizei length,
+        const GLchar *message,
+        const void *userParam);
 
     /**
      * @brief Callback function for handling errors.
@@ -349,7 +359,9 @@ public:
      * @param error The error code.
      * @param description The error description.
      */
-    static void CallbackErrorGLFW(int error, const char *description);
+    static void CallbackErrorGLFW(
+        int error,
+        const char *description);
 
     /**
      * @brief Checks for OpenGL errors and logs them.
@@ -362,7 +374,10 @@ public:
      *
      * @example CheckErrorOpenGL(__LINE__, __FILE__);
      */
-    static int CheckErrorOpenGL(int, const char *, const char * = nullptr);
+    static int CheckErrorOpenGL(
+        int line,
+        const char *file_str,
+        const char *msg_str = nullptr);
 
     /**
      * @brief Checks for GLFW errors and logs them.
@@ -375,7 +390,10 @@ public:
      *
      * @example CheckErrorGLFW(__LINE__, __FILE__);
      */
-    static int CheckErrorGLFW(int, const char *, const char * = nullptr);
+    static int CheckErrorGLFW(
+        int line,
+        const char *file_str,
+        const char *msg_str = nullptr);
 
     /**
      * @brief Initializes GLFW and discovers monitors.
@@ -401,7 +419,12 @@ public:
      * @param key_callback Optional key callback function to set for the window (default to nullptr).
      * @return int Status of context initialization (0 for success, -1 for failure).
      */
-    int initWindowContext(int win_ind, int mon_ind, int win_width, int win_height, KeyCallbackFunc key_callback = nullptr);
+    int initWindowContext(
+        int win_ind,
+        int mon_ind,
+        int win_width,
+        int win_height,
+        KeyCallbackFunc key_callback = nullptr);
 
     /**
      * @brief Compiles and links shaders for a given class instance.
@@ -427,7 +450,9 @@ public:
      * Once the shader program is created and linked successfully, it returns the GLuint ID of the shader program.
      * This ID is used to activate the shader program for rendering.
      */
-    int compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source);
+    int compileAndLinkShaders(
+        const GLchar *vertex_source,
+        const GLchar *fragment_source);
 
     /**
      * @brief This method checks the validation status of the shader program
@@ -513,7 +538,10 @@ public:
      *
      * @return Integer status code [-1:error, 0:successful].
      */
-    int changeWindowDisplayMode(int mon_ind, bool is_fullscreen, cv::Point offset_xy = cv::Point(0.0f, 0.0f));
+    int changeWindowDisplayMode(
+        int mon_ind,
+        bool is_fullscreen,
+        cv::Point offset_xy = cv::Point(0.0f, 0.0f));
 
     /**
      * @brief Sets the GLFW window to always be on top or not.
@@ -542,7 +570,10 @@ public:
      *
      * @return Integer status code [-1:error, 0:successful].
      */
-    int checkKeyInput(int key, int action, int mods = 0x80000000);
+    int checkKeyInput(
+        int key,
+        int action,
+        int mods = 0x80000000);
 
     /**
      * @brief Function to set the background color and redraw the window
@@ -552,7 +583,9 @@ public:
      *
      * @example flashBackgroundColor(window, cv::Scalar(0.1f, 0.0f, 0.0f), 0.5f);
      */
-    void flashBackgroundColor(const cv::Scalar &color, int duration);
+    void flashBackgroundColor(
+        const cv::Scalar &color,
+        int duration);
 
 private:
     /**
@@ -567,7 +600,9 @@ private:
      * @param shader The shader to check.
      * @param shader_type The type of shader to check.
      */
-    bool _checkShaderCompilation(GLuint shader, const std::string &shader_type);
+    bool _checkShaderCompilation(
+        GLuint shader,
+        const std::string &shader_type);
 
     /**
      * @brief Private helper methods to check shader linking.
@@ -581,7 +616,10 @@ private:
      * @param out_monitorInd Refernce to global just to make it clear the value is being set.
      * @param out_monitorID Refernce to global just to make it clear the value is being set.
      */
-    int _setMonitor(int mon_ind, GLFWmonitor *&out_monitorID, int &out_monitorInd);
+    int _setMonitor(
+        int mon_ind,
+        GLFWmonitor *&out_monitorID,
+        int &out_monitorInd);
 
     // Simple test of OpenGL and GLFW callbacks
     void _testCallbacks();
@@ -696,7 +734,11 @@ public:
      * @param col Color of the circle.
      * @param segments Number of segments for the circle approximation.
      */
-    void initializeCircleAttributes(cv::Point2f pos, float rad, cv::Scalar col, unsigned int segments);
+    void initializeCircleAttributes(
+        cv::Point2f pos,
+        float rad,
+        cv::Scalar col,
+        unsigned int segments);
 
     /**
      * @brief Sets the position of the circle.
@@ -786,7 +828,9 @@ private:
      * @param shader The shader to check.
      * @param shader_type The type of shader to check.
      */
-    static bool _CheckShaderCompilation(GLuint shader, const std::string &shader_type);
+    static bool _CheckShaderCompilation(
+        GLuint shader,
+        const std::string &shader_type);
 
     /**
      * @brief Private helper methods to check shader linking.
@@ -819,7 +863,11 @@ private:
      * @param circSegments Number of segments for the circle approximation.
      * @param circVertices Reference to the vertex array to store the computed vertices.
      */
-    void _computeVertices(cv::Point2f position, float radius, unsigned int circSegments, std::vector<float> &circVertices);
+    void _computeVertices(
+        cv::Point2f position,
+        float radius,
+        unsigned int circSegments,
+        std::vector<float> &circVertices);
 };
 
 #endif // CIRCLE_RENDERER_H
@@ -1072,7 +1120,11 @@ extern const int WINDOW_WIDTH_PXL = 3840;
 extern const int WINDOW_HEIGHT_PXL = 2160;
 extern const float WINDOW_ASPECT_RATIO = (float)WINDOW_WIDTH_PXL / WINDOW_HEIGHT_PXL;
 
-// Specify the maze width and height (NDC)
+// Maze width and height (pixels)
+const int FLOOR_IMAGE_WIDTH_PXL = 900;
+const int FLOOR_IMAGE_HEIGHT_PXL = 900;
+
+// Maze width and height (NDC)
 const float MAZE_WIDTH_NDC = 0.3f;
 const float MAZE_HEIGHT_NDC = 0.6f;
 
@@ -1088,7 +1140,7 @@ extern const float WALL_IMAGE_HEIGHT_NDC = (MAZE_HEIGHT_NDC / (float(MAZE_SIZE) 
 const int DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
 
 // Number of calibration modes and strings for each mode
-const int N_CAL_MODES = 3;
+const int N_CAL_MODES = 4; // [0: left, 1: middle, 2: right, 3: floor]
 std::vector<std::string> CAL_MADE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};
 
 // ================================================== FUNCTIONS ==================================================
@@ -1104,7 +1156,7 @@ std::vector<std::string> CAL_MADE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};
  *
  * @return True if the delay has elapsed, otherwise false.
  */
-bool dbRunDT(int);
+bool dbRunDT(int dt_wait);
 
 /**
  * @brief Track and print the elapsed time between calls with line and function info.
@@ -1116,11 +1168,13 @@ bool dbRunDT(int);
  * @param do_reset If true, resets the start time. If false, prints the elapsed time.
  * @param line Line number where the function is called.
  * @param file_path File path where the function is called.
- * @param do_print_each_call If true, prints the info for each call.
  *
  * @example dbTraceCalls(false, __LINE__, __FILE__);
  */
-void dbTraceCalls(bool = false, int = 0, const char * = nullptr);
+void dbTraceCalls(
+    bool do_reset = false,
+    int line = 0,
+    const char *file_path = nullptr);
 
 /**
  * @brief Pauses program and waits for any keypress.
@@ -1135,7 +1189,7 @@ void dbWaitForInput();
  * @note Use this regular expression to find the ros info and time stamp:
  *   \[\s*([A-Z]+)\]\s*\[([\d\.]+)\]:
  */
-void dbLogQuadVertices(const std::vector<cv::Point2f> &);
+void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices);
 
 /**
  * @brief Prints the coordinates of all entries in the control point array.
@@ -1147,14 +1201,14 @@ void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &
  *
  * @param _WALL_WARP_COORDS Reference to the warped wall vertices array.
  */
-void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &);
+void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &_WALL_WARP_COORDS);
 
 /**
  * @brief Prints the coordinates of all entries in the homography matrix.
  *
  * @param _HMAT The homography matrix.
  */
-void dbLogHomMat(const cv::Mat &);
+void dbLogHomMat(const cv::Mat &_HMAT);
 
 /**
  * @brief Displays a warped image in a window.
@@ -1202,7 +1256,11 @@ std::string promptForProjectorNumber();
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int xmlFrmtFileStrings(int mon_ind, int cal_ind, std::string &out_path, std::string &out_mode);
+int xmlFrmtFileStrings(
+    int mon_ind,
+    int cal_ind,
+    std::string &out_path,
+    std::string &out_mode);
 
 /**
  * Save a single cv::Mat homography matrix to an XML file.
@@ -1218,7 +1276,11 @@ int xmlFrmtFileStrings(int mon_ind, int cal_ind, std::string &out_path, std::str
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int xmlSaveHMAT(const cv::Mat &_H, int mon_ind, int cal_ind, int grid_row, int grid_col);
+int xmlSaveHMAT(const cv::Mat &_H,
+                int mon_ind,
+                int cal_ind,
+                int grid_row,
+                int grid_col);
 
 /**
  * Load a single cv::Mat homography matrix from an XML file.
@@ -1231,7 +1293,12 @@ int xmlSaveHMAT(const cv::Mat &_H, int mon_ind, int cal_ind, int grid_row, int g
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int xmlLoadHMAT(int mon_ind, int cal_ind, int grid_row, int grid_col, cv::Mat &out_H);
+int xmlLoadHMAT(
+    int mon_ind,
+    int cal_ind,
+    int grid_row,
+    int grid_col,
+    cv::Mat &out_H);
 
 /**
  * Checks for size and signulararity issues in a homography matrix.
@@ -1245,11 +1312,11 @@ int checkHMAT(const cv::Mat &_H);
 /**
  * @brief Checks if a given set of vertices defines a valid quadrilateral.
  *
- * @param quad_vertices std:arr or std:vector of the four vertices defining a quadrilateral.
+ * @param quad_vertices std:vector of the four vertices defining a quadrilateral.
  *
  * @return Integer status code [-1:invalid wrong size, -2:invalid wrong shape, 0:valid].
  */
-int checkQuadVertices(const std::vector<cv::Point2f> &);
+int checkQuadVertices(const std::vector<cv::Point2f> &quad_vertices);
 
 /**
  * @brief Converts the units of the quadrilateral from NDC to pixels.
@@ -1264,7 +1331,24 @@ int checkQuadVertices(const std::vector<cv::Point2f> &);
  * Convert from NDC [-1, 1] to pixel [0, width or height] and
  * inverts the y to match OpenCV's top-left origin
  */
-std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &, int, int);
+std::vector<cv::Point2f> quadVertNdc2Pxl(
+    const std::vector<cv::Point2f> &quad_vertices_ndc,
+    int window_width_pxl,
+    int window_height_pxl);
+
+/**
+ * @brief Computes homography matrices for a geven set of vertices.
+ *
+ * @param source_vertices_pxl std:vector of the four vertices defining the source plane in pixels.
+ * @param target_vertices_ndc std:vector of the four vertices defining the target plane in NDC.
+ * @param[out] out_H The output homography matrix.
+ *
+ * @return Integer status code [-1:invalid wrong size, -2:invalid wrong shape, 0:valid].
+ */
+int computeHomographyMatrix(
+    const std::vector<cv::Point2f> &source_vertices_pxl,
+    const std::vector<cv::Point2f> &target_vertices_ndc,
+    cv::Mat &out_H);
 
 /**
  * @brief Performs bilinear interpolation.
@@ -1289,7 +1373,9 @@ std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &, int, 
  *
  * @return The interpolated value at the specified grid point.
  */
-float bilinearInterpolation(float, float, float, float, int, int, int);
+float bilinearInterpolation(
+    float a, float b, float c, float d,
+    int grid_row_i, int grid_col_i, int grid_size);
 
 /**
  * @brief Loads PNG images with alpha channel from specified file paths and stores them in a vector as cv::Mat objects.
@@ -1313,7 +1399,9 @@ float bilinearInterpolation(float, float, float, float, int, int, int);
  * - Tick the 'Transparency' checkbox in the PNG export options to include the alpha channel.
  * - Confirm the PNG is exported with a bit depth that supports alpha (typically PNG-24).
  */
-int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Mat> &out_img_mat_vec);
+int loadImgMat(
+    const std::vector<std::string> &img_paths_vec,
+    std::vector<cv::Mat> &out_img_mat_vec);
 
 /**
  * @brief Merges a mask image over a base image using the alpha channel and stores the result.
@@ -1328,13 +1416,15 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
  * of the mask image. Pixels from the mask image are copied over to the base image based on
  * the alpha value - if the alpha value is not fully transparent (0), the pixel is copied.
  */
-int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img);
+int mergeImgMat(
+    const cv::Mat &mask_img,
+    cv::Mat &out_base_img);
 
 /**
  * @brief Converts an OpenCV Mat image into an OpenGL texture and returns the texture ID.
  *
- * @param image The cv::Mat image that needs to be converted.
- * @param GLuint Reference to the GLuint ID of the generated texture.
+ * @param img_mat The cv::Mat image that needs to be converted.
+ * @param texture_id Reference to the GLuint ID of the generated texture.
  *
  * @return Integer status code [-1:error, 0:successful].
  *
@@ -1347,8 +1437,10 @@ int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img);
  *
  * Note: This function assumes that the input image is of type CV_8UC3 and has no alpha channel.
  */
+int loadTexture(
+    cv::Mat img_mat,
+    GLuint &texture_id);
 
-int loadTexture(cv::Mat, GLuint &);
 /**
  * @brief Initialize OpenGL resources for wall image render objects.
  *
@@ -1359,6 +1451,10 @@ int loadTexture(cv::Mat, GLuint &);
  * @details
  * Initializes the Vertex Array Object (VAO), Vertex Buffer Object (VBO) and Element Buffer Object (EBO).
  */
-int initWallRenderObjects(MazeRenderContext &out_renCtx, float *vertices, size_t verticesSize, unsigned int *indices, size_t indicesSize);
+int initWallRenderObjects(
+    MazeRenderContext &out_renCtx,
+    float *vertices, size_t verticesSize,
+    unsigned int *indices,
+    size_t indicesSize);
 
 #endif
