@@ -43,20 +43,10 @@ static struct IndStruct
  */
 static struct CountStruct
 {
-    int monitors;              // Number of monitors connected to the system
-    const int projectors = 2;  // Number of projectors  (hardcoded)
+    int monitors;             // Number of monitors connected to the system
+    const int projectors = 2; // Number of projectors  (hardcoded)
     const int wall_image = 6; // Number of wall images
 } N;
-
-/**
- * @brief Offset for the window position
- */
-std::vector<cv::Point> winOffsetVec;
-
-/**
- * @brief  Array of OpenGL context objects.
- */
-std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projectors);
 
 /**
  * @brief A n_projectors sized element veoctor containing a 3x3x3 data contianer for storing 3x3 homography matrices (UGLY!)
@@ -64,9 +54,30 @@ std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projectors);
 std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> HMAT_ARR_VEC(N.projectors);
 
 /**
+ * @brief  Array of OpenGL context objects.
+ */
+std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projectors);
+
+/**
+ * @brief  Marker for masking rat.
+ */
+CircleRenderer ratMaskCircRend;
+
+// Rat mask graphics parameters
+cv::Point2f rmPosition = cv::Point2f(0.0f, 0.0f);      // Marker center
+const GLfloat rmMakerRadius = 0.0025f;                 // Default control point rendered circle radius
+const cv::Scalar rmRGB = cv::Scalar(0.0f, 0.0f, 0.0f); // Marker color (black)
+const int rmRenderSegments = 36;                       // Number of segments used to approximate the circle geometry
+
+/**
  * @brief Image file sub-directory path
- */ 
-std::string runtime_wall_image_path = IMAGE_TOP_DIR_PATH + "/runtime/shapes_outlined";
+ */
+std::string runtime_wall_image_path = IMAGE_TOP_DIR_PATH + "/runtime";
+
+/**
+ * @brief Offset for the window position
+ */
+std::vector<cv::Point> winOffsetVec;
 
 /**
  * @brief List of wall image file paths
@@ -83,11 +94,14 @@ std::vector<std::string> fiImgPathWallVec = {
  * @brief List of floor image file paths
  */
 std::vector<std::string> fiImgPathFloorVec = {
-    runtime_wall_image_path + "/0_test_floor.png",
+    runtime_wall_image_path + "/f_blank.png",
+    runtime_wall_image_path + "/f_chambers.png",
 };
 
 // Vectors to store the loaded images in cv::Mat format
-std::vector<cv::Mat> testWallImgMatVec; // Vector of wall image texture matrices
+std::vector<cv::Mat> wallImgMatVec; // Vector of wall image texture matrices
+std::vector<cv::Mat> floorImgMatVec; // Vector of floor image texture matrices
+
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -109,7 +123,7 @@ int procKeyPress();
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int updateWallTextures(
+int updateTexture(
     int proj_mon_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
     const std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> &_HMAT_ARR_VEC,

@@ -481,14 +481,14 @@ int updateFloorHomography(const std::array<cv::Point2f, 4> &_CP_ARR, cv::Mat &ou
     return 0;
 }
 
-int updateTextures(
+int updateTexture(
     int cal_ind,
     cv::Mat img_wall_mat, cv::Mat img_mon_mat, cv::Mat img_cal_mat,
     const std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &_HMAT_ARR,
     GLuint &out_texture_id)
 {
     // Initialize the image to be used as the texture
-    cv::Mat im_wall_merge = cv::Mat::zeros(WINDOW_HEIGHT_PXL, WINDOW_WIDTH_PXL, CV_8UC4);
+    cv::Mat img_merge = cv::Mat::zeros(WINDOW_HEIGHT_PXL, WINDOW_WIDTH_PXL, CV_8UC4);
 
     // Specify number of rows/cols to loop through
     int grid_size = (cal_ind < 3) ? MAZE_SIZE : 1;
@@ -525,18 +525,22 @@ int updateTextures(
             // Get homography matrix for this wall
             cv::Mat H = _HMAT_ARR[cal_ind][gr_i][gc_i];
 
-            // Warp Perspective
-            cv::Mat im_warp;
-            cv::warpPerspective(img_copy, im_warp, H, cv::Size(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL));
+            // Warp the image
+            cv::Mat img_warp;
+            if (warpImgMat(img_copy, H, img_warp) < 0)
+            {
+                ROS_ERROR("[updateTexture] Warp image error: Wall[%d][%d] Calibration[%d]", gr_i, gc_i, cal_ind);
+                return -1;
+            }
 
             // Merge the warped image with the final image
-            if (mergeImgMat(im_warp, im_wall_merge) < 0)
+            if (mergeImgMat(img_warp, img_merge) < 0)
                 return -1;
         }
     }
 
-    // Make the new texture and return status
-    return loadTexture(im_wall_merge, out_texture_id);
+    // Load the new texture and return status
+    return loadTexture(img_merge, out_texture_id);
 }
 
 void appInitVariables()
@@ -574,9 +578,9 @@ void appInitVariables()
 void appLoadAssets()
 {
     // Load images using OpenCV
-    if (loadImgMat(fiImgPathWallVec, testWallImgMatVec) < 0)
+    if (loadImgMat(fiImgPathWallVec, wallImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall test images");
-    if (loadImgMat(fiImgPathFloorVec, testFloorImgMatVec) < 0)
+    if (loadImgMat(fiImgPathFloorVec, floorImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV floor test images");
     if (loadImgMat(fiImgPathCalVec, calImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV calibration mode images");
@@ -599,9 +603,9 @@ void appInitOpenGL()
         throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
 
     // Initialize OpenGL wall image objects
-    if (initWallRenderObjects(projCtx,
-                              WALL_GL_VERTICES, sizeof(WALL_GL_VERTICES),
-                              WALL_GL_INDICES, sizeof(WALL_GL_INDICES)) < 0)
+    if (initWallRenderObjects(QUAD_GL_VERTICES, sizeof(QUAD_GL_VERTICES),
+                              QUAD_GL_INDICES, sizeof(QUAD_GL_INDICES),
+                              projCtx) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
 
     // Update monitor and window mode settings
@@ -616,22 +620,22 @@ void appInitOpenGL()
     if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_ASPECT_RATIO) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
 
-    // Initialize the CircleRenderer class objects array
-    if (initCircleRendererObjects(CP_GRID_ARR, CP_GLOBJ_ARR) < 0)
-        throw std::runtime_error("[appInitOpenGL] Failed to initialize control point variables");
-
     // Initialize wall textures
     if (I.cal_mode < 3)
     {
-        if (updateTextures(I.cal_mode, testWallImgMatVec[I.wall_image], monWallImgMatVec[I.monitor], calImgMatVec[I.cal_mode], HMAT_ARR, projCtx.textureID) < 0)
+        if (updateTexture(I.cal_mode, wallImgMatVec[I.wall_image], monWallImgMatVec[I.monitor], calImgMatVec[I.cal_mode], HMAT_ARR, projCtx.textureID) < 0)
             throw std::runtime_error("[appMainLoop] Failed to initialize wall texture");
     }
     // Initialize floor texture
     else if (I.cal_mode == 3)
     {
-        if (updateTextures(I.cal_mode, testFloorImgMatVec[I.wall_image], monFloorImgMatVec[I.monitor], calImgMatVec[I.cal_mode], HMAT_ARR, projCtx.textureID) < 0)
+        if (updateTexture(I.cal_mode, floorImgMatVec[I.wall_image], monFloorImgMatVec[I.monitor], calImgMatVec[I.cal_mode], HMAT_ARR, projCtx.textureID) < 0)
             throw std::runtime_error("[appMainLoop] Failed to initialize floor texture");
     }
+
+    // Initialize the CircleRenderer class objects array
+    if (initCircleRendererObjects(CP_GRID_ARR, CP_CIRCREND_ARR) < 0)
+        throw std::runtime_error("[appInitOpenGL] Failed to initialize control point variables");
 
     ROS_INFO("[appInitOpenGL] OpenGL context and objects initialized succesfully");
 }
@@ -787,14 +791,14 @@ void appMainLoop()
             // Update wall textures
             if (I.cal_mode < 3)
             {
-                if (updateTextures(I.cal_mode, testWallImgMatVec[I.wall_image], monWallImgMatVec[I.monitor], calImgMatVec[I.cal_mode], HMAT_ARR, projCtx.textureID) < 0)
-                    throw std::runtime_error("[appMainLoop] Error returned from updateTextures for wall images");
+                if (updateTexture(I.cal_mode, wallImgMatVec[I.wall_image], monWallImgMatVec[I.monitor], calImgMatVec[I.cal_mode], HMAT_ARR, projCtx.textureID) < 0)
+                    throw std::runtime_error("[appMainLoop] Error returned from updateTexture for wall images");
             }
             // Update floor texture
             else if (I.cal_mode == 3)
             {
-                if (updateTextures(I.cal_mode, testFloorImgMatVec[I.floor_image], monFloorImgMatVec[I.monitor], calImgMatVec[I.cal_mode], HMAT_ARR, projCtx.textureID) < 0)
-                    throw std::runtime_error("[appMainLoop] Error returned from updateTextures for floor images");
+                if (updateTexture(I.cal_mode, floorImgMatVec[I.floor_image], monFloorImgMatVec[I.monitor], calImgMatVec[I.cal_mode], HMAT_ARR, projCtx.textureID) < 0)
+                    throw std::runtime_error("[appMainLoop] Error returned from updateTexture for floor images");
             }
         }
 
@@ -821,7 +825,7 @@ void appMainLoop()
             throw std::runtime_error("[appMainLoop] Error returned from drawTexture");
 
         // Draw/update control point markers
-        if (renderControlPoints(I.cal_mode, CP_GRID_ARR, CP_GLOBJ_ARR) < 0)
+        if (renderControlPoints(I.cal_mode, CP_GRID_ARR, CP_CIRCREND_ARR) < 0)
             throw std::runtime_error("[appMainLoop] Error returned from renderControlPoints");
 
         // Swap buffers and poll events

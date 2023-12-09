@@ -1497,7 +1497,7 @@ int checkHMAT(const cv::Mat &_H)
     // Check if the input matrix is 3x3
     if (_H.empty() || _H.rows != 3 || _H.cols != 3)
     {
-        ROS_ERROR("[updateWallTextures] Homography matrix size error: Size[%d][%d]", _H.rows, _H.cols);
+        ROS_ERROR("[updateTexture] Homography matrix size error: Size[%d][%d]", _H.rows, _H.cols);
         return -1;
     }
 
@@ -1738,9 +1738,9 @@ int loadTexture(cv::Mat img_mat, GLuint &texture_id)
     return status;
 }
 
-int initWallRenderObjects(MazeRenderContext &out_renCtx,
-                          float *vertices, size_t verticesSize,
-                          unsigned int *indices, size_t indicesSize)
+int initWallRenderObjects(float *vertices, size_t verticesSize,
+                          unsigned int *indices, size_t indicesSize,
+                          MazeRenderContext &out_renCtx)
 {
     int status = 0;
 
@@ -1786,4 +1786,26 @@ int initWallRenderObjects(MazeRenderContext &out_renCtx,
 
     // Return GL status
     return status;
+}
+
+int warpImgMat(cv::Mat img_mat, cv::Mat _H, cv::Mat &out_img_mat)
+{
+    // Check that the input image is valid
+    if (img_mat.empty())
+    {
+        ROS_ERROR("[warpImgMat] OpenCV image copy failed");
+        return -1;
+    }
+
+    // Get homography matrix for this wall
+    if (checkHMAT(_H) < 0)
+    {
+        ROS_ERROR("[warpImgMat] Homography matrix error");
+        return -1;
+    }
+
+    // Warp Perspective
+    cv::warpPerspective(img_mat, out_img_mat, _H, cv::Size(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL));
+
+    return 0;
 }

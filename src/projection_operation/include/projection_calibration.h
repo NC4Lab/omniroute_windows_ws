@@ -14,14 +14,6 @@
 
 // ================================================== VARIABLES ==================================================
 
-// Control point graphics
-const int cpRenderSegments = 36;                                       // Number of segments used to approximate the circle geometry
-const cv::Scalar cpWallVertSelectedRGB = cv::Scalar(1.0f, 0.0f, 0.0f); // Select control point marker color (red)
-const cv::Scalar cpMazeVertSelectedRGB = cv::Scalar(0.0f, 1.0f, 0.0f); // Selected control point wall color (green)
-const cv::Scalar cpDefaultRGB = cv::Scalar(0.0f, 0.0f, 1.0f);          // Default control point marker color (blue)
-const GLfloat cpDefualtMakerRadius = 0.0025f;                          // Default control point rendered circle radius
-const GLfloat cpSelectedMakerRadius = 0.005f;                          // Selected control point rendered circle radius
-
 /**
  * @brief  4x4 data container for tracking the vertex coordinates for the corner wall images which are used as control point.
  *
@@ -58,8 +50,15 @@ MazeRenderContext projCtx;
 /**
  * @brief  4x4 array of the CircleRenderer class objects.
  */
-std::array<std::array<CircleRenderer, 4>, 4> CP_GLOBJ_ARR;
+std::array<std::array<CircleRenderer, 4>, 4> CP_CIRCREND_ARR;
 
+// Control point graphics parameters
+const cv::Scalar cpWallVertSelectedRGB = cv::Scalar(1.0f, 0.0f, 0.0f); // Select control point marker color (red)
+const GLfloat cpDefualtMakerRadius = 0.0025f;                          // Default control point rendered circle radius
+const GLfloat cpSelectedMakerRadius = 0.005f;                          // Selected control point rendered circle radius
+const cv::Scalar cpMazeVertSelectedRGB = cv::Scalar(0.0f, 1.0f, 0.0f); // Selected control point wall color (green)
+const cv::Scalar cpDefaultRGB = cv::Scalar(0.0f, 0.0f, 1.0f);          // Default control point marker color (blue)
+const int cpRenderSegments = 36;                                       // Number of segments used to approximate the circle geometry
 /**
  * @brief Struct for global flags.
  */
@@ -80,7 +79,7 @@ static struct FlagStruct
  */
 static struct CountStruct
 {
-    int monitors;               // Number of monitors connected to the system
+    int monitors;              // Number of monitors connected to the system
     const int wall_image = 4;  // Number of wall test images
     const int floor_image = 2; // Number of floor test images
 } N;
@@ -168,8 +167,8 @@ std::vector<std::string> fiImgPathCalVec = {
 };
 
 // Vectors to store the loaded images in cv::Mat format
-std::vector<cv::Mat> testWallImgMatVec;  // Vector of wall test image texture matrices
-std::vector<cv::Mat> testFloorImgMatVec; // Vector of floor test image texture matrices
+std::vector<cv::Mat> wallImgMatVec;  // Vector of wall test image texture matrices
+std::vector<cv::Mat> floorImgMatVec; // Vector of floor test image texture matrices
 std::vector<cv::Mat> monWallImgMatVec;   // Vector of monitor mode image texture matrices for wall calibration
 std::vector<cv::Mat> monFloorImgMatVec;  // Vector of monitor mode image texture matrices for floor calibration
 std::vector<cv::Mat> calImgMatVec;       // Vector of calibration mode image texture matrices
@@ -287,7 +286,7 @@ int updateFloorHomography(
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int updateTextures(
+int updateTexture(
     int cal_ind,
     cv::Mat img_wall_mat,
     cv::Mat img_mon_mat,

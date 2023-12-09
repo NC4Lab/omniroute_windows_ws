@@ -51,31 +51,38 @@ int procKeyPress()
     return 0;
 }
 
-int updateWallTextures(
+int updateTexture(
     int proj_mon_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
     const std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> &_HMAT_ARR_VEC,
     MazeRenderContext &out_progGL)
 {
     // Initialize the image to be used as the texture
-    cv::Mat im_wall_merge = cv::Mat::zeros(out_progGL.windowHeight, out_progGL.windowWidth, CV_8UC4);
+    cv::Mat img_merge = cv::Mat::zeros(out_progGL.windowHeight, out_progGL.windowWidth, CV_8UC4);
 
-    // Iterate through through calibration modes
-    for (int cal_i = 0; cal_i < N_CAL_MODES; ++cal_i)
+    // Iterate through through calibration modes in descending order so floor is drawn first
+    for (int cal_i = N_CAL_MODES - 1; cal_i >= 0; --cal_i)
     {
+        // Specify number of rows/cols to loop through
+        int grid_size = (cal_i < 3) ? MAZE_SIZE : 1;
+
         // Iterate through the maze grid rows
-        for (int gr_i = 0; gr_i < MAZE_SIZE; gr_i++) // image bottom to top
+        for (int gr_i = 0; gr_i < grid_size; gr_i++) // image bottom to top
         {
             // Iterate through each column in the maze row
-            for (int gc_i = 0; gc_i < MAZE_SIZE; gc_i++) // image left to right
+            for (int gc_i = 0; gc_i < grid_size; gc_i++) // image left to right
             {
                 // Get the image index for the current wall
-                int img_ind = IMG_PROJ_MAP[proj_mon_ind][gr_i][gc_i][cal_i];
+                int img_ind;
+                if (cal_i < 3)
+                    img_ind = WALL_IMG_PROJ_MAP[proj_mon_ind][gr_i][gc_i][cal_i];
+                else
+                    img_ind = FLOOR_IMG_PROJ_MAP[proj_mon_ind];
 
                 // Check for vaiid image
                 if (_wallImgMatVec[img_ind].empty())
                 {
-                    ROS_ERROR("[updateWallTextures] Stored OpenCV image is empty: Window[%d] Monitor[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
+                    ROS_ERROR("[updateTexture] Stored OpenCV image is empty: Window[%d] Monitor[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
                               out_progGL.windowInd, proj_mon_ind, gr_i, gc_i, cal_i, img_ind);
                     return -1;
                 }
@@ -83,42 +90,37 @@ int updateWallTextures(
                 // Copy wall image
                 cv::Mat img_copy;
                 _wallImgMatVec[img_ind].copyTo(img_copy);
-                if (img_copy.empty())
-                {
-                    ROS_ERROR("[updateWallTextures] OpenCV image copy failed: Window[%d] Monitor[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
-                              out_progGL.windowInd, proj_mon_ind, gr_i, gc_i, cal_i, img_ind);
-                    return -1;
-                }
 
                 // Get homography matrix for this wall
                 cv::Mat H = _HMAT_ARR_VEC[proj_mon_ind][cal_i][gr_i][gc_i];
-                if (checkHMAT(H) < 0)
+
+                // Warp Perspective
+                cv::Mat img_warp;
+                if (warpImgMat(img_copy, H, img_warp) < 0)
                 {
-                    ROS_ERROR("[updateWallTextures] Homography matrix error: Window[%d] Wall[%d][%d] Calibration[%d]",
-                              out_progGL.windowInd, proj_mon_ind, gr_i, gc_i, cal_i, H.rows, H.cols);
+                    ROS_ERROR("[updateTexture] Warp image error: Window[%d] Monitor[%d] Wall[%d][%d] Calibration[%d]",
+                              out_progGL.windowInd, proj_mon_ind, gr_i, gc_i, cal_i);
                     return -1;
                 }
 
-                // Warp Perspective
-                cv::Mat im_warp;
-                cv::warpPerspective(img_copy, im_warp, H, cv::Size(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL));
-
                 // Merge the warped image with the final image
-                if (mergeImgMat(im_warp, im_wall_merge) < 0)
+                if (mergeImgMat(img_warp, img_merge) < 0)
                     return -1;
             }
         }
     }
 
-    // Make the new texture and return status
-    return loadTexture(im_wall_merge, out_progGL.textureID);
+    // Load the new texture and return status
+    return loadTexture(img_merge, out_progGL.textureID);
 }
 
 void appLoadAssets()
 {
 
     // Load images using OpenCV
-    if (loadImgMat(fiImgPathWallVec, testWallImgMatVec) < 0)
+    if (loadImgMat(fiImgPathWallVec, wallImgMatVec) < 0)
+        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
+    if (loadImgMat(fiImgPathFloorVec, floorImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
 
     // Load homography matrices from XML files
@@ -175,9 +177,9 @@ void appInitOpenGL()
             throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
 
         // Initialize OpenGL wall image objects
-        if (initWallRenderObjects(projCtx,
-                                  WALL_GL_VERTICES, sizeof(WALL_GL_VERTICES),
-                                  WALL_GL_INDICES, sizeof(WALL_GL_INDICES)) < 0)
+        if (initWallRenderObjects(QUAD_GL_VERTICES, sizeof(QUAD_GL_VERTICES),
+                                  QUAD_GL_INDICES, sizeof(QUAD_GL_INDICES),
+                                  projCtx) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
 
         // Set all projectors to the starting monitor and include xy offset
@@ -189,8 +191,16 @@ void appInitOpenGL()
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to compile and link wall shader");
 
         // Initialize wall image texture
-        if (updateWallTextures(I.proj_mon_vec[projCtx.windowInd], testWallImgMatVec, HMAT_ARR_VEC, projCtx))
+        if (updateTexture(I.proj_mon_vec[projCtx.windowInd], wallImgMatVec, HMAT_ARR_VEC, projCtx))
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to initialize wall texture");
+
+        // Initialize the CircleRenderer class object for rat masking
+        ratMaskCircRend.initializeCircleAttributes(
+            rmPosition,      // position
+            rmMakerRadius,   // radius
+            rmRGB,           // color
+            rmRenderSegments // segments
+        );
 
         ROS_INFO("[appInitOpenGL] OpenGL initialized: Window[%d] Monitor[%d]", projCtx.windowInd, projCtx.monitorInd);
     }
@@ -227,7 +237,7 @@ void appMainLoop()
             for (auto &projCtx : PROJ_CTX_VEC)
             {
                 // Initialize wall image texture
-                if (updateWallTextures(I.proj_mon_vec[projCtx.windowInd], testWallImgMatVec, HMAT_ARR_VEC, projCtx))
+                if (updateTexture(I.proj_mon_vec[projCtx.windowInd], wallImgMatVec, HMAT_ARR_VEC, projCtx))
                     throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to initialize wall texture");
             }
 
@@ -269,8 +279,7 @@ void appMainLoop()
             status = projCtx.checkExitRequest();
             if (status > 0)
                 break;
-            else
-            if (status < 0)
+            else if (status < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from MazeRenderContext::checkExitRequest");
         }
     }

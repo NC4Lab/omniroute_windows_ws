@@ -891,7 +891,7 @@ private:
  *
  * The texture coordinates are flipped vertically to align with OpenCV's top-left origin.
  */
-float WALL_GL_VERTICES[] = {
+float QUAD_GL_VERTICES[] = {
     -1.0f, 1.0f, 0.0f, 0.0f, // Top-left
     1.0f, 1.0f, 1.0f, 0.0f,  // Top-right
     1.0f, -1.0f, 1.0f, 1.0f, // Bottom-right
@@ -914,7 +914,7 @@ float WALL_GL_VERTICES[] = {
  * array form each of the two triangles that make up the rectangle. This technique
  * allows for the re-use of vertices, thus reducing the amount of data sent to the GPU.
  */
-unsigned int WALL_GL_INDICES[] = {
+unsigned int QUAD_GL_INDICES[] = {
     0, 1, 2, // First Triangle
     0, 2, 3  // Second Triangle
 };
@@ -992,7 +992,7 @@ extern const std::string IMAGE_TOP_DIR_PATH = workspace_path + "/data/projection
  */
 
 // Template of 4D array for hardcoded image indices to display
-int TEMPLATE[4][3][3][3] = {
+int WALL_IMG_PROJ_MAP_TEMPLATE[4][3][3][3] = {
     // Projector 0: East
     {
         // Chamber Row: Top, Column: Left, Center, Right
@@ -1031,9 +1031,9 @@ int TEMPLATE[4][3][3][3] = {
     },
 };
 
-// // Actual hardcoded image indices used to display
+// // Actual hardcoded wall image indices used to display
 // /// @note Used for RTI grant 2023
-// int IMG_PROJ_MAP[4][3][3][3] = {
+// int WALL_IMG_PROJ_MAP[4][3][3][3] = {
 //     // Projector 0: East
 //     {
 //         // Chamber Row: Top, Column: Left, Center, Right
@@ -1072,8 +1072,8 @@ int TEMPLATE[4][3][3][3] = {
 //     },
 // };
 
-// Actual hardcoded image indices used to display
-int IMG_PROJ_MAP[4][3][3][3] = {
+// Actual hardcoded wall image indices used to display
+int WALL_IMG_PROJ_MAP[4][3][3][3] = {
     // Projector 0: East
     {
         // Chamber Row: Top, Column: Left, Center, Right
@@ -1110,6 +1110,14 @@ int IMG_PROJ_MAP[4][3][3][3] = {
         // Chamber Row: Bottom
         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
     },
+};
+
+// Template of 1D array for hardcoded floor image indices to display
+int FLOOR_IMG_PROJ_MAP[4] = {
+    0, // Projector 0: East
+    0, // Projector 1: North
+    0, // Projector 2: West
+    0, // Projector 3: South
 };
 
 // Number of rows and columns in the maze
@@ -1433,7 +1441,7 @@ int mergeImgMat(
  *
  * The texture parameters for minification and magnification filters are set to GL_LINEAR.
  *
- * Note: This function assumes that the input image is of type CV_8UC3 and has no alpha channel.
+ * @note This function assumes that the input image is of type CV_8UC3 and has no alpha channel.
  */
 int loadTexture(
     cv::Mat img_mat,
@@ -1450,9 +1458,24 @@ int loadTexture(
  * Initializes the Vertex Array Object (VAO), Vertex Buffer Object (VBO) and Element Buffer Object (EBO).
  */
 int initWallRenderObjects(
-    MazeRenderContext &out_renCtx,
-    float *vertices, size_t verticesSize,
+    float *vertices,
+    size_t verticesSize,
     unsigned int *indices,
-    size_t indicesSize);
+    size_t indicesSize,
+    MazeRenderContext &out_renCtx);
+
+/**
+ * @brief Warp OpenCV image using homography matrix.
+ *
+ * @param img_mat The cv::Mat image that needs to be warped.
+  * @param _H The homography matrix used for warping.
+ * @param[out] out_img_mat Reference to the outputed warped image.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int warpImgMat(
+    cv::Mat img_mat,
+    cv::Mat _H,
+    cv::Mat &out_img_mat);
 
 #endif

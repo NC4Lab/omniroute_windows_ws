@@ -299,7 +299,7 @@ int drawWalls(
                 // Get the image index for the current wall
                 int wall_row = MAZE_SIZE - 1 - (int)grid_row_i;
                 int wall_col = (int)grid_col_i;
-                int img_ind = IMG_PROJ_MAP[proj_ind][wall_row][wall_col][cal_i];
+                int img_ind = WALL_IMG_PROJ_MAP[proj_ind][wall_row][wall_col][cal_i];
 
                 // Bind image
                 ilBindImage(r_image_id_vec[img_ind]); // show test pattern
