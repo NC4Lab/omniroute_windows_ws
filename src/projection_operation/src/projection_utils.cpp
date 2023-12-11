@@ -243,12 +243,18 @@ int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width
 
 int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source)
 {
+    int status = 0;
+
     // Check that context is initialized
     if (!isContextInitialized)
     {
         ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Context Not Initialized");
         return -1;
     }
+
+    // Set the GLFW window as the current OpenGL context
+    glfwMakeContextCurrent(windowID);
+    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Compile vertex shader
     GLuint temp_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
@@ -260,6 +266,7 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
         ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Vertex shader compilation failed.");
         return -1;
     }
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Compile fragment shader
     GLuint temp_fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -272,6 +279,7 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
         ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Fragment shader compilation failed.");
         return -1;
     }
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Link shaders into a program
     shaderProgram = glCreateProgram();
@@ -286,14 +294,16 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
         ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Shader program linking failed.");
         return -1;
     }
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Cleanup: detach and delete shaders
     glDetachShader(shaderProgram, temp_vertex_shader);
     glDeleteShader(temp_vertex_shader);
     glDetachShader(shaderProgram, temp_fragment_shader);
     glDeleteShader(temp_fragment_shader);
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
-    return CheckErrorOpenGL(__LINE__, __FILE__);
+    return status;
 }
 
 int MazeRenderContext::checkShaderProgram()
@@ -333,6 +343,10 @@ int MazeRenderContext::checkShaderProgram()
 int MazeRenderContext::loadMatTexture(cv::Mat img_mat)
 {
     int status = 0;
+
+    // Set the GLFW window as the current OpenGL context
+    glfwMakeContextCurrent(windowID);
+    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
@@ -412,6 +426,14 @@ int MazeRenderContext::cleanupContext(bool log_errors)
 {
     int status = 0;
 
+    // Set the GLFW window as the current OpenGL context
+    if (windowID != nullptr)
+    {
+        glfwMakeContextCurrent(windowID);
+        status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
+    }
+
+    // Delete the shader program
     if (shaderProgram != 0)
     {
         glDeleteProgram(shaderProgram);
@@ -419,8 +441,10 @@ int MazeRenderContext::cleanupContext(bool log_errors)
         if (log_errors)
             ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete shader program" : "Shader program deleted successfully");
         shaderProgram = 0;
+        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
     }
 
+    // Delete the texture
     if (textureID != 0)
     {
         glDeleteTextures(1, &textureID);
@@ -428,8 +452,10 @@ int MazeRenderContext::cleanupContext(bool log_errors)
         if (log_errors)
             ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete texture" : "Texture deleted successfully");
         textureID = 0;
+        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
     }
 
+    // Delete the VAO, VBO, and EBO
     if (vao != 0)
     {
         glDeleteVertexArrays(1, &vao);
@@ -437,8 +463,8 @@ int MazeRenderContext::cleanupContext(bool log_errors)
         if (log_errors)
             ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete VAO" : "VAO deleted successfully");
         vao = 0;
+        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
     }
-
     if (vbo != 0)
     {
         glDeleteBuffers(1, &vbo);
@@ -446,8 +472,8 @@ int MazeRenderContext::cleanupContext(bool log_errors)
         if (log_errors)
             ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete VBO" : "VBO deleted successfully");
         vbo = 0;
+        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
     }
-
     if (ebo != 0)
     {
         glDeleteBuffers(1, &ebo);
@@ -455,8 +481,10 @@ int MazeRenderContext::cleanupContext(bool log_errors)
         if (log_errors)
             ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete EBO" : "EBO deleted successfully");
         ebo = 0;
+        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
     }
 
+    // Destroy the GLFW window
     if (windowID != nullptr)
     {
         glfwDestroyWindow(windowID);
@@ -464,6 +492,7 @@ int MazeRenderContext::cleanupContext(bool log_errors)
         if (log_errors)
             ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to destroy GLFW window" : "GLFW window destroyed successfully");
         windowID = nullptr;
+        status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
     }
 
     return status ? -1 : 0;
