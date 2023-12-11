@@ -20,16 +20,17 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     if (action == GLFW_RELEASE)
     {
 
-        // ---------- Monitor handling [F] ----------
+        // ----------Set/unset Fullscreen [F] ----------
 
-        // Set/unset Fullscreen
         if (key == GLFW_KEY_F)
         {
             F.fullscreen_mode = !F.fullscreen_mode;
             F.change_window_mode = true;
         }
 
-        // Move the window to another monitor
+        // ----------Move the window to another monitor [0-5] ----------
+
+        // Check number keys and update the monitor index
         int mon_ind = I.monitor;
         if (key == GLFW_KEY_0)
         {
@@ -360,9 +361,9 @@ int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_
     return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "initCircleRendererObjects");
 }
 
-int renderControlPoints(CalibrationMode _CAL_MODE,
-                        const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
-                        std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
+int drawControlPoints(CalibrationMode _CAL_MODE,
+                      const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
+                      std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
 {
     // Setup the CircleRenderer class shaders
     CircleRenderer::SetupShader();
@@ -400,7 +401,7 @@ int renderControlPoints(CalibrationMode _CAL_MODE,
             // Check for errors
             if (MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0)
             {
-                ROS_ERROR("[renderControlPoints] Error Thrown for Control Point[%d][%d]", cp_i, cp_j);
+                ROS_ERROR("[drawControlPoints] Error Thrown for Control Point[%d][%d]", cp_i, cp_j);
                 return -1;
             }
         }
@@ -410,7 +411,7 @@ int renderControlPoints(CalibrationMode _CAL_MODE,
     CircleRenderer::UnsetShader();
 
     // Return GL status
-    return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "renderControlPoints");
+    return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "drawControlPoints");
 }
 
 int updateWallHomographys(
@@ -819,8 +820,8 @@ void appMainLoop()
             throw std::runtime_error("[appMainLoop] Error returned from drawTexture");
 
         // Draw/update control point markers
-        if (renderControlPoints(CAL_MODE, CP_GRID_ARR, CP_CIRCREND_ARR) < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from renderControlPoints");
+        if (drawControlPoints(CAL_MODE, CP_GRID_ARR, CP_CIRCREND_ARR) < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from drawControlPoints");
 
         // Swap buffers and poll events
         if (projCtx.bufferSwapPoll() < 0)

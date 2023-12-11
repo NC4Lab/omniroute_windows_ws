@@ -245,7 +245,7 @@ int initCircleRendererObjects(
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int renderControlPoints(
+int drawControlPoints(
     CalibrationMode _CAL_MODE,
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
     std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS);

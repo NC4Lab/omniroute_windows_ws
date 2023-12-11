@@ -10,13 +10,41 @@
 
 // ================================================== FUNCTIONS ==================================================
 
+void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
+{
+    // Set the current OpenGL context to the window
+    glfwMakeContextCurrent(window);
+
+    // _______________ ANY KEY RELEASE ACTION _______________
+
+    if (action == GLFW_RELEASE)
+    {
+
+        // ----------Set/unset Fullscreen [F] ----------
+
+        if (key == GLFW_KEY_F)
+        {
+            F.fullscreen_mode = !F.fullscreen_mode;
+            F.change_window_mode = true;
+        }
+
+        // ----------Check for move monitor command [M] ----------
+
+        if (key == GLFW_KEY_M)
+        {
+            F.windows_set_to_proj = !F.windows_set_to_proj;
+            F.change_window_mode = true;
+        }
+    }
+}
+
 int procKeyPress()
 {
-    auto loopCheck = [](int key, int action) -> int
+    auto loopCheck = [](int key, int mod = 0) -> int
     {
         for (auto &projCtx : PROJ_CTX_VEC)
         {
-            int s = projCtx.checkKeyInput(key, action);
+            int s = projCtx.checkKeyInput(key, mod);
             if (s != 0)
                 return s;
         }
@@ -25,29 +53,27 @@ int procKeyPress()
 
     int status = 0;
 
-    // TEMP 
-    return 0;
+    // // Check for fullscreen mode change [F]
+    // status = loopCheck(GLFW_KEY_F);
+    // if (status > 0)
+    // {
+    //     F.fullscreen_mode = !F.fullscreen_mode;
+    //     F.change_window_mode = true;
+    //     return status;
+    // }
 
-    // Check for fullscreen mode change [F]
-    status = loopCheck(GLFW_KEY_F, GLFW_RELEASE);
-    if (status > 0)
-    {
-        F.fullscreen_mode = !F.fullscreen_mode;
-        F.change_window_mode = true;
-        return status;
-    }
+    // // Check for move monitor command [M]
+    // status = loopCheck(GLFW_KEY_M);
+    // if (status > 0)
+    // {
+    //     F.windows_set_to_proj = !F.windows_set_to_proj;
+    //     F.change_window_mode = true;
+    //     ROS_INFO("[TEMP GLFW_KEY_M] F.windows_set_to_proj[%d] status[%d]", F.windows_set_to_proj, status);
+    //     return status;
+    // }
 
-    // Check for move monitor command [M]
-    status = loopCheck(GLFW_KEY_M, GLFW_RELEASE);
-    if (status > 0)
-    {
-        F.windows_set_to_proj = !F.windows_set_to_proj;
-        F.change_window_mode = true;
-        return status;
-    }
-
-    if (status < 0)
-        ROS_ERROR("[procKeyPress] Error returned from MazeRenderContext::checkKeyInput");
+    // if (status < 0)
+    //     ROS_ERROR("[procKeyPress] Error returned from MazeRenderContext::checkKeyInput");
 
     return status;
 }
@@ -122,20 +148,9 @@ int updateTexture(
                 // Merge the warped image with the final image
                 if (mergeImgMat(img_warp, img_merge) < 0)
                     return -1;
-
-                // TEMP
-                // dbWaitForInput();
             }
         }
     }
-
-    // // TEMP
-    // dbDispImgMat(img_merge);
-
-    // // TEMP
-    // out_projCtx.loadMatTexture(img_merge);
-    // ROS_INFO("[updateTexture] DEBUG: Window[%d] Monitor[%d] Texture ID[%d]", out_projCtx.windowInd, proj_mon_ind, out_projCtx.textureID);
-    // return 0;
 
     // Load the new texture and return status
     return out_projCtx.loadMatTexture(img_merge);
@@ -177,7 +192,7 @@ void appLoadAssets()
 
 void appInitVariables()
 {
-    winOffsetVec.clear();               // Clear any existing elements
+    winOffsetVec.clear();              // Clear any existing elements
     winOffsetVec.reserve(N.projector); // Reserve memory for efficiency
 
     for (int win_ind = 0; win_ind < N.projector; ++win_ind)
@@ -206,7 +221,7 @@ void appInitOpenGL()
     {
 
         // Initialze render context for each projector
-        if (projCtx.initWindowContext(win_ind++, I.starting_monitor, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL) < 0)
+        if (projCtx.initWindowContext(win_ind++, I.starting_monitor, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, callbackKeyBinding) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
 
         // Initialize OpenGL wall image objects
@@ -271,7 +286,6 @@ void appMainLoop()
 
         // Reset keybinding flags
         F.change_window_mode = false;
-        F.windows_set_to_proj = false;
         F.update_textures = false;
 
         // --------------- Handle Image Processing for Next Frame ---------------
@@ -289,10 +303,7 @@ void appMainLoop()
 
             // Draw/update wall images
             if (projCtx.drawTexture() < 0)
-            {
-                // dbWaitForInput(); // TEMP
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from drawTexture");
-            }
 
             // Swap buffers and poll events
             if (projCtx.bufferSwapPoll() < 0)

@@ -32,7 +32,7 @@ static struct FlagStruct
  */
 static struct IndStruct
 {
-    int starting_monitor = 0; // Default starting monitor index for the windows
+    const int starting_monitor = 0; // Default starting monitor index for the windows (hardcoded)
     std::vector<int> proj_mon_vec = {
         0,
         1,
@@ -106,6 +106,29 @@ std::vector<cv::Mat> floorImgMatVec; // Vector of floor image texture matrices
 
 // ================================================== FUNCTIONS ==================================================
 
+/**
+ * @brief GLFW key callback function to handle key events and execute corresponding actions.
+ *
+ * @param window Pointer to the GLFW window that received the event.
+ * @param key The keyboard key that was pressed or released.
+ * @param scancode The system-specific scancode of the key.
+ * @param action GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT.
+ * @param mods Bit field describing which modifier keys were held down.
+ *
+ * @details
+ * This function is set as the GLFW key callback and gets called whenever a key event occurs.
+ * It handles various key events for control points, monitor handling, XML operations, and more.
+ *
+ * ## Keybindings:
+ * @see README.md
+ */
+void callbackKeyBinding(
+    GLFWwindow *window,
+    int key,
+    int scancode,
+    int action,
+    int mods);
+    
 /**
  * @brief Use MazeRenderContext::checkKeyInput to get and process
  * key press events for all windows.

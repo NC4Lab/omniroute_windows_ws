@@ -570,26 +570,25 @@ public:
      * This needs to be called continually in a main loop.
      *
      * @param is_top_always A boolean flag to set or unset the window as always on top.
+     *
      * @return Integer status code [-1:error, 0:successful].
      */
     int forceWindowStackOrder(bool is_top_always);
 
     /**
-     * @brief Precesses key input from the user.
+     * @brief Processes key input from the user.
      *
-     * Basically just a wrapper GLFW glfwGetKey as an alternative
-     * to the GLFW key callback.
+     * This function checks if a specific key action occurred and,
+     * optionally, if it was accompanied by a specific modifier key.
      *
-     * @param key The keyboard key that was pressed or released.
-     * @param action GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT.
-     * @param mods Bit field describing which modifier keys were held down.
+     * @param key The key to check.
+     * @param mods Modifiers to check, 0 for no modifiers.
      *
-     * @return Integer status code [-1:error, 0: no key press, 1: key pressed].
+     * @return -1 for error, 0 if conditions are not met, 1 if conditions are met.
      */
     int checkKeyInput(
         int key,
-        int action,
-        int mods = 0x80000000);
+        int mods = 0);
 
     /**
      * @brief Function to set the background color and redraw the window
@@ -597,9 +596,11 @@ public:
      * @param color The color to set the background to.
      * @param duration The duration to flash the background for (ms).
      *
+     * @return Integer status code [-1:error, 0:successful].
+     *
      * @example flashBackgroundColor(window, cv::Scalar(0.1f, 0.0f, 0.0f), 0.5f);
      */
-    void flashBackgroundColor(
+    int flashBackgroundColor(
         const cv::Scalar &color,
         int duration);
 
@@ -613,32 +614,44 @@ private:
 
     /**
      * @brief Private helper methods to check shader compilation.
+     *
      * @param shader The shader to check.
      * @param shader_type The type of shader to check.
+     *
+     * @return Integer status code [-1:error, 0:successful].
      */
-    bool _checkShaderCompilation(
+    int _checkShaderCompilation(
         GLuint shader,
         const std::string &shader_type);
 
     /**
      * @brief Private helper methods to check shader linking.
      * @param program The shader program to check.
+     *
+     * @return Integer status code [-1:error, 0:successful].
      */
-    bool _checkProgramLinking(GLuint program);
+    int _checkProgramLinking(GLuint program);
 
     /**
-     * @brief  Private method to check monitor index and id is valid
+     * @brief  Private method to check monitor index and id is valid.
+     *
      * @param mon_ind Index of monitor ID to check.
      * @param out_monitorInd Refernce to global just to make it clear the value is being set.
      * @param out_monitorID Refernce to global just to make it clear the value is being set.
+     *
+     * @return Integer status code [-1:error, 0:successful].
      */
     int _setMonitor(
         int mon_ind,
         GLFWmonitor *&out_monitorID,
         int &out_monitorInd);
 
-    // Simple test of OpenGL and GLFW callbacks
-    void _testCallbacks();
+    /**
+     * @brief  Simple test of OpenGL and GLFW callbacks.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int _testCallbacks();
 };
 
 #endif // MAZE_RENDER_CONTEXT_H
