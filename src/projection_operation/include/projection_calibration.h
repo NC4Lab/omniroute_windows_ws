@@ -59,8 +59,11 @@ const GLfloat cpSelectedMakerRadius = 0.005f;                          // Select
 const cv::Scalar cpMazeVertSelectedRGB = cv::Scalar(0.0f, 1.0f, 0.0f); // Selected control point wall color (green)
 const cv::Scalar cpDefaultRGB = cv::Scalar(0.0f, 0.0f, 1.0f);          // Default control point marker color (blue)
 const int cpRenderSegments = 36;                                       // Number of segments used to approximate the circle geometry
+
 /**
  * @brief Struct for global flags.
+ *
+ * @note update_textures is initialized as true to force the initial update of the textures.
  */
 static struct FlagStruct
 {
@@ -69,9 +72,9 @@ static struct FlagStruct
     bool xml_save_hmat = false;       // Flag to indicate if the XML file needs to be saved
     bool change_window_mode = false;  // Flag to indicate if the window mode needs to be updated
     bool init_control_points = false; // Flag to indicate if the control point markers need to be reinitialized
-    bool update_textures = false;     // Flag to indicate if image vertices, homography and texture need to be updated
-    bool update_homographys = false;  // Flag to indicate if image vertices, homography and texture need to be updated
     bool fullscreen_mode = false;     // Flag to indicate if the window is in full screen mode
+    bool update_textures = true;      // Flag to indicate if image vertices, homography and texture need to be updated
+    bool update_homographys = false;  // Flag to indicate if image vertices, homography and texture need to be updated
 } F;
 
 /**
@@ -89,10 +92,9 @@ static struct CountStruct
  */
 static struct IndStruct
 {
-    int monitor = 0;     // Index of the active monitor to be loaded
-    int cal_mode = 2;    // Index of the calibration mode [0: walls left, 1: walls middle, 2: walls right, 3: floor]]
-    int wall_image = 0;  // Index of the test wall image to be loaded
-    int floor_image = 0; // Index of the test wall image to be loaded
+    int monitor = 0;     // Enum of type CalibrationMode for the active monitor to be loaded
+    int wall_image = 0;  // Enum of type CalibrationMode for the test wall image to be loaded
+    int floor_image = 0; // Enum of type CalibrationMode for the test wall image to be loaded
 
     /**
      * @brief cpRowColMap maps a given row cpRowColMap[0] and column cpRowColMap[1] index to the 1D vector.
@@ -167,11 +169,11 @@ std::vector<std::string> fiImgPathCalVec = {
 };
 
 // Vectors to store the loaded images in cv::Mat format
-std::vector<cv::Mat> wallImgMatVec;  // Vector of wall test image texture matrices
-std::vector<cv::Mat> floorImgMatVec; // Vector of floor test image texture matrices
-std::vector<cv::Mat> monWallImgMatVec;   // Vector of monitor mode image texture matrices for wall calibration
-std::vector<cv::Mat> monFloorImgMatVec;  // Vector of monitor mode image texture matrices for floor calibration
-std::vector<cv::Mat> calImgMatVec;       // Vector of calibration mode image texture matrices
+std::vector<cv::Mat> wallImgMatVec;     // Vector of wall test image texture matrices
+std::vector<cv::Mat> floorImgMatVec;    // Vector of floor test image texture matrices
+std::vector<cv::Mat> monWallImgMatVec;  // Vector of monitor mode image texture matrices for wall calibration
+std::vector<cv::Mat> monFloorImgMatVec; // Vector of monitor mode image texture matrices for floor calibration
+std::vector<cv::Mat> calImgMatVec;      // Vector of calibration mode image texture matrices
 
 /**
  * @brief Scalar to store the floor image as a cv::Mat
@@ -206,7 +208,7 @@ void callbackKeyBinding(
 /**
  * @brief Initializes values for the verteces of the coner walls which will be used as calibraton control points.
  *
- * @param cal_ind Index of the active calibration mode.
+ * @param _CAL_MODE Enum of type CalibrationMode for the active calibration mode.
  * @param[out] out_CP_GRID_ARR Reference to the 4x4 array containing the coordinates of the corner wall's vertices.
  *
  * @details
@@ -215,7 +217,7 @@ void callbackKeyBinding(
  * all control points (i.e., boundary dimensions in the control point plane).
  */
 void initControlPoints(
-    int cal_ind,
+    CalibrationMode _CAL_MODE,
     std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR);
 
 /**
@@ -237,28 +239,28 @@ int initCircleRendererObjects(
 /**
  * @brief Draws control points associated with each corner wall.
  *
- * @param cal_ind Index of the active calibration mode.
+ * @param _CAL_MODE Enum of type CalibrationMode for the active calibration mode.
  * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
  * @param[out] out_CP_RENDERERS The 4x4 array of CircleRenderer objects used to draw the control points.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int renderControlPoints(
-    int cal_ind,
+    CalibrationMode _CAL_MODE,
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
     std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS);
 
 /**
  * @brief Computes updated homography matrices for all walls.
  *
- * @param cal_ind Index of the active calibration mode.
+ * @param _CAL_MODE Enum of type CalibrationMode for the active calibration mode.
  * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
  * @param[out] out_HMAT_ARR Reference to array to store calibration matrices.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int updateWallHomographys(
-    int cal_ind,
+    CalibrationMode _CAL_MODE,
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
     std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &out_HMAT_ARR);
 
@@ -277,22 +279,22 @@ int updateFloorHomography(
 /**
  * @brief Applies the homography matrices to warp image textures and combine them.
  *
- * @param cal_ind Index of the active calibration mode.
+ * @param _CAL_MODE Enum of type CalibrationMode for the active calibration mode.
  * @param img_wall_mat cv::Mat image matrix for the base wall image.
  * @param img_mon_mat cv::Mat image matrix for the monitor mode image.
  * @param img_cal_mat cv::Mat image matrix for the calibration image.
  * @param _HMAT_ARR Array containing calibration matrices for the maze.
- * @param[out] out_texture_id OpenGL texture ID for the wall image.
+ * @param[out] out_projCtx MazeRenderContext OpenGL context handler.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int updateTexture(
-    int cal_ind,
+    CalibrationMode _CAL_MODE,
     cv::Mat img_wall_mat,
     cv::Mat img_mon_mat,
     cv::Mat img_cal_mat,
     const std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &_HMAT_ARR,
-    GLuint &out_texture_id);
+    MazeRenderContext &out_projCtx);
 
 /**
  * @brief Initializes the datasets for the application.

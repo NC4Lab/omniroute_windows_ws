@@ -14,186 +14,168 @@
 
 // ================================================== VARIABLES ==================================================
 
-// Directory paths
-std::string image_wall_dir_path = IMAGE_TOP_DIR_PATH + "/runtime_images/shapes_no_outline";
+/**
+ * @brief Struct for global flags.
+ */
+static struct FlagStruct
+{
+    bool change_window_mode = false;  // Flag to indicate if all window modes needs to be updated
+    bool update_textures = false;     // Flag to indicate if wall vertices, homography and texture need to be updated
+    bool windows_set_to_proj = false; // Flag to indicate if the windows are set to their respective projectors
+    bool fullscreen_mode = false;     // Flag to indicate if the window is in full screen mode
+} F;
 
-// Maze image container
-std::vector<ILuint> imgMazeIDVec(4);
+/**
+ * @brief Struct for global indices.
+ */
+static struct IndStruct
+{
+    int starting_monitor = 0; // Default starting monitor index for the windows
+    std::vector<int> proj_mon_vec = {
+        0,
+        1,
+    }; // Index of the monitor associeted to each projector (hardcoded)
 
-// Wall image file variables
-std::vector<ILuint> imgWallIDVec; // Container to hold the loaded images for ui
-std::vector<std::string> imgWallPathVec = {
-    // List of image file paths
-    image_wall_dir_path + "/blank.bmp",    // [0] Blank image
-    image_wall_dir_path + "/square.bmp",   // [1] Square image
-    image_wall_dir_path + "/circle.bmp",   // [2] Circle image
-    image_wall_dir_path + "/triangle.bmp", // [3] Triangle image
-    image_wall_dir_path + "/star.bmp",     // [4] Star image
-    image_wall_dir_path + "/pentagon.bmp", // [5] Pentagon image
+} I;
+
+/**
+ * @brief Struct for global counts
+ */
+static struct CountStruct
+{
+    int monitors;             // Number of monitors connected to the system
+    const int projectors = 2; // Number of projectors  (hardcoded)
+    const int wall_image = 6; // Number of wall images
+} N;
+
+/**
+ * @brief A n_projectors sized element veoctor containing a 3x3x3 data contianer for storing 3x3 homography matrices (UGLY!)
+ */
+std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> HMAT_ARR_VEC(N.projectors);
+
+/**
+ * @brief  Array of OpenGL context objects.
+ */
+std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projectors);
+
+/**
+ * @brief  Marker for masking rat.
+ */
+CircleRenderer ratMaskCircRend;
+
+// Rat mask graphics parameters
+cv::Point2f rmPosition = cv::Point2f(0.0f, 0.0f);      // Marker center
+const GLfloat rmMakerRadius = 0.0025f;                 // Default control point rendered circle radius
+const cv::Scalar rmRGB = cv::Scalar(0.0f, 0.0f, 0.0f); // Marker color (black)
+const int rmRenderSegments = 36;                       // Number of segments used to approximate the circle geometry
+
+/**
+ * @brief Image file sub-directory path
+ */
+std::string runtime_wall_image_path = IMAGE_TOP_DIR_PATH + "/runtime";
+
+/**
+ * @brief Offset for the window position
+ */
+std::vector<cv::Point> winOffsetVec;
+
+/**
+ * @brief List of wall image file paths
+ */
+std::vector<std::string> fiImgPathWallVec = {
+    runtime_wall_image_path + "/w_blank.png",    // [0] Blank image
+    runtime_wall_image_path + "/w_square.png",   // [1] Square image
+    runtime_wall_image_path + "/w_circle.png",   // [2] Circle image
+    runtime_wall_image_path + "/w_triangle.png", // [3] Triangle image
+    runtime_wall_image_path + "/w_star.png",     // [4] Star image
+    runtime_wall_image_path + "/w_pentagon.png", // [5] Pentagon image
+};
+/**
+ * @brief List of floor image file paths
+ */
+std::vector<std::string> fiImgPathFloorVec = {
+    runtime_wall_image_path + "/f_blank.png",
+    runtime_wall_image_path + "/f_chambers.png",
 };
 
-// Default monitor index for all windows
-int winMonIndDefault = 3; // Default monitor index for the window
+// Vectors to store the loaded images in cv::Mat format
+std::vector<cv::Mat> wallImgMatVec; // Vector of wall image texture matrices
+std::vector<cv::Mat> floorImgMatVec; // Vector of floor image texture matrices
 
-// Monitor and projector variables
-const int nProjectors = 2; // Number of projectors  (hardcoded)
-std::vector<int> projMonIndArr = {
-    // Index of the monitor associeted to each projector (hardcoded)
-    1,
-    2,
-};
-bool isFullScreen = false; // Flag to indicate if the window is in full screen mode
-bool isWinOnProj = false;  // Flag to indicate if the window is on the projector
-
-// Number of monitors (autopopulated)
-int nMonitors;             
-
-// Window for OpenGL
-GLFWwindow *p_windowIDVec[nProjectors];
-
-// FBO variables for OpenGL
-std::vector<GLuint> fboIDVec(nProjectors);
-std::vector<GLuint> fboTextureIDVec(nProjectors);
-
-// Monitor variable for OpenGL
-GLFWmonitor *p_monitorID = nullptr;
-GLFWmonitor **pp_monitorIDVec = nullptr;
 
 // ================================================== FUNCTIONS ==================================================
 
 /**
- * @brief GLFW key callback function to handle key events and execute corresponding actions.
+ * @brief Use MazeRenderContext::checkKeyInput to get and process
+ * key press events for all windows.
  *
- * This function is set as the GLFW key callback and gets called whenever a key event occurs.
- * It handles various key events for control points, monitor handling, XML operations, and more.
- *
- * ## Keybindings: @see README.md
- *
- * @param window Pointer to the GLFW window that received the event.
- * @param key The keyboard key that was pressed or released.
- * @param scancode The system-specific scancode of the key.
- * @param action GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT.
- * @param mods Bit field describing which modifier keys were held down.
+ * @return Integer status code [-1:error, 0:no change, 1:new input].
  */
-void callbackKeyBinding(GLFWwindow *, int, int, int, int);
+int procKeyPress();
 
 /**
- * @brief Callback function for handling framebuffer size changes.
+ * @brief Applies the homography matrices to warp wall image textures and combine them.
  *
- * This function is called whenever the framebuffer size changes,
- * and it updates the OpenGL viewport to match the new dimensions.
+ * @param _proj_mon_ind Index of the monitor associated to the projector.
+ * @param _wallImgMatVec Vectors containing the loaded images in cv::Mat format
+ * @param _HMAT_ARR_VEC Big ass ugly vector of arrays of matrices of shit!
+ * @param[out] out_progGL MazeRenderContext OpenGL context handler.
  *
- * @param window Pointer to the GLFW window.
- * @param width The new width of the framebuffer.
- * @param height The new height of the framebuffer.
+ * @return Integer status code [-1:error, 0:successful].
  */
-void callbackFrameBufferSizeGLFW(GLFWwindow *, int, int);
+int updateTexture(
+    int proj_mon_ind,
+    const std::vector<cv::Mat> &_wallImgMatVec,
+    const std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> &_HMAT_ARR_VEC,
+    MazeRenderContext &out_progGL);
 
 /**
- * @brief Callback function for handling errors.
+ * @brief Initializes the variables for the application.
  *
- * This function is called whenever an error occurs in the GLFW context.
- * It logs the error message using ROS_ERROR.
+ * Just some shit.
  *
- * @param error The error code.
- * @param description The error description.
+ * @throws std::runtime_error.
  */
-static void callbackErrorGLFW(int, const char *);
+void appInitVariables();
 
 /**
- * @brief Checks for OpenGL errors and logs them.
- * Should be called after OpenGL API calls.
+ * @brief Loads the images and homography matices array for the application.
  *
- * @example checkErrorGL(__LINE__, __FILE__);
+ * This function uses OpenCV to load wall images into memory.
+ * It uses xmlLoadHMAT() to load the homography matrices from XML files.
  *
- * @param line Line number where the function is called.
- * @param file_str File name where the function is called.
- * @param msg_str Optional message to provide additional context (default to nullptr).
- *
- * @return 0 if no errors, -1 if error.
+ * @throws std::runtime_error if image or xml loading fails.
  */
-int checkErrorGL(int, const char *, const char * = nullptr);
+void appLoadAssets();
 
 /**
- * @brief Checks for GLFW errors and logs them.
- * Should be called after GLFW API calls.
+ * @brief Initializes OpenGL settings and creates shader programs.
  *
- * @example checkErrorGLFW(__LINE__, __FILE__);
+ * This function sets up the graphics libraries, initializes the rendering
+ * context, and creates shader programs for wall image and control point rendering.
  *
- * @param line Line number where the function is called.
- * @param file_str File name where the function is called.
- * @param msg_str Optional message to provide additional context (default to nullptr).
- *
- * @return 0 if no errors, -1 if error.
+ * @throws std::runtime_error if OpenGL initialization fails.
  */
-int checkErrorGLFW(int, const char *, const char * = nullptr);
+void appInitOpenGL();
 
 /**
- * @brief Set up a GLFW window and its associated Framebuffer Object (FBO) and texture.
+ * @brief The main loop of the application.
  *
- * This function creates a GLFW window, sets its OpenGL context and callbacks, and initializes
- * an FBO and texture to be used for offscreen rendering.
+ * Handles the application's main loop, including checking keyboard callbacks,
+ * updating window mode, and rendering frames. Exits on window close, escape key,
+ * or when an error occurs.
  *
- * @param pp_window_id GLFWwindow pointer array, where each pointer corresponds to a projector window.
- * @param win_ind Index of the window for which the setup is to be done.
- * @param pp_r_monitor_id Reference to the GLFWmonitor pointer array.
- * @param mon_ind Index of the monitor to move the window to.
- * @param r_fbo_id Reference to the GLuint variable where the generated FBO ID will be stored.
- * @param r_fbo_texture_id Reference to the GLuint variable where the generated FBO texture ID will be stored.
- *
- * @return 0 on successful execution, -1 on failure.
+ * @throws std::runtime_error if an error occurs during execution.
  */
-int setupProjGLFW(GLFWwindow **, int, GLFWmonitor **&, int, GLuint &, GLuint &);
+void appMainLoop();
 
 /**
- * @brief Changes the display mode and monitor of the application window.
+ * @brief Cleans up resources upon application shutdown.
  *
- * This function switches the application window between full-screen and windowed modes
- * and moves it to the monitor specified by the global variable imgMonNumInd.
- *
- * In full-screen mode, the window is resized to match the dimensions of the selected monitor.
- * In windowed mode, the window is resized to a default size and positioned near the top-left
- * corner of the selected monitor.
- *
- * @note The global variables monitor, monitors, imgMonNumInd, window, and isFullScreen are
- *       used to control the behavior of this function.
- *       Will only exicute if monotor parameters have changed.
- *
- * @param p_window_id Pointer to the GLFWwindow pointer that will be updated.
- * @param win_ind Index of the window for which the setup is to be done.
- * @param pp_r_monitor_id Reference to the GLFWmonitor pointer array.
- * @param mon_ind Index of the monitor to move the window to.
- * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
- *
- * @return 0 on successful execution, -1 on failure.
+ * This function deletes the CircleRenderer class shader program, cleans up
+ * OpenGL wall image objects, and terminates the graphics library.
  */
-int updateWindowMonMode(GLFWwindow *, int, GLFWmonitor **&, int, bool);
-
-/**
- * @brief Draws a textured rectangle using OpenGL.
- *
- * @param quad_vertices_vec Vector of vertex/corner points for a rectangular image.
- *
- * @return 0 if no errors, -1 if error.
- */
-int drawQuadImage(std::vector<cv::Point2f>);
-
-/**
- * @brief Draws walls on the OpenGL window.
- *
- * This function is responsible for drawing the walls on the OpenGL window.
- * It iterates through each calibration mode and each wall in the maze to
- * draw the corresponding image.
- *
- * @param proj_ind Index of the projector being used.
- * @param mon_iind Index of the projector monitor being used.
- * @param p_window_id Pointer to the GLFW window.
- * @param fbo_texture_id Framebuffer Object's texture ID.
- * @param r_image_id_vec Reference to the vector containing image IDs.
- *
- * @return Returns 0 on success, -1 otherwise.
- */
-int drawWalls(int, int, GLFWwindow *, GLuint, std::vector<ILuint> &);
+void appCleanup();
 
 /**
  * @brief  Entry point for the projection_display ROS node.

@@ -70,7 +70,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // ---------- Image selector keys [F1-F4] ----------
 
         // Update the image index
-        int img_ind = (I.cal_mode < 3) ? I.wall_image : I.floor_image;
+        int img_ind = (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) ? I.wall_image : I.floor_image;
         if (key == GLFW_KEY_F1)
             img_ind = 0;
         else if (key == GLFW_KEY_F2)
@@ -81,7 +81,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             img_ind = 3;
 
         // Check for image change
-        if ((I.cal_mode < 3) &&
+        if ((CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) &&
             (img_ind != I.wall_image) &&
             (img_ind < N.wall_image))
         {
@@ -91,7 +91,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Set the update texture flag
             F.update_homographys = true;
         }
-        if ((I.cal_mode == 3) &&
+        if ((CAL_MODE == FLOOR) &&
             (img_ind != I.floor_image) &&
             (img_ind < N.floor_image))
         {
@@ -140,19 +140,19 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Listen for arrow key input to switch through calibration modes
             if (key == GLFW_KEY_LEFT)
             {
-                I.cal_mode = (I.cal_mode > 0) ? I.cal_mode - 1 : 0;
+                CAL_MODE = (CAL_MODE > 0) ? static_cast<CalibrationMode>(CAL_MODE - 1) : static_cast<CalibrationMode>(0);
                 F.init_control_points = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
-                I.cal_mode = (I.cal_mode < N_CAL_MODES - 1) ? I.cal_mode + 1 : N_CAL_MODES - 1;
+                CAL_MODE = (CAL_MODE < N_CAL_MODES - 1) ? static_cast<CalibrationMode>(CAL_MODE + 1) : static_cast<CalibrationMode>(N_CAL_MODES - 1);
                 F.init_control_points = true;
             }
         }
 
         // ---------- Contol point maze vertex selector keys [CTRL [LEFT, RIGHT, UP, DOWN]] ----------
 
-        else if (mods & GLFW_MOD_CONTROL && I.cal_mode < 3)
+        else if (mods & GLFW_MOD_CONTROL && CAL_MODE < 3)
         {
             bool is_vert_changed = false;
 
@@ -287,7 +287,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     }
 }
 
-void initControlPoints(int cal_ind, std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR)
+void initControlPoints(CalibrationMode _CAL_MODE, std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR)
 {
     // Specify the control point limits
     float cp_x = FLOOR_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
@@ -295,17 +295,17 @@ void initControlPoints(int cal_ind, std::array<std::array<cv::Point2f, 4>, 4> &o
 
     // Add an x offset based on the calibration mode by shifting the origin to the left or right
     float offset_x = 1.0f * static_cast<float>(WALL_IMAGE_WIDTH_NDC);
-    offset_x *= (cal_ind == 0) ? -1 : (cal_ind == 2) ? 1
-                                                     : 0;
+    offset_x *= (_CAL_MODE == WALLS_LEFT) ? -1 : (_CAL_MODE == WALLS_RIGHT) ? 1
+                                                                            : 0;
 
     // Specify number of control point groups to loop through
     // 4 groups for wall calibration and 1 group for floor calibration
-    int n_cp_groups = (cal_ind < 3) ? 4 : 1;
+    int n_cp_groups = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? 4 : 1;
 
     // Sprcify with width and height spacing
     // Set the spacing to be the wall image size for wall calibration and the maze size for floor calibration
-    float cp_spacing_width = (cal_ind < 3) ? WALL_IMAGE_WIDTH_NDC : FLOOR_WIDTH_NDC;
-    float cp_spacing_height = (cal_ind < 3) ? WALL_IMAGE_HEIGHT_NDC : FLOOR_HEIGHT_NDC;
+    float cp_spacing_width = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? WALL_IMAGE_WIDTH_NDC : FLOOR_WIDTH_NDC;
+    float cp_spacing_height = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? WALL_IMAGE_HEIGHT_NDC : FLOOR_HEIGHT_NDC;
 
     // Iterate through control point outer array (maze vertices)
     for (int cp_i = 0; cp_i < 4; cp_i++) // image bottom to top
@@ -360,7 +360,7 @@ int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_
     return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "initCircleRendererObjects");
 }
 
-int renderControlPoints(int cal_ind,
+int renderControlPoints(CalibrationMode _CAL_MODE,
                         const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
                         std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
 {
@@ -368,8 +368,7 @@ int renderControlPoints(int cal_ind,
     CircleRenderer::SetupShader();
 
     // Specify number of control point groups to loop through
-    // 4 groups for wall calibration and 1 group for floor calibration
-    int n_cp_groups = (cal_ind < 3) ? 4 : 1;
+    int n_cp_groups = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? 4 : 1;
 
     // Loop through the control points and draw them
     for (int cp_i = 0; cp_i < n_cp_groups; ++cp_i)
@@ -415,7 +414,7 @@ int renderControlPoints(int cal_ind,
 }
 
 int updateWallHomographys(
-    int cal_ind,
+    CalibrationMode _CAL_MODE,
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
     std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &out_HMAT_ARR)
 {
@@ -452,7 +451,7 @@ int updateWallHomographys(
             }
 
             // Compute and store the homography matrix
-            if (computeHomographyMatrix(source_vertices_pxl, target_vertices_ndc, out_HMAT_ARR[cal_ind][gr_i][gc_i]) < 0)
+            if (computeHomographyMatrix(source_vertices_pxl, target_vertices_ndc, out_HMAT_ARR[_CAL_MODE][gr_i][gc_i]) < 0)
                 return -1;
         }
     }
@@ -482,16 +481,16 @@ int updateFloorHomography(const std::array<cv::Point2f, 4> &_CP_ARR, cv::Mat &ou
 }
 
 int updateTexture(
-    int cal_ind,
+    CalibrationMode _CAL_MODE,
     cv::Mat img_wall_mat, cv::Mat img_mon_mat, cv::Mat img_cal_mat,
     const std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &_HMAT_ARR,
-    GLuint &out_texture_id)
+    MazeRenderContext &out_projCtx)
 {
     // Initialize the image to be used as the texture
     cv::Mat img_merge = cv::Mat::zeros(WINDOW_HEIGHT_PXL, WINDOW_WIDTH_PXL, CV_8UC4);
 
     // Specify number of rows/cols to loop through
-    int grid_size = (cal_ind < 3) ? MAZE_SIZE : 1;
+    int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? MAZE_SIZE : 1;
 
     // Iterate through the maze grid rows
     for (int gr_i = 0; gr_i < grid_size; gr_i++) // image bottom to top
@@ -523,13 +522,13 @@ int updateTexture(
             }
 
             // Get homography matrix for this wall
-            cv::Mat H = _HMAT_ARR[cal_ind][gr_i][gc_i];
+            cv::Mat H = _HMAT_ARR[_CAL_MODE][gr_i][gc_i];
 
             // Warp the image
             cv::Mat img_warp;
             if (warpImgMat(img_copy, H, img_warp) < 0)
             {
-                ROS_ERROR("[updateTexture] Warp image error: Wall[%d][%d] Calibration[%d]", gr_i, gc_i, cal_ind);
+                ROS_ERROR("[updateTexture] Warp image error: Wall[%d][%d] Calibration[%d]", gr_i, gc_i, _CAL_MODE);
                 return -1;
             }
 
@@ -540,7 +539,7 @@ int updateTexture(
     }
 
     // Load the new texture and return status
-    return loadTexture(img_merge, out_texture_id);
+    return out_projCtx.loadMatTexture(img_merge);
 }
 
 void appInitVariables()
@@ -554,21 +553,19 @@ void appInitVariables()
     ROS_INFO("[appInitVariables] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_IMAGE_WIDTH_NDC, WALL_IMAGE_HEIGHT_NDC);
     ROS_INFO("[appInitVariables] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
 
-    // Initialzie the hology arrays for all calibration modes and save to XML
-
     // Initialize control point coordinate dataset
-    initControlPoints(I.cal_mode, CP_GRID_ARR);
+    initControlPoints(CAL_MODE, CP_GRID_ARR);
 
     // Update wall homographys
-    if (I.cal_mode < 3)
+    if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
     {
-        if (updateWallHomographys(I.cal_mode, CP_GRID_ARR, HMAT_ARR) < 0)
+        if (updateWallHomographys(CAL_MODE, CP_GRID_ARR, HMAT_ARR) < 0)
             throw std::runtime_error("[appInitVariables] Failed to initialize wall parameters");
     }
     // Update floor homography
-    else if (I.cal_mode == 3)
+    else if (CAL_MODE == FLOOR)
     {
-        if (updateFloorHomography(CP_GRID_ARR[0], HMAT_ARR[I.cal_mode][0][0]) < 0)
+        if (updateFloorHomography(CP_GRID_ARR[0], HMAT_ARR[CAL_MODE][0][0]) < 0)
             throw std::runtime_error("[appInitVariables] Failed to initialize floor parameters");
     }
 
@@ -613,25 +610,12 @@ void appInitOpenGL()
         throw std::runtime_error("[appInitOpenGL] Failed Initial update of window monitor mode");
 
     // Create the shader program for wall image rendering
-    if (projCtx.compileAndLinkShaders(WALL_VERTEX_SOURCE, WALL_FRAGMENT_SOURCE) < 0)
+    if (projCtx.compileAndLinkShaders(QUAD_GL_VERTEX_SOURCE, QUAD_GL_FRAGMENT_SOURCE) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to compile and link wall shader");
 
     // Create the shader program for CircleRenderer class control point rendering
     if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_ASPECT_RATIO) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
-
-    // Initialize wall textures
-    if (I.cal_mode < 3)
-    {
-        if (updateTexture(I.cal_mode, wallImgMatVec[I.wall_image], monWallImgMatVec[I.monitor], calImgMatVec[I.cal_mode], HMAT_ARR, projCtx.textureID) < 0)
-            throw std::runtime_error("[appMainLoop] Failed to initialize wall texture");
-    }
-    // Initialize floor texture
-    else if (I.cal_mode == 3)
-    {
-        if (updateTexture(I.cal_mode, floorImgMatVec[I.wall_image], monFloorImgMatVec[I.monitor], calImgMatVec[I.cal_mode], HMAT_ARR, projCtx.textureID) < 0)
-            throw std::runtime_error("[appMainLoop] Failed to initialize floor texture");
-    }
 
     // Initialize the CircleRenderer class objects array
     if (initCircleRendererObjects(CP_GRID_ARR, CP_CIRCREND_ARR) < 0)
@@ -649,7 +633,6 @@ void appInitFileXML()
     };
     std::vector<int> mon_missing_vec;
     std::string file_path;
-    std::string cal_mode;
     int n_mon_max = 6; // want to have files for up to 6 monitors
 
     // Check for non-initialized XML files and initialize them
@@ -657,16 +640,20 @@ void appInitFileXML()
     {
         bool isMonMissing = false;
 
-        for (int cal_ind = 0; cal_ind < N_CAL_MODES && !isMonMissing; ++cal_ind)
+        for (int cal_i = 0; cal_i < N_CAL_MODES && !isMonMissing; ++cal_i)
         {
-            // 4 groups for wall calibration and 1 group for floor calibration
-            int grid_size = (cal_ind < 3) ? MAZE_SIZE : 1;
+            CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
+
+            // Specify number of rows/cols to loop through based on active calibration mode
+            int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? MAZE_SIZE : 1;
+
+            // Iterate through the maze grid rows
             for (int gr_i = 0; gr_i < grid_size && !isMonMissing; ++gr_i)
             {
                 for (int gc_i = 0; gc_i < grid_size && !isMonMissing; ++gc_i)
                 {
                     // Check if the file exists
-                    xmlFrmtFileStrings(mon_i, cal_ind, file_path);
+                    xmlFrmtFileStrings(mon_i, file_path);
                     if (!fileExists(file_path))
                     {
                         // Check if mon_i is already in mon_missing_vec
@@ -689,28 +676,32 @@ void appInitFileXML()
     // Loop through the missing projectors
     for (auto &mon_i : mon_missing_vec)
     {
-        for (int cal_ind = 0; cal_ind < N_CAL_MODES; ++cal_ind)
+        for (int cal_i = 0; cal_i < N_CAL_MODES; ++cal_i)
         {
+            CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
+
             // Initalize temp control points and homography matrices
-            initControlPoints(cal_ind, _CP_GRID_ARR);
-            if (cal_ind < 3)
+            initControlPoints(_CAL_MODE, _CP_GRID_ARR);
+            if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT)
             {
-                if (updateWallHomographys(cal_ind, _CP_GRID_ARR, _HMAT_ARR) < 0)
+                if (updateWallHomographys(_CAL_MODE, _CP_GRID_ARR, _HMAT_ARR) < 0)
                     throw std::runtime_error("[appInitFileXML] Failed to initialize wall parameters");
             }
-            else if (cal_ind == 3)
+            else if (_CAL_MODE == FLOOR)
             {
-                if (updateFloorHomography(_CP_GRID_ARR[0], _HMAT_ARR[cal_ind][0][0]) < 0)
+                if (updateFloorHomography(_CP_GRID_ARR[0], _HMAT_ARR[_CAL_MODE][0][0]) < 0)
                     throw std::runtime_error("[appInitFileXML] Failed to initialize floor parameters");
             }
 
+            // Specify number of rows/cols to loop through based on active calibration mode
+            int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? MAZE_SIZE : 1;
+
             // Save each homography matrix to XML
-            int grid_size = (cal_ind < 3) ? MAZE_SIZE : 1; // 4 groups for wall calibration and 1 group for floor calibration
             for (int gr_i = 0; gr_i < grid_size; ++gr_i)
             {
                 for (int gc_i = 0; gc_i < grid_size; ++gc_i)
                 {
-                    if (xmlSaveHMAT(_HMAT_ARR[cal_ind][gr_i][gc_i], mon_i, cal_ind, gr_i, gc_i) < 0)
+                    if (xmlSaveHMAT(_HMAT_ARR[_CAL_MODE][gr_i][gc_i], mon_i, _CAL_MODE, gr_i, gc_i) < 0)
                         throw std::runtime_error("[appInitFileXML] Error returned from xmlSaveHMAT");
                 }
             }
@@ -728,7 +719,10 @@ void appMainLoop()
         // Load/save XML file
         if (F.xml_load_hmat || F.xml_save_hmat)
         {
-            int grid_size = (I.cal_mode < 3) ? MAZE_SIZE : 1;
+            // Specify number of rows/cols to loop through based on active calibration mode
+            int grid_size = (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) ? MAZE_SIZE : 1;
+
+            // Loop through the maze grid rows
             for (int gr_i = 0; gr_i < grid_size; ++gr_i)
             {
                 for (int gc_i = 0; gc_i < grid_size; ++gc_i)
@@ -736,13 +730,13 @@ void appMainLoop()
                     // Save XML file
                     if (F.xml_save_hmat)
                     {
-                        if (xmlSaveHMAT(HMAT_ARR[I.cal_mode][gr_i][gc_i], I.monitor, I.cal_mode, gr_i, gc_i) < 0)
+                        if (xmlSaveHMAT(HMAT_ARR[CAL_MODE][gr_i][gc_i], I.monitor, CAL_MODE, gr_i, gc_i) < 0)
                             throw std::runtime_error("[appMainLoop] Error returned from xmlSaveHMAT");
                     }
                     // Load XML file
                     if (F.xml_load_hmat)
                     {
-                        if (xmlLoadHMAT(I.monitor, I.cal_mode, gr_i, gc_i, HMAT_ARR[I.cal_mode][gr_i][gc_i]) < 0)
+                        if (xmlLoadHMAT(I.monitor, CAL_MODE, gr_i, gc_i, HMAT_ARR[CAL_MODE][gr_i][gc_i]) < 0)
                             throw std::runtime_error("[appMainLoop] Error returned from xmlLoadHMAT");
                     }
                 }
@@ -762,7 +756,7 @@ void appMainLoop()
         // Initialize/reinitialize control point coordinate dataset
         if (F.init_control_points)
         {
-            initControlPoints(I.cal_mode, CP_GRID_ARR);
+            initControlPoints(CAL_MODE, CP_GRID_ARR);
         }
 
         // Update homography matrices array
@@ -770,15 +764,15 @@ void appMainLoop()
             F.init_control_points)
         {
             // Update wall homographys
-            if (I.cal_mode < 3)
+            if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
             {
-                if (updateWallHomographys(I.cal_mode, CP_GRID_ARR, HMAT_ARR) < 0)
+                if (updateWallHomographys(CAL_MODE, CP_GRID_ARR, HMAT_ARR) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from updateWallHomographys");
             }
             // Update floor homography
-            else if (I.cal_mode == 3)
+            else if (CAL_MODE == FLOOR)
             {
-                if (updateFloorHomography(CP_GRID_ARR[0], HMAT_ARR[I.cal_mode][0][0]) < 0)
+                if (updateFloorHomography(CP_GRID_ARR[0], HMAT_ARR[CAL_MODE][0][0]) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from updateFloorHomography");
             }
         }
@@ -789,15 +783,15 @@ void appMainLoop()
             F.init_control_points)
         {
             // Update wall textures
-            if (I.cal_mode < 3)
+            if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
             {
-                if (updateTexture(I.cal_mode, wallImgMatVec[I.wall_image], monWallImgMatVec[I.monitor], calImgMatVec[I.cal_mode], HMAT_ARR, projCtx.textureID) < 0)
+                if (updateTexture(CAL_MODE, wallImgMatVec[I.wall_image], monWallImgMatVec[I.monitor], calImgMatVec[CAL_MODE], HMAT_ARR, projCtx) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from updateTexture for wall images");
             }
             // Update floor texture
-            else if (I.cal_mode == 3)
+            else if (CAL_MODE == FLOOR)
             {
-                if (updateTexture(I.cal_mode, floorImgMatVec[I.floor_image], monFloorImgMatVec[I.monitor], calImgMatVec[I.cal_mode], HMAT_ARR, projCtx.textureID) < 0)
+                if (updateTexture(CAL_MODE, floorImgMatVec[I.floor_image], monFloorImgMatVec[I.monitor], calImgMatVec[CAL_MODE], HMAT_ARR, projCtx) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from updateTexture for floor images");
             }
         }
@@ -825,7 +819,7 @@ void appMainLoop()
             throw std::runtime_error("[appMainLoop] Error returned from drawTexture");
 
         // Draw/update control point markers
-        if (renderControlPoints(I.cal_mode, CP_GRID_ARR, CP_CIRCREND_ARR) < 0)
+        if (renderControlPoints(CAL_MODE, CP_GRID_ARR, CP_CIRCREND_ARR) < 0)
             throw std::runtime_error("[appMainLoop] Error returned from renderControlPoints");
 
         // Swap buffers and poll events
@@ -862,7 +856,7 @@ void appCleanup()
         ROS_INFO("[appCleanup] CircleRenderer shader program deleted successfully");
 
     // Clean up OpenGL wall image objects
-    if (projCtx.cleanupContext() != 0)
+    if (projCtx.cleanupContext(false) != 0)
         ROS_WARN("[appCleanup] Error during cleanup of MazeRenderContext instance");
     else
         ROS_INFO("[appCleanup] MazeRenderContext instance cleaned up successfully");

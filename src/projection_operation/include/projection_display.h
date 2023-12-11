@@ -16,13 +16,15 @@
 
 /**
  * @brief Struct for global flags.
+ *
+ * @note update_textures is initialized as true to force the initial update of the textures.
  */
 static struct FlagStruct
 {
     bool change_window_mode = false;  // Flag to indicate if all window modes needs to be updated
-    bool update_textures = false;     // Flag to indicate if wall vertices, homography and texture need to be updated
     bool windows_set_to_proj = false; // Flag to indicate if the windows are set to their respective projectors
     bool fullscreen_mode = false;     // Flag to indicate if the window is in full screen mode
+    bool update_textures = true;      // Flag to indicate if wall vertices, homography and texture need to be updated
 } F;
 
 /**
@@ -43,20 +45,20 @@ static struct IndStruct
  */
 static struct CountStruct
 {
-    int monitors;             // Number of monitors connected to the system
-    const int projectors = 2; // Number of projectors  (hardcoded)
-    const int wall_image = 6; // Number of wall images
+    int monitor;                                 // Number of monitors connected to the system
+    const int projector = I.proj_mon_vec.size(); // Number of projectors
+    const int wall_image = 6;                     // Number of wall images
 } N;
 
 /**
  * @brief A n_projectors sized element veoctor containing a 3x3x3 data contianer for storing 3x3 homography matrices (UGLY!)
  */
-std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> HMAT_ARR_VEC(N.projectors);
+std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> HMAT_ARR_VEC(N.projector);
 
 /**
  * @brief  Array of OpenGL context objects.
  */
-std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projectors);
+std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projector);
 
 /**
  * @brief  Marker for masking rat.
@@ -99,9 +101,8 @@ std::vector<std::string> fiImgPathFloorVec = {
 };
 
 // Vectors to store the loaded images in cv::Mat format
-std::vector<cv::Mat> wallImgMatVec; // Vector of wall image texture matrices
+std::vector<cv::Mat> wallImgMatVec;  // Vector of wall image texture matrices
 std::vector<cv::Mat> floorImgMatVec; // Vector of floor image texture matrices
-
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -117,17 +118,19 @@ int procKeyPress();
  * @brief Applies the homography matrices to warp wall image textures and combine them.
  *
  * @param _proj_mon_ind Index of the monitor associated to the projector.
- * @param _wallImgMatVec Vectors containing the loaded images in cv::Mat format
+ * @param _wallImgMatVec Vectors containing the loaded wall images in cv::Mat format
+ * @param _floorImgMatVec Vectors containing the loaded floor images in cv::Mat format
  * @param _HMAT_ARR_VEC Big ass ugly vector of arrays of matrices of shit!
- * @param[out] out_progGL MazeRenderContext OpenGL context handler.
+ * @param[out] out_projCtx MazeRenderContext OpenGL context handler.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int updateTexture(
     int proj_mon_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
+    const std::vector<cv::Mat> &_floorImgMatVec,
     const std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> &_HMAT_ARR_VEC,
-    MazeRenderContext &out_progGL);
+    MazeRenderContext &out_projCtx);
 
 /**
  * @brief Initializes the variables for the application.

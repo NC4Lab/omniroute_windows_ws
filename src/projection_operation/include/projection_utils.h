@@ -253,8 +253,8 @@ public:
     GLuint textureID;                 // Texture for the wall
     GLFWwindow *windowID;             // The window associated with this context
     GLFWmonitor *monitorID;           // The monitor associated with this context
-    int windowInd;                    // Index of the window associated with this context
-    int monitorInd;                   // Index of the monitor associated with this context
+    int windowInd;                    // Enum of type CalibrationMode for the window associated with this context
+    int monitorInd;                   // Enum of type CalibrationMode for the monitor associated with this context
     int windowWidth;                  // Width of the window
     int windowHeight;                 // Height of the window
     bool isContextInitialized;        // Flag indicating whether there context has been initialized
@@ -412,8 +412,8 @@ public:
      * Checks and sets a new monitor based on the monitor index, creates a new GLFW window,
      * and sets up the OpenGL context with necessary callbacks and extensions.
      *
-     * @param win_ind Index of the window to initialize.
-     * @param mon_ind Index of the monitor to use for the window.
+     * @param win_ind Enum of type CalibrationMode for the window to initialize.
+     * @param mon_ind Enum of type CalibrationMode for the monitor to use for the window.
      * @param win_width Width of the window to create.
      * @param win_height Height of the window to create.
      * @param key_callback Optional key callback function to set for the window (default to nullptr).
@@ -465,6 +465,22 @@ public:
     int MazeRenderContext::checkShaderProgram();
 
     /**
+     * @brief Converts an OpenCV Mat image into an OpenGL texture for this context.
+     *
+     * @param img_mat The cv::Mat image that needs to be converted.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     *
+     * @details
+     * This function takes an OpenCV Mat image as input and converts it into an OpenGL texture.
+     * The OpenCV image is first converted from BGR to RGB format. Then, a new OpenGL texture is
+     * generated and the converted image data is stored in this texture.
+     *
+     * @note This function assumes that the input image is of type CV_8UC3 and has no alpha channel.
+     */
+    int MazeRenderContext::loadMatTexture(cv::Mat img_mat);
+
+    /**
      * @brief Renders the current texture stored in a given class instance.
      *
      * @return Integer status code [-1:error, 0:successful].
@@ -494,7 +510,7 @@ public:
      *         OpenGL errors, it returns 0. If there are any OpenGL errors during
      *         cleanup, it returns -1.
      */
-    int cleanupContext(bool log_errors = false);
+    int cleanupContext(bool log_errors);
 
     /**
      * @brief Sets up the system for a new rendering.
@@ -532,7 +548,7 @@ public:
      * This function switches the application window between full-screen and windowed modes
      * and moves it to the monitor specified by the global variable imgMonNumInd.
      *
-     * @param mon_ind Index of the monitor to move the window to.
+     * @param mon_ind Enum of type CalibrationMode for the monitor to move the window to.
      * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
      * @param offset_xy Optional offset to apply to window position (default to (0, 0)).
      *
@@ -566,9 +582,9 @@ public:
      *
      * @param key The keyboard key that was pressed or released.
      * @param action GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT.
-     * @param mods Bit field describing which modifier keys were held down .
+     * @param mods Bit field describing which modifier keys were held down.
      *
-     * @return Integer status code [-1:error, 0:successful].
+     * @return Integer status code [-1:error, 0: no key press, 1: key pressed].
      */
     int checkKeyInput(
         int key,
@@ -694,7 +710,7 @@ public:
     )glsl";
 
 public:
-    int circID;                     // Index of the circle, used for identification.
+    int circID;                     // Enum of type CalibrationMode for the circle, used for identification.
     cv::Scalar circColor;           // Color of the circle.
     cv::Point2f circPosition;       // Position of the circle in 2D space.
     float cirRadius;                // Radius of the circle.
@@ -920,7 +936,7 @@ unsigned int QUAD_GL_INDICES[] = {
 };
 
 /**
- * @brief Vertex shader source code for wall images.
+ * @brief Vertex shader source code for rendered images.
  *
  * @details
  * This is a GLSL (OpenGL Shading Language) vertex shader source code stored as a C++ raw string literal.
@@ -930,7 +946,7 @@ unsigned int QUAD_GL_INDICES[] = {
  * - `out vec2 Texcoord;`: Declares an output variable that will be passed to the fragment shader.
  * - `void main() { ... }`: Main function where the vertex shader performs its work.
  */
-const char *WALL_VERTEX_SOURCE = R"glsl(
+const char *QUAD_GL_VERTEX_SOURCE = R"glsl(
     #version 330 core
     in vec2 position;
     in vec2 texcoord;
@@ -943,7 +959,7 @@ const char *WALL_VERTEX_SOURCE = R"glsl(
 )glsl";
 
 /**
- * @brief Fragment shader source code for wall images.
+ * @brief Fragment shader source code for rendered images.
  *
  * @details
  * This is a GLSL (OpenGL Shading Language) fragment shader source code also stored as a C++ raw string literal.
@@ -953,7 +969,7 @@ const char *WALL_VERTEX_SOURCE = R"glsl(
  * - `uniform sampler2D tex;`: Declares a uniform variable representing a 2D texture.
  * - `void main() { ... }`: Main function of the fragment shader, samples the texture at the given coordinates and sets the output color.
  */
-const char *WALL_FRAGMENT_SOURCE = R"glsl(
+const char *QUAD_GL_FRAGMENT_SOURCE = R"glsl(
     #version 330 core
     in vec2 Texcoord;
     out vec4 outColor;
@@ -1114,11 +1130,25 @@ int WALL_IMG_PROJ_MAP[4][3][3][3] = {
 
 // Template of 1D array for hardcoded floor image indices to display
 int FLOOR_IMG_PROJ_MAP[4] = {
-    0, // Projector 0: East
-    0, // Projector 1: North
-    0, // Projector 2: West
-    0, // Projector 3: South
+    1, // Projector 0: East
+    1, // Projector 1: North
+    1, // Projector 2: West
+    1, // Projector 3: South
 };
+
+// Enum for tracking the current calibration mode
+enum CalibrationMode
+{
+    WALLS_LEFT = 0,
+    WALLS_MIDDLE = 1,
+    WALLS_RIGHT = 2,
+    FLOOR = 3,
+    N_CAL_MODES
+};
+CalibrationMode CAL_MODE = WALLS_MIDDLE;
+
+// Calibration mode strings
+std::vector<std::string> CAL_MADE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};
 
 // Number of rows and columns in the maze
 extern const int MAZE_SIZE = 3;
@@ -1147,10 +1177,6 @@ extern const float WALL_IMAGE_HEIGHT_NDC = (FLOOR_HEIGHT_NDC / (float(MAZE_SIZE)
 // Global variable to set the OpenGL debug level.
 const int DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
 
-// Number of calibration modes and strings for each mode
-const int N_CAL_MODES = 4; // [0: walls left, 1: walls middle, 2: walls right, 3: floor]
-std::vector<std::string> CAL_MADE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};
-
 // ================================================== FUNCTIONS ==================================================
 
 /**
@@ -1177,7 +1203,7 @@ bool dbRunDT(int dt_wait);
  * @param line Line number where the function is called.
  * @param file_path File path where the function is called.
  *
- * @example dbTraceCalls(false, __LINE__, __FILE__);
+ * @example dbTraceCalls(true, __LINE__, __FILE__);
  */
 void dbTraceCalls(
     bool do_reset = false,
@@ -1257,15 +1283,13 @@ std::string promptForProjectorNumber();
  * - `hmats_m<number>.xml`
  * - `hmats_m0.xml`
  *
- * @param mon_ind Index of the active or desired monitor.
- * @param cal_ind Index of the active or desired calibration mode.
+ * @param mon_ind Enum of type CalibrationMode for the active or desired monitor.
  * @param[out] out_path Reference to string that will store the path to the XML file.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int xmlFrmtFileStrings(
     int mon_ind,
-    int cal_ind,
     std::string &out_path);
 
 /**
@@ -1276,7 +1300,7 @@ int xmlFrmtFileStrings(
  *
  * @param _H The homography matrix to save.
  * @param mon_ind Monitor index for the active monitor.
- * @param cal_ind Index of the active or desired calibration mode.
+ * @param _CAL_MODE Enum of type CalibrationMode for the active or desired calibration mode.
  * @param grid_row Row index for the array of homography matrices to save.
  * @param grid_col Column index for the array of homography matrices save.
  *
@@ -1284,7 +1308,7 @@ int xmlFrmtFileStrings(
  */
 int xmlSaveHMAT(const cv::Mat &_H,
                 int mon_ind,
-                int cal_ind,
+                CalibrationMode _CAL_MODE,
                 int grid_row,
                 int grid_col);
 
@@ -1292,7 +1316,7 @@ int xmlSaveHMAT(const cv::Mat &_H,
  * Load a single cv::Mat homography matrix from an XML file.
  *
  * @param mon_ind Monitor index for the active monitor.
- * @param cal_ind Index of the active or desired calibration mode.
+ * @param _CAL_MODE Enum of type CalibrationMode for the active or desired calibration mode.
  * @param grid_row Row index for the array of homography matrices to load.
  * @param grid_col Column index for the array of homography matrices to load.
  * @param[out] out_H The output homography matrix.
@@ -1301,7 +1325,7 @@ int xmlSaveHMAT(const cv::Mat &_H,
  */
 int xmlLoadHMAT(
     int mon_ind,
-    int cal_ind,
+    CalibrationMode _CAL_MODE,
     int grid_row,
     int grid_col,
     cv::Mat &out_H);
@@ -1427,27 +1451,6 @@ int mergeImgMat(
     cv::Mat &out_base_img);
 
 /**
- * @brief Converts an OpenCV Mat image into an OpenGL texture and returns the texture ID.
- *
- * @param img_mat The cv::Mat image that needs to be converted.
- * @param texture_id Reference to the GLuint ID of the generated texture.
- *
- * @return Integer status code [-1:error, 0:successful].
- *
- * @details
- * This function takes an OpenCV Mat image as input and converts it into an OpenGL texture.
- * The OpenCV image is first converted from BGR to RGB format. Then, a new OpenGL texture is
- * generated and the converted image data is stored in this texture.
- *
- * The texture parameters for minification and magnification filters are set to GL_LINEAR.
- *
- * @note This function assumes that the input image is of type CV_8UC3 and has no alpha channel.
- */
-int loadTexture(
-    cv::Mat img_mat,
-    GLuint &texture_id);
-
-/**
  * @brief Initialize OpenGL resources for wall image render objects.
  *
  * @param[out] out_renCtx Reference to an instance of the out_renCtx class.
@@ -1468,7 +1471,7 @@ int initWallRenderObjects(
  * @brief Warp OpenCV image using homography matrix.
  *
  * @param img_mat The cv::Mat image that needs to be warped.
-  * @param _H The homography matrix used for warping.
+ * @param _H The homography matrix used for warping.
  * @param[out] out_img_mat Reference to the outputed warped image.
  *
  * @return Integer status code [-1:error, 0:successful].
