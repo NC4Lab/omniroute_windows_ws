@@ -24,6 +24,8 @@ int procKeyPress()
     };
     int status;
 
+    return 0;
+
     // Check for fullscreen mode change [F]
     status = loopCheck(GLFW_KEY_F, GLFW_RELEASE);
     if (status > 0)
@@ -49,6 +51,35 @@ int procKeyPress()
     }
 
     return 0;
+}
+
+int loadTexture(cv::Mat img_mat, GLuint &texture_id)
+{
+    int status = 0;
+
+    glGenTextures(1, &texture_id);
+    glBindTexture(GL_TEXTURE_2D, texture_id);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Convert image from BGR to RGB
+    cv::Mat image_rgb;
+    cv::cvtColor(img_mat, image_rgb, cv::COLOR_BGR2RGB);
+
+    // Handle alignment
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Create texture
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_rgb.cols,
+                 image_rgb.rows, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                 image_rgb.data);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    return status;
 }
 
 int updateTexture(
@@ -302,7 +333,7 @@ void appCleanup()
     // Clean up OpenGL wall image objects for each window
     for (int proj_i = 0; proj_i < N.projectors; ++proj_i)
     {
-        if (PROJ_CTX_VEC[proj_i].cleanupContext() != 0)
+        if (PROJ_CTX_VEC[proj_i].cleanupContext(true) != 0)
             ROS_WARN("[appCleanup] Error during cleanup of MazeRenderContext: Window[%d] Monitor[%d]",
                      proj_i, PROJ_CTX_VEC[proj_i].monitorInd);
         else

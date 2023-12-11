@@ -114,6 +114,27 @@ std::vector<cv::Mat> floorImgMatVec; // Vector of floor image texture matrices
 int procKeyPress();
 
 /**
+ * @brief Converts an OpenCV Mat image into an OpenGL texture and returns the texture ID.
+ *
+ * @param img_mat The cv::Mat image that needs to be converted.
+ * @param texture_id Reference to the GLuint ID of the generated texture.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ *
+ * @details
+ * This function takes an OpenCV Mat image as input and converts it into an OpenGL texture.
+ * The OpenCV image is first converted from BGR to RGB format. Then, a new OpenGL texture is
+ * generated and the converted image data is stored in this texture.
+ *
+ * The texture parameters for minification and magnification filters are set to GL_LINEAR.
+ *
+ * @note This function assumes that the input image is of type CV_8UC3 and has no alpha channel.
+ */
+int loadTexture(
+    cv::Mat img_mat,
+    GLuint &texture_id);
+    
+/**
  * @brief Applies the homography matrices to warp wall image textures and combine them.
  *
  * @param _proj_mon_ind Index of the monitor associated to the projector.
