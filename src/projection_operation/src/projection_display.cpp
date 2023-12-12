@@ -119,8 +119,34 @@ int updateTexture(
         return -1;
     }
 
-    dbDispImgMat(img_merge);
+    return 0;
+}
 
+int drawRatMask(
+    cv::Point2f position,
+    cv::Mat _H,
+    CircleRenderer &out_rmCircRend)
+{
+    // Setup the CircleRenderer class shaders
+    if (CircleRenderer::SetupShader() < 0)
+        return -1;
+
+    // Set the marker position
+    out_rmCircRend.setPosition(position);
+
+    // Recompute the marker parameters
+    if (out_rmCircRend.recomputeParameters() < 0)
+        return -1;
+
+    // Draw the marker
+    if (out_rmCircRend.draw() < 0)
+        return -1;
+
+    // Unset the shader program
+    if (CircleRenderer::UnsetShader() < 0)
+        return -1;
+
+    // Return GL status
     return 0;
 }
 
@@ -189,7 +215,7 @@ void appInitOpenGL()
     {
 
         // Initialze render context for each projector
-        if (projCtx.initWindowContext(win_ind++, I.starting_monitor, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, callbackKeyBinding) < 0)
+        if (projCtx.initWindowContext(win_ind, I.starting_monitor, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, callbackKeyBinding) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
 
         // Initialize OpenGL wall image objects
@@ -206,14 +232,20 @@ void appInitOpenGL()
         if (projCtx.compileAndLinkShaders(QUAD_GL_VERTEX_SOURCE, QUAD_GL_FRAGMENT_SOURCE) < 0)
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to compile and link wall shader");
 
-        // Initialize the CircleRenderer class object for rat masking
-        ratMaskCircRend.initializeCircleAttributes(
-            rmPosition,      // position
-            rmMakerRadius,   // radius
-            rmRGB,           // color
-            rmRenderSegments // segments
-        );
+        // Create the shader program for CircleRenderer class rat mask rendering
+        if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_ASPECT_RATIO) < 0)
+            throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
 
+        // Initialize the CircleRenderer class object for rat masking
+        if (RM_CIRCREND_ARR[win_ind].initializeCircleAttributes(
+                rmPosition,      // position
+                rmMakerRadius,   // radius
+                rmRGB,           // color
+                rmRenderSegments // segments
+                ) < 0)
+            throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
+
+        win_ind++;
         ROS_INFO("[appInitOpenGL] OpenGL initialized: Window[%d] Monitor[%d]", projCtx.windowInd, projCtx.monitorInd);
     }
 
@@ -257,7 +289,6 @@ void appMainLoop()
 
         for (auto &projCtx : PROJ_CTX_VEC)
         {
-
             // Prepare the frame for rendering (clear the back buffer)
             if (projCtx.initWindowForDrawing() < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from MazeRenderContext::initWindowForDrawing");
@@ -269,6 +300,12 @@ void appMainLoop()
             // Draw/update wall images
             if (projCtx.drawTexture() < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from drawTexture");
+
+            // Draw/update rat mask marker
+            rmPosition.x = rmPosition.x < 0.5 ? rmPosition.x + 0.001f : -0.5;
+            rmPosition.y = rmPosition.y < 0.5 ? rmPosition.y + 0.001f : -0.5;
+            if (drawRatMask(rmPosition, HMAT_ARR_VEC[projCtx.windowInd][CalibrationMode::FLOOR][0][0], RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from drawRatMask");
 
             // Swap buffers and poll events
             if (projCtx.bufferSwapPoll() < 0)

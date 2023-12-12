@@ -657,7 +657,6 @@ private:
 class CircleRenderer
 {
 public:
-
     /**
      * @brief Vertex shader source code with aspect ratio correction.
      *
@@ -713,6 +712,7 @@ public:
     cv::Scalar circColor;           // Color of the circle.
     cv::Point2f circPosition;       // Position of the circle in 2D space.
     float cirRadius;                // Radius of the circle.
+    cv::Mat circWarpH;              // Homography matrix to warp the circle.
     float circRotationAngle;        // Rotation angle of the circle in degrees.
     cv::Point2f circScalingFactors; // Scaling factors for the circle's x and y dimensions.
     unsigned int circSegments;      // Number of segments used to approximate the circle geometry.
@@ -741,40 +741,31 @@ public:
      * Cleans up the OpenGL objects associated with the circle.
      */
     ~CircleRenderer();
-    /**
-     * @brief Initializes the CircleRenderer with specified attributes.
-     *
-     * @param pos Position of the circle's center.
-     * @param rad Radius of the circle.
-     * @param col Color of the circle.
-     * @param segments Number of segments for the circle approximation.
-     */
-    void initializeCircleAttributes(
-        cv::Point2f pos,
-        float rad,
-        cv::Scalar col,
-        unsigned int segments);
 
     /**
      * @brief Sets the position of the circle.
+     *
      * @param pos New position of the circle's center.
      */
     void setPosition(cv::Point2f pos);
 
     /**
      * @brief Sets the radius of the circle.
+     *
      * @param rad New radius of the circle.
      */
     void setRadius(float rad);
 
     /**
      * @brief Sets the rotation angle of the circle.
+     *
      * @param angle New rotation angle in degrees.
      */
     void setRotationAngle(float angle);
 
     /**
      * @brief Sets the scaling factors of the circle.
+     *
      * @param scaling_factors New scaling factors for the x and y axes.
      */
     void setScaling(cv::Point2f scaling_factors);
@@ -786,35 +777,59 @@ public:
     void setColor(cv::Scalar col);
 
     /**
-     * @brief Recomputes the circle parameters and updates the OpenGL buffer.
+     * @brief Initializes the CircleRenderer with specified attributes.
+     * Sets up the OpenGL Vertex Array Object and Vertex Buffer Object.
+     *
+     * @param pos Position of the circle's center.
+     * @param rad Radius of the circle.
+     * @param col Color of the circle.
+     * @param segments Number of segments for the circle approximation.
+     * @param _H Optional homography matrix to warp the circle (default to identity).
      */
-    void recomputeParameters();
+    int initializeCircleAttributes(
+        cv::Point2f pos,
+        float rad,
+        cv::Scalar col,
+        unsigned int segments,
+        cv::Mat _H = cv::Mat::eye(3, 3, CV_64F));
+
+    /**
+     * @brief Recomputes the circle parameters and updates the OpenGL buffer.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int recomputeParameters();
 
     /**
      * @brief Draws the circle using the stored shader program and uniforms.
+     *
+     * @return Integer status code [-1:error, 0:successful].
      */
-    void draw();
+    int draw();
 
     /**
      * @brief Compiles, links shaders, and gets uniform locations.
-     * @param aspect_ratio The aspect ratio to be set for the shader.
-     * @return Integer status code [-1:error, 0:successful].
      *
      * @details
      * This static method compiles the vertex and fragment shaders,
      * links them into a shader program, and retrieves the uniform
      * locations. It should be called once during initialization.
+     *
+     * @param aspect_ratio The aspect ratio to be set for the shader.
+     *
+     * @return Integer status code [-1:error, 0:successful].
      */
     static int CompileAndLinkCircleShaders(float aspect_ratio);
 
     /**
      * @brief Cleans up shader objects and other shared resources.
-     * @return Integer status code [-1:error, 0:successful].
      *
      * @details
      * This function should be called when the application is terminating
      * or when you're sure that all instances of CircleRenderer are done
      * with the shader program and related resources.
+     *
+     * @return Integer status code [-1:error, 0:successful].
      */
     static int CleanupClassResources();
 
@@ -825,16 +840,20 @@ public:
      * This method should be called before drawing each frame.
      * It sets the current shader program and updates the uniform
      * variables such as aspect ratio.
+     *
+     * @return Integer status code [-1:error, 0:successful].
      */
-    static void SetupShader();
+    static int SetupShader();
 
     /**
      * @brief Unsets the shader after drawing.
      *
      * @details
      * This method should be called after drawing each frame.
+     *
+     * @return Integer status code [-1:error, 0:successful].
      */
-    static void UnsetShader();
+    static int UnsetShader();
 
 private:
     /**
@@ -842,8 +861,10 @@ private:
      *
      * @param shader The shader to check.
      * @param shader_type The type of shader to check.
+     *
+     * @return Integer status code [-1:error, 0:successful].
      */
-    static bool _CheckShaderCompilation(
+    static int _CheckShaderCompilation(
         GLuint shader,
         const std::string &shader_type);
 
@@ -851,20 +872,26 @@ private:
      * @brief Private helper methods to check shader linking.
      *
      * @param program The shader program to check.
+     *
+     * @return Integer status code [-1:error, 0:successful].
      */
-    static bool _CheckProgramLinking(GLuint program);
+    static int _CheckProgramLinking(GLuint program);
 
     /**
      * @brief Sets up the OpenGL Vertex Array Object and Vertex Buffer Object.
+     *
+     * @return Integer status code [-1:error, 0:successful].
      */
-    void _setupRenderBuffers();
+    int _setupRenderBuffers();
 
     /**
      * @brief Converts an OpenCV Mat to an array suitable for OpenGL transformations.
-     * @param mat The OpenCV Mat to convert.
+     * 
+     * @param[out] out_mat The OpenCV Mat to convert.
+     * 
      * @return An array of floats representing the matrix data.
      */
-    std::array<float, 16> _cvMatToGlArray(const cv::Mat &mat);
+    std::array<float, 16> _cvMatToGlArray(const cv::Mat &out_mat);
 
     /**
      * @brief Computes the transformation matrix based on the circle's parameters.
@@ -873,16 +900,23 @@ private:
 
     /**
      * @brief Computes the vertices for the circle approximation.
-     * @param position Position of the circle's center.
-     * @param radius Radius of the circle.
-     * @param circSegments Number of segments for the circle approximation.
-     * @param circVertices Reference to the vertex array to store the computed vertices.
+     * 
+     * @param[out] out_vertices Reference to the vertex array to store the computed vertices.
      */
-    void _computeVertices(
-        cv::Point2f position,
-        float radius,
-        unsigned int circSegments,
-        std::vector<float> &circVertices);
+    void _computeVertices(std::vector<float> &out_vertices);
+
+    /**
+     * @brief Warps the circle vertices using a homography matrix.
+     *
+     * This method applies the homography matrix (circWarpH) to each vertex of
+     * the circle. The vertices are transformed and normalized to fit the new
+     * perspective defined by the homography. It's typically called after
+     * computing the vertices and before updating the VBO in the rendering
+     * pipeline.
+     *
+     * @param[out] out_vertices A reference to a vector of float, representing the circle's vertices.
+     */
+    void _warpCircle(std::vector<float> &out_vertices);
 };
 
 #endif // CIRCLE_RENDERER_H

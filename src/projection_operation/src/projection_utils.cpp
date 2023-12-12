@@ -98,7 +98,10 @@ void MazeRenderContext::CallbackDebugOpenGL(GLenum source, GLenum type, GLuint i
     {
         return;
     }
-    ROS_INFO("[callbackDebugOpenGL] Type[0x%x] ID[%d] Severity[%d:0x%x] Message[%s]", type, id, s_level, severity, message);
+    if (s_level == 1)
+        ROS_INFO("[callbackDebugOpenGL] Type[0x%x] ID[%d] Severity[%d:0x%x] Message[%s]", type, id, s_level, severity, message);
+    else
+        ROS_ERROR("[callbackDebugOpenGL] Type[0x%x] ID[%d] Severity[%d:0x%x] Message[%s]", type, id, s_level, severity, message);
 }
 
 void MazeRenderContext::CallbackErrorGLFW(int error, const char *description)
@@ -736,9 +739,9 @@ int MazeRenderContext::_checkShaderCompilation(GLuint shader, const std::string 
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
     if (!success)
     {
-        char infoLog[1024];
-        glGetShaderInfoLog(shader, 1024, nullptr, infoLog);
-        ROS_ERROR("[MazeRenderContext::_checkShaderCompilation] %s shader compilation error: %s", shader_type.c_str(), infoLog);
+        char info_log[1024];
+        glGetShaderInfoLog(shader, 1024, nullptr, info_log);
+        ROS_ERROR("[MazeRenderContext::_checkShaderCompilation] %s shader compilation error: %s", shader_type.c_str(), info_log);
         return -1;
     }
     return 0;
@@ -750,9 +753,9 @@ int MazeRenderContext::_checkProgramLinking(GLuint program)
     glGetProgramiv(program, GL_LINK_STATUS, &success);
     if (!success)
     {
-        char infoLog[1024];
-        glGetProgramInfoLog(program, 1024, nullptr, infoLog);
-        ROS_ERROR("[MazeRenderContext::_checkProgramLinking] Program linking error: %s", infoLog);
+        char info_log[1024];
+        glGetProgramInfoLog(program, 1024, nullptr, info_log);
+        ROS_ERROR("[MazeRenderContext::_checkProgramLinking] Program linking error: %s", info_log);
         return -1;
     }
     return 0;
@@ -815,8 +818,13 @@ GLint CircleRenderer::_AspectRatioLocation = -1;
 float CircleRenderer::_AspectRatioUniform = 1.0f;
 
 CircleRenderer::CircleRenderer()
-    : circPosition(cv::Point2f(0.0f, 0.0f)), cirRadius(1.0f), circColor(cv::Scalar(1.0, 1.0, 1.0)),
-      circSegments(32), circRotationAngle(0.0f), circScalingFactors(cv::Point2f(1.0f, 1.0f))
+    : circPosition(cv::Point2f(0.0f, 0.0f)),
+      cirRadius(1.0f),
+      circColor(cv::Scalar(1.0, 1.0, 1.0)),
+      circSegments(32),
+      circRotationAngle(0.0f),
+      circScalingFactors(cv::Point2f(1.0f, 1.0f)),
+      circWarpH(cv::Mat::eye(3, 3, CV_64F))
 {
     // Define instance count and itterate static _CircCnt
     circID = _CircCnt++;
@@ -838,29 +846,6 @@ CircleRenderer::~CircleRenderer()
         glDeleteBuffers(1, &_vbo);
         _vbo = 0;
     }
-}
-
-void CircleRenderer::initializeCircleAttributes(cv::Point2f pos, float rad, cv::Scalar col, unsigned int segments)
-{
-    // Set variables
-    circPosition = pos;
-    cirRadius = rad;
-    circColor = col;
-    circSegments = segments;
-
-    // Initialize variables
-    circScalingFactors = cv::Point2f(1.0f, 1.0f);
-    circRotationAngle = 0.0f;
-
-    // Run initial vertex computation
-    _computeVertices(circPosition, cirRadius, circSegments, _circVertices);
-
-    // Setup OpenGL buffers
-    _setupRenderBuffers();
-
-    // // TEMP
-    // ROS_INFO("[CircleRenderer] Initialized Instance[%d]: Position[%0.2f, %0.2f] Radius[%0.4f] Color[%.2f, %.2f, %.2f] Segments[%d]",
-    //          circID, circPosition.x, circPosition.y, cirRadius, circColor[0], circColor[1], circColor[2], circSegments);
 }
 
 void CircleRenderer::setPosition(cv::Point2f pos)
@@ -890,48 +875,126 @@ void CircleRenderer::setColor(cv::Scalar col)
     circColor = col;
 }
 
-void CircleRenderer::recomputeParameters()
+int CircleRenderer::initializeCircleAttributes(cv::Point2f pos, float rad, cv::Scalar col, unsigned int segments, cv::Mat _H)
 {
-    // Update the transformation matrix
-    _computeTransformation();
+    int status = 0;
 
-    // Generate the new vertices based on the current position, radius, and circSegments
-    _computeVertices(circPosition, cirRadius, circSegments, _circVertices);
+    // Set variables
+    circPosition = pos;
+    cirRadius = rad;
+    circColor = col;
+    circSegments = segments;
+    circWarpH = _H;
+
+    // Initialize variables
+    circScalingFactors = cv::Point2f(1.0f, 1.0f);
+    circRotationAngle = 0.0f;
+
+    // Run initial vertex computation
+    _computeVertices(_circVertices);
+
+    // Warp the circle vertices using the homography matrix
+    _warpCircle(_circVertices);
+
+    // Generate a new Vertex Array Object (VAO) and store the ID
+    glGenVertexArrays(1, &_vao);
+    // Generate a new Vertex Buffer Object (VBO) and store the ID
+    glGenBuffers(1, &_vbo);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Bind the VAO to set it up
+    glBindVertexArray(_vao);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Bind the VBO to the GL_ARRAY_BUFFER target
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-
-    // Update the VBO's data with the new vertices. This call will reallocate the buffer if necessary
-    // or simply update the data store's contents if the buffer is large enough.
+    // Copy vertex data into the buffer's memory (GL_DYNAMIC_DRAW hints that the data might change often)
     glBufferData(GL_ARRAY_BUFFER, _circVertices.size() * sizeof(float), _circVertices.data(), GL_DYNAMIC_DRAW);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
-    // Unbind the buffer
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    // Define an array of generic vertex attribute data. Arguments:
+    // 0: the index of the vertex attribute to be modified.
+    // 2: the number of components per generic vertex attribute. Since we're using 2D points, this is 2.
+    // GL_FLOAT: the data type of each component in the array.
+    // GL_FALSE: specifies whether fixed-point data values should be normalized or not.
+    // 2 * sizeof(float): the byte offset between consecutive vertex attributes.
+    // (void*)0: offset of the first component of the first generic vertex attribute in the array.
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Enable the vertex attribute array for the VAO at index 0
+    glEnableVertexAttribArray(0);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Unbind the VAO to prevent further modification.
+    glBindVertexArray(0);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    return status;
 
     // // TEMP
     // ROS_INFO("[CircleRenderer] Initialized Instance[%d]: Position[%0.2f, %0.2f] Radius[%0.4f] Color[%.2f, %.2f, %.2f] Segments[%d]",
     //          circID, circPosition.x, circPosition.y, cirRadius, circColor[0], circColor[1], circColor[2], circSegments);
 }
 
-void CircleRenderer::draw()
+int CircleRenderer::recomputeParameters()
 {
+    int status = 0;
+
+    // Update the transformation matrix
+    _computeTransformation();
+
+    // Generate the new vertices based on the current position, radius, and circSegments
+    _computeVertices(_circVertices);
+
+    // Warp the circle vertices using the homography matrix
+    _warpCircle(_circVertices);
+
+    // Bind the VBO to the GL_ARRAY_BUFFER target
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Update the VBO's data with the new vertices. This call will reallocate the buffer if necessary
+    // or simply update the data store's contents if the buffer is large enough.
+    glBufferData(GL_ARRAY_BUFFER, _circVertices.size() * sizeof(float), _circVertices.data(), GL_DYNAMIC_DRAW);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Unbind the buffer
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    return status;
+}
+
+int CircleRenderer::draw()
+{
+    int status = 0;
+
     // Set color
     glUniform4f(_ColorLocation, circColor[0], circColor[1], circColor[2], 1.0f);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Use the updated transformation matrix instead of an identity matrix
     auto transformArray = _cvMatToGlArray(_transformationMatrix);
     glUniformMatrix4fv(_TransformLocation, 1, GL_FALSE, transformArray.data());
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Bind the VAO and draw the circle using GL_TRIANGLE_FAN
     glBindVertexArray(_vao);
     glDrawArrays(GL_TRIANGLE_FAN, 0, static_cast<GLsizei>(_circVertices.size() / 2));
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Unbind the VAO to leave a clean state
     glBindVertexArray(0);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    return status;
 }
 
 int CircleRenderer::CompileAndLinkCircleShaders(float aspect_ratio)
 {
+    int status = 0;
+
     // Set the aspect ratio
     _AspectRatioUniform = aspect_ratio;
 
@@ -939,31 +1002,33 @@ int CircleRenderer::CompileAndLinkCircleShaders(float aspect_ratio)
     GLuint temp_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(temp_vertex_shader, 1, &vertexShaderSource, nullptr);
     glCompileShader(temp_vertex_shader);
-    if (!_CheckShaderCompilation(temp_vertex_shader, "VERTEX"))
+    if (_CheckShaderCompilation(temp_vertex_shader, "VERTEX") < 0)
     {
         glDeleteShader(temp_vertex_shader);
         ROS_ERROR("[CircleRenderer::CompileAndLinkCircleShaders] Vertex shader compilation failed.");
         return -1;
     }
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Compile fragment shader
     GLuint temp_fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(temp_fragment_shader, 1, &fragmentShaderSource, nullptr);
     glCompileShader(temp_fragment_shader);
-    if (!_CheckShaderCompilation(temp_fragment_shader, "FRAGMENT"))
+    if (_CheckShaderCompilation(temp_fragment_shader, "FRAGMENT") < 0)
     {
         glDeleteShader(temp_vertex_shader);
         glDeleteShader(temp_fragment_shader);
         ROS_ERROR("[CircleRenderer::CompileAndLinkCircleShaders] Fragment shader compilation failed.");
         return -1;
     }
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Link shaders into a program
     _ShaderProgram = glCreateProgram();
     glAttachShader(_ShaderProgram, temp_vertex_shader);
     glAttachShader(_ShaderProgram, temp_fragment_shader);
     glLinkProgram(_ShaderProgram);
-    if (!_CheckProgramLinking(_ShaderProgram))
+    if (_CheckProgramLinking(_ShaderProgram) < 0)
     {
         glDeleteShader(temp_vertex_shader);
         glDeleteShader(temp_fragment_shader);
@@ -971,17 +1036,20 @@ int CircleRenderer::CompileAndLinkCircleShaders(float aspect_ratio)
         ROS_ERROR("[CircleRenderer::CompileAndLinkCircleShaders] Shader program linking failed.");
         return -1;
     }
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Cleanup: detach and delete shaders
     glDetachShader(_ShaderProgram, temp_vertex_shader);
     glDeleteShader(temp_vertex_shader);
     glDetachShader(_ShaderProgram, temp_fragment_shader);
     glDeleteShader(temp_fragment_shader);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Get uniform locations
     _ColorLocation = glGetUniformLocation(_ShaderProgram, "color");
     _TransformLocation = glGetUniformLocation(_ShaderProgram, "transform");
     _AspectRatioLocation = glGetUniformLocation(_ShaderProgram, "aspectRatio");
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Check for errors in getting uniforms
     if (_ColorLocation == -1 || _TransformLocation == -1 || _AspectRatioLocation == -1)
@@ -990,16 +1058,19 @@ int CircleRenderer::CompileAndLinkCircleShaders(float aspect_ratio)
         return -1;
     }
 
-    return 0; // Success
+    return status;
 }
 
 int CircleRenderer::CleanupClassResources()
 {
+    int status = 0;
+
     // Delete the shader program
     if (_ShaderProgram != 0)
     {
         glDeleteProgram(_ShaderProgram);
         _ShaderProgram = 0;
+        status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
     }
 
     // Reset the static uniform locations to -1 indicating they are no longer valid
@@ -1010,92 +1081,68 @@ int CircleRenderer::CleanupClassResources()
     // Reset the aspect ratio uniform
     _AspectRatioUniform = 0.0f;
 
-    ///@todo add error check for open gl to class
-    return 0;
+    return status;
 }
 
-void CircleRenderer::SetupShader()
+int CircleRenderer::SetupShader()
 {
+    int status = 0;
+
     // Use the shader program
     glUseProgram(_ShaderProgram);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Set the aspect ratio uniform
     glUniform1f(_AspectRatioLocation, _AspectRatioUniform);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    return status;
 }
 
-void CircleRenderer::UnsetShader()
+int CircleRenderer::UnsetShader()
 {
     // Unset the shader program
     glUseProgram(0);
+
+    return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
 }
 
-bool CircleRenderer::_CheckShaderCompilation(GLuint shader, const std::string &shader_type)
+int CircleRenderer::_CheckShaderCompilation(GLuint shader, const std::string &shader_type)
 {
     GLint success;
     glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
     if (!success)
     {
         // Get and log the error message
-        char infoLog[512];
-        glGetShaderInfoLog(shader, 512, nullptr, infoLog);
-        ROS_ERROR("[CircleRenderer::CircleRenderer] %s shader compilation error: %s", shader_type.c_str(), infoLog);
-        return false;
+        char info_log[512];
+        glGetShaderInfoLog(shader, 512, nullptr, info_log);
+        ROS_ERROR("[CircleRenderer::CircleRenderer] %s shader compilation error: %s", shader_type.c_str(), info_log);
+        return -1;
     }
-    return true;
+    return 0;
 }
 
-bool CircleRenderer::_CheckProgramLinking(GLuint program)
+int CircleRenderer::_CheckProgramLinking(GLuint program)
 {
     GLint success;
     glGetProgramiv(program, GL_LINK_STATUS, &success);
     if (!success)
     {
         // Get and log the error message
-        char infoLog[512];
-        glGetProgramInfoLog(program, 512, nullptr, infoLog);
-        ROS_ERROR("[CircleRenderer::CircleRenderer] Program linking error: %s", infoLog);
-        return false;
+        char info_log[512];
+        glGetProgramInfoLog(program, 512, nullptr, info_log);
+        ROS_ERROR("[CircleRenderer::CircleRenderer] Program linking error: %s", info_log);
+        return -1;
     }
-    return true;
+    return 0;
 }
 
-void CircleRenderer::_setupRenderBuffers()
+std::array<float, 16> CircleRenderer::_cvMatToGlArray(const cv::Mat &out_mat)
 {
-    // Generate a new Vertex Array Object (VAO) and store the ID
-    glGenVertexArrays(1, &_vao);
-    // Generate a new Vertex Buffer Object (VBO) and store the ID
-    glGenBuffers(1, &_vbo);
-
-    // Bind the VAO to set it up
-    glBindVertexArray(_vao);
-
-    // Bind the VBO to the GL_ARRAY_BUFFER target
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-    // Copy vertex data into the buffer's memory (GL_DYNAMIC_DRAW hints that the data might change often)
-    glBufferData(GL_ARRAY_BUFFER, _circVertices.size() * sizeof(float), _circVertices.data(), GL_DYNAMIC_DRAW);
-
-    // Define an array of generic vertex attribute data. Arguments:
-    // 0: the index of the vertex attribute to be modified.
-    // 2: the number of components per generic vertex attribute. Since we're using 2D points, this is 2.
-    // GL_FLOAT: the data type of each component in the array.
-    // GL_FALSE: specifies whether fixed-point data values should be normalized or not.
-    // 2 * sizeof(float): the byte offset between consecutive vertex attributes.
-    // (void*)0: offset of the first component of the first generic vertex attribute in the array.
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
-
-    // Enable the vertex attribute array for the VAO at index 0
-    glEnableVertexAttribArray(0);
-
-    // Unbind the VAO to prevent further modification.
-    glBindVertexArray(0);
-}
-
-std::array<float, 16> CircleRenderer::_cvMatToGlArray(const cv::Mat &mat)
-{
-    assert(mat.cols == 4 && mat.rows == 4 && mat.type() == CV_32F);
-    std::array<float, 16> glArray;
-    std::copy(mat.begin<float>(), mat.end<float>(), glArray.begin());
-    return glArray;
+    assert(out_mat.cols == 4 && out_mat.rows == 4 && out_mat.type() == CV_32F);
+    std::array<float, 16> gl_array;
+    std::copy(out_mat.begin<float>(), out_mat.end<float>(), gl_array.begin());
+    return gl_array;
 }
 
 void CircleRenderer::_computeTransformation()
@@ -1130,29 +1177,48 @@ void CircleRenderer::_computeTransformation()
     _transformationMatrix = translationBack * scaling * rotation * translationToOrigin;
 }
 
-void CircleRenderer::_computeVertices(cv::Point2f position, float radius, unsigned int circSegments, std::vector<float> &circVertices)
+void CircleRenderer::_computeVertices(std::vector<float> &out_vertices)
 {
     // Clear the vertex vector to prepare for new vertices
-    circVertices.clear();
+    out_vertices.clear();
 
     // Loop to generate vertices for the circle
     for (unsigned int i = 0; i <= circSegments; ++i)
     {
         // Calculate the angle for the current segment
         float angle = 2.0f * std::acos(-1.0) * i / circSegments;
-        // Determine the x position of the vertex on the circle
-        float baseX = position.x + (radius * std::cos(angle));
-        // Determine the y position of the vertex on the circle
-        float baseY = position.y + (radius * std::sin(angle));
+        // Determine the x circPosition of the vertex on the circle
+        float baseX = circPosition.x + (cirRadius * std::cos(angle));
+        // Determine the y circPosition of the vertex on the circle
+        float baseY = circPosition.y + (cirRadius * std::sin(angle));
 
         // Create a 4x1 matrix (homogeneous coordinates) for the vertex
         cv::Mat vertex = (cv::Mat_<float>(4, 1) << baseX, baseY, 0, 1);
         // Apply the transformation matrix to the vertex
         cv::Mat transformedVertex = _transformationMatrix * vertex;
         // Extract the transformed x coordinate and add to the vertices list
-        circVertices.push_back(transformedVertex.at<float>(0, 0));
+        out_vertices.push_back(transformedVertex.at<float>(0, 0));
         // Extract the transformed y coordinate and add to the vertices list
-        circVertices.push_back(transformedVertex.at<float>(1, 0));
+        out_vertices.push_back(transformedVertex.at<float>(1, 0));
+    }
+}
+
+void CircleRenderer::_warpCircle(std::vector<float> &out_vertices)
+{
+    for (size_t i = 0; i < out_vertices.size(); i += 2)
+    {
+        // Create a 3x1 matrix (homogeneous coordinates) for the vertex
+        cv::Mat vertex = (cv::Mat_<double>(3, 1) << out_vertices[i], out_vertices[i + 1], 1.0);
+
+        // Apply the homography matrix to the vertex
+        cv::Mat warpedVertex = circWarpH * vertex;
+
+        // Normalize the coordinates
+        warpedVertex /= warpedVertex.at<double>(2, 0);
+
+        // Update the vertices with the transformed coordinates
+        out_vertices[i] = static_cast<float>(warpedVertex.at<double>(0, 0));
+        out_vertices[i + 1] = static_cast<float>(warpedVertex.at<double>(1, 0));
     }
 }
 
