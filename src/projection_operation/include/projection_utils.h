@@ -520,7 +520,7 @@ public:
      *
      * @return Integer status code [-1:error, 0:successful].
      */
-    int initWindow();
+    int initWindowForDrawing();
 
     /**
      * @brief Swap and poll the buffer.
@@ -574,21 +574,6 @@ public:
      * @return Integer status code [-1:error, 0:successful].
      */
     int forceWindowStackOrder(bool is_top_always);
-
-    /**
-     * @brief Processes key input from the user.
-     *
-     * This function checks if a specific key action occurred and,
-     * optionally, if it was accompanied by a specific modifier key.
-     *
-     * @param key The key to check.
-     * @param mods Modifiers to check, 0 for no modifiers.
-     *
-     * @return -1 for error, 0 if conditions are not met, 1 if conditions are met.
-     */
-    int checkKeyInput(
-        int key,
-        int mods = 0);
 
     /**
      * @brief Function to set the background color and redraw the window

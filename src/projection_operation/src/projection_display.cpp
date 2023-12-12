@@ -38,46 +38,6 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     }
 }
 
-int procKeyPress()
-{
-    auto loopCheck = [](int key, int mod = 0) -> int
-    {
-        for (auto &projCtx : PROJ_CTX_VEC)
-        {
-            int s = projCtx.checkKeyInput(key, mod);
-            if (s != 0)
-                return s;
-        }
-        return 0;
-    };
-
-    int status = 0;
-
-    // // Check for fullscreen mode change [F]
-    // status = loopCheck(GLFW_KEY_F);
-    // if (status > 0)
-    // {
-    //     F.fullscreen_mode = !F.fullscreen_mode;
-    //     F.change_window_mode = true;
-    //     return status;
-    // }
-
-    // // Check for move monitor command [M]
-    // status = loopCheck(GLFW_KEY_M);
-    // if (status > 0)
-    // {
-    //     F.windows_set_to_proj = !F.windows_set_to_proj;
-    //     F.change_window_mode = true;
-    //     ROS_INFO("[TEMP GLFW_KEY_M] F.windows_set_to_proj[%d] status[%d]", F.windows_set_to_proj, status);
-    //     return status;
-    // }
-
-    // if (status < 0)
-    //     ROS_ERROR("[procKeyPress] Error returned from MazeRenderContext::checkKeyInput");
-
-    return status;
-}
-
 int updateTexture(
     int proj_mon_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
@@ -259,9 +219,6 @@ void appMainLoop()
     {
         // --------------- Check Kayboard Callback Flags ---------------
 
-        // Check for key press
-        status = procKeyPress();
-
         // Update the window monitor and mode
         if (F.change_window_mode)
         {
@@ -294,8 +251,8 @@ void appMainLoop()
         {
 
             // Prepare the frame for rendering (clear the back buffer)
-            if (projCtx.initWindow() < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from MazeRenderContext::initWindow");
+            if (projCtx.initWindowForDrawing() < 0)
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from MazeRenderContext::initWindowForDrawing");
 
             // Make sure winsow always stays on top in fullscreen mode
             if (projCtx.forceWindowStackOrder(F.fullscreen_mode) < 0)

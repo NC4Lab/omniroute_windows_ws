@@ -808,8 +808,8 @@ void appMainLoop()
         // --------------- Handle Rendering for Next Frame ---------------
 
         // Prepare the frame for rendering (make context clear the back buffer)
-        if (projCtx.initWindow() < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from MazeRenderContext::initWindow");
+        if (projCtx.initWindowForDrawing() < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from MazeRenderContext::initWindowForDrawing");
 
         // Make sure winsow always stays on top in fullscreen mode
         if (projCtx.forceWindowStackOrder(F.fullscreen_mode) < 0)

@@ -128,14 +128,6 @@ void callbackKeyBinding(
     int scancode,
     int action,
     int mods);
-    
-/**
- * @brief Use MazeRenderContext::checkKeyInput to get and process
- * key press events for all windows.
- *
- * @return Integer status code [-1:error, 0:no change, 1:new input].
- */
-int procKeyPress();
 
 /**
  * @brief Applies the homography matrices to warp wall image textures and combine them.

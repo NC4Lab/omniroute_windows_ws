@@ -245,9 +245,11 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
 {
     int status = 0;
 
-    // Check that the window pointer is valid
+    // Set the GLFW window as the current OpenGL context
     if (windowID == nullptr)
         return -1;
+    glfwMakeContextCurrent(windowID);
+    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Check that context is initialized
     if (!isContextInitialized)
@@ -255,10 +257,6 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
         ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Context Not Initialized");
         return -1;
     }
-
-    // Set the GLFW window as the current OpenGL context
-    glfwMakeContextCurrent(windowID);
-    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Compile vertex shader
     GLuint temp_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
@@ -348,14 +346,13 @@ int MazeRenderContext::loadMatTexture(cv::Mat img_mat)
 {
     int status = 0;
 
-    // Check that the window pointer is valid
+    // Set the GLFW window as the current OpenGL context
     if (windowID == nullptr)
         return -1;
-
-    // Set the GLFW window as the current OpenGL context
     glfwMakeContextCurrent(windowID);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
+    // Generate and bind the texture
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
     status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
@@ -386,9 +383,11 @@ int MazeRenderContext::drawTexture()
 {
     int status = 0;
 
-    // Check that the window pointer is valid
+    // Set the GLFW window as the current OpenGL context
     if (windowID == nullptr)
         return -1;
+    glfwMakeContextCurrent(windowID);
+    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Check the shader program for errors
     if (checkShaderProgram())
@@ -396,8 +395,6 @@ int MazeRenderContext::drawTexture()
         ROS_ERROR("[MazeRenderContext::drawTexture] Shader program validation failed");
         return -1;
     }
-    glfwMakeContextCurrent(windowID);
-    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Use the shader program for wall rendering
     glUseProgram(shaderProgram);
@@ -434,10 +431,6 @@ int MazeRenderContext::drawTexture()
 int MazeRenderContext::cleanupContext(bool log_errors)
 {
     int status = 0;
-
-    // Check that the window pointer is valid
-    if (windowID == nullptr)
-        return -1;
 
     // Set the GLFW window as the current OpenGL context
     if (windowID != nullptr)
@@ -511,15 +504,13 @@ int MazeRenderContext::cleanupContext(bool log_errors)
     return status ? -1 : 0;
 }
 
-int MazeRenderContext::initWindow()
+int MazeRenderContext::initWindowForDrawing()
 {
     int status = 0;
 
-    // Check that the window pointer is valid
+    // Set the GLFW window as the current OpenGL context
     if (windowID == nullptr)
         return -1;
-
-    // Set the GLFW window as the current OpenGL context
     glfwMakeContextCurrent(windowID);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
@@ -532,9 +523,10 @@ int MazeRenderContext::initWindow()
 
 int MazeRenderContext::bufferSwapPoll()
 {
-    // Check that the window pointer is valid
+    // Set the GLFW window as the current OpenGL context
     if (windowID == nullptr)
         return -1;
+    glfwMakeContextCurrent(windowID);
 
     // Swap buffers and poll events
     glfwSwapBuffers(windowID);
@@ -549,9 +541,11 @@ int MazeRenderContext::checkExitRequest()
 {
     int status = 0;
 
-    // Check that the window pointer is valid
+    // Set the GLFW window as the current OpenGL context
     if (windowID == nullptr)
         return -1;
+    glfwMakeContextCurrent(windowID);
+    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Check if the window should close
     if (glfwWindowShouldClose(windowID))
@@ -597,9 +591,10 @@ int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscre
     int win_x, win_y;
     int win_width, win_height;
 
-    // Check that the window pointer is valid
+    // Set the GLFW window as the current OpenGL context
     if (windowID == nullptr)
         return -1;
+    glfwMakeContextCurrent(windowID);
 
     // Update global
     isFullScreen = do_fullscreen;
@@ -665,19 +660,17 @@ int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscre
     glfwSetWindowTitle(windowID, new_title.c_str());
 
     ROS_INFO("[MazeRenderContext::changeWindowDisplayMode] Modified Window[%d]: Monitor[%d] Position[%d,%d,%d,%d] Format[%s]",
-             windowInd, monitorID, win_x, win_y, win_width, win_height, isFullScreen ? "fullscreen" : "windowed");
+             windowInd, monitorInd, win_x, win_y, win_width, win_height, isFullScreen ? "fullscreen" : "windowed");
 
     return CheckErrorGLFW(__LINE__, __FILE__, "changeWindowDisplayMode");
 }
 
 int MazeRenderContext::forceWindowStackOrder(bool is_top_always)
 {
-    // Check that the window pointer is valid
+    // Set the GLFW window as the current OpenGL context
     if (windowID == nullptr)
         return -1;
-
-    // Set the GLFW_FLOATING attribute based on the alwaysOnTop boolean
-    // glfwSetWindowAttrib(windowID, GLFW_FLOATING, is_top_always ? GLFW_TRUE : GLFW_FALSE);
+    glfwMakeContextCurrent(windowID);
 
     // Check if the window is minimized (iconified)
     if (glfwGetWindowAttrib(windowID, GLFW_ICONIFIED))
@@ -692,58 +685,15 @@ int MazeRenderContext::forceWindowStackOrder(bool is_top_always)
     return CheckErrorGLFW(__LINE__, __FILE__);
 }
 
-int MazeRenderContext::checkKeyInput(int key, int mods)
-{
-    int status = 0;
-    static int key_prev = -1;
-
-    // Check that the window pointer is valid
-    if (windowID == nullptr)
-        return -1;
-
-    // Check for key press
-    if (glfwGetKey(windowID, key) == GLFW_PRESS)
-    {
-        bool mod_match = true;
-
-        // Check each modifier key if necessary
-        if (mods & GLFW_MOD_SHIFT)
-        {
-            mod_match &= (glfwGetKey(windowID, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) ||
-                         (glfwGetKey(windowID, GLFW_KEY_RIGHT_SHIFT) == GLFW_PRESS);
-        }
-        if (mods & GLFW_MOD_CONTROL)
-        {
-            mod_match &= (glfwGetKey(windowID, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS) ||
-                         (glfwGetKey(windowID, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS);
-        }
-        if (mods & GLFW_MOD_ALT)
-        {
-            mod_match &= (glfwGetKey(windowID, GLFW_KEY_LEFT_ALT) == GLFW_PRESS) ||
-                         (glfwGetKey(windowID, GLFW_KEY_RIGHT_ALT) == GLFW_PRESS);
-        }
-        if (mods & GLFW_MOD_SUPER)
-        {
-            mod_match &= (glfwGetKey(windowID, GLFW_KEY_LEFT_SUPER) == GLFW_PRESS) ||
-                         (glfwGetKey(windowID, GLFW_KEY_RIGHT_SUPER) == GLFW_PRESS);
-        }
-
-        // Key pressed with the specified modifier or no modifier required
-        if (mod_match || mods == 0)
-            status = 1;
-    }
-
-    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
-    return status;
-}
-
 int MazeRenderContext::flashBackgroundColor(const cv::Scalar &color, int duration)
 {
     int status = 0;
 
-    // Check that the window pointer is valid
+    // Set the GLFW window as the current OpenGL context
     if (windowID == nullptr)
         return -1;
+    glfwMakeContextCurrent(windowID);
+    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Set the new clear color using BGR values from cv::Scalar
     glClearColor(color[0], color[1], color[2], 1.0f); // RGBA
@@ -772,10 +722,10 @@ void MazeRenderContext::_resetMembers()
     textureID = 0;
     windowID = nullptr;
     monitorID = nullptr;
-    windowWidth = 800;
-    windowHeight = 600;
     windowInd = -1;
     monitorInd = -1;
+    windowWidth = 800;
+    windowHeight = 600;
     isContextInitialized = false;
     isFullScreen = false;
 }
