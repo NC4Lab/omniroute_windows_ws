@@ -789,24 +789,24 @@ void appMainLoop()
             F.update_homographys ||
             F.init_control_points)
         {
-            // TEMP
-            cv::Mat H = HMAT_ARR[CAL_MODE][0][0];
-            cv::Mat img_warp;
-            warpImgMat(wallImgMatVec[I.wall_image], H, img_warp);
-            projCtx.loadMatTexture(img_warp); 
+            // // TEMP
+            // cv::Mat H = HMAT_ARR[CAL_MODE][0][0];
+            // cv::Mat img_warp;
+            // warpImgMat(wallImgMatVec[I.wall_image], H, img_warp);
+            // projCtx.loadMatTexture(img_warp); 
 
-            // // Update wall textures
-            // if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
-            // {
-            //     if (updateTexture(CAL_MODE, wallImgMatVec[I.wall_image], monWallImgMatVec[I.monitor], calImgMatVec[CAL_MODE], HMAT_ARR, projCtx) < 0)
-            //         throw std::runtime_error("[appMainLoop] Error returned from updateTexture for wall images");
-            // }
-            // // Update floor texture
-            // else if (CAL_MODE == FLOOR)
-            // {
-            //     if (updateTexture(CAL_MODE, floorImgMatVec[I.floor_image], monFloorImgMatVec[I.monitor], calImgMatVec[CAL_MODE], HMAT_ARR, projCtx) < 0)
-            //         throw std::runtime_error("[appMainLoop] Error returned from updateTexture for floor images");
-            // }
+            // Update wall textures
+            if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
+            {
+                if (updateTexture(CAL_MODE, wallImgMatVec[I.wall_image], monWallImgMatVec[I.monitor], calImgMatVec[CAL_MODE], HMAT_ARR, projCtx) < 0)
+                    throw std::runtime_error("[appMainLoop] Error returned from updateTexture for wall images");
+            }
+            // Update floor texture
+            else if (CAL_MODE == FLOOR)
+            {
+                if (updateTexture(CAL_MODE, floorImgMatVec[I.floor_image], monFloorImgMatVec[I.monitor], calImgMatVec[CAL_MODE], HMAT_ARR, projCtx) < 0)
+                    throw std::runtime_error("[appMainLoop] Error returned from updateTexture for floor images");
+            }
         }
 
         // Reset keybinding flags

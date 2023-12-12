@@ -657,6 +657,7 @@ private:
 class CircleRenderer
 {
 public:
+
     /**
      * @brief Vertex shader source code with aspect ratio correction.
      *
