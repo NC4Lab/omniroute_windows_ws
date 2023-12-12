@@ -113,7 +113,15 @@ int updateTexture(
     }
 
     // Load the new texture and return status
-    return out_projCtx.loadMatTexture(img_merge);
+    if (out_projCtx.loadMatTexture(img_merge) < 0)
+    {
+        ROS_ERROR("[updateTexture] Failed to load texture");
+        return -1;
+    }
+
+    dbDispImgMat(img_merge);
+
+    return 0;
 }
 
 void appLoadAssets()
