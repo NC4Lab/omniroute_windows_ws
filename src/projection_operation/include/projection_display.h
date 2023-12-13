@@ -73,14 +73,28 @@ const int rmRenderSegments = 36;                       // Number of segments use
 cv::Point2f ScalingFactors = cv::Point2f(1.0f, 1.0f);  // Marker scaling factors
 
 /**
- * @brief Image file sub-directory path
+ * @brief Vector of vertices of the maze corners in centimeter units.
  */
-std::string runtime_wall_image_path = IMAGE_TOP_DIR_PATH + "/runtime";
+const std::vector<cv::Point2f> MAZE_VERT_CM_VEC = {
+    cv::Point2f(0, 90.0),
+    cv::Point2f(90.0, 90.0),
+    cv::Point2f(90.0, 0.0),
+    cv::Point2f(0.0, 0.0)};
+
+/**
+ * @brief Vector of vertices of the maze corners in NDC units.
+ */
+std::vector<std::vector<cv::Point2f>> MAZE_VERT_NDC_VEC(4);
 
 /**
  * @brief Offset for the window position
  */
 std::vector<cv::Point> winOffsetVec;
+
+/**
+ * @brief Image file sub-directory path
+ */
+std::string runtime_wall_image_path = IMAGE_TOP_DIR_PATH + "/runtime";
 
 /**
  * @brief List of wall image file paths

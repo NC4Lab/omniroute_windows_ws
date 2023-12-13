@@ -883,7 +883,7 @@ CircleRenderer::CircleRenderer()
       circColor(cv::Scalar(1.0, 1.0, 1.0)),
       circSegments(32),
       circScalingFactors(cv::Point2f(1.0f, 1.0f)),
-      circWarpH(cv::Mat::eye(3, 3, CV_64F)),
+      circHomMaCM2NDC(cv::Mat::eye(3, 3, CV_64F)),
       circRotationAngle(0.0f)
 {
     // Define instance count and itterate static _CircCnt
@@ -909,7 +909,7 @@ CircleRenderer::~CircleRenderer()
 }
 
 int CircleRenderer::initializeCircleObject(cv::Point2f _circPosition, float _cirRadius, cv::Scalar _circColor, unsigned int _circSegments,
-                                           float _circRotationAngle, cv::Point2f _circScalingFactors, cv::Mat _circWarpH)
+                                           float _circRotationAngle, cv::Point2f _circScalingFactors, cv::Mat _circHomMaCM2NDC)
 {
     int status = 0;
 
@@ -920,7 +920,7 @@ int CircleRenderer::initializeCircleObject(cv::Point2f _circPosition, float _cir
     circSegments = _circSegments;
     circRotationAngle = _circRotationAngle;
     circScalingFactors = _circScalingFactors;
-    circWarpH = _circWarpH;
+    circHomMaCM2NDC = _circHomMaCM2NDC;
 
     // Run initial vertex computation
     _computeVertices(circVertices);
@@ -1290,7 +1290,7 @@ void CircleRenderer::_computeVertices(std::vector<float> &out_circVertices)
 //     }
 //     ROS_INFO("[CircleRenderer::_warpCircle RAW] Min: (%0.2f, %0.2f), Max: (%0.2f, %0.2f)",
 //              minX, minY, maxX, maxY);
-//     dbLogHomMat(circWarpH);
+//     dbLogHomMat(circHomMaCM2NDC);
 
 //     // Log the warped vertices and homography matrix
 //     minX = std::numeric_limits<float>::max();
@@ -1306,12 +1306,11 @@ void CircleRenderer::_computeVertices(std::vector<float> &out_circVertices)
 //     }
 //     ROS_INFO("[CircleRenderer::_warpCircle WARPED] Min: (%0.2f, %0.2f), Max: (%0.2f, %0.2f)",
 //              minX, minY, maxX, maxY);
-//     dbLogHomMat(_circWarpH_NDC);
+//     dbLogHomMat(_circHomMaCM2NDC_NDC);
 // }
 
 void CircleRenderer::_warpCircle(std::vector<float> &out_circVertices)
 {
-    
 }
 
 // ================================================== FUNCTIONS ==================================================
@@ -1865,7 +1864,6 @@ int xmlLoadVertices(int mon_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc
 
     return 0;
 }
-
 
 int checkHMAT(const cv::Mat &_H)
 {

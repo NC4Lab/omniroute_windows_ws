@@ -683,7 +683,7 @@ public:
     unsigned int circSegments;       // Number of segments used to approximate the circle geometry.
     float circRotationAngle;         // Rotation angle of the circle in degrees.
     cv::Point2f circScalingFactors;  // Scaling factors for the circle's x and y dimensions.
-    cv::Mat circWarpH;               // Homography matrix to warp the circle.
+    cv::Mat circHomMaCM2NDC;          // Homography matrix to warp the circle.
 
 private:
     static GLuint _ShaderProgram;                         // Shader program for rendering
@@ -770,7 +770,7 @@ public:
      * @param _circSegments Number of segments for the circle approximation.
      * @param _circRotationAngle Optional rotation angle of the circle in degrees (default to 0.0f).
      * @param _circScalingFactors Optional scaling factors for the circle's x and y dimensions (default to (1.0f, 1.0f)).
-     * @param _circWarpH Optional homography matrix to warp the circle (default to identity).
+     * @param _circHomMaCM2NDC Optional homography matrix to warp the circle (default to identity).
      */
     int initializeCircleObject(
         cv::Point2f _circPosition,
@@ -779,7 +779,7 @@ public:
         unsigned int _circSegments,
         float _circRotationAngle = 0.0f,
         cv::Point2f _circScalingFactors = cv::Point2f(1.0f, 1.0f),
-        cv::Mat _circWarpH = cv::Mat::eye(3, 3, CV_64F));
+        cv::Mat _circHomMaCM2NDC = cv::Mat::eye(3, 3, CV_64F));
 
     /**
      * @brief Compiles, links shaders, and gets uniform locations.
@@ -933,7 +933,7 @@ private:
     /**
      * @brief Warps the circle vertices using a homography matrix.
      *
-     * This method applies the homography matrix (circWarpH) to each vertex of
+     * This method applies the homography matrix (circHomMaCM2NDC) to each vertex of
      * the circle. The vertices are transformed and normalized to fit the new
      * perspective defined by the homography. It's typically called after
      * computing the vertices and before updating the VBO in the rendering
@@ -1348,7 +1348,7 @@ void xmlFrmtFileStringsHmat(
     std::string &out_path);
 
 /**
-* @brief Formats the file name for the XML file for maze vertices matrices.
+ * @brief Formats the file name for the XML file for maze vertices matrices.
  *
  * Format:
  * - `maze_vertices.xml`
@@ -1411,7 +1411,7 @@ int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int mon_i
  *
  * @param mon_ind Monitor index for the active monitor.
  * @param[out] out_quad_vertices_ndc Output vector of cv::Point2f for the vertices.
- * 
+ *
  * @return Integer status code [-1:error, 0:successful].
  */
 int xmlLoadVertices(int mon_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc);

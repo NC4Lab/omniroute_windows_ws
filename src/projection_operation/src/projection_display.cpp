@@ -162,7 +162,7 @@ void appLoadAssets()
     if (loadImgMat(fiImgPathFloorVec, floorImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
 
-    // Load homography matrices from XML files
+    // Load XML file data
     for (const int &mon_ind : I.proj_mon_vec) // for each monitor index
     {
         for (int cal_i = 0; cal_i < N_CAL_MODES; ++cal_i)
@@ -177,8 +177,17 @@ void appLoadAssets()
             {
                 for (int gc_i = 0; gc_i < grid_size; ++gc_i)
                 {
+                    // Load the homography matrix from XML
                     if (xmlLoadHMAT(mon_ind, _CAL_MODE, gr_i, gc_i, HMAT_ARR_VEC[mon_ind][_CAL_MODE][gr_i][gc_i]) < 0)
                         throw std::runtime_error("[appMainLoop] Error returned from xmlLoadHMAT");
+                    if (_CAL_MODE == FLOOR)
+                    {
+                        // Load the maze vertices from XML
+                        std::vector<cv::Point2f> vert_vec(4);
+                        if (xmlLoadVertices(mon_ind, vert_vec) < 0)
+                            throw std::runtime_error("[appMainLoop] Error returned from xmlLoadVertices");
+                        MAZE_VERT_NDC_VEC[0] = vert_vec;
+                    }
                 }
             }
         }
@@ -189,9 +198,10 @@ void appLoadAssets()
 
 void appInitVariables()
 {
+
+    // Intialize the window offset vector
     winOffsetVec.clear();              // Clear any existing elements
     winOffsetVec.reserve(N.projector); // Reserve memory for efficiency
-
     for (int win_ind = 0; win_ind < N.projector; ++win_ind)
     {
         int offsetValue = static_cast<int>(500.0f * (win_ind + 0.1f) * 0.2f);
@@ -237,14 +247,14 @@ void appInitOpenGL()
         if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
 
-        // Get and check the homography matrix for this projector's floor image
-        cv::Mat H = HMAT_ARR_VEC[projCtx.windowInd][CalibrationMode::FLOOR][0][0];
-        if(checkHMAT(H) < 0)
-            throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Invalid homography matrix for floor image");
-
         // Get angle and scaling factor for this projector's rat mask
-        cv::Point2f scaling_factors = cv::Point2f(ScalingFactors.x, ScalingFactors.y);  
+        cv::Point2f scaling_factors = cv::Point2f(ScalingFactors.x, ScalingFactors.y);
         float rm_angle = 0;
+
+        // Compute the homography matrix for tranforming the rat mask for each projector
+        cv::Mat H = cv::findHomography(MAZE_VERT_CM_VEC, MAZE_VERT_NDC_VEC[win_ind]);
+        if (checkHMAT(H) < 0)
+            throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Invalid homography matrix for floor image");
 
         // Initialize the CircleRenderer class object for rat masking
         if (RM_CIRCREND_ARR[win_ind].initializeCircleObject(
