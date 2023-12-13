@@ -683,7 +683,7 @@ public:
     unsigned int circSegments;       // Number of segments used to approximate the circle geometry.
     float circRotationAngle;         // Rotation angle of the circle in degrees.
     cv::Point2f circScalingFactors;  // Scaling factors for the circle's x and y dimensions.
-    cv::Mat circHomMatNDC;          // Homography matrix to convert position from cm to NDC space (default to identity).
+    cv::Mat circHomMatNDC;           // Homography matrix to convert position from cm to NDC space (default to identity).
 
 private:
     static GLuint _ShaderProgram;                         // Shader program for rendering
@@ -788,14 +788,11 @@ public:
      * links them into a shader program, and retrieves the uniform
      * locations. It should be called once during initialization.
      *
-     * @param __WindowWidthPxl Width of the window in pixels.
-     * @param __WindowHeightPxl Height of the window in pixels.
+     * @param __AspectRatioUniform Optional aspect ratio uniform for the shader program (default to 1.0f).
      *
      * @return Integer status code [-1:error, 0:successful].
      */
-    static int CompileAndLinkCircleShaders(
-        int __WindowWidthPxl,
-        int __WindowHeightPxl);
+    static int CompileAndLinkCircleShaders(float __AspectRatioUniform = 1.0f);
 
     /**
      * @brief Sets up the shader for drawing.
@@ -940,6 +937,8 @@ private:
      * The transformed coordinates are then stored back into the same vector.
      * The method assumes the input vector contains an even number of elements,
      * representing pairs of (x, y) coordinates.
+     *
+     * @note Assumes out_circVertices is a flat list of coordinates: [x1, y1, x2, y2, ..., xn, yn]
      *
      * @param[out] out_circVertices The vector of circle vertices in CM, to be transformed.
      */
@@ -1217,13 +1216,16 @@ extern const int MAZE_SIZE = 3;
 extern const int WINDOW_WIDTH_PXL = 3840;
 extern const int WINDOW_HEIGHT_PXL = 2160;
 
+// Specify window aspect ratio
+extern const float WINDOW_AP = (float)WINDOW_WIDTH_PXL / WINDOW_HEIGHT_PXL;
+
 // Maze width and height (pixels)
 const int MAZE_IMAGE_WIDTH_PXL = 1800;
 const int MAZE_IMAGE_HEIGHT_PXL = 1800;
 
 // Maze width and height (NDC)
 const float MAZE_WIDTH_NDC = 0.3f;
-const float MAZE_HEIGHT_NDC = 0.6f;
+const float MAZE_HEIGHT_NDC = MAZE_WIDTH_NDC * WINDOW_AP;
 
 // Maze width and height (cm)
 const float MAZE_WIDTH_HEIGHT_CM = 90.0f;
@@ -1435,7 +1437,7 @@ int checkHMAT(const cv::Mat &_H);
  *
  * @param quad_vertices std:vector of the four vertices defining a quadrilateral.
  *
- * @return Integer status code [-1:invalid wrong size, -2:invalid wrong shape, 0:valid].
+ * @return Integer status code [-2:invalid wrong shape, -1:invalid wrong size, 0:valid].
  */
 int checkQuadVertices(const std::vector<cv::Point2f> &quad_vertices);
 

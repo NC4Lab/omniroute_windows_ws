@@ -874,8 +874,6 @@ GLint CircleRenderer::_ColorLocation = -1;
 GLint CircleRenderer::_TransformLocation = -1;
 GLint CircleRenderer::_AspectRatioLocation = -1;
 float CircleRenderer::_AspectRatioUniform = 1.0f;
-int CircleRenderer::_WindowWidthPxl = 1.0f;
-int CircleRenderer::_WindowHeightPxl = 1.0f;
 
 CircleRenderer::CircleRenderer()
     : circPosition(cv::Point2f(0.0f, 0.0f)),
@@ -966,16 +964,12 @@ int CircleRenderer::initializeCircleObject(cv::Point2f _circPosition, float _cir
     //          circID, circPosition.x, circPosition.y, cirRadius, circColor[0], circColor[1], circColor[2], circSegments);
 }
 
-int CircleRenderer::CompileAndLinkCircleShaders(int __WindowWidthPxl, int __WindowHeightPxl)
+int CircleRenderer::CompileAndLinkCircleShaders(float __AspectRatioUniform)
 {
     int status = 0;
 
-    // Store the window width and height
-    _WindowWidthPxl = __WindowWidthPxl;
-    _WindowHeightPxl = __WindowHeightPxl;
-
     // Set the aspect ratio
-    _AspectRatioUniform = (float)_WindowWidthPxl / _WindowHeightPxl;
+    _AspectRatioUniform = __AspectRatioUniform;
 
     // Compile vertex shader
     GLuint temp_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
@@ -1162,10 +1156,8 @@ int CircleRenderer::CleanupClassResources()
     _TransformLocation = -1;
     _AspectRatioLocation = -1;
 
-    // Reset the window width, height and the aspect ratio uniform
+    // Reset the window aspect ratio uniform
     _AspectRatioUniform = 0.0f;
-    _WindowWidthPxl = 0.0f;
-    _WindowHeightPxl = 0.0f;
 
     return status;
 }
@@ -1268,7 +1260,21 @@ void CircleRenderer::_computeVertices(std::vector<float> &out_circVertices)
 
 void CircleRenderer::_convertToNDC(std::vector<float> &out_circVertices)
 {
-    // Assuming out_circVertices is a flat list of coordinates: [x1, y1, x2, y2, ..., xn, yn]
+    // // Log the raw vertices and homography matrix
+    // float minX = std::numeric_limits<float>::max();
+    // float maxX = std::numeric_limits<float>::lowest();
+    // float minY = std::numeric_limits<float>::max();
+    // float maxY = std::numeric_limits<float>::lowest();
+    // for (size_t i = 0; i < out_circVertices.size(); i += 2)
+    // {
+    //     minX = std::min(minX, out_circVertices[i]);
+    //     maxX = std::max(maxX, out_circVertices[i]);
+    //     minY = std::min(minY, out_circVertices[i + 1]);
+    //     maxY = std::max(maxY, out_circVertices[i + 1]);
+    // }
+    // ROS_INFO("[CircleRenderer::_warpCircle RAW] Min: (%0.2f, %0.2f), Max: (%0.2f, %0.2f)",
+    //          minX, minY, maxX, maxY);
+
     // Convert to vector of cv::Point2f
     std::vector<cv::Point2f> circPoints;
     for (size_t i = 0; i < out_circVertices.size(); i += 2)
@@ -1287,6 +1293,21 @@ void CircleRenderer::_convertToNDC(std::vector<float> &out_circVertices)
         out_circVertices.push_back(pt.x);
         out_circVertices.push_back(pt.y);
     }
+
+    // // Log the warped vertices and homography matrix
+    // minX = std::numeric_limits<float>::max();
+    // maxX = std::numeric_limits<float>::lowest();
+    // minY = std::numeric_limits<float>::max();
+    // maxY = std::numeric_limits<float>::lowest();
+    // for (size_t i = 0; i < out_circVertices.size(); i += 2)
+    // {
+    //     minX = std::min(minX, out_circVertices[i]);
+    //     maxX = std::max(maxX, out_circVertices[i]);
+    //     minY = std::min(minY, out_circVertices[i + 1]);
+    //     maxY = std::max(maxY, out_circVertices[i + 1]);
+    // }
+    // ROS_INFO("[CircleRenderer::_warpCircle WARPED] Min: (%0.2f, %0.2f), Max: (%0.2f, %0.2f)",
+    //          minX, minY, maxX, maxY);
 }
 
 // ================================================== FUNCTIONS ==================================================
@@ -1821,12 +1842,22 @@ int xmlLoadVertices(int mon_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc
     for (pugi::xml_node vertex_node = monitor_node.child("vertex"); vertex_node; vertex_node = vertex_node.next_sibling("vertex"))
     {
         cv::Point2f vertex;
-        vertex.x = vertex_node.child("coord").text().as_float();
-        vertex_node = vertex_node.next_sibling("vertex");
-        if (vertex_node)
-            vertex.y = vertex_node.child("coord").text().as_float();
+        pugi::xml_node coord_node = vertex_node.child("coord");
+        if (coord_node)
+        {
+            vertex.x = coord_node.text().as_float();
+            coord_node = coord_node.next_sibling("coord");
+        }
+
+        if (coord_node)
+        {
+            vertex.y = coord_node.text().as_float();
+        }
         else
-            return -1; // Handle error: every vertex should have two coords
+        {
+            ROS_ERROR("[xmlLoadHMAT] Incomplete vertex data in XML File[%s]", file_path.c_str());
+            return -1; // Handle error: incomplete vertex data
+        }
 
         out_quad_vertices_ndc.push_back(vertex);
     }
@@ -1906,25 +1937,32 @@ std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &quad_ve
     return quad_vertices_pxl;
 }
 
-int computeHomographyMatrix(const std::vector<cv::Point2f> &source_vertices_pxl,
-                            const std::vector<cv::Point2f> &target_vertices_ndc,
+int computeHomographyMatrix(const std::vector<cv::Point2f> &source_vertices,
+                            const std::vector<cv::Point2f> &target_vertices,
                             cv::Mat &out_H)
 {
+    int status;
 
-    // Convert to pixel coordinates for OpenCV's findHomography function
-    std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
+    // Check that the source plane vertices are valid
+    status = checkQuadVertices(source_vertices);
+    if (status < 0)
+    {
+        ROS_ERROR("[computeHomographyMatrix] Source Plane Vertices[%d] Invalid: %s",
+                  source_vertices.size(), status == -1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
+        return -1;
+    }
 
     // Check that the target plane vertices are valid
-    int resp = checkQuadVertices(target_vertices_pxl);
-    if (resp < 0)
+    status = checkQuadVertices(target_vertices);
+    if (status < 0)
     {
-        ROS_WARN("[computeHomographyMatrix] Target Plane Vertices Invalid: Reason[%s]",
-                 resp == -1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
+        ROS_ERROR("[computeHomographyMatrix] Target Plane Vertices[%d] Invalid: %s",
+                  target_vertices.size(), status == -1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
         return -1;
     }
 
     // Use OpenCV's findHomography function to compute the homography matrix
-    cv::Mat H = cv::findHomography(source_vertices_pxl, target_vertices_pxl);
+    cv::Mat H = cv::findHomography(source_vertices, target_vertices);
 
     // Check for valid homography matrix
     if (H.empty())

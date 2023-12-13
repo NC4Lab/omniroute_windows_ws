@@ -138,7 +138,7 @@ int drawRatMask(
     out_rmCircRend.setPosition(position);
 
     // Recompute the marker parameters
-    if (out_rmCircRend.updateCircleObject() < 0)
+    if (out_rmCircRend.updateCircleObject(true) < 0)
         return -1;
 
     // Draw the marker
@@ -186,7 +186,7 @@ void appLoadAssets()
                         std::vector<cv::Point2f> vert_vec(4);
                         if (xmlLoadVertices(mon_ind, vert_vec) < 0)
                             throw std::runtime_error("[appMainLoop] Error returned from xmlLoadVertices");
-                        MAZE_VERT_NDC_VEC[0] = vert_vec;
+                        MAZE_VERT_NDC_VEC[mon_ind] = vert_vec;
                     }
                 }
             }
@@ -204,8 +204,8 @@ void appInitVariables()
     winOffsetVec.reserve(N.projector); // Reserve memory for efficiency
     for (int win_ind = 0; win_ind < N.projector; ++win_ind)
     {
-        int offsetValue = static_cast<int>(500.0f * (win_ind + 0.1f) * 0.2f);
-        winOffsetVec.emplace_back(offsetValue, offsetValue);
+        int offset = static_cast<int>(winOffsetDefualt * (win_ind + 0.05f));
+        winOffsetVec.emplace_back(offset, offset);
     }
 
     ROS_INFO("[appInitVariables] Variables initialized succesfully");
@@ -244,7 +244,7 @@ void appInitOpenGL()
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to compile and link wall shader");
 
         // Create the shader program for CircleRenderer class rat mask rendering
-        if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL) < 0)
+        if (CircleRenderer::CompileAndLinkCircleShaders() < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
 
         // Get angle and scaling factor for this projector's rat mask

@@ -66,8 +66,8 @@ std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projector);
 std::array<CircleRenderer, 4> RM_CIRCREND_ARR;
 
 // Rat mask graphics parameters
-cv::Point2f rmPosition = cv::Point2f(0.0f, 0.0f);      // Marker center
-const GLfloat rmMakerRadius = 0.035f;                  // Default control point rendered circle radius
+cv::Point2f rmPosition = cv::Point2f(0.0f, 0.0f);    // Marker center (cm)
+const GLfloat rmMakerRadius = 10.0f;                   // Default control point rendered circle radius (cm)
 const cv::Scalar rmRGB = cv::Scalar(1.0f, 0.0f, 0.0f); // Marker color (black)
 const int rmRenderSegments = 36;                       // Number of segments used to approximate the circle geometry
 cv::Point2f ScalingFactors = cv::Point2f(1.0f, 1.0f);  // Marker scaling factors
@@ -85,6 +85,11 @@ const std::vector<cv::Point2f> MAZE_VERT_CM_VEC = {
  * @brief Vector of vertices of the maze corners in NDC units.
  */
 std::vector<std::vector<cv::Point2f>> MAZE_VERT_NDC_VEC(4);
+
+/**
+ * @brief Offset for the window position
+ */
+float winOffsetDefualt = 500.0f;
 
 /**
  * @brief Offset for the window position

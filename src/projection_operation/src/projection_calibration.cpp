@@ -452,7 +452,8 @@ int updateWallHomographys(
             }
 
             // Compute and store the homography matrix
-            if (computeHomographyMatrix(source_vertices_pxl, target_vertices_ndc, out_HMAT_ARR[_CAL_MODE][gr_i][gc_i]) < 0)
+            std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
+            if (computeHomographyMatrix(source_vertices_pxl, target_vertices_pxl, out_HMAT_ARR[_CAL_MODE][gr_i][gc_i]) < 0)
                 return -1;
         }
     }
@@ -474,7 +475,8 @@ int updateFloorHomography(const std::array<cv::Point2f, 4> &_CP_ARR, cv::Mat &ou
     std::vector<cv::Point2f> target_vertices_ndc(_CP_ARR.begin(), _CP_ARR.end());
 
     // Compute and store the homography matrix
-    if (computeHomographyMatrix(source_vertices_pxl, target_vertices_ndc, out_H) < 0)
+    std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
+    if (computeHomographyMatrix(source_vertices_pxl, target_vertices_pxl, out_H) < 0)
         return -1;
 
     // Return success
@@ -619,7 +621,7 @@ void appInitOpenGL()
         throw std::runtime_error("[appInitOpenGL] Failed to compile and link wall shader");
 
     // Create the shader program for CircleRenderer class control point rendering
-    if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL) < 0)
+    if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_AP) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
 
     // Initialize the CircleRenderer class objects array
