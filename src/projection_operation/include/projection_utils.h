@@ -244,22 +244,20 @@ using KeyCallbackFunc = void (*)(GLFWwindow *, int, int, int, int);
 class MazeRenderContext
 {
 public:
-    GLuint shaderProgram;             // Shader program for wall rendering
-    const char *vertexShaderSource;   // Vertex shader source code for wall rendering
-    const char *fragmentShaderSource; // Fragment shader source code for wall rendering
-    GLuint vao;                       // Vertex Array Object
-    GLuint vbo;                       // Vertex Buffer Object
-    GLuint ebo;                       // Element Buffer Object
-    GLuint textureID;                 // Texture for the wall
-    GLFWwindow *windowID;             // The window associated with this context
-    GLFWmonitor *monitorID;           // The monitor associated with this context
-    int windowInd;                    // Enum of type CalibrationMode for the window associated with this context
-    int monitorInd;                   // Enum of type CalibrationMode for the monitor associated with this context
-    int windowWidth;                  // Width of the window
-    int windowHeight;                 // Height of the window
-    bool isContextInitialized;        // Flag indicating whether there context has been initialized
-    bool isFullScreen;                // Flag indicating whether the window is in full screen mode
+    GLuint textureID;          // Texture for the wall
+    GLFWwindow *windowID;      // The window associated with this context
+    GLFWmonitor *monitorID;    // The monitor associated with this context
+    int windowInd;             // Enum of type CalibrationMode for the window associated with this context
+    int monitorInd;            // Enum of type CalibrationMode for the monitor associated with this context
+    bool isContextInitialized; // Flag indicating whether there context has been initialized
+    bool isFullScreen;         // Flag indicating whether the window is in full screen mode
 private:
+    int _windowWidthPxl;              // Width of the window
+    int _windowHeightPxl;             // Height of the window
+    GLuint _shaderProgram;            // Shader program for wall rendering
+    GLuint _vao;                      // Vertex Array Object
+    GLuint _vbo;                      // Vertex Buffer Object
+    GLuint _ebo;                      // Element Buffer Object
     static GLFWmonitor **_PP_Monitor; // Pointer to the pointer to the GLFW monitors
     static int _NumMonitors;          // Number of monitors connected to the system
 
@@ -407,26 +405,6 @@ public:
     int static SetupGraphicsLibraries(int &n_mon);
 
     /**
-     * @brief Initializes a new rendering context.
-     *
-     * Checks and sets a new monitor based on the monitor index, creates a new GLFW window,
-     * and sets up the OpenGL context with necessary callbacks and extensions.
-     *
-     * @param win_ind Enum of type CalibrationMode for the window to initialize.
-     * @param mon_ind Enum of type CalibrationMode for the monitor to use for the window.
-     * @param win_width Width of the window to create.
-     * @param win_height Height of the window to create.
-     * @param key_callback Optional key callback function to set for the window (default to nullptr).
-     * @return int Status of context initialization (0 for success, -1 for failure).
-     */
-    int initWindowContext(
-        int win_ind,
-        int mon_ind,
-        int win_width,
-        int win_height,
-        KeyCallbackFunc key_callback = nullptr);
-
-    /**
      * @brief Compiles and links shaders for a given class instance.
      *
      * @param vertex_source Source code for the vertex shader stored as a C++ raw string literal.
@@ -465,6 +443,55 @@ public:
     int MazeRenderContext::checkShaderProgram();
 
     /**
+     * @brief Initializes a new rendering context.
+     *
+     * Checks and sets a new monitor based on the monitor index, creates a new GLFW window,
+     * and sets up the OpenGL context with necessary callbacks and extensions.
+     *
+     * @param win_ind Enum of type CalibrationMode for the window to initialize.
+     * @param mon_ind Enum of type CalibrationMode for the monitor to use for the window.
+     * @param win_width Width of the window to create.
+     * @param win_height Height of the window to create.
+     * @param key_callback Optional key callback function to set for the window (default to nullptr).
+     * @return int Status of context initialization (0 for success, -1 for failure).
+     */
+    int initWindowContext(
+        int win_ind,
+        int mon_ind,
+        int win_width,
+        int win_height,
+        KeyCallbackFunc key_callback = nullptr);
+
+    /**
+     * @brief Initialize OpenGL resources for wall image render objects.
+     *
+     * @param vertices Pointer to the vertex data array for rendering.
+     * @param vertices_size Size of the vertex data array.
+     * @param indices Pointer to the index data array for rendering.
+     * @param indices_size Size of the index data array.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     *
+     * @details
+     * Initializes the Vertex Array Object (VAO), Vertex Buffer Object (VBO) and Element Buffer Object (EBO).
+     */
+    int initRenderObjects(
+        float *vertices,
+        size_t vertices_size,
+        unsigned int *indices,
+        size_t indices_size);
+
+    /**
+     * @brief Sets up the system for a new rendering.
+     *
+     * Makes this the current GL context and clears the color
+     * buffers of the back buffer for a new frame.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int initWindowForDrawing();
+
+    /**
      * @brief Converts an OpenCV Mat image into an OpenGL texture for this context.
      *
      * @param img_mat The cv::Mat image that needs to be converted.
@@ -488,41 +515,6 @@ public:
     int MazeRenderContext::drawTexture();
 
     /**
-     * @brief Cleans up GLFW and resets monitor info.
-     *
-     * Terminates GLFW to clean up all resources and resets monitor pointers and count.
-     * Logs the result of the cleanup process.
-     *
-     * @return int Status of cleanup (0 for success, -1 for failure indicated by GLFW errors).
-     */
-    static int CleanupGraphicsLibraries();
-
-    /**
-     * @brief Cleans up all OpenGL resources.
-     *
-     * This method deletes the shader program, textures, VAO, VBO, EBO, and destroys
-     * the GLFW window if they have been created. It also logs the cleanup process if
-     * logging is enabled.
-     *
-     * @param log_errors If set to true, the method logs the status of each resource
-     *                   cleanup operation.
-     * @return An integer status code. If all resources are cleaned up without any
-     *         OpenGL errors, it returns 0. If there are any OpenGL errors during
-     *         cleanup, it returns -1.
-     */
-    int cleanupContext(bool log_errors);
-
-    /**
-     * @brief Sets up the system for a new rendering.
-     *
-     * Makes this the current GL context and clears the color
-     * buffers of the back buffer for a new frame.
-     *
-     * @return Integer status code [-1:error, 0:successful].
-     */
-    int initWindowForDrawing();
-
-    /**
      * @brief Swap and poll the buffer.
      *
      * Basically a wrapper for glfwSwapBuffers() and glfwPollEvents() which
@@ -531,16 +523,6 @@ public:
      * @return Integer status code [-1:error, 0:successful].
      */
     int bufferSwapPoll();
-
-    /**
-     * @brief Check if the user has requested to exit the program.
-     *
-     * This function checks if the user has pressed the escape key
-     * or if the window has been closed.
-     *
-     * @return Integer status code  [-1:error, 0:no change, 1:window closed, 2:esc key pressed].
-     */
-    int checkExitRequest();
 
     /**
      * @brief Changes the display mode and monitor of the application window.
@@ -589,6 +571,41 @@ public:
         const cv::Scalar &color,
         int duration);
 
+    /**
+     * @brief Check if the user has requested to exit the program.
+     *
+     * This function checks if the user has pressed the escape key
+     * or if the window has been closed.
+     *
+     * @return Integer status code  [-1:error, 0:no change, 1:window closed, 2:esc key pressed].
+     */
+    int checkExitRequest();
+
+    /**
+     * @brief Cleans up GLFW and resets monitor info.
+     *
+     * Terminates GLFW to clean up all resources and resets monitor pointers and count.
+     * Logs the result of the cleanup process.
+     *
+     * @return int Status of cleanup (0 for success, -1 for failure indicated by GLFW errors).
+     */
+    static int CleanupGraphicsLibraries();
+
+    /**
+     * @brief Cleans up all OpenGL resources.
+     *
+     * This method deletes the shader program, textures, VAO, VBO, EBO, and destroys
+     * the GLFW window if they have been created. It also logs the cleanup process if
+     * logging is enabled.
+     *
+     * @param log_errors If set to true, the method logs the status of each resource
+     *                   cleanup operation.
+     * @return An integer status code. If all resources are cleaned up without any
+     *         OpenGL errors, it returns 0. If there are any OpenGL errors during
+     *         cleanup, it returns -1.
+     */
+    int cleanupContext(bool log_errors);
+
 private:
     /**
      * @brief Helper function for resetting members.
@@ -600,22 +617,22 @@ private:
     /**
      * @brief Private helper methods to check shader compilation.
      *
-     * @param shader The shader to check.
+     * @param __shaderProgram The shader to check.
      * @param shader_type The type of shader to check.
      *
      * @return Integer status code [-1:error, 0:successful].
      */
     int _checkShaderCompilation(
-        GLuint shader,
+        GLuint __shaderProgram,
         const std::string &shader_type);
 
     /**
      * @brief Private helper methods to check shader linking.
-     * @param program The shader program to check.
+     * @param __shaderProgram The shader program to check.
      *
      * @return Integer status code [-1:error, 0:successful].
      */
-    int _checkProgramLinking(GLuint program);
+    int _checkProgramLinking(GLuint __shaderProgram);
 
     /**
      * @brief  Private method to check monitor index and id is valid.
@@ -656,7 +673,31 @@ private:
  */
 class CircleRenderer
 {
+
 public:
+    int circID;                      // Enum of type CalibrationMode for the circle, used for identification.
+    std::vector<float> circVertices; // Vertex data for the circle's geometry.
+    cv::Point2f circPosition;        // Position of the circle in 2D space.
+    float cirRadius;                 // Radius of the circle.
+    cv::Scalar circColor;            // Color of the circle.
+    unsigned int circSegments;       // Number of segments used to approximate the circle geometry.
+    float circRotationAngle;         // Rotation angle of the circle in degrees.
+    cv::Point2f circScalingFactors;  // Scaling factors for the circle's x and y dimensions.
+    cv::Mat circWarpH;               // Homography matrix to warp the circle.
+
+private:
+    static GLuint _ShaderProgram;                         // Shader program for rendering
+    GLuint _vao;                                          // Vertex Array Object for the circle.
+    GLuint _vbo;                                          // Vertex Buffer Object for the circle's vertices.
+    cv::Mat _transformationMatrix;                        // Transformation matrix for the circle's vertices.
+    static constexpr float _PI = 3.14159265358979323846f; // Pi
+    static int _CircCnt;                                  // Static index counter for the CircleRenderer class objects
+    static GLint _ColorLocation;                          // Location of color uniform in shader
+    static GLint _TransformLocation;                      // Location of transform uniform in shader
+    static GLint _AspectRatioLocation;                    // Location of aspect ratio uniform in shader
+    static float _AspectRatioUniform;                     // Aspect ratio uniform for the shader program
+    static int CircleRenderer::_WindowWidthPxl;           // Width of the window in pixels
+    static int CircleRenderer::_WindowHeightPxl;          // Height of the window in pixels
     /**
      * @brief Vertex shader source code with aspect ratio correction.
      *
@@ -675,7 +716,7 @@ public:
      * Use this shader source by compiling it into a vertex shader object and linking it into a shader program.
      * Set the `aspectRatio` uniform before drawing to correct the y-coordinate of vertices based on the display aspect ratio.
      */
-    static constexpr const char *vertexShaderSource = R"glsl(
+    static constexpr const char *_circVertexShaderSource = R"glsl(
     #version 330 core
     layout (location = 0) in vec2 aPos;
     uniform mat4 transform;
@@ -697,7 +738,7 @@ public:
      * - `uniform vec4 color;`: Declares a uniform variable for the color, which can be set dynamically via OpenGL calls.
      * - `void main() { ... }`: Main function of the fragment shader, sets the fragment color to the uniform color value.
      */
-    static constexpr const char *fragmentShaderSource = R"glsl(
+    static constexpr const char *_circFragmentShaderSource = R"glsl(
         #version 330 core
         out vec4 FragColor;
         uniform vec4 color;
@@ -706,29 +747,6 @@ public:
             FragColor = color;
         }
     )glsl";
-
-public:
-    int circID;                     // Enum of type CalibrationMode for the circle, used for identification.
-    cv::Scalar circColor;           // Color of the circle.
-    cv::Point2f circPosition;       // Position of the circle in 2D space.
-    float cirRadius;                // Radius of the circle.
-    cv::Mat circWarpH;              // Homography matrix to warp the circle.
-    float circRotationAngle;        // Rotation angle of the circle in degrees.
-    cv::Point2f circScalingFactors; // Scaling factors for the circle's x and y dimensions.
-    unsigned int circSegments;      // Number of segments used to approximate the circle geometry.
-
-private:
-    std::vector<float> _circVertices;                     // Vertex data for the circle's geometry.
-    GLuint _vao;                                          // Vertex Array Object for the circle.
-    GLuint _vbo;                                          // Vertex Buffer Object for the circle's vertices.
-    cv::Mat _transformationMatrix;                        // Transformation matrix for the circle's vertices.
-    static constexpr float _PI = 3.14159265358979323846f; // Pi
-    static int _CircCnt;                                  // Static index counter for the CircleRenderer class objects
-    static GLuint _ShaderProgram;                         // Shader program for rendering
-    static GLint _ColorLocation;                          // Location of color uniform in shader
-    static GLint _TransformLocation;                      // Location of transform uniform in shader
-    static GLint _AspectRatioLocation;                    // Location of aspect ratio uniform in shader
-    static float _AspectRatioUniform;                     // Aspect ratio uniform for the shader program
 
 public:
     /**
@@ -743,69 +761,25 @@ public:
     ~CircleRenderer();
 
     /**
-     * @brief Sets the position of the circle.
-     *
-     * @param pos New position of the circle's center.
-     */
-    void setPosition(cv::Point2f pos);
-
-    /**
-     * @brief Sets the radius of the circle.
-     *
-     * @param rad New radius of the circle.
-     */
-    void setRadius(float rad);
-
-    /**
-     * @brief Sets the rotation angle of the circle.
-     *
-     * @param angle New rotation angle in degrees.
-     */
-    void setRotationAngle(float angle);
-
-    /**
-     * @brief Sets the scaling factors of the circle.
-     *
-     * @param scaling_factors New scaling factors for the x and y axes.
-     */
-    void setScaling(cv::Point2f scaling_factors);
-
-    /**
-     * @brief Sets the color of the circle.
-     * @param col New color of the circle.
-     */
-    void setColor(cv::Scalar col);
-
-    /**
      * @brief Initializes the CircleRenderer with specified attributes.
      * Sets up the OpenGL Vertex Array Object and Vertex Buffer Object.
      *
-     * @param pos Position of the circle's center.
-     * @param rad Radius of the circle.
-     * @param col Color of the circle.
-     * @param segments Number of segments for the circle approximation.
-     * @param _H Optional homography matrix to warp the circle (default to identity).
+     * @param _circPosition Position of the circle's center.
+     * @param _cirRadius Radius of the circle.
+     * @param _circColor Color of the circle.
+     * @param _circSegments Number of segments for the circle approximation.
+     * @param _circRotationAngle Optional rotation angle of the circle in degrees (default to 0.0f).
+     * @param _circScalingFactors Optional scaling factors for the circle's x and y dimensions (default to (1.0f, 1.0f)).
+     * @param _circWarpH Optional homography matrix to warp the circle (default to identity).
      */
-    int initializeCircleAttributes(
-        cv::Point2f pos,
-        float rad,
-        cv::Scalar col,
-        unsigned int segments,
-        cv::Mat _H = cv::Mat::eye(3, 3, CV_64F));
-
-    /**
-     * @brief Recomputes the circle parameters and updates the OpenGL buffer.
-     *
-     * @return Integer status code [-1:error, 0:successful].
-     */
-    int recomputeParameters();
-
-    /**
-     * @brief Draws the circle using the stored shader program and uniforms.
-     *
-     * @return Integer status code [-1:error, 0:successful].
-     */
-    int draw();
+    int initializeCircleObject(
+        cv::Point2f _circPosition,
+        float _cirRadius,
+        cv::Scalar _circColor,
+        unsigned int _circSegments,
+        float _circRotationAngle = 0.0f,
+        cv::Point2f _circScalingFactors = cv::Point2f(1.0f, 1.0f),
+        cv::Mat _circWarpH = cv::Mat::eye(3, 3, CV_64F));
 
     /**
      * @brief Compiles, links shaders, and gets uniform locations.
@@ -815,23 +789,14 @@ public:
      * links them into a shader program, and retrieves the uniform
      * locations. It should be called once during initialization.
      *
-     * @param aspect_ratio The aspect ratio to be set for the shader.
+     * @param __WindowWidthPxl Width of the window in pixels.
+     * @param __WindowHeightPxl Height of the window in pixels.
      *
      * @return Integer status code [-1:error, 0:successful].
      */
-    static int CompileAndLinkCircleShaders(float aspect_ratio);
-
-    /**
-     * @brief Cleans up shader objects and other shared resources.
-     *
-     * @details
-     * This function should be called when the application is terminating
-     * or when you're sure that all instances of CircleRenderer are done
-     * with the shader program and related resources.
-     *
-     * @return Integer status code [-1:error, 0:successful].
-     */
-    static int CleanupClassResources();
+    static int CompileAndLinkCircleShaders(
+        int __WindowWidthPxl,
+        int __WindowHeightPxl);
 
     /**
      * @brief Sets up the shader for drawing.
@@ -855,27 +820,87 @@ public:
      */
     static int UnsetShader();
 
+    /**
+     * @brief Sets the position of the circle.
+     *
+     * @param pos New position of the circle's center.
+     */
+    void setPosition(cv::Point2f _circPosition);
+
+    /**
+     * @brief Sets the radius of the circle.
+     *
+     * @param _cirRadius New radius of the circle.
+     */
+    void setRadius(float _cirRadius);
+
+    /**
+     * @brief Sets the rotation angle of the circle.
+     *
+     * @param _circRotationAngle New rotation angle in degrees.
+     */
+    void setRotationAngle(float _circRotationAngle);
+
+    /**
+     * @brief Sets the scaling factors of the circle.
+     *
+     * @param _circScalingFactors New scaling factors for the x and y axes.
+     */
+    void setScaling(cv::Point2f _circScalingFactors);
+
+    /**
+     * @brief Sets the color of the circle.
+     * @param _circColor New color of the circle.
+     */
+    void setColor(cv::Scalar _circColor);
+
+    /**
+     * @brief Recomputes the circle parameters and updates the OpenGL buffer.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int updateCircleObject();
+
+    /**
+     * @brief Draws the circle using the stored shader program and uniforms.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int draw();
+
+    /**
+     * @brief Cleans up shader objects and other shared resources.
+     *
+     * @details
+     * This function should be called when the application is terminating
+     * or when you're sure that all instances of CircleRenderer are done
+     * with the shader program and related resources.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    static int CleanupClassResources();
+
 private:
     /**
      * @brief Private helper methods to check shader compilation.
      *
-     * @param shader The shader to check.
+     * @param ___ShaderProgram The shader to check.
      * @param shader_type The type of shader to check.
      *
      * @return Integer status code [-1:error, 0:successful].
      */
     static int _CheckShaderCompilation(
-        GLuint shader,
+        GLuint ___ShaderProgram,
         const std::string &shader_type);
 
     /**
      * @brief Private helper methods to check shader linking.
      *
-     * @param program The shader program to check.
+     * @param ___ShaderProgram The shader program to check.
      *
      * @return Integer status code [-1:error, 0:successful].
      */
-    static int _CheckProgramLinking(GLuint program);
+    static int _CheckProgramLinking(GLuint ___ShaderProgram);
 
     /**
      * @brief Sets up the OpenGL Vertex Array Object and Vertex Buffer Object.
@@ -886,12 +911,12 @@ private:
 
     /**
      * @brief Converts an OpenCV Mat to an array suitable for OpenGL transformations.
-     * 
-     * @param[out] out_mat The OpenCV Mat to convert.
-     * 
+     *
+     * @param[out] out_transformationMatrix The OpenCV Mat to convert.
+     *
      * @return An array of floats representing the matrix data.
      */
-    std::array<float, 16> _cvMatToGlArray(const cv::Mat &out_mat);
+    std::array<float, 16> _cvMatToGlArray(const cv::Mat &out_transformationMatrix);
 
     /**
      * @brief Computes the transformation matrix based on the circle's parameters.
@@ -900,10 +925,10 @@ private:
 
     /**
      * @brief Computes the vertices for the circle approximation.
-     * 
-     * @param[out] out_vertices Reference to the vertex array to store the computed vertices.
+     *
+     * @param[out] out_circVertices Reference to the vertex array to store the computed vertices.
      */
-    void _computeVertices(std::vector<float> &out_vertices);
+    void _computeVertices(std::vector<float> &out_circVertices);
 
     /**
      * @brief Warps the circle vertices using a homography matrix.
@@ -914,9 +939,9 @@ private:
      * computing the vertices and before updating the VBO in the rendering
      * pipeline.
      *
-     * @param[out] out_vertices A reference to a vector of float, representing the circle's vertices.
+     * @param[out] out_circVertices A reference to a vector of float, representing the circle's vertices.
      */
-    void _warpCircle(std::vector<float> &out_vertices);
+    void _warpCircle(std::vector<float> &out_circVertices);
 };
 
 #endif // CIRCLE_RENDERER_H
@@ -1189,7 +1214,6 @@ extern const int MAZE_SIZE = 3;
 // Sprecify window resolution: 4K resolution (3840x2160)
 extern const int WINDOW_WIDTH_PXL = 3840;
 extern const int WINDOW_HEIGHT_PXL = 2160;
-extern const float WINDOW_ASPECT_RATIO = (float)WINDOW_WIDTH_PXL / WINDOW_HEIGHT_PXL;
 
 // Maze floor width and height (pixels)
 const int FLOOR_IMAGE_WIDTH_PXL = 1800;
@@ -1310,7 +1334,7 @@ void dbDispImgMat(const cv::Mat &img_mat);
 std::string promptForProjectorNumber();
 
 /**
- * @brief Formats the file name for the XML file based on the active calibration mode and monitor.
+ * @brief Formats the file name for the XML file for homography matrices.
  *
  * Format:
  * - `hmats_m<number>.xml`
@@ -1318,12 +1342,21 @@ std::string promptForProjectorNumber();
  *
  * @param mon_ind Enum of type CalibrationMode for the active or desired monitor.
  * @param[out] out_path Reference to string that will store the path to the XML file.
- *
- * @return Integer status code [-1:error, 0:successful].
  */
-int xmlFrmtFileStrings(
+void xmlFrmtFileStringsHmat(
     int mon_ind,
     std::string &out_path);
+
+/**
+* @brief Formats the file name for the XML file for maze vertices matrices.
+ *
+ * Format:
+ * - `maze_vertices.xml`
+ *
+ * @param mon_ind Enum of type CalibrationMode for the active or desired monitor.
+ * @param[out] out_path Reference to string that will store the path to the XML file.
+ */
+void xmlFrmtFileStringsVertices(std::string &out_path);
 
 /**
  * Save a single cv::Mat homography matrix to an XML file.
@@ -1362,6 +1395,26 @@ int xmlLoadHMAT(
     int grid_row,
     int grid_col,
     cv::Mat &out_H);
+
+/**
+ * Save a vector of four vertices (cv::Point2f) to an XML file.
+ *
+ * @param quad_vertices_ndc Vector of cv::Point2f representing the vertices.
+ * @param mon_ind Monitor index for the active monitor.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int mon_ind);
+
+/**
+ * Load a vector of four vertices (cv::Point2f) from an XML file.
+ *
+ * @param mon_ind Monitor index for the active monitor.
+ * @param[out] out_quad_vertices_ndc Output vector of cv::Point2f for the vertices.
+ * 
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int xmlLoadVertices(int mon_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc);
 
 /**
  * Checks for size and signulararity issues in a homography matrix.
@@ -1482,23 +1535,6 @@ int loadImgMat(
 int mergeImgMat(
     const cv::Mat &mask_img,
     cv::Mat &out_base_img);
-
-/**
- * @brief Initialize OpenGL resources for wall image render objects.
- *
- * @param[out] out_renCtx Reference to an instance of the out_renCtx class.
- *
- * @return Integer status code [-1:error, 0:successful].
- *
- * @details
- * Initializes the Vertex Array Object (VAO), Vertex Buffer Object (VBO) and Element Buffer Object (EBO).
- */
-int initWallRenderObjects(
-    float *vertices,
-    size_t verticesSize,
-    unsigned int *indices,
-    size_t indicesSize,
-    MazeRenderContext &out_renCtx);
 
 /**
  * @brief Warp OpenCV image using homography matrix.

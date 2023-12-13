@@ -45,9 +45,9 @@ static struct IndStruct
  */
 static struct CountStruct
 {
-    int monitor;                                 // Number of monitors connected to the system
-    const int projector = I.proj_mon_vec.size(); // Number of projectors
-    const int wall_image = 6;                    // Number of wall images
+    int monitor;                                                   // Number of monitors connected to the system
+    const int projector = static_cast<int>(I.proj_mon_vec.size()); // Number of projectors
+    const int wall_image = 6;                                      // Number of wall images
 } N;
 
 /**
@@ -67,9 +67,10 @@ std::array<CircleRenderer, 4> RM_CIRCREND_ARR;
 
 // Rat mask graphics parameters
 cv::Point2f rmPosition = cv::Point2f(0.0f, 0.0f);      // Marker center
-const GLfloat rmMakerRadius = 0.025f;                 // Default control point rendered circle radius
+const GLfloat rmMakerRadius = 0.035f;                  // Default control point rendered circle radius
 const cv::Scalar rmRGB = cv::Scalar(1.0f, 0.0f, 0.0f); // Marker color (black)
 const int rmRenderSegments = 36;                       // Number of segments used to approximate the circle geometry
+cv::Point2f ScalingFactors = cv::Point2f(1.0f, 1.0f);  // Marker scaling factors
 
 /**
  * @brief Image file sub-directory path
@@ -97,6 +98,7 @@ std::vector<std::string> fiImgPathWallVec = {
  */
 std::vector<std::string> fiImgPathFloorVec = {
     runtime_wall_image_path + "/f_blank.png",
+    runtime_wall_image_path + "/f_white.png",
     runtime_wall_image_path + "/f_chambers.png",
 };
 
@@ -151,14 +153,12 @@ int updateTexture(
  * @brief Draws control points associated with each corner wall.
  *
  * @param position Maker center position NDC.
- * @param _H The homography matrix used for warping.
  * @param[out] out_rmCircRend CircleRenderer objects used to draw the control points.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int drawRatMask(
     cv::Point2f position,
-    cv::Mat _H,
     CircleRenderer &out_rmCircRend);
 
 /**

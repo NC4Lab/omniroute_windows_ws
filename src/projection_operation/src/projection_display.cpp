@@ -46,12 +46,16 @@ int updateTexture(
     MazeRenderContext &out_projCtx)
 {
     // Initialize the image to be used as the texture
-    cv::Mat img_merge = cv::Mat::zeros(out_projCtx.windowHeight, out_projCtx.windowWidth, CV_8UC4);
+    cv::Mat img_merge = cv::Mat::zeros(WINDOW_HEIGHT_PXL, WINDOW_WIDTH_PXL, CV_8UC4);
 
     // Iterate through through calibration modes in descending order so floor is drawn first
     for (int cal_i = N_CAL_MODES - 1; cal_i >= 0; --cal_i)
     {
         CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
+
+        // TEMP
+        if (_CAL_MODE != FLOOR)
+            continue;
 
         // Specify number of rows/cols to loop through
         int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? MAZE_SIZE : 1;
@@ -124,7 +128,6 @@ int updateTexture(
 
 int drawRatMask(
     cv::Point2f position,
-    cv::Mat _H,
     CircleRenderer &out_rmCircRend)
 {
     // Setup the CircleRenderer class shaders
@@ -135,7 +138,7 @@ int drawRatMask(
     out_rmCircRend.setPosition(position);
 
     // Recompute the marker parameters
-    if (out_rmCircRend.recomputeParameters() < 0)
+    if (out_rmCircRend.updateCircleObject() < 0)
         return -1;
 
     // Draw the marker
@@ -219,9 +222,7 @@ void appInitOpenGL()
             throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
 
         // Initialize OpenGL wall image objects
-        if (initWallRenderObjects(QUAD_GL_VERTICES, sizeof(QUAD_GL_VERTICES),
-                                  QUAD_GL_INDICES, sizeof(QUAD_GL_INDICES),
-                                  projCtx) < 0)
+        if (projCtx.initRenderObjects(QUAD_GL_VERTICES, sizeof(QUAD_GL_VERTICES), QUAD_GL_INDICES, sizeof(QUAD_GL_INDICES)) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
 
         // Set all projectors to the starting monitor and include xy offset
@@ -233,15 +234,27 @@ void appInitOpenGL()
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to compile and link wall shader");
 
         // Create the shader program for CircleRenderer class rat mask rendering
-        if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_ASPECT_RATIO) < 0)
+        if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
 
+        // Get and check the homography matrix for this projector's floor image
+        cv::Mat H = HMAT_ARR_VEC[projCtx.windowInd][CalibrationMode::FLOOR][0][0];
+        if(checkHMAT(H) < 0)
+            throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Invalid homography matrix for floor image");
+
+        // Get angle and scaling factor for this projector's rat mask
+        cv::Point2f scaling_factors = cv::Point2f(ScalingFactors.x, ScalingFactors.y);  
+        float rm_angle = 0;
+
         // Initialize the CircleRenderer class object for rat masking
-        if (RM_CIRCREND_ARR[win_ind].initializeCircleAttributes(
-                rmPosition,      // position
-                rmMakerRadius,   // radius
-                rmRGB,           // color
-                rmRenderSegments // segments
+        if (RM_CIRCREND_ARR[win_ind].initializeCircleObject(
+                rmPosition,       // position
+                rmMakerRadius,    // radius
+                rmRGB,            // color
+                rmRenderSegments, // segments
+                rm_angle,         // angle
+                scaling_factors,  // scaling factors
+                H                 // homography matrix
                 ) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
 
@@ -302,9 +315,9 @@ void appMainLoop()
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from drawTexture");
 
             // Draw/update rat mask marker
-            rmPosition.x = rmPosition.x < 0.5 ? rmPosition.x + 0.001f : -0.5;
-            rmPosition.y = rmPosition.y < 0.5 ? rmPosition.y + 0.001f : -0.5;
-            if (drawRatMask(rmPosition, HMAT_ARR_VEC[projCtx.windowInd][CalibrationMode::FLOOR][0][0], RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
+            // rmPosition.x = rmPosition.x < 0.5 ? rmPosition.x + 0.001f : -0.5;
+            // rmPosition.y = rmPosition.y < 0.5 ? rmPosition.y + 0.001f : -0.5;
+            if (drawRatMask(rmPosition, RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from drawRatMask");
 
             // Swap buffers and poll events

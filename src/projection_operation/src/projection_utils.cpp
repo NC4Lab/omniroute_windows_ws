@@ -16,9 +16,9 @@ int MazeRenderContext::_NumMonitors = 0;
 
 // Constructor
 MazeRenderContext::MazeRenderContext()
-    : shaderProgram(0), vao(0), vbo(0), ebo(0), textureID(0),
+    : _shaderProgram(0), _vao(0), _vbo(0), _ebo(0), textureID(0),
       windowID(nullptr), monitorID(nullptr),
-      windowWidth(800), windowHeight(600),
+      _windowWidthPxl(800), _windowHeightPxl(600),
       windowInd(-1), monitorInd(-1)
 {
     // Members are initialized to default values, setup is deferred
@@ -36,13 +36,19 @@ MazeRenderContext::~MazeRenderContext()
 
 // COPY CONSTRUCTOR
 MazeRenderContext::MazeRenderContext(MazeRenderContext &&other) noexcept
-    : shaderProgram(other.shaderProgram), vao(other.vao), vbo(other.vbo),
-      ebo(other.ebo), textureID(other.textureID),
-      windowID(other.windowID), monitorID(other.monitorID),
-      windowWidth(other.windowWidth), windowHeight(other.windowHeight),
-      windowInd(other.windowInd), monitorInd(other.monitorInd),
+    : textureID(other.textureID),
+      windowID(other.windowID),
+      monitorID(other.monitorID),
+      windowInd(other.windowInd),
+      monitorInd(other.monitorInd),
       isContextInitialized(other.isContextInitialized),
-      isFullScreen(other.isFullScreen)
+      isFullScreen(other.isFullScreen),
+      _windowWidthPxl(other._windowWidthPxl),
+      _windowHeightPxl(other._windowHeightPxl),
+      _shaderProgram(other._shaderProgram),
+      _vao(other._vao),
+      _vbo(other._vbo),
+      _ebo(other._ebo)
 {
     // Reset the other's members to prevent double deletion
     other._resetMembers(); // Use a member function for resetting
@@ -60,19 +66,19 @@ MazeRenderContext &MazeRenderContext::operator=(MazeRenderContext &&other) noexc
         }
 
         // Transfer ownership of resources from other to this
-        shaderProgram = other.shaderProgram;
-        vao = other.vao;
-        vbo = other.vbo;
-        ebo = other.ebo;
         textureID = other.textureID;
         windowID = other.windowID;
         monitorID = other.monitorID;
-        windowHeight = other.windowHeight;
-        windowWidth = other.windowWidth;
         windowInd = other.windowInd;
         monitorInd = other.monitorInd;
         isContextInitialized = other.isContextInitialized;
         isFullScreen = other.isFullScreen;
+        _windowHeightPxl = other._windowHeightPxl;
+        _windowWidthPxl = other._windowWidthPxl;
+        _shaderProgram = other._shaderProgram;
+        _vao = other._vao;
+        _vbo = other._vbo;
+        _ebo = other._ebo;
 
         // Reset the other's members to default values
         other._resetMembers();
@@ -172,6 +178,107 @@ int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon)
     return 0;
 }
 
+int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source)
+{
+    int status = 0;
+
+    // Set the GLFW window as the current OpenGL context
+    if (windowID == nullptr)
+        return -1;
+    glfwMakeContextCurrent(windowID);
+    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Check that context is initialized
+    if (!isContextInitialized)
+    {
+        ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Context Not Initialized");
+        return -1;
+    }
+
+    // Compile vertex shader
+    GLuint temp_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
+    glShaderSource(temp_vertex_shader, 1, &vertex_source, nullptr);
+    glCompileShader(temp_vertex_shader);
+    if (_checkShaderCompilation(temp_vertex_shader, "VERTEX") < 0)
+    {
+        glDeleteShader(temp_vertex_shader);
+        ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Vertex shader compilation failed.");
+        return -1;
+    }
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Compile fragment shader
+    GLuint temp_fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
+    glShaderSource(temp_fragment_shader, 1, &fragment_source, nullptr);
+    glCompileShader(temp_fragment_shader);
+    if (_checkShaderCompilation(temp_fragment_shader, "FRAGMENT") < 0)
+    {
+        glDeleteShader(temp_vertex_shader);
+        glDeleteShader(temp_fragment_shader);
+        ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Fragment shader compilation failed.");
+        return -1;
+    }
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Link shaders into a program
+    _shaderProgram = glCreateProgram();
+    glAttachShader(_shaderProgram, temp_vertex_shader);
+    glAttachShader(_shaderProgram, temp_fragment_shader);
+    glLinkProgram(_shaderProgram);
+    if (_checkProgramLinking(_shaderProgram) < 0)
+    {
+        glDeleteShader(temp_vertex_shader);
+        glDeleteShader(temp_fragment_shader);
+        glDeleteProgram(_shaderProgram);
+        ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Shader program linking failed.");
+        return -1;
+    }
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Cleanup: detach and delete shaders
+    glDetachShader(_shaderProgram, temp_vertex_shader);
+    glDeleteShader(temp_vertex_shader);
+    glDetachShader(_shaderProgram, temp_fragment_shader);
+    glDeleteShader(temp_fragment_shader);
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    return status;
+}
+
+int MazeRenderContext::checkShaderProgram()
+{
+    if (_shaderProgram == 0)
+    {
+        ROS_ERROR("[MazeRenderContext::checkShaderProgram] No shader program to validate.");
+        return -1;
+    }
+
+    glValidateProgram(_shaderProgram);
+    GLint validation_status;
+    glGetProgramiv(_shaderProgram, GL_VALIDATE_STATUS, &validation_status);
+
+    if (validation_status == GL_FALSE)
+    {
+        GLint log_length;
+        glGetProgramiv(_shaderProgram, GL_INFO_LOG_LENGTH, &log_length);
+
+        // The max length includes the NULL character
+        std::vector<GLchar> error_log(log_length);
+        glGetProgramInfoLog(_shaderProgram, log_length, &log_length, &error_log[0]);
+
+        // Log the error
+        ROS_ERROR("[MazeRenderContext::checkShaderProgram] Shader program validation failed: %s", &error_log[0]);
+
+        // Delete the shader program if you won't need it after a failed validation
+        glDeleteProgram(_shaderProgram);
+        _shaderProgram = 0;
+
+        return -1;
+    }
+
+    return 0;
+}
+
 int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width, int win_height, KeyCallbackFunc key_callback)
 {
     int status = 0;
@@ -184,11 +291,11 @@ int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width
     }
 
     // Store the window size
-    windowWidth = win_width;
-    windowHeight = win_height;
+    _windowWidthPxl = win_width;
+    _windowHeightPxl = win_height;
 
     // Create a new GLFW window
-    windowID = glfwCreateWindow(windowWidth, windowHeight, "", monitorID, NULL); // Use the monitor in window creation
+    windowID = glfwCreateWindow(_windowWidthPxl, _windowHeightPxl, "", monitorID, NULL); // Use the monitor in window creation
     if (!windowID)
     {
         glfwTerminate();
@@ -244,7 +351,8 @@ int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width
     return status;
 }
 
-int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source)
+int MazeRenderContext::initRenderObjects(float *vertices, size_t vertices_size,
+                                         unsigned int *indices, size_t indices_size)
 {
     int status = 0;
 
@@ -254,95 +362,62 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
     glfwMakeContextCurrent(windowID);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
-    // Check that context is initialized
-    if (!isContextInitialized)
-    {
-        ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Context Not Initialized");
-        return -1;
-    }
+    // Generate and bind an Element Buffer Object (EBO)
+    glGenBuffers(1, &_ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
 
-    // Compile vertex shader
-    GLuint temp_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(temp_vertex_shader, 1, &vertex_source, nullptr);
-    glCompileShader(temp_vertex_shader);
-    if (_checkShaderCompilation(temp_vertex_shader, "VERTEX") < 0)
-    {
-        glDeleteShader(temp_vertex_shader);
-        ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Vertex shader compilation failed.");
-        return -1;
-    }
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    // Initialize the EBO with index data
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_size, indices, GL_DYNAMIC_DRAW);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
 
-    // Compile fragment shader
-    GLuint temp_fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(temp_fragment_shader, 1, &fragment_source, nullptr);
-    glCompileShader(temp_fragment_shader);
-    if (_checkShaderCompilation(temp_fragment_shader, "FRAGMENT") < 0)
-    {
-        glDeleteShader(temp_vertex_shader);
-        glDeleteShader(temp_fragment_shader);
-        ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Fragment shader compilation failed.");
-        return -1;
-    }
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    // Generate and bind a Vertex Array Object (VAO)
+    glGenVertexArrays(1, &_vao);
+    glBindVertexArray(_vao);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
 
-    // Link shaders into a program
-    shaderProgram = glCreateProgram();
-    glAttachShader(shaderProgram, temp_vertex_shader);
-    glAttachShader(shaderProgram, temp_fragment_shader);
-    glLinkProgram(shaderProgram);
-    if (_checkProgramLinking(shaderProgram) < 0)
-    {
-        glDeleteShader(temp_vertex_shader);
-        glDeleteShader(temp_fragment_shader);
-        glDeleteProgram(shaderProgram);
-        ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Shader program linking failed.");
-        return -1;
-    }
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    // Generate and bind a Vertex Buffer Object (VBO)
+    glGenBuffers(1, &_vbo);
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
 
-    // Cleanup: detach and delete shaders
-    glDetachShader(shaderProgram, temp_vertex_shader);
-    glDeleteShader(temp_vertex_shader);
-    glDetachShader(shaderProgram, temp_fragment_shader);
-    glDeleteShader(temp_fragment_shader);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    // Initialize the VBO with vertex data
+    glBufferData(GL_ARRAY_BUFFER, vertices_size, vertices, GL_STATIC_DRAW);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
 
+    // Specify the format of the vertex data for the position attribute
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
+    glEnableVertexAttribArray(0); // Enable the position attribute
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Specify the format of the vertex data for the texture coordinate attribute
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
+    glEnableVertexAttribArray(1); // Enable the texture coordinate attribute
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Unbind the VAO to prevent accidental modification
+    glBindVertexArray(0);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+
+    // Return GL status
     return status;
 }
 
-int MazeRenderContext::checkShaderProgram()
+int MazeRenderContext::initWindowForDrawing()
 {
-    if (shaderProgram == 0)
-    {
-        ROS_ERROR("[MazeRenderContext::checkShaderProgram] No shader program to validate.");
+    int status = 0;
+
+    // Set the GLFW window as the current OpenGL context
+    if (windowID == nullptr)
         return -1;
-    }
+    glfwMakeContextCurrent(windowID);
+    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
-    glValidateProgram(shaderProgram);
-    GLint validationStatus;
-    glGetProgramiv(shaderProgram, GL_VALIDATE_STATUS, &validationStatus);
+    // Clear the back buffer for a new frame
+    glClear(GL_COLOR_BUFFER_BIT);
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
-    if (validationStatus == GL_FALSE)
-    {
-        GLint logLength;
-        glGetProgramiv(shaderProgram, GL_INFO_LOG_LENGTH, &logLength);
-
-        // The maxLength includes the NULL character
-        std::vector<GLchar> errorLog(logLength);
-        glGetProgramInfoLog(shaderProgram, logLength, &logLength, &errorLog[0]);
-
-        // Log the error
-        ROS_ERROR("[MazeRenderContext::checkShaderProgram] Shader program validation failed: %s", &errorLog[0]);
-
-        // Optionally, delete the shader program if you won't need it after a failed validation
-        // glDeleteProgram(shaderProgram);
-        // shaderProgram = 0;
-
-        return -1;
-    }
-
-    return 0;
+    return status;
 }
 
 int MazeRenderContext::loadMatTexture(cv::Mat img_mat)
@@ -400,7 +475,7 @@ int MazeRenderContext::drawTexture()
     }
 
     // Use the shader program for wall rendering
-    glUseProgram(shaderProgram);
+    glUseProgram(_shaderProgram);
     status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Bind the texture for the image
@@ -409,11 +484,11 @@ int MazeRenderContext::drawTexture()
     status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Bind the Vertex Array Object(VAO) specific to the current wall
-    glBindVertexArray(vao);
+    glBindVertexArray(_vao);
     status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Bind the common Element Buffer Object (EBO)
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ebo);
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
     status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Draw the rectangle (2 triangles) for the current wall
@@ -426,99 +501,6 @@ int MazeRenderContext::drawTexture()
 
     // Unset the shader program
     glUseProgram(0);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    return status;
-}
-
-int MazeRenderContext::cleanupContext(bool log_errors)
-{
-    int status = 0;
-
-    // Set the GLFW window as the current OpenGL context
-    if (windowID != nullptr)
-    {
-        glfwMakeContextCurrent(windowID);
-        status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
-    }
-
-    // Delete the shader program
-    if (shaderProgram != 0)
-    {
-        glDeleteProgram(shaderProgram);
-        status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteProgram error") < 0 ? -1 : status;
-        if (log_errors)
-            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete shader program" : "Shader program deleted successfully");
-        shaderProgram = 0;
-        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-    }
-
-    // Delete the texture
-    if (textureID != 0)
-    {
-        glDeleteTextures(1, &textureID);
-        status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteTextures error") < 0 ? -1 : status;
-        if (log_errors)
-            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete texture" : "Texture deleted successfully");
-        textureID = 0;
-        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-    }
-
-    // Delete the VAO, VBO, and EBO
-    if (vao != 0)
-    {
-        glDeleteVertexArrays(1, &vao);
-        status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteVertexArrays error") < 0 ? -1 : status;
-        if (log_errors)
-            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete VAO" : "VAO deleted successfully");
-        vao = 0;
-        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-    }
-    if (vbo != 0)
-    {
-        glDeleteBuffers(1, &vbo);
-        status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteBuffers error") < 0 ? -1 : status;
-        if (log_errors)
-            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete VBO" : "VBO deleted successfully");
-        vbo = 0;
-        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-    }
-    if (ebo != 0)
-    {
-        glDeleteBuffers(1, &ebo);
-        status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteBuffers error") < 0 ? -1 : status;
-        if (log_errors)
-            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete EBO" : "EBO deleted successfully");
-        ebo = 0;
-        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-    }
-
-    // Destroy the GLFW window
-    if (windowID != nullptr)
-    {
-        glfwDestroyWindow(windowID);
-        status = CheckErrorGLFW(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glfwDestroyWindow error") < 0 ? -1 : status;
-        if (log_errors)
-            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to destroy GLFW window" : "GLFW window destroyed successfully");
-        windowID = nullptr;
-        status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
-    }
-
-    return status ? -1 : 0;
-}
-
-int MazeRenderContext::initWindowForDrawing()
-{
-    int status = 0;
-
-    // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr)
-        return -1;
-    glfwMakeContextCurrent(windowID);
-    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    // Clear the back buffer for a new frame
-    glClear(GL_COLOR_BUFFER_BIT);
     status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     return status;
@@ -538,55 +520,6 @@ int MazeRenderContext::bufferSwapPoll()
     glfwPollEvents();
 
     return CheckErrorGLFW(__LINE__, __FILE__);
-}
-
-int MazeRenderContext::checkExitRequest()
-{
-    int status = 0;
-
-    // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr)
-        return -1;
-    glfwMakeContextCurrent(windowID);
-    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    // Check if the window should close
-    if (glfwWindowShouldClose(windowID))
-    {
-        ROS_INFO("[MazeRenderContext::checkExitRequest] Close Requested: Window[%d] Monitor[%d]", windowInd, monitorInd);
-        return 1;
-    }
-
-    // Check if the escape key is pressed
-    if (glfwGetKey(windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    {
-        ROS_INFO("[MazeRenderContext::checkExitRequest] Escape Key Pressed: Window[%d] Monitor[%d]", windowInd, monitorInd);
-        return 2;
-    }
-
-    if (CheckErrorGLFW(__LINE__, __FILE__) < 0)
-        return -1;
-
-    return 0;
-}
-
-int MazeRenderContext::CleanupGraphicsLibraries()
-{
-    int status = 0;
-
-    // Terminate GLFW, which cleans up all GLFW resources.
-    glfwTerminate();
-    status = CheckErrorGLFW(__LINE__, __FILE__);
-    if (status < 0)
-        ROS_WARN("[MazeRenderContext::CleanupGraphicsLibraries] Failed to Terminate GLFW Library");
-    else
-        ROS_INFO("[MazeRenderContext::CleanupGraphicsLibraries] Graphics libraries and shared resources cleaned up successfully.");
-
-    // Reset monitor pointers and count
-    _PP_Monitor = nullptr;
-    _NumMonitors = 0;
-
-    return status;
 }
 
 int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscreen, cv::Point offset_xy)
@@ -647,7 +580,7 @@ int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscre
         }
 
         // Calculate window size based on aspect ratio of the inialized window dimensions
-        win_width = static_cast<int>(576.0f * (windowWidth / static_cast<float>(windowHeight)));
+        win_width = static_cast<int>(576.0f * (_windowWidthPxl / static_cast<float>(_windowHeightPxl)));
         win_height = 576;
 
         // Compute window position based on monitor position and offset with a minimum offset of 100 pixels
@@ -716,45 +649,170 @@ int MazeRenderContext::flashBackgroundColor(const cv::Scalar &color, int duratio
     return status;
 }
 
+int MazeRenderContext::checkExitRequest()
+{
+    int status = 0;
+
+    // Set the GLFW window as the current OpenGL context
+    if (windowID == nullptr)
+        return -1;
+    glfwMakeContextCurrent(windowID);
+    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Check if the window should close
+    if (glfwWindowShouldClose(windowID))
+    {
+        ROS_INFO("[MazeRenderContext::checkExitRequest] Close Requested: Window[%d] Monitor[%d]", windowInd, monitorInd);
+        return 1;
+    }
+
+    // Check if the escape key is pressed
+    if (glfwGetKey(windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
+    {
+        ROS_INFO("[MazeRenderContext::checkExitRequest] Escape Key Pressed: Window[%d] Monitor[%d]", windowInd, monitorInd);
+        return 2;
+    }
+
+    if (CheckErrorGLFW(__LINE__, __FILE__) < 0)
+        return -1;
+
+    return 0;
+}
+
+int MazeRenderContext::CleanupGraphicsLibraries()
+{
+    int status = 0;
+
+    // Terminate GLFW, which cleans up all GLFW resources.
+    glfwTerminate();
+    status = CheckErrorGLFW(__LINE__, __FILE__);
+    if (status < 0)
+        ROS_WARN("[MazeRenderContext::CleanupGraphicsLibraries] Failed to Terminate GLFW Library");
+    else
+        ROS_INFO("[MazeRenderContext::CleanupGraphicsLibraries] Graphics libraries and shared resources cleaned up successfully.");
+
+    // Reset monitor pointers and count
+    _PP_Monitor = nullptr;
+    _NumMonitors = 0;
+
+    return status;
+}
+
+int MazeRenderContext::cleanupContext(bool log_errors)
+{
+    int status = 0;
+
+    // Set the GLFW window as the current OpenGL context
+    if (windowID != nullptr)
+    {
+        glfwMakeContextCurrent(windowID);
+        status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
+    }
+
+    // Delete the shader program
+    if (_shaderProgram != 0)
+    {
+        glDeleteProgram(_shaderProgram);
+        status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteProgram error") < 0 ? -1 : status;
+        if (log_errors)
+            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete shader program" : "Shader program deleted successfully");
+        _shaderProgram = 0;
+        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    }
+
+    // Delete the texture
+    if (textureID != 0)
+    {
+        glDeleteTextures(1, &textureID);
+        status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteTextures error") < 0 ? -1 : status;
+        if (log_errors)
+            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete texture" : "Texture deleted successfully");
+        textureID = 0;
+        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    }
+
+    // Delete the VAO, VBO, and EBO
+    if (_vao != 0)
+    {
+        glDeleteVertexArrays(1, &_vao);
+        status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteVertexArrays error") < 0 ? -1 : status;
+        if (log_errors)
+            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete VAO" : "VAO deleted successfully");
+        _vao = 0;
+        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    }
+    if (_vbo != 0)
+    {
+        glDeleteBuffers(1, &_vbo);
+        status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteBuffers error") < 0 ? -1 : status;
+        if (log_errors)
+            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete VBO" : "VBO deleted successfully");
+        _vbo = 0;
+        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    }
+    if (_ebo != 0)
+    {
+        glDeleteBuffers(1, &_ebo);
+        status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteBuffers error") < 0 ? -1 : status;
+        if (log_errors)
+            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to delete EBO" : "EBO deleted successfully");
+        _ebo = 0;
+        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    }
+
+    // Destroy the GLFW window
+    if (windowID != nullptr)
+    {
+        glfwDestroyWindow(windowID);
+        status = CheckErrorGLFW(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glfwDestroyWindow error") < 0 ? -1 : status;
+        if (log_errors)
+            ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to destroy GLFW window" : "GLFW window destroyed successfully");
+        windowID = nullptr;
+        status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
+    }
+
+    return status ? -1 : 0;
+}
+
 void MazeRenderContext::_resetMembers()
 {
-    shaderProgram = 0;
-    vao = 0;
-    vbo = 0;
-    ebo = 0;
+    _shaderProgram = 0;
+    _vao = 0;
+    _vbo = 0;
+    _ebo = 0;
     textureID = 0;
     windowID = nullptr;
     monitorID = nullptr;
     windowInd = -1;
     monitorInd = -1;
-    windowWidth = 800;
-    windowHeight = 600;
+    _windowWidthPxl = 800;
+    _windowHeightPxl = 600;
     isContextInitialized = false;
     isFullScreen = false;
 }
 
-int MazeRenderContext::_checkShaderCompilation(GLuint shader, const std::string &shader_type)
+int MazeRenderContext::_checkShaderCompilation(GLuint __shaderProgram, const std::string &shader_type)
 {
     GLint success;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    glGetShaderiv(__shaderProgram, GL_COMPILE_STATUS, &success);
     if (!success)
     {
         char info_log[1024];
-        glGetShaderInfoLog(shader, 1024, nullptr, info_log);
+        glGetShaderInfoLog(__shaderProgram, 1024, nullptr, info_log);
         ROS_ERROR("[MazeRenderContext::_checkShaderCompilation] %s shader compilation error: %s", shader_type.c_str(), info_log);
         return -1;
     }
     return 0;
 }
 
-int MazeRenderContext::_checkProgramLinking(GLuint program)
+int MazeRenderContext::_checkProgramLinking(GLuint __shaderProgram)
 {
     GLint success;
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    glGetProgramiv(__shaderProgram, GL_LINK_STATUS, &success);
     if (!success)
     {
         char info_log[1024];
-        glGetProgramInfoLog(program, 1024, nullptr, info_log);
+        glGetProgramInfoLog(__shaderProgram, 1024, nullptr, info_log);
         ROS_ERROR("[MazeRenderContext::_checkProgramLinking] Program linking error: %s", info_log);
         return -1;
     }
@@ -816,15 +874,17 @@ GLint CircleRenderer::_ColorLocation = -1;
 GLint CircleRenderer::_TransformLocation = -1;
 GLint CircleRenderer::_AspectRatioLocation = -1;
 float CircleRenderer::_AspectRatioUniform = 1.0f;
+int CircleRenderer::_WindowWidthPxl = 1.0f;
+int CircleRenderer::_WindowHeightPxl = 1.0f;
 
 CircleRenderer::CircleRenderer()
     : circPosition(cv::Point2f(0.0f, 0.0f)),
       cirRadius(1.0f),
       circColor(cv::Scalar(1.0, 1.0, 1.0)),
       circSegments(32),
-      circRotationAngle(0.0f),
       circScalingFactors(cv::Point2f(1.0f, 1.0f)),
-      circWarpH(cv::Mat::eye(3, 3, CV_64F))
+      circWarpH(cv::Mat::eye(3, 3, CV_64F)),
+      circRotationAngle(0.0f)
 {
     // Define instance count and itterate static _CircCnt
     circID = _CircCnt++;
@@ -848,53 +908,25 @@ CircleRenderer::~CircleRenderer()
     }
 }
 
-void CircleRenderer::setPosition(cv::Point2f pos)
-{
-    // Modify the y position based on the aspect ratio
-    pos.y /= _AspectRatioUniform;
-    circPosition = pos;
-}
-
-void CircleRenderer::setRadius(float rad)
-{
-    cirRadius = rad;
-}
-
-void CircleRenderer::setRotationAngle(float angle)
-{
-    circRotationAngle = angle;
-}
-
-void CircleRenderer::setScaling(cv::Point2f scaling_factors)
-{
-    circScalingFactors = scaling_factors;
-}
-
-void CircleRenderer::setColor(cv::Scalar col)
-{
-    circColor = col;
-}
-
-int CircleRenderer::initializeCircleAttributes(cv::Point2f pos, float rad, cv::Scalar col, unsigned int segments, cv::Mat _H)
+int CircleRenderer::initializeCircleObject(cv::Point2f _circPosition, float _cirRadius, cv::Scalar _circColor, unsigned int _circSegments,
+                                           float _circRotationAngle, cv::Point2f _circScalingFactors, cv::Mat _circWarpH)
 {
     int status = 0;
 
     // Set variables
-    circPosition = pos;
-    cirRadius = rad;
-    circColor = col;
-    circSegments = segments;
-    circWarpH = _H;
-
-    // Initialize variables
-    circScalingFactors = cv::Point2f(1.0f, 1.0f);
-    circRotationAngle = 0.0f;
+    circPosition = _circPosition;
+    cirRadius = _cirRadius;
+    circColor = _circColor;
+    circSegments = _circSegments;
+    circRotationAngle = _circRotationAngle;
+    circScalingFactors = _circScalingFactors;
+    circWarpH = _circWarpH;
 
     // Run initial vertex computation
-    _computeVertices(_circVertices);
+    _computeVertices(circVertices);
 
     // Warp the circle vertices using the homography matrix
-    _warpCircle(_circVertices);
+    _warpCircle(circVertices);
 
     // Generate a new Vertex Array Object (VAO) and store the ID
     glGenVertexArrays(1, &_vao);
@@ -909,7 +941,7 @@ int CircleRenderer::initializeCircleAttributes(cv::Point2f pos, float rad, cv::S
     // Bind the VBO to the GL_ARRAY_BUFFER target
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
     // Copy vertex data into the buffer's memory (GL_DYNAMIC_DRAW hints that the data might change often)
-    glBufferData(GL_ARRAY_BUFFER, _circVertices.size() * sizeof(float), _circVertices.data(), GL_DYNAMIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, circVertices.size() * sizeof(float), circVertices.data(), GL_DYNAMIC_DRAW);
     status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Define an array of generic vertex attribute data. Arguments:
@@ -937,70 +969,20 @@ int CircleRenderer::initializeCircleAttributes(cv::Point2f pos, float rad, cv::S
     //          circID, circPosition.x, circPosition.y, cirRadius, circColor[0], circColor[1], circColor[2], circSegments);
 }
 
-int CircleRenderer::recomputeParameters()
+int CircleRenderer::CompileAndLinkCircleShaders(int __WindowWidthPxl, int __WindowHeightPxl)
 {
     int status = 0;
 
-    // Update the transformation matrix
-    _computeTransformation();
-
-    // Generate the new vertices based on the current position, radius, and circSegments
-    _computeVertices(_circVertices);
-
-    // Warp the circle vertices using the homography matrix
-    _warpCircle(_circVertices);
-
-    // Bind the VBO to the GL_ARRAY_BUFFER target
-    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    // Update the VBO's data with the new vertices. This call will reallocate the buffer if necessary
-    // or simply update the data store's contents if the buffer is large enough.
-    glBufferData(GL_ARRAY_BUFFER, _circVertices.size() * sizeof(float), _circVertices.data(), GL_DYNAMIC_DRAW);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    // Unbind the buffer
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    return status;
-}
-
-int CircleRenderer::draw()
-{
-    int status = 0;
-
-    // Set color
-    glUniform4f(_ColorLocation, circColor[0], circColor[1], circColor[2], 1.0f);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    // Use the updated transformation matrix instead of an identity matrix
-    auto transformArray = _cvMatToGlArray(_transformationMatrix);
-    glUniformMatrix4fv(_TransformLocation, 1, GL_FALSE, transformArray.data());
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    // Bind the VAO and draw the circle using GL_TRIANGLE_FAN
-    glBindVertexArray(_vao);
-    glDrawArrays(GL_TRIANGLE_FAN, 0, static_cast<GLsizei>(_circVertices.size() / 2));
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    // Unbind the VAO to leave a clean state
-    glBindVertexArray(0);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    return status;
-}
-
-int CircleRenderer::CompileAndLinkCircleShaders(float aspect_ratio)
-{
-    int status = 0;
+    // Store the window width and height
+    _WindowWidthPxl = __WindowWidthPxl;
+    _WindowHeightPxl = __WindowHeightPxl;
 
     // Set the aspect ratio
-    _AspectRatioUniform = aspect_ratio;
+    _AspectRatioUniform = (float)_WindowWidthPxl / _WindowHeightPxl;
 
     // Compile vertex shader
     GLuint temp_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
-    glShaderSource(temp_vertex_shader, 1, &vertexShaderSource, nullptr);
+    glShaderSource(temp_vertex_shader, 1, &_circVertexShaderSource, nullptr);
     glCompileShader(temp_vertex_shader);
     if (_CheckShaderCompilation(temp_vertex_shader, "VERTEX") < 0)
     {
@@ -1012,7 +994,7 @@ int CircleRenderer::CompileAndLinkCircleShaders(float aspect_ratio)
 
     // Compile fragment shader
     GLuint temp_fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
-    glShaderSource(temp_fragment_shader, 1, &fragmentShaderSource, nullptr);
+    glShaderSource(temp_fragment_shader, 1, &_circFragmentShaderSource, nullptr);
     glCompileShader(temp_fragment_shader);
     if (_CheckShaderCompilation(temp_fragment_shader, "FRAGMENT") < 0)
     {
@@ -1061,29 +1043,6 @@ int CircleRenderer::CompileAndLinkCircleShaders(float aspect_ratio)
     return status;
 }
 
-int CircleRenderer::CleanupClassResources()
-{
-    int status = 0;
-
-    // Delete the shader program
-    if (_ShaderProgram != 0)
-    {
-        glDeleteProgram(_ShaderProgram);
-        _ShaderProgram = 0;
-        status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-    }
-
-    // Reset the static uniform locations to -1 indicating they are no longer valid
-    _ColorLocation = -1;
-    _TransformLocation = -1;
-    _AspectRatioLocation = -1;
-
-    // Reset the aspect ratio uniform
-    _AspectRatioUniform = 0.0f;
-
-    return status;
-}
-
 int CircleRenderer::SetupShader()
 {
     int status = 0;
@@ -1107,41 +1066,147 @@ int CircleRenderer::UnsetShader()
     return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
 }
 
-int CircleRenderer::_CheckShaderCompilation(GLuint shader, const std::string &shader_type)
+void CircleRenderer::setPosition(cv::Point2f _circPosition)
+{
+    // Modify the y position based on the aspect ratio
+    _circPosition.y /= _AspectRatioUniform;
+    circPosition = _circPosition;
+}
+
+void CircleRenderer::setRadius(float _cirRadius)
+{
+    cirRadius = _cirRadius;
+}
+
+void CircleRenderer::setRotationAngle(float _circRotationAngle)
+{
+    circRotationAngle = _circRotationAngle;
+}
+
+void CircleRenderer::setScaling(cv::Point2f _circScalingFactors)
+{
+    circScalingFactors = _circScalingFactors;
+}
+
+void CircleRenderer::setColor(cv::Scalar col)
+{
+    circColor = col;
+}
+
+int CircleRenderer::updateCircleObject()
+{
+    int status = 0;
+
+    // Update the transformation matrix
+    _computeTransformation();
+
+    // Generate the new vertices based on the current position, radius, and circSegments
+    _computeVertices(circVertices);
+
+    // Warp the circle vertices using the homography matrix
+    _warpCircle(circVertices);
+
+    // Bind the VBO to the GL_ARRAY_BUFFER target
+    glBindBuffer(GL_ARRAY_BUFFER, _vbo);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Update the VBO's data with the new vertices. This call will reallocate the buffer if necessary
+    // or simply update the data store's contents if the buffer is large enough.
+    glBufferData(GL_ARRAY_BUFFER, circVertices.size() * sizeof(float), circVertices.data(), GL_DYNAMIC_DRAW);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Unbind the buffer
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    return status;
+}
+
+int CircleRenderer::draw()
+{
+    int status = 0;
+
+    // Set color
+    glUniform4f(_ColorLocation, circColor[0], circColor[1], circColor[2], 1.0f);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Use the updated transformation matrix instead of an identity matrix
+    auto transformArray = _cvMatToGlArray(_transformationMatrix);
+    glUniformMatrix4fv(_TransformLocation, 1, GL_FALSE, transformArray.data());
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Bind the VAO and draw the circle using GL_TRIANGLE_FAN
+    glBindVertexArray(_vao);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, static_cast<GLsizei>(circVertices.size() / 2));
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Unbind the VAO to leave a clean state
+    glBindVertexArray(0);
+    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    return status;
+}
+
+int CircleRenderer::CleanupClassResources()
+{
+    int status = 0;
+
+    // Delete the shader program
+    if (_ShaderProgram != 0)
+    {
+        glDeleteProgram(_ShaderProgram);
+        _ShaderProgram = 0;
+        status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    }
+
+    // Reset the static uniform locations to -1 indicating they are no longer valid
+    _ColorLocation = -1;
+    _TransformLocation = -1;
+    _AspectRatioLocation = -1;
+
+    // Reset the window width, height and the aspect ratio uniform
+    _AspectRatioUniform = 0.0f;
+    _WindowWidthPxl = 0.0f;
+    _WindowHeightPxl = 0.0f;
+
+    return status;
+}
+
+int CircleRenderer::_CheckShaderCompilation(GLuint ___ShaderProgram, const std::string &shader_type)
 {
     GLint success;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &success);
+    glGetShaderiv(___ShaderProgram, GL_COMPILE_STATUS, &success);
     if (!success)
     {
         // Get and log the error message
         char info_log[512];
-        glGetShaderInfoLog(shader, 512, nullptr, info_log);
+        glGetShaderInfoLog(___ShaderProgram, 512, nullptr, info_log);
         ROS_ERROR("[CircleRenderer::CircleRenderer] %s shader compilation error: %s", shader_type.c_str(), info_log);
         return -1;
     }
     return 0;
 }
 
-int CircleRenderer::_CheckProgramLinking(GLuint program)
+int CircleRenderer::_CheckProgramLinking(GLuint ___ShaderProgram)
 {
     GLint success;
-    glGetProgramiv(program, GL_LINK_STATUS, &success);
+    glGetProgramiv(___ShaderProgram, GL_LINK_STATUS, &success);
     if (!success)
     {
         // Get and log the error message
         char info_log[512];
-        glGetProgramInfoLog(program, 512, nullptr, info_log);
+        glGetProgramInfoLog(___ShaderProgram, 512, nullptr, info_log);
         ROS_ERROR("[CircleRenderer::CircleRenderer] Program linking error: %s", info_log);
         return -1;
     }
     return 0;
 }
 
-std::array<float, 16> CircleRenderer::_cvMatToGlArray(const cv::Mat &out_mat)
+std::array<float, 16> CircleRenderer::_cvMatToGlArray(const cv::Mat &out_transformationMatrix)
 {
-    assert(out_mat.cols == 4 && out_mat.rows == 4 && out_mat.type() == CV_32F);
+    assert(out_transformationMatrix.cols == 4 && out_transformationMatrix.rows == 4 && out_transformationMatrix.type() == CV_32F);
     std::array<float, 16> gl_array;
-    std::copy(out_mat.begin<float>(), out_mat.end<float>(), gl_array.begin());
+    std::copy(out_transformationMatrix.begin<float>(), out_transformationMatrix.end<float>(), gl_array.begin());
     return gl_array;
 }
 
@@ -1177,10 +1242,10 @@ void CircleRenderer::_computeTransformation()
     _transformationMatrix = translationBack * scaling * rotation * translationToOrigin;
 }
 
-void CircleRenderer::_computeVertices(std::vector<float> &out_vertices)
+void CircleRenderer::_computeVertices(std::vector<float> &out_circVertices)
 {
     // Clear the vertex vector to prepare for new vertices
-    out_vertices.clear();
+    out_circVertices.clear();
 
     // Loop to generate vertices for the circle
     for (unsigned int i = 0; i <= circSegments; ++i)
@@ -1197,29 +1262,56 @@ void CircleRenderer::_computeVertices(std::vector<float> &out_vertices)
         // Apply the transformation matrix to the vertex
         cv::Mat transformedVertex = _transformationMatrix * vertex;
         // Extract the transformed x coordinate and add to the vertices list
-        out_vertices.push_back(transformedVertex.at<float>(0, 0));
+        out_circVertices.push_back(transformedVertex.at<float>(0, 0));
         // Extract the transformed y coordinate and add to the vertices list
-        out_vertices.push_back(transformedVertex.at<float>(1, 0));
+        out_circVertices.push_back(transformedVertex.at<float>(1, 0));
     }
 }
 
-void CircleRenderer::_warpCircle(std::vector<float> &out_vertices)
+// void CircleRenderer::_warpCircle(std::vector<float> &out_circVertices)
+// {
+//     // Note the pixel dimensions of the window and the image the circle needs to map to
+//     // extern const int WINDOW_WIDTH_PXL = 3840;
+//     // extern const int WINDOW_HEIGHT_PXL = 2160;
+//     // const int FLOOR_IMAGE_WIDTH_PXL = 1800;
+//     // const int FLOOR_IMAGE_HEIGHT_PXL = 1800;
+
+//     // Log the raw vertices and homography matrix
+//     float minX = std::numeric_limits<float>::max();
+//     float maxX = std::numeric_limits<float>::lowest();
+//     float minY = std::numeric_limits<float>::max();
+//     float maxY = std::numeric_limits<float>::lowest();
+//     for (size_t i = 0; i < out_circVertices.size(); i += 2)
+//     {
+//         minX = std::min(minX, out_circVertices[i]);
+//         maxX = std::max(maxX, out_circVertices[i]);
+//         minY = std::min(minY, out_circVertices[i + 1]);
+//         maxY = std::max(maxY, out_circVertices[i + 1]);
+//     }
+//     ROS_INFO("[CircleRenderer::_warpCircle RAW] Min: (%0.2f, %0.2f), Max: (%0.2f, %0.2f)",
+//              minX, minY, maxX, maxY);
+//     dbLogHomMat(circWarpH);
+
+//     // Log the warped vertices and homography matrix
+//     minX = std::numeric_limits<float>::max();
+//     maxX = std::numeric_limits<float>::lowest();
+//     minY = std::numeric_limits<float>::max();
+//     maxY = std::numeric_limits<float>::lowest();
+//     for (size_t i = 0; i < out_circVertices.size(); i += 2)
+//     {
+//         minX = std::min(minX, out_circVertices[i]);
+//         maxX = std::max(maxX, out_circVertices[i]);
+//         minY = std::min(minY, out_circVertices[i + 1]);
+//         maxY = std::max(maxY, out_circVertices[i + 1]);
+//     }
+//     ROS_INFO("[CircleRenderer::_warpCircle WARPED] Min: (%0.2f, %0.2f), Max: (%0.2f, %0.2f)",
+//              minX, minY, maxX, maxY);
+//     dbLogHomMat(_circWarpH_NDC);
+// }
+
+void CircleRenderer::_warpCircle(std::vector<float> &out_circVertices)
 {
-    for (size_t i = 0; i < out_vertices.size(); i += 2)
-    {
-        // Create a 3x1 matrix (homogeneous coordinates) for the vertex
-        cv::Mat vertex = (cv::Mat_<double>(3, 1) << out_vertices[i], out_vertices[i + 1], 1.0);
-
-        // Apply the homography matrix to the vertex
-        cv::Mat warpedVertex = circWarpH * vertex;
-
-        // Normalize the coordinates
-        warpedVertex /= warpedVertex.at<double>(2, 0);
-
-        // Update the vertices with the transformed coordinates
-        out_vertices[i] = static_cast<float>(warpedVertex.at<double>(0, 0));
-        out_vertices[i + 1] = static_cast<float>(warpedVertex.at<double>(1, 0));
-    }
+    
 }
 
 // ================================================== FUNCTIONS ==================================================
@@ -1479,7 +1571,7 @@ std::string promptForProjectorNumber()
     }
 }
 
-int xmlFrmtFileStrings(int mon_ind, std::string &out_path)
+void xmlFrmtFileStringsHmat(int mon_ind, std::string &out_path)
 {
     // Format the output tag
     out_path =
@@ -1487,15 +1579,22 @@ int xmlFrmtFileStrings(int mon_ind, std::string &out_path)
         "hmats" +
         "_m" + std::to_string(mon_ind) +
         ".xml";
+}
 
-    return 0;
+void xmlFrmtFileStringsVertices(std::string &out_path)
+{
+    // Format the output tag
+    out_path =
+        CONFIG_DIR_PATH + "/" +
+        "maze_vertices" +
+        ".xml";
 }
 
 int xmlSaveHMAT(const cv::Mat &_H, int mon_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col)
 {
     // Get the full file path and attribute string for the given calibration mode
     std::string file_path;
-    xmlFrmtFileStrings(mon_ind, file_path);
+    xmlFrmtFileStringsHmat(mon_ind, file_path);
     std::string cal_mode_str = CAL_MADE_STR_VEC[_CAL_MODE];
 
     // Attempt to load the XML file
@@ -1572,7 +1671,7 @@ int xmlLoadHMAT(int mon_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_c
 {
     // Get the full file path and attribute string for the given calibration mode
     std::string file_path;
-    xmlFrmtFileStrings(mon_ind, file_path);
+    xmlFrmtFileStringsHmat(mon_ind, file_path);
     std::string cal_mode_str = CAL_MADE_STR_VEC[_CAL_MODE];
 
     // Attempt to load the XML file
@@ -1582,7 +1681,7 @@ int xmlLoadHMAT(int mon_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_c
     // Check if the file was loaded successfully
     if (!result)
     {
-        ROS_ERROR("[xmlLoadHMAT] Failed to load XML File[%s]", file_path.c_str());
+        ROS_ERROR("[xmlLoadHMAT] Failed to load homography matrix from XML File[%s]", file_path.c_str());
         return -1;
     }
 
@@ -1646,6 +1745,127 @@ int xmlLoadHMAT(int mon_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_c
 
     return 0;
 }
+
+int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int mon_ind)
+{
+    // Define file path
+    std::string file_path;
+    xmlFrmtFileStringsVertices(file_path);
+
+    // Load or create an XML document
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_file(file_path.c_str());
+    pugi::xml_node root_node = doc.child("Root");
+
+    if (!result || !root_node)
+    {
+        root_node = doc.append_child("Root");
+    }
+
+    // Search for an existing monitor node with the same index
+    pugi::xml_node monitor_node;
+    for (pugi::xml_node node = root_node.child("monitor"); node; node = node.next_sibling("monitor"))
+    {
+        if (node.attribute("index").as_int() == mon_ind)
+        {
+            monitor_node = node;
+            break;
+        }
+    }
+
+    // If a monitor node with the index is not found, add it
+    if (!monitor_node)
+    {
+        monitor_node = root_node.append_child("monitor");
+        monitor_node.append_attribute("index") = mon_ind;
+    }
+    else
+    {
+        // Clear existing vertices if the monitor node is already present
+        while (monitor_node.first_child())
+        {
+            monitor_node.remove_child(monitor_node.first_child());
+        }
+    }
+
+    // Add vertices to the monitor node
+    for (const auto &vertex : quad_vertices_ndc)
+    {
+        pugi::xml_node vertex_node = monitor_node.append_child("vertex");
+        vertex_node.append_child("coord").text().set(vertex.x);
+        vertex_node.append_child("coord").text().set(vertex.y);
+    }
+
+    // Save the document to the specified file path
+    if (!doc.save_file(file_path.c_str()))
+    {
+        ROS_ERROR("[xmlSaveVertices] Failed to save vertices to XML File[%s]", file_path.c_str());
+        return -1;
+    }
+
+    return 0;
+}
+
+int xmlLoadVertices(int mon_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc)
+{
+    // Define file path
+    std::string file_path;
+    xmlFrmtFileStringsVertices(file_path);
+
+    // Load the XML document
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_file(file_path.c_str());
+
+    if (!result)
+    {
+        // Handle the error (logging, throw exception, etc.)
+        return -1;
+    }
+
+    // Search for the monitor node with the same index
+    pugi::xml_node monitor_node;
+    for (pugi::xml_node node = doc.child("Root").child("monitor"); node; node = node.next_sibling("monitor"))
+    {
+        if (node.attribute("index").as_int() == mon_ind)
+        {
+            monitor_node = node;
+            break;
+        }
+    }
+
+    if (!monitor_node)
+    {
+        // Handle the error (logging, throw exception, etc.)
+        return -1;
+    }
+
+    // Clear existing data in the output vector
+    out_quad_vertices_ndc.clear();
+
+    // Load the vertices from the monitor node
+    for (pugi::xml_node vertex_node = monitor_node.child("vertex"); vertex_node; vertex_node = vertex_node.next_sibling("vertex"))
+    {
+        cv::Point2f vertex;
+        vertex.x = vertex_node.child("coord").text().as_float();
+        vertex_node = vertex_node.next_sibling("vertex");
+        if (vertex_node)
+            vertex.y = vertex_node.child("coord").text().as_float();
+        else
+            return -1; // Handle error: every vertex should have two coords
+
+        out_quad_vertices_ndc.push_back(vertex);
+    }
+
+    // Check if the vector has exactly four vertices
+    if (out_quad_vertices_ndc.size() != 4)
+    {
+        ROS_ERROR("[xmlLoadHMAT] Failed to load vertices from XML File[%s]", file_path.c_str());
+        return -1;
+    }
+
+    return 0;
+}
+
 
 int checkHMAT(const cv::Mat &_H)
 {
@@ -1862,56 +2082,6 @@ int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img)
     }
 
     return 0;
-}
-
-int initWallRenderObjects(float *vertices, size_t verticesSize,
-                          unsigned int *indices, size_t indicesSize,
-                          MazeRenderContext &out_renCtx)
-{
-    int status = 0;
-
-    glfwMakeContextCurrent(out_renCtx.windowID);
-    status = MazeRenderContext::CheckErrorGLFW(__LINE__, __FILE__);
-
-    // Generate and bind an Element Buffer Object (EBO)
-    glGenBuffers(1, &out_renCtx.ebo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, out_renCtx.ebo);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Initialize the EBO with index data
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indicesSize, indices, GL_DYNAMIC_DRAW);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Generate and bind a Vertex Array Object (VAO)
-    glGenVertexArrays(1, &out_renCtx.vao);
-    glBindVertexArray(out_renCtx.vao);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Generate and bind a Vertex Buffer Object (VBO)
-    glGenBuffers(1, &out_renCtx.vbo);
-    glBindBuffer(GL_ARRAY_BUFFER, out_renCtx.vbo);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Initialize the VBO with vertex data
-    glBufferData(GL_ARRAY_BUFFER, verticesSize, vertices, GL_STATIC_DRAW);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Specify the format of the vertex data for the position attribute
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
-    glEnableVertexAttribArray(0); // Enable the position attribute
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Specify the format of the vertex data for the texture coordinate attribute
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
-    glEnableVertexAttribArray(1); // Enable the texture coordinate attribute
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Unbind the VAO to prevent accidental modification
-    glBindVertexArray(0);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
-
-    // Return GL status
-    return status;
 }
 
 int warpImgMat(cv::Mat img_mat, cv::Mat _H, cv::Mat &out_img_mat)

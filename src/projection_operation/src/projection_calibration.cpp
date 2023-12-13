@@ -348,7 +348,7 @@ int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_
         // Iterate through control point inner array (wall vertices)
         for (int cp_j = 0; cp_j < 4; ++cp_j)
         {
-            out_CP_RENDERERS[cp_i][cp_j].initializeCircleAttributes(
+            out_CP_RENDERERS[cp_i][cp_j].initializeCircleObject(
                 _CP_GRID_ARR[cp_i][cp_j], // position
                 cpDefualtMakerRadius,     // radius
                 cpDefaultRGB,             // color
@@ -393,7 +393,7 @@ int drawControlPoints(CalibrationMode _CAL_MODE,
             out_CP_RENDERERS[cp_i][cp_j].setColor(col);
 
             // Recompute the marker parameters
-            out_CP_RENDERERS[cp_i][cp_j].recomputeParameters();
+            out_CP_RENDERERS[cp_i][cp_j].updateCircleObject();
 
             // Draw the marker
             out_CP_RENDERERS[cp_i][cp_j].draw();
@@ -553,7 +553,7 @@ void appInitVariables()
 {
     // Log setup parameters
     ROS_INFO("[appInitVariables] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
-    ROS_INFO("[appInitVariables] Display: Width[%d] Height[%d] AR[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, WINDOW_ASPECT_RATIO);
+    ROS_INFO("[appInitVariables] Display: Width[%d] Height[%d]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
     ROS_INFO("[appInitVariables] Floor (Pxl): Width[%d] Height[%d]", FLOOR_IMAGE_WIDTH_PXL, FLOOR_IMAGE_HEIGHT_PXL);
     ROS_INFO("[appInitVariables] Floor (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", FLOOR_WIDTH_NDC, FLOOR_HEIGHT_NDC);
     ROS_INFO("[appInitVariables] Wall (Pxl): Width[%d] Height[%d]", WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL);
@@ -607,9 +607,7 @@ void appInitOpenGL()
         throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
 
     // Initialize OpenGL wall image objects
-    if (initWallRenderObjects(QUAD_GL_VERTICES, sizeof(QUAD_GL_VERTICES),
-                              QUAD_GL_INDICES, sizeof(QUAD_GL_INDICES),
-                              projCtx) < 0)
+    if (projCtx.initRenderObjects(QUAD_GL_VERTICES, sizeof(QUAD_GL_VERTICES), QUAD_GL_INDICES, sizeof(QUAD_GL_INDICES)) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
 
     // Update monitor and window mode settings
@@ -621,7 +619,7 @@ void appInitOpenGL()
         throw std::runtime_error("[appInitOpenGL] Failed to compile and link wall shader");
 
     // Create the shader program for CircleRenderer class control point rendering
-    if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_ASPECT_RATIO) < 0)
+    if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
 
     // Initialize the CircleRenderer class objects array
@@ -660,7 +658,7 @@ void appInitFileXML()
                 for (int gc_i = 0; gc_i < grid_size && !isMonMissing; ++gc_i)
                 {
                     // Check if the file exists
-                    xmlFrmtFileStrings(mon_i, file_path);
+                    xmlFrmtFileStringsHmat(mon_i, file_path);
                     if (!fileExists(file_path))
                     {
                         // Check if mon_i is already in mon_missing_vec
@@ -710,6 +708,12 @@ void appInitFileXML()
                 {
                     if (xmlSaveHMAT(_HMAT_ARR[_CAL_MODE][gr_i][gc_i], mon_i, _CAL_MODE, gr_i, gc_i) < 0)
                         throw std::runtime_error("[appInitFileXML] Error returned from xmlSaveHMAT");
+                    if (_CAL_MODE == FLOOR)
+                    {
+                        std::vector<cv::Point2f> vert_vec(_CP_GRID_ARR[0].begin(), _CP_GRID_ARR[0].end());
+                        if (xmlSaveVertices(vert_vec, mon_i) < 0)
+                            throw std::runtime_error("[appMainLoop] Error returned from xmlSaveVertices");
+                    }
                 }
             }
         }
@@ -737,12 +741,21 @@ void appMainLoop()
                     // Save XML file
                     if (F.xml_save_hmat)
                     {
+                        // Save the homography matrix to XML
                         if (xmlSaveHMAT(HMAT_ARR[CAL_MODE][gr_i][gc_i], I.monitor, CAL_MODE, gr_i, gc_i) < 0)
                             throw std::runtime_error("[appMainLoop] Error returned from xmlSaveHMAT");
+                        if (CAL_MODE == FLOOR)
+                        {
+                            // Save the maze vertices to XML
+                            std::vector<cv::Point2f> vert_vec(CP_GRID_ARR[0].begin(), CP_GRID_ARR[0].end());
+                            if (xmlSaveVertices(vert_vec, I.monitor) < 0)
+                                throw std::runtime_error("[appMainLoop] Error returned from xmlSaveVertices");
+                        }
                     }
                     // Load XML file
                     if (F.xml_load_hmat)
                     {
+                        // Load the homography matrix from XML
                         if (xmlLoadHMAT(I.monitor, CAL_MODE, gr_i, gc_i, HMAT_ARR[CAL_MODE][gr_i][gc_i]) < 0)
                             throw std::runtime_error("[appMainLoop] Error returned from xmlLoadHMAT");
                     }
@@ -793,7 +806,7 @@ void appMainLoop()
             // cv::Mat H = HMAT_ARR[CAL_MODE][0][0];
             // cv::Mat img_warp;
             // warpImgMat(wallImgMatVec[I.wall_image], H, img_warp);
-            // projCtx.loadMatTexture(img_warp); 
+            // projCtx.loadMatTexture(img_warp);
 
             // Update wall textures
             if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
