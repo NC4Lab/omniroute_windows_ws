@@ -76,9 +76,9 @@ cv::Point2f ScalingFactors = cv::Point2f(1.0f, 1.0f);  // Marker scaling factors
  * @brief Vector of vertices of the maze corners in centimeter units.
  */
 const std::vector<cv::Point2f> MAZE_VERT_CM_VEC = {
-    cv::Point2f(0, 90.0),
-    cv::Point2f(90.0, 90.0),
-    cv::Point2f(90.0, 0.0),
+    cv::Point2f(0, MAZE_WIDTH_HEIGHT_CM),
+    cv::Point2f(MAZE_WIDTH_HEIGHT_CM, MAZE_WIDTH_HEIGHT_CM),
+    cv::Point2f(MAZE_WIDTH_HEIGHT_CM, 0.0),
     cv::Point2f(0.0, 0.0)};
 
 /**

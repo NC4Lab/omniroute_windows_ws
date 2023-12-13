@@ -84,7 +84,7 @@ int updateTexture(
                 }
                 else
                 {
-                    int img_ind = FLOOR_IMG_PROJ_MAP[proj_mon_ind];
+                    int img_ind = MAZE_IMG_PROJ_MAP[proj_mon_ind];
                     if (_floorImgMatVec[img_ind].empty())
                     {
                         ROS_ERROR("[updateTexture] Stored OpenCV floor image is empty: Window[%d] Monitor[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
@@ -251,9 +251,9 @@ void appInitOpenGL()
         cv::Point2f scaling_factors = cv::Point2f(ScalingFactors.x, ScalingFactors.y);
         float rm_angle = 0;
 
-        // Compute the homography matrix for tranforming the rat mask for each projector
-        cv::Mat H = cv::findHomography(MAZE_VERT_CM_VEC, MAZE_VERT_NDC_VEC[win_ind]);
-        if (checkHMAT(H) < 0)
+        // Compute the homography matrix for warp the rat mask from maze cm to ndc space for each projector
+        cv::Mat H;
+        if (computeHomographyMatrix(MAZE_VERT_CM_VEC, MAZE_VERT_NDC_VEC[win_ind], H))
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Invalid homography matrix for floor image");
 
         // Initialize the CircleRenderer class object for rat masking

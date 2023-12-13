@@ -883,7 +883,7 @@ CircleRenderer::CircleRenderer()
       circColor(cv::Scalar(1.0, 1.0, 1.0)),
       circSegments(32),
       circScalingFactors(cv::Point2f(1.0f, 1.0f)),
-      circHomMaCM2NDC(cv::Mat::eye(3, 3, CV_64F)),
+      circHomMatNDC(cv::Mat::eye(3, 3, CV_64F)),
       circRotationAngle(0.0f)
 {
     // Define instance count and itterate static _CircCnt
@@ -909,7 +909,7 @@ CircleRenderer::~CircleRenderer()
 }
 
 int CircleRenderer::initializeCircleObject(cv::Point2f _circPosition, float _cirRadius, cv::Scalar _circColor, unsigned int _circSegments,
-                                           float _circRotationAngle, cv::Point2f _circScalingFactors, cv::Mat _circHomMaCM2NDC)
+                                           float _circRotationAngle, cv::Point2f _circScalingFactors, cv::Mat _circHomMatNDC)
 {
     int status = 0;
 
@@ -920,13 +920,10 @@ int CircleRenderer::initializeCircleObject(cv::Point2f _circPosition, float _cir
     circSegments = _circSegments;
     circRotationAngle = _circRotationAngle;
     circScalingFactors = _circScalingFactors;
-    circHomMaCM2NDC = _circHomMaCM2NDC;
+    circHomMatNDC = _circHomMatNDC;
 
     // Run initial vertex computation
     _computeVertices(circVertices);
-
-    // Warp the circle vertices using the homography matrix
-    _warpCircle(circVertices);
 
     // Generate a new Vertex Array Object (VAO) and store the ID
     glGenVertexArrays(1, &_vao);
@@ -1093,7 +1090,7 @@ void CircleRenderer::setColor(cv::Scalar col)
     circColor = col;
 }
 
-int CircleRenderer::updateCircleObject()
+int CircleRenderer::updateCircleObject(bool do_coord_warp)
 {
     int status = 0;
 
@@ -1103,8 +1100,9 @@ int CircleRenderer::updateCircleObject()
     // Generate the new vertices based on the current position, radius, and circSegments
     _computeVertices(circVertices);
 
-    // Warp the circle vertices using the homography matrix
-    _warpCircle(circVertices);
+    // Convert the circle vertices to NDC space
+    if (do_coord_warp)
+        _convertToNDC(circVertices);
 
     // Bind the VBO to the GL_ARRAY_BUFFER target
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
@@ -1268,49 +1266,27 @@ void CircleRenderer::_computeVertices(std::vector<float> &out_circVertices)
     }
 }
 
-// void CircleRenderer::_warpCircle(std::vector<float> &out_circVertices)
-// {
-//     // Note the pixel dimensions of the window and the image the circle needs to map to
-//     // extern const int WINDOW_WIDTH_PXL = 3840;
-//     // extern const int WINDOW_HEIGHT_PXL = 2160;
-//     // const int FLOOR_IMAGE_WIDTH_PXL = 1800;
-//     // const int FLOOR_IMAGE_HEIGHT_PXL = 1800;
-
-//     // Log the raw vertices and homography matrix
-//     float minX = std::numeric_limits<float>::max();
-//     float maxX = std::numeric_limits<float>::lowest();
-//     float minY = std::numeric_limits<float>::max();
-//     float maxY = std::numeric_limits<float>::lowest();
-//     for (size_t i = 0; i < out_circVertices.size(); i += 2)
-//     {
-//         minX = std::min(minX, out_circVertices[i]);
-//         maxX = std::max(maxX, out_circVertices[i]);
-//         minY = std::min(minY, out_circVertices[i + 1]);
-//         maxY = std::max(maxY, out_circVertices[i + 1]);
-//     }
-//     ROS_INFO("[CircleRenderer::_warpCircle RAW] Min: (%0.2f, %0.2f), Max: (%0.2f, %0.2f)",
-//              minX, minY, maxX, maxY);
-//     dbLogHomMat(circHomMaCM2NDC);
-
-//     // Log the warped vertices and homography matrix
-//     minX = std::numeric_limits<float>::max();
-//     maxX = std::numeric_limits<float>::lowest();
-//     minY = std::numeric_limits<float>::max();
-//     maxY = std::numeric_limits<float>::lowest();
-//     for (size_t i = 0; i < out_circVertices.size(); i += 2)
-//     {
-//         minX = std::min(minX, out_circVertices[i]);
-//         maxX = std::max(maxX, out_circVertices[i]);
-//         minY = std::min(minY, out_circVertices[i + 1]);
-//         maxY = std::max(maxY, out_circVertices[i + 1]);
-//     }
-//     ROS_INFO("[CircleRenderer::_warpCircle WARPED] Min: (%0.2f, %0.2f), Max: (%0.2f, %0.2f)",
-//              minX, minY, maxX, maxY);
-//     dbLogHomMat(_circHomMaCM2NDC_NDC);
-// }
-
-void CircleRenderer::_warpCircle(std::vector<float> &out_circVertices)
+void CircleRenderer::_convertToNDC(std::vector<float> &out_circVertices)
 {
+    // Assuming out_circVertices is a flat list of coordinates: [x1, y1, x2, y2, ..., xn, yn]
+    // Convert to vector of cv::Point2f
+    std::vector<cv::Point2f> circPoints;
+    for (size_t i = 0; i < out_circVertices.size(); i += 2)
+    {
+        circPoints.push_back(cv::Point2f(out_circVertices[i], out_circVertices[i + 1]));
+    }
+
+    // Apply the homography transformation
+    std::vector<cv::Point2f> transformedPoints;
+    cv::perspectiveTransform(circPoints, transformedPoints, circHomMatNDC);
+
+    // Store the transformed points back into out_circVertices
+    out_circVertices.clear();
+    for (const auto &pt : transformedPoints)
+    {
+        out_circVertices.push_back(pt.x);
+        out_circVertices.push_back(pt.y);
+    }
 }
 
 // ================================================== FUNCTIONS ==================================================
@@ -1698,7 +1674,7 @@ int xmlLoadHMAT(int mon_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_c
 
     if (!calibration_node)
     {
-        ROS_ERROR("[xmlLoadHMAT] No calibration mode[%s] found in XML File[%s]", cal_mode_str.c_str(), file_path.c_str());
+        ROS_ERROR("[xmlLoadHMAT] No calibration node[%s] found in XML File[%s]", cal_mode_str.c_str(), file_path.c_str());
         return -1;
     }
 
@@ -1717,8 +1693,8 @@ int xmlLoadHMAT(int mon_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_c
 
     if (!hmat_node)
     {
-        ROS_ERROR("[xmlLoadHMAT] No HMAT with grid_row[%d] and grid_col[%d] found in calibration mode[%s]",
-                  grid_row, grid_col, cal_mode_str.c_str());
+        ROS_ERROR("[xmlLoadHMAT] No HMAT with grid_row[%d] and grid_col[%d] found in calibration mode[%s] for XML File[%s]",
+                  grid_row, grid_col, cal_mode_str.c_str(), file_path.c_str());
         return -1;
     }
 
@@ -1817,7 +1793,7 @@ int xmlLoadVertices(int mon_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc
 
     if (!result)
     {
-        // Handle the error (logging, throw exception, etc.)
+        ROS_ERROR("[xmlLoadHMAT] Failed to load vertices from XML File[%s]", file_path.c_str());
         return -1;
     }
 
@@ -1834,7 +1810,7 @@ int xmlLoadVertices(int mon_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc
 
     if (!monitor_node)
     {
-        // Handle the error (logging, throw exception, etc.)
+        ROS_ERROR("[xmlLoadHMAT] No monitor node[%d] found in XML File[%s]", mon_ind, file_path.c_str());
         return -1;
     }
 
@@ -1858,7 +1834,8 @@ int xmlLoadVertices(int mon_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc
     // Check if the vector has exactly four vertices
     if (out_quad_vertices_ndc.size() != 4)
     {
-        ROS_ERROR("[xmlLoadHMAT] Failed to load vertices from XML File[%s]", file_path.c_str());
+        ROS_ERROR("[xmlLoadHMAT] Loaded vector is wrong size for XML: Expected[4] Actual[%d] Monitor[%d] File[%s]",
+                  out_quad_vertices_ndc.size(), mon_ind, file_path.c_str());
         return -1;
     }
 

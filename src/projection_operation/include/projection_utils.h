@@ -683,7 +683,7 @@ public:
     unsigned int circSegments;       // Number of segments used to approximate the circle geometry.
     float circRotationAngle;         // Rotation angle of the circle in degrees.
     cv::Point2f circScalingFactors;  // Scaling factors for the circle's x and y dimensions.
-    cv::Mat circHomMaCM2NDC;          // Homography matrix to warp the circle.
+    cv::Mat circHomMatNDC;          // Homography matrix to convert position from cm to NDC space (default to identity).
 
 private:
     static GLuint _ShaderProgram;                         // Shader program for rendering
@@ -769,8 +769,7 @@ public:
      * @param _circColor Color of the circle.
      * @param _circSegments Number of segments for the circle approximation.
      * @param _circRotationAngle Optional rotation angle of the circle in degrees (default to 0.0f).
-     * @param _circScalingFactors Optional scaling factors for the circle's x and y dimensions (default to (1.0f, 1.0f)).
-     * @param _circHomMaCM2NDC Optional homography matrix to warp the circle (default to identity).
+     * @param _circHomMatNDC Optional homography matrix to convert position from cm to NDC space (default to identity).
      */
     int initializeCircleObject(
         cv::Point2f _circPosition,
@@ -779,7 +778,7 @@ public:
         unsigned int _circSegments,
         float _circRotationAngle = 0.0f,
         cv::Point2f _circScalingFactors = cv::Point2f(1.0f, 1.0f),
-        cv::Mat _circHomMaCM2NDC = cv::Mat::eye(3, 3, CV_64F));
+        cv::Mat _circHomMatNDC = cv::Mat::eye(3, 3, CV_64F));
 
     /**
      * @brief Compiles, links shaders, and gets uniform locations.
@@ -850,6 +849,7 @@ public:
 
     /**
      * @brief Sets the color of the circle.
+     *
      * @param _circColor New color of the circle.
      */
     void setColor(cv::Scalar _circColor);
@@ -857,9 +857,11 @@ public:
     /**
      * @brief Recomputes the circle parameters and updates the OpenGL buffer.
      *
+     * @param do_coord_warp Option to convert circle coordinates based on circHomMatNDC.
+     *
      * @return Integer status code [-1:error, 0:successful].
      */
-    int updateCircleObject();
+    int updateCircleObject(bool do_coord_warp = false);
 
     /**
      * @brief Draws the circle using the stored shader program and uniforms.
@@ -931,17 +933,17 @@ private:
     void _computeVertices(std::vector<float> &out_circVertices);
 
     /**
-     * @brief Warps the circle vertices using a homography matrix.
+     * @brief Warp/transforms circle coordinates using the stored homography matrix.
      *
-     * This method applies the homography matrix (circHomMaCM2NDC) to each vertex of
-     * the circle. The vertices are transformed and normalized to fit the new
-     * perspective defined by the homography. It's typically called after
-     * computing the vertices and before updating the VBO in the rendering
-     * pipeline.
+     * This method takes a vector of circle vertices (as float values representing
+     * x and y coordinates) and transforms them using the provided homography matrix.
+     * The transformed coordinates are then stored back into the same vector.
+     * The method assumes the input vector contains an even number of elements,
+     * representing pairs of (x, y) coordinates.
      *
-     * @param[out] out_circVertices A reference to a vector of float, representing the circle's vertices.
+     * @param[out] out_circVertices The vector of circle vertices in CM, to be transformed.
      */
-    void _warpCircle(std::vector<float> &out_circVertices);
+    void _convertToNDC(std::vector<float> &out_circVertices);
 };
 
 #endif // CIRCLE_RENDERER_H
@@ -1187,7 +1189,7 @@ int WALL_IMG_PROJ_MAP[4][3][3][3] = {
 };
 
 // Template of 1D array for hardcoded floor image indices to display
-int FLOOR_IMG_PROJ_MAP[4] = {
+int MAZE_IMG_PROJ_MAP[4] = {
     1, // Projector 0: East
     1, // Projector 1: North
     1, // Projector 2: West
@@ -1215,21 +1217,24 @@ extern const int MAZE_SIZE = 3;
 extern const int WINDOW_WIDTH_PXL = 3840;
 extern const int WINDOW_HEIGHT_PXL = 2160;
 
-// Maze floor width and height (pixels)
-const int FLOOR_IMAGE_WIDTH_PXL = 1800;
-const int FLOOR_IMAGE_HEIGHT_PXL = 1800;
+// Maze width and height (pixels)
+const int MAZE_IMAGE_WIDTH_PXL = 1800;
+const int MAZE_IMAGE_HEIGHT_PXL = 1800;
 
-// Maze floor width and height (NDC)
-const float FLOOR_WIDTH_NDC = 0.3f;
-const float FLOOR_HEIGHT_NDC = 0.6f;
+// Maze width and height (NDC)
+const float MAZE_WIDTH_NDC = 0.3f;
+const float MAZE_HEIGHT_NDC = 0.6f;
+
+// Maze width and height (cm)
+const float MAZE_WIDTH_HEIGHT_CM = 90.0f;
 
 // Wall image size (pixels)
 extern const int WALL_IMAGE_WIDTH_PXL = 300;
 extern const int WALL_IMAGE_HEIGHT_PXL = 540;
 
 // Default wall width and height (NDC)
-extern const float WALL_IMAGE_WIDTH_NDC = (FLOOR_WIDTH_NDC / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));   // Wall width based on octogonal geometry in NDC
-extern const float WALL_IMAGE_HEIGHT_NDC = (FLOOR_HEIGHT_NDC / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
+extern const float WALL_IMAGE_WIDTH_NDC = (MAZE_WIDTH_NDC / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));   // Wall width based on octogonal geometry in NDC
+extern const float WALL_IMAGE_HEIGHT_NDC = (MAZE_HEIGHT_NDC / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
 
 // Global variable to set the OpenGL debug level.
 const int DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]

@@ -291,8 +291,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 void initControlPoints(CalibrationMode _CAL_MODE, std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR)
 {
     // Specify the control point limits
-    float cp_x = FLOOR_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
-    float cp_y = FLOOR_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates
+    float cp_x = MAZE_WIDTH_NDC / 2;  // starting X-coordinate in NDC coordinates
+    float cp_y = MAZE_HEIGHT_NDC / 2; // starting Y-coordinate in NDC coordinates
 
     // Add an x offset based on the calibration mode by shifting the origin to the left or right
     float offset_x = 1.0f * static_cast<float>(WALL_IMAGE_WIDTH_NDC);
@@ -305,8 +305,8 @@ void initControlPoints(CalibrationMode _CAL_MODE, std::array<std::array<cv::Poin
 
     // Sprcify with width and height spacing
     // Set the spacing to be the wall image size for wall calibration and the maze size for floor calibration
-    float cp_spacing_width = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? WALL_IMAGE_WIDTH_NDC : FLOOR_WIDTH_NDC;
-    float cp_spacing_height = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? WALL_IMAGE_HEIGHT_NDC : FLOOR_HEIGHT_NDC;
+    float cp_spacing_width = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? WALL_IMAGE_WIDTH_NDC : MAZE_WIDTH_NDC;
+    float cp_spacing_height = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? WALL_IMAGE_HEIGHT_NDC : MAZE_HEIGHT_NDC;
 
     // Iterate through control point outer array (maze vertices)
     for (int cp_i = 0; cp_i < 4; cp_i++) // image bottom to top
@@ -466,9 +466,9 @@ int updateFloorHomography(const std::array<cv::Point2f, 4> &_CP_ARR, cv::Mat &ou
     // Define source plane vertices
     std::vector<cv::Point2f> source_vertices_pxl = {
         cv::Point2f(0.0f, 0.0f),                                    // Top-left
-        cv::Point2f(FLOOR_IMAGE_WIDTH_PXL, 0.0f),                   // Top-right
-        cv::Point2f(FLOOR_IMAGE_WIDTH_PXL, FLOOR_IMAGE_HEIGHT_PXL), // Bottom-right
-        cv::Point2f(0.0f, FLOOR_IMAGE_HEIGHT_PXL)};                 // Bottom-left
+        cv::Point2f(MAZE_IMAGE_WIDTH_PXL, 0.0f),                   // Top-right
+        cv::Point2f(MAZE_IMAGE_WIDTH_PXL, MAZE_IMAGE_HEIGHT_PXL), // Bottom-right
+        cv::Point2f(0.0f, MAZE_IMAGE_HEIGHT_PXL)};                 // Bottom-left
 
     // Convert _CP_ARR to vector
     std::vector<cv::Point2f> target_vertices_ndc(_CP_ARR.begin(), _CP_ARR.end());
@@ -554,8 +554,8 @@ void appInitVariables()
     // Log setup parameters
     ROS_INFO("[appInitVariables] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
     ROS_INFO("[appInitVariables] Display: Width[%d] Height[%d]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
-    ROS_INFO("[appInitVariables] Floor (Pxl): Width[%d] Height[%d]", FLOOR_IMAGE_WIDTH_PXL, FLOOR_IMAGE_HEIGHT_PXL);
-    ROS_INFO("[appInitVariables] Floor (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", FLOOR_WIDTH_NDC, FLOOR_HEIGHT_NDC);
+    ROS_INFO("[appInitVariables] Floor (Pxl): Width[%d] Height[%d]", MAZE_IMAGE_WIDTH_PXL, MAZE_IMAGE_HEIGHT_PXL);
+    ROS_INFO("[appInitVariables] Floor (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
     ROS_INFO("[appInitVariables] Wall (Pxl): Width[%d] Height[%d]", WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL);
     ROS_INFO("[appInitVariables] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_IMAGE_WIDTH_NDC, WALL_IMAGE_HEIGHT_NDC);
     ROS_INFO("[appInitVariables] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
