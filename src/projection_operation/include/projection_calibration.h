@@ -73,6 +73,7 @@ static struct FlagStruct
     bool change_window_mode = false;  // Flag to indicate if the window mode needs to be updated
     bool init_control_points = false; // Flag to indicate if the control point markers need to be reinitialized
     bool fullscreen_mode = false;     // Flag to indicate if the window is in full screen mode
+    bool update_mode_img = true;      // Flag to indicate if the monitor and calibration mode image needs to be updated
     bool update_textures = true;      // Flag to indicate if image vertices, homography and texture need to be updated
     bool update_homographys = false;  // Flag to indicate if image vertices, homography and texture need to be updated
 } F;
@@ -176,9 +177,9 @@ std::vector<cv::Mat> monFloorImgMatVec; // Vector of monitor mode image texture 
 std::vector<cv::Mat> calImgMatVec;      // Vector of calibration mode image texture matrices
 
 /**
- * @brief Scalar to store the floor image as a cv::Mat
+ * @brief Scalar to store the mode image displaying the current calibration mode and monitor
  */
-cv::Mat floorImgMat;
+cv::Mat modeImgMat;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -277,22 +278,32 @@ int updateFloorHomography(
     cv::Mat &out_H);
 
 /**
- * @brief Applies the homography matrices to warp image textures and combine them.
+ * @brief Update the mode image.
  *
- * @param _CAL_MODE Enum of type CalibrationMode for the active calibration mode.
- * @param img_wall_mat cv::Mat image matrix for the base wall image.
+ * @param img_base_mat cv::Mat image matrix for the base image.
  * @param img_mon_mat cv::Mat image matrix for the monitor mode image.
  * @param img_cal_mat cv::Mat image matrix for the calibration image.
+ * @param[out] out_img_mode_mat Reference to cv::Mat image to store the merged mode image.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int updateModeImage(cv::Mat img_base_mat, cv::Mat img_mon_mat, cv::Mat img_cal_mat, cv::Mat &out_img_mode_mat);
+
+/**
+ * @brief Applies the homography matrices to warp image textures and combine them.
+ *
+ * @param img_base_mat cv::Mat image matrix for the base image.
+ * @param img_mode_mat cv::Mat image matrix for the monitor mode image.
+ * @param _CAL_MODE Enum of type CalibrationMode for the active calibration mode.
  * @param _HMAT_ARR Array containing calibration matrices for the maze.
  * @param[out] out_projCtx MazeRenderContext OpenGL context handler.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int updateTexture(
+    cv::Mat img_base_mat,
+    cv::Mat img_mode_mat,
     CalibrationMode _CAL_MODE,
-    cv::Mat img_wall_mat,
-    cv::Mat img_mon_mat,
-    cv::Mat img_cal_mat,
     const std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &_HMAT_ARR,
     MazeRenderContext &out_projCtx);
 

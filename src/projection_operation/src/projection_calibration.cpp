@@ -66,6 +66,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             F.change_window_mode = true;
             // Set the reinstalize control points flag
             F.init_control_points = true;
+            // Set flag to update mode image
+            F.update_mode_img = true;
         }
 
         // ---------- Image selector keys [F1-F4] ----------
@@ -138,16 +140,27 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         if ((mods & GLFW_MOD_CONTROL) && (mods & GLFW_MOD_SHIFT))
         {
+            bool is_cal_mode_changed = false;
+
             // Listen for arrow key input to switch through calibration modes
             if (key == GLFW_KEY_LEFT)
             {
                 CAL_MODE = (CAL_MODE > 0) ? static_cast<CalibrationMode>(CAL_MODE - 1) : static_cast<CalibrationMode>(0);
-                F.init_control_points = true;
+                is_cal_mode_changed = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
                 CAL_MODE = (CAL_MODE < N_CAL_MODES - 1) ? static_cast<CalibrationMode>(CAL_MODE + 1) : static_cast<CalibrationMode>(N_CAL_MODES - 1);
+                is_cal_mode_changed = true;
+            }
+
+            // Set flags
+            if (is_cal_mode_changed)
+            {
+                // Set flag to update the control points
                 F.init_control_points = true;
+                // Set flag to update mode image
+                F.update_mode_img = true;
             }
         }
 
@@ -466,10 +479,10 @@ int updateFloorHomography(const std::array<cv::Point2f, 4> &_CP_ARR, cv::Mat &ou
 {
     // Define source plane vertices
     std::vector<cv::Point2f> source_vertices_pxl = {
-        cv::Point2f(0.0f, 0.0f),                                    // Top-left
-        cv::Point2f(MAZE_IMAGE_WIDTH_PXL, 0.0f),                   // Top-right
+        cv::Point2f(0.0f, 0.0f),                                  // Top-left
+        cv::Point2f(MAZE_IMAGE_WIDTH_PXL, 0.0f),                  // Top-right
         cv::Point2f(MAZE_IMAGE_WIDTH_PXL, MAZE_IMAGE_HEIGHT_PXL), // Bottom-right
-        cv::Point2f(0.0f, MAZE_IMAGE_HEIGHT_PXL)};                 // Bottom-left
+        cv::Point2f(0.0f, MAZE_IMAGE_HEIGHT_PXL)};                // Bottom-left
 
     // Convert _CP_ARR to vector
     std::vector<cv::Point2f> target_vertices_ndc(_CP_ARR.begin(), _CP_ARR.end());
@@ -483,9 +496,24 @@ int updateFloorHomography(const std::array<cv::Point2f, 4> &_CP_ARR, cv::Mat &ou
     return 0;
 }
 
+int updateModeImage(cv::Mat img_main_mat, cv::Mat img_mon_mat, cv::Mat img_cal_mat, cv::Mat &out_img_mode_mat)
+{
+    // Copy main image to output image
+    img_main_mat.copyTo(out_img_mode_mat);
+
+    // Merge test pattern and active monitor image
+    if (mergeImgMat(img_mon_mat, out_img_mode_mat) < 0)
+        return -1;
+
+    // Merge previous image and active calibration image
+    if (mergeImgMat(img_cal_mat, out_img_mode_mat) < 0)
+        return -1;
+
+    return 0;
+}
+
 int updateTexture(
-    CalibrationMode _CAL_MODE,
-    cv::Mat img_wall_mat, cv::Mat img_mon_mat, cv::Mat img_cal_mat,
+    cv::Mat img_base_mat, cv::Mat img_mode_mat, CalibrationMode _CAL_MODE,
     const std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &_HMAT_ARR,
     MazeRenderContext &out_projCtx)
 {
@@ -501,27 +529,25 @@ int updateTexture(
         // Iterate through each column in the maze row
         for (int gc_i = 0; gc_i < grid_size; gc_i++) // image left to right
         {
-            // Copy wall image
             cv::Mat img_copy;
-            img_wall_mat.copyTo(img_copy);
 
             // Get the maze vertex indice cooresponding to the selected control point
             int mv_ind = I.CP_MAP[I.cp_maze_vert_selected[0]][I.cp_maze_vert_selected[1]];
 
-            //  Create merged image for the wall corresponding to the selected control point
+            //  Check if mode image should be used
             if (
                 (mv_ind == 0 && gr_i == 0 && gc_i == 0) ||
                 (mv_ind == 1 && gr_i == 0 && gc_i == grid_size - 1) ||
                 (mv_ind == 3 && gr_i == grid_size - 1 && gc_i == 0) ||
                 (mv_ind == 2 && gr_i == grid_size - 1 && gc_i == grid_size - 1))
             {
-                // Merge test pattern and active monitor image
-                if (mergeImgMat(img_mon_mat, img_copy) < 0)
-                    return -1;
-
-                // Merge previous image and active calibration image
-                if (mergeImgMat(img_cal_mat, img_copy) < 0)
-                    return -1;
+                // Use mode image
+                img_mode_mat.copyTo(img_copy);
+            }
+            else
+            {
+                // Use standard image
+                img_base_mat.copyTo(img_copy);
             }
 
             // Get homography matrix for this wall
@@ -799,27 +825,38 @@ void appMainLoop()
             }
         }
 
+        // Update the caliration and monitor mode image
+        if (F.update_mode_img)
+        {
+            // Update wall textures
+            if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
+            {
+                if (updateModeImage(wallImgMatVec[I.wall_image], monWallImgMatVec[I.monitor], calImgMatVec[CAL_MODE], modeImgMat) < 0)
+                    throw std::runtime_error("[appMainLoop] Error returned from updateModeImage for wall image");
+            }
+            // Update floor texture
+            else if (CAL_MODE == FLOOR)
+            {
+                if (updateModeImage(floorImgMatVec[I.floor_image], monFloorImgMatVec[I.monitor], calImgMatVec[CAL_MODE], modeImgMat) < 0)
+                    throw std::runtime_error("[appMainLoop] Error returned from updateModeImage for floor image");
+            }
+        }
+
         // Update image texture
         if (F.update_textures ||
             F.update_homographys ||
             F.init_control_points)
         {
-            // // TEMP
-            // cv::Mat H = HMAT_ARR[CAL_MODE][0][0];
-            // cv::Mat img_warp;
-            // warpImgMat(wallImgMatVec[I.wall_image], H, img_warp);
-            // projCtx.loadMatTexture(img_warp);
-
             // Update wall textures
             if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
             {
-                if (updateTexture(CAL_MODE, wallImgMatVec[I.wall_image], monWallImgMatVec[I.monitor], calImgMatVec[CAL_MODE], HMAT_ARR, projCtx) < 0)
+                if (updateTexture(wallImgMatVec[I.wall_image], modeImgMat, CAL_MODE, HMAT_ARR, projCtx) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from updateTexture for wall images");
             }
             // Update floor texture
             else if (CAL_MODE == FLOOR)
             {
-                if (updateTexture(CAL_MODE, floorImgMatVec[I.floor_image], monFloorImgMatVec[I.monitor], calImgMatVec[CAL_MODE], HMAT_ARR, projCtx) < 0)
+                if (updateTexture(floorImgMatVec[I.floor_image], modeImgMat, CAL_MODE, HMAT_ARR, projCtx) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from updateTexture for floor images");
             }
         }
@@ -831,6 +868,7 @@ void appMainLoop()
         F.init_control_points = false;
         F.update_textures = false;
         F.update_homographys = false;
+        F.update_mode_img = false;
 
         // --------------- Handle Rendering for Next Frame ---------------
 

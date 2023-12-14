@@ -2102,7 +2102,7 @@ int warpImgMat(cv::Mat img_mat, cv::Mat _H, cv::Mat &out_img_mat)
     // Check that the input image is valid
     if (img_mat.empty())
     {
-        ROS_ERROR("[warpImgMat] OpenCV image copy failed");
+        ROS_ERROR("[warpImgMat] Input image is empty");
         return -1;
     }
 
