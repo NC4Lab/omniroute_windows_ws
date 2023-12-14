@@ -2,16 +2,16 @@
 <Root>
 	<monitor index="0">
 		<vertex>
-			<coord>-0.200000033</coord>
-			<coord>-0.316666633</coord>
-		</vertex>
-		<vertex>
-			<coord>0.150000006</coord>
+			<coord>-0.150000006</coord>
 			<coord>-0.266666681</coord>
 		</vertex>
 		<vertex>
-			<coord>0.200000033</coord>
-			<coord>0.316666633</coord>
+			<coord>0.270000041</coord>
+			<coord>-0.556666434</coord>
+		</vertex>
+		<vertex>
+			<coord>0.230000049</coord>
+			<coord>0.206666663</coord>
 		</vertex>
 		<vertex>
 			<coord>-0.150000006</coord>

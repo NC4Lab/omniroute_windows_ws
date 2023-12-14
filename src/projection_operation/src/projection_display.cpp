@@ -325,8 +325,8 @@ void appMainLoop()
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from drawTexture");
 
             // Draw/update rat mask marker
-            // rmPosition.x = rmPosition.x < 0.5 ? rmPosition.x + 0.001f : -0.5;
-            // rmPosition.y = rmPosition.y < 0.5 ? rmPosition.y + 0.001f : -0.5;
+            rmPosition.x = rmPosition.x < 90.0f ? rmPosition.x + 0.1f : 0.0f;
+            rmPosition.y = rmPosition.y < 90.0f ? rmPosition.y + 0.1f : 0.0f;
             if (drawRatMask(rmPosition, RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from drawRatMask");
 
