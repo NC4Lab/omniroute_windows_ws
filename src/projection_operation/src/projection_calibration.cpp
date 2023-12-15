@@ -36,23 +36,23 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         {
             mon_ind = 0;
         }
-        else if (key == GLFW_KEY_1 && N.monitors > 1)
+        else if (key == GLFW_KEY_1 && N.monitor > 1)
         {
             mon_ind = 1;
         }
-        else if (key == GLFW_KEY_2 && N.monitors > 2)
+        else if (key == GLFW_KEY_2 && N.monitor > 2)
         {
             mon_ind = 2;
         }
-        else if (key == GLFW_KEY_3 && N.monitors > 3)
+        else if (key == GLFW_KEY_3 && N.monitor > 3)
         {
             mon_ind = 3;
         }
-        else if (key == GLFW_KEY_4 && N.monitors > 4)
+        else if (key == GLFW_KEY_4 && N.monitor > 4)
         {
             mon_ind = 4;
         }
-        else if (key == GLFW_KEY_5 && N.monitors > 5)
+        else if (key == GLFW_KEY_5 && N.monitor > 5)
         {
             mon_ind = 5;
         }
@@ -606,7 +606,7 @@ void appLoadAssets()
 void appInitOpenGL()
 {
     // Initialize GLFW and OpenGL settings
-    if (MazeRenderContext::SetupGraphicsLibraries(N.monitors) < 0)
+    if (MazeRenderContext::SetupGraphicsLibraries(N.monitor) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
 
     // Initialze render context

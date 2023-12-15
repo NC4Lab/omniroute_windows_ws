@@ -88,7 +88,7 @@ static struct FlagStruct
  */
 static struct CountStruct
 {
-    int monitors;              // Number of monitors connected to the system
+    int monitor;              // Number of monitors connected to the system
     const int wall_image = 4;  // Number of wall test images
     const int floor_image = 2; // Number of floor test images
 } N;
@@ -106,9 +106,9 @@ static struct CountStruct
  */
 static struct IndStruct
 {
-    int monitor = 0;     // Enum of type CalibrationMode for the active monitor to be loaded
-    int wall_image = 0;  // Enum of type CalibrationMode for the test wall image to be loaded
-    int floor_image = 0; // Enum of type CalibrationMode for the test wall image to be loaded
+    int monitor = 0;     // Index of the active monitor to be loaded
+    int wall_image = 0;  // Index of the test wall image to be loaded
+    int floor_image = 0; // Index of the test wall image to be loaded
     std::array<std::array<int, 2>, 2> CP_MAP = {{{0, 1},
                                                  {3, 2}}}; // Maps a given row and column cpRowColMap[1] index to the 1D control points vector.
     std::array<int, 2> cp_maze_vert_selected = {0, 0}; // Selected maze vertex [row, col]
