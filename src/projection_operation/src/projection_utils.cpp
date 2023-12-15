@@ -880,9 +880,7 @@ CircleRenderer::CircleRenderer()
       cirRadius(1.0f),
       circColor(cv::Scalar(1.0, 1.0, 1.0)),
       circSegments(32),
-      circScalingFactors(cv::Point2f(1.0f, 1.0f)),
-      circHomMatNDC(cv::Mat::eye(3, 3, CV_64F)),
-      circRotationAngle(0.0f)
+      circHomMatNDC(cv::Mat::eye(3, 3, CV_64F))
 {
     // Define instance count and itterate static _CircCnt
     circID = _CircCnt++;
@@ -906,8 +904,8 @@ CircleRenderer::~CircleRenderer()
     }
 }
 
-int CircleRenderer::initializeCircleObject(cv::Point2f _circPosition, float _cirRadius, cv::Scalar _circColor, unsigned int _circSegments,
-                                           float _circRotationAngle, cv::Point2f _circScalingFactors, cv::Mat _circHomMatNDC)
+int CircleRenderer::initializeCircleObject(cv::Point2f _circPosition, float _cirRadius, cv::Scalar _circColor,
+                                           unsigned int _circSegments, cv::Mat _circHomMatNDC)
 {
     int status = 0;
 
@@ -916,8 +914,6 @@ int CircleRenderer::initializeCircleObject(cv::Point2f _circPosition, float _cir
     cirRadius = _cirRadius;
     circColor = _circColor;
     circSegments = _circSegments;
-    circRotationAngle = _circRotationAngle;
-    circScalingFactors = _circScalingFactors;
     circHomMatNDC = _circHomMatNDC;
 
     // Run initial vertex computation
@@ -1069,16 +1065,6 @@ void CircleRenderer::setRadius(float _cirRadius)
     cirRadius = _cirRadius;
 }
 
-void CircleRenderer::setRotationAngle(float _circRotationAngle)
-{
-    circRotationAngle = _circRotationAngle;
-}
-
-void CircleRenderer::setScaling(cv::Point2f _circScalingFactors)
-{
-    circScalingFactors = _circScalingFactors;
-}
-
 void CircleRenderer::setColor(cv::Scalar col)
 {
     circColor = col;
@@ -1087,9 +1073,6 @@ void CircleRenderer::setColor(cv::Scalar col)
 int CircleRenderer::updateCircleObject(bool do_coord_warp)
 {
     int status = 0;
-
-    // Update the transformation matrix
-    _computeTransformation();
 
     // Generate the new vertices based on the current position, radius, and circSegments
     _computeVertices(circVertices);
@@ -1198,38 +1181,6 @@ std::array<float, 16> CircleRenderer::_cvMatToGlArray(const cv::Mat &out_transfo
     std::array<float, 16> gl_array;
     std::copy(out_transformationMatrix.begin<float>(), out_transformationMatrix.end<float>(), gl_array.begin());
     return gl_array;
-}
-
-void CircleRenderer::_computeTransformation()
-{
-    // Initialize transformation matrix as identity if not done
-    if (_transformationMatrix.empty())
-    {
-        _transformationMatrix = cv::Mat::eye(4, 4, CV_32F);
-    }
-
-    // (1) Translate to the origin
-    cv::Mat translationToOrigin = cv::Mat::eye(4, 4, CV_32F);
-    translationToOrigin.at<float>(0, 3) = -circPosition.x;
-    translationToOrigin.at<float>(1, 3) = -circPosition.y;
-
-    // (2) Rotate around the origin (create a 3x3 rotation matrix first)
-    cv::Mat rotation2D = cv::getRotationMatrix2D(cv::Point2f(0, 0), circRotationAngle, 1.0);
-    cv::Mat rotation = cv::Mat::eye(4, 4, CV_32F); // Convert to 4x4 matrix
-    rotation2D.copyTo(rotation.rowRange(0, 2).colRange(0, 3));
-
-    // (3) Scale the circle by the scaling factors
-    cv::Mat scaling = cv::Mat::eye(4, 4, CV_32F);
-    scaling.at<float>(0, 0) = circScalingFactors.x;
-    scaling.at<float>(1, 1) = circScalingFactors.y;
-
-    // (4) Translate back to the original position
-    cv::Mat translationBack = cv::Mat::eye(4, 4, CV_32F);
-    translationBack.at<float>(0, 3) = circPosition.x;
-    translationBack.at<float>(1, 3) = circPosition.y;
-
-    // The multiplication order here is important
-    _transformationMatrix = translationBack * scaling * rotation * translationToOrigin;
 }
 
 void CircleRenderer::_computeVertices(std::vector<float> &out_circVertices)

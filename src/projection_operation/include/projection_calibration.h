@@ -63,7 +63,8 @@ const int cpRenderSegments = 36;                                       // Number
 /**
  * @brief Struct for global flags.
  *
- * @note update_textures is initialized as true to force the initial update of the textures.
+ * @details Flags update_mode_img and update_textures are initialized as true
+ * to force the initial update of the mode image and displayed texture.
  */
 static struct FlagStruct
 {
@@ -71,15 +72,19 @@ static struct FlagStruct
     bool xml_load_hmat = false;       // Flag to indicate if the XML file needs to be loaded
     bool xml_save_hmat = false;       // Flag to indicate if the XML file needs to be saved
     bool change_window_mode = false;  // Flag to indicate if the window mode needs to be updated
-    bool init_control_points = false; // Flag to indicate if the control point markers need to be reinitialized
+    bool init_control_points = true; // Flag to indicate if the control point markers need to be reinitialized
     bool fullscreen_mode = false;     // Flag to indicate if the window is in full screen mode
     bool update_mode_img = true;      // Flag to indicate if the monitor and calibration mode image needs to be updated
     bool update_textures = true;      // Flag to indicate if image vertices, homography and texture need to be updated
-    bool update_homographys = false;  // Flag to indicate if image vertices, homography and texture need to be updated
+    bool update_homographys = true;  // Flag to indicate if image vertices, homography and texture need to be updated
 } F;
 
 /**
  * @brief Struct for global counts.
+ *
+ * @param monitors Number of monitors connected to the system
+ * @param wall_image Number of wall test images
+ * @param floor_image Number of floor test images
  */
 static struct CountStruct
 {
@@ -90,26 +95,22 @@ static struct CountStruct
 
 /**
  * @brief Struct for global indices.
+ *
+ * @details CP_MAP
+ * - Maze/wall vertex indices
+ *      - 0: OpenGL: Top-left       OpenCV: Bottom-left
+ *      - 1: OpenGL: Top-right      OpenCV: Bottom-right
+ *      - 2: OpenGL: Bottom-right   OpenCV: Top-right
+ *      - 3: OpenGL: Bottom-left    OpenCV: Top-left
+ * - Also accounts for the y axis being flipped
  */
 static struct IndStruct
 {
     int monitor = 0;     // Enum of type CalibrationMode for the active monitor to be loaded
     int wall_image = 0;  // Enum of type CalibrationMode for the test wall image to be loaded
     int floor_image = 0; // Enum of type CalibrationMode for the test wall image to be loaded
-
-    /**
-     * @brief cpRowColMap maps a given row cpRowColMap[0] and column cpRowColMap[1] index to the 1D vector.
-     * To make things more complicated, this needs to account for the y axis being flipped.
-     *
-     * @details
-     * - Maze/wall vertex indices
-     *      - 0: OpenGL: Top-left       OpenCV: Bottom-left
-     *      - 1: OpenGL: Top-right      OpenCV: Bottom-right
-     *      - 2: OpenGL: Bottom-right   OpenCV: Top-right
-     *      - 3: OpenGL: Bottom-left    OpenCV: Top-left
-     */
     std::array<std::array<int, 2>, 2> CP_MAP = {{{0, 1},
-                                                 {3, 2}}};
+                                                 {3, 2}}}; // Maps a given row and column cpRowColMap[1] index to the 1D control points vector.
     std::array<int, 2> cp_maze_vert_selected = {0, 0}; // Selected maze vertex [row, col]
     std::array<int, 2> cp_wall_vert_selected = {1, 0}; // Selected wall vertex [row, col]
     const int cp_wall_origin_vertex = 3;               // Vertex index of the wall image origin (bottom-left)
@@ -306,16 +307,6 @@ int updateTexture(
     CalibrationMode _CAL_MODE,
     const std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &_HMAT_ARR,
     MazeRenderContext &out_projCtx);
-
-/**
- * @brief Initializes the datasets for the application.
- *
- * This function logs the setup parameters, initializes control
- * point coordinates, and computes wall homography matrices.
- *
- * @throws std::runtime_error if initialization fails.
- */
-void appInitVariables();
 
 /**
  * @brief Loads the necessary images for the application.

@@ -681,8 +681,6 @@ public:
     float cirRadius;                 // Radius of the circle.
     cv::Scalar circColor;            // Color of the circle.
     unsigned int circSegments;       // Number of segments used to approximate the circle geometry.
-    float circRotationAngle;         // Rotation angle of the circle in degrees.
-    cv::Point2f circScalingFactors;  // Scaling factors for the circle's x and y dimensions.
     cv::Mat circHomMatNDC;           // Homography matrix to convert position from cm to NDC space (default to identity).
 
 private:
@@ -690,7 +688,6 @@ private:
     GLuint _vao;                                          // Vertex Array Object for the circle.
     GLuint _vbo;                                          // Vertex Buffer Object for the circle's vertices.
     cv::Mat _transformationMatrix;                        // Transformation matrix for the circle's vertices.
-    static constexpr float _PI = 3.14159265358979323846f; // Pi
     static int _CircCnt;                                  // Static index counter for the CircleRenderer class objects
     static GLint _ColorLocation;                          // Location of color uniform in shader
     static GLint _TransformLocation;                      // Location of transform uniform in shader
@@ -768,7 +765,6 @@ public:
      * @param _cirRadius Radius of the circle.
      * @param _circColor Color of the circle.
      * @param _circSegments Number of segments for the circle approximation.
-     * @param _circRotationAngle Optional rotation angle of the circle in degrees (default to 0.0f).
      * @param _circHomMatNDC Optional homography matrix to convert position from cm to NDC space (default to identity).
      */
     int initializeCircleObject(
@@ -776,8 +772,6 @@ public:
         float _cirRadius,
         cv::Scalar _circColor,
         unsigned int _circSegments,
-        float _circRotationAngle = 0.0f,
-        cv::Point2f _circScalingFactors = cv::Point2f(1.0f, 1.0f),
         cv::Mat _circHomMatNDC = cv::Mat::eye(3, 3, CV_64F));
 
     /**
@@ -788,11 +782,11 @@ public:
      * links them into a shader program, and retrieves the uniform
      * locations. It should be called once during initialization.
      *
-     * @param __AspectRatioUniform Optional aspect ratio uniform for the shader program (default to 1.0f).
+     * @param __AspectRatioUniform Optional aspect ratio uniform for the shader program.
      *
      * @return Integer status code [-1:error, 0:successful].
      */
-    static int CompileAndLinkCircleShaders(float __AspectRatioUniform = 1.0f);
+    static int CompileAndLinkCircleShaders(float __AspectRatioUniform);
 
     /**
      * @brief Sets up the shader for drawing.
@@ -829,20 +823,6 @@ public:
      * @param _cirRadius New radius of the circle.
      */
     void setRadius(float _cirRadius);
-
-    /**
-     * @brief Sets the rotation angle of the circle.
-     *
-     * @param _circRotationAngle New rotation angle in degrees.
-     */
-    void setRotationAngle(float _circRotationAngle);
-
-    /**
-     * @brief Sets the scaling factors of the circle.
-     *
-     * @param _circScalingFactors New scaling factors for the x and y axes.
-     */
-    void setScaling(cv::Point2f _circScalingFactors);
 
     /**
      * @brief Sets the color of the circle.
@@ -916,11 +896,6 @@ private:
      * @return An array of floats representing the matrix data.
      */
     std::array<float, 16> _cvMatToGlArray(const cv::Mat &out_transformationMatrix);
-
-    /**
-     * @brief Computes the transformation matrix based on the circle's parameters.
-     */
-    void _computeTransformation();
 
     /**
      * @brief Computes the vertices for the circle approximation.
@@ -1240,6 +1215,9 @@ extern const float WALL_IMAGE_HEIGHT_NDC = (MAZE_HEIGHT_NDC / (float(MAZE_SIZE) 
 
 // Global variable to set the OpenGL debug level.
 const int DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
+
+// Pi
+static constexpr float PI = 3.14159265358979323846f; 
 
 // ================================================== FUNCTIONS ==================================================
 
