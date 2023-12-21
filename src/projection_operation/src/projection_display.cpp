@@ -38,11 +38,86 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     }
 }
 
+void simulateRatMovement(float move_step, float max_turn_angle, RatTracker &out_RT)
+{
+    // Track marker angle
+    static float marker_angle = 0.0f;
+
+    // Lambda function to keep the rat within the enclosure and turn when hitting the wall
+    auto keepWithinBoundsAndTurn = [&](cv::Point2f &position)
+    {
+        cv::Point2f original_position = position;
+        position.x = std::min(std::max(position.x, 0.0f), MAZE_WIDTH_HEIGHT_CM);
+        position.y = std::min(std::max(position.y, 0.0f), MAZE_WIDTH_HEIGHT_CM);
+
+        // If position changed (rat hits the wall), rotate randomly up to 180 degrees
+        if (position != original_position)
+        {
+            marker_angle += rand() % 181 - 90; // Random turn between -90 and +90 degrees
+        }
+    };
+
+    // Randomly decide to change direction
+    if (rand() % 10 == 0)
+    { // 10% chance to change direction
+        marker_angle += (rand() % static_cast<int>(2 * max_turn_angle)) - max_turn_angle;
+    }
+
+    // Calculate new position
+    float radian_angle = marker_angle * PI / 180.0f;
+    out_RT.marker_position.x += move_step * cos(radian_angle);
+    out_RT.marker_position.y += move_step * sin(radian_angle);
+
+    // Keep the rat within the enclosure and turn if hitting the wall
+    keepWithinBoundsAndTurn(out_RT.marker_position);
+}
+
+void populateMazeVertNdcVec(int proj_mon_ind, std::vector<cv::Point2f> &out_rotated_vec)
+{
+    // Lambda function for circular shift
+    auto circShift = [](const std::vector<cv::Point2f> &vec, int shift) -> std::vector<cv::Point2f>
+    {
+        std::vector<cv::Point2f> shifted_vec(vec.size());
+        int n = vec.size();
+        for (int i = 0; i < n; ++i)
+        {
+            shifted_vec[i] = vec[(i + shift + n) % n];
+        }
+        return shifted_vec;
+    };
+
+    // Template vertices
+    const std::vector<cv::Point2f> template_maze_vert_cm_vec = {
+        cv::Point2f(0, MAZE_WIDTH_HEIGHT_CM),
+        cv::Point2f(MAZE_WIDTH_HEIGHT_CM, MAZE_WIDTH_HEIGHT_CM),
+        cv::Point2f(MAZE_WIDTH_HEIGHT_CM, 0.0),
+        cv::Point2f(0.0, 0.0)};
+
+    // Apply circular shift based on proj_mon_ind
+    switch (proj_mon_ind)
+    {
+    case 0: // Circular shift left by 1
+        out_rotated_vec = circShift(template_maze_vert_cm_vec, -1);
+        break;
+    case 1: // No shift
+        out_rotated_vec = template_maze_vert_cm_vec;
+        break;
+    case 2: // Circular shift right by 1
+        out_rotated_vec = circShift(template_maze_vert_cm_vec, 1);
+        break;
+    case 3: // Circular shift right by 2
+        out_rotated_vec = circShift(template_maze_vert_cm_vec, 2);
+        break;
+    default:
+        break;
+    }
+}
+
 int updateTexture(
     int proj_mon_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
     const std::vector<cv::Mat> &_floorImgMatVec,
-    const std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> &_HMAT_ARR_VEC,
+    const std::array<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>, 4> &_HMAT_ARR,
     MazeRenderContext &out_projCtx)
 {
     // Initialize the image to be used as the texture
@@ -98,7 +173,7 @@ int updateTexture(
                 }
 
                 // Get homography matrix for this wall
-                cv::Mat H = _HMAT_ARR_VEC[proj_mon_ind][_CAL_MODE][gr_i][gc_i];
+                cv::Mat H = _HMAT_ARR[proj_mon_ind][_CAL_MODE][gr_i][gc_i];
 
                 // Warp Perspective
                 cv::Mat img_warp;
@@ -127,7 +202,7 @@ int updateTexture(
 }
 
 int drawRatMask(
-    cv::Point2f position,
+    const RatTracker &_RT,
     CircleRenderer &out_rmCircRend)
 {
     // Setup the CircleRenderer class shaders
@@ -135,7 +210,7 @@ int drawRatMask(
         return -1;
 
     // Set the marker position
-    out_rmCircRend.setPosition(position);
+    out_rmCircRend.setPosition(_RT.marker_position);
 
     // Recompute the marker parameters
     if (out_rmCircRend.updateCircleObject(true) < 0)
@@ -153,16 +228,15 @@ int drawRatMask(
     return 0;
 }
 
-void appLoadAssets()
+void appInitVariables()
 {
-
     // Load images using OpenCV
     if (loadImgMat(fiImgPathWallVec, wallImgMatVec) < 0)
-        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
+        throw std::runtime_error("[appInitVariables] Failed to load OpentCV wall images");
     if (loadImgMat(fiImgPathFloorVec, floorImgMatVec) < 0)
-        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
+        throw std::runtime_error("[appInitVariables] Failed to load OpentCV wall images");
 
-    // Load XML file data
+    // Load homography matrix XML file data
     for (const int &mon_ind : I.proj_mon_vec) // for each monitor index
     {
         for (int cal_i = 0; cal_i < N_CAL_MODES; ++cal_i)
@@ -178,37 +252,51 @@ void appLoadAssets()
                 for (int gc_i = 0; gc_i < grid_size; ++gc_i)
                 {
                     // Load the homography matrix from XML
-                    if (xmlLoadHMAT(mon_ind, _CAL_MODE, gr_i, gc_i, HMAT_ARR_VEC[mon_ind][_CAL_MODE][gr_i][gc_i]) < 0)
-                        throw std::runtime_error("[appMainLoop] Error returned from xmlLoadHMAT");
-                    if (_CAL_MODE == FLOOR)
-                    {
-                        // Load the maze vertices from XML
-                        std::vector<cv::Point2f> vert_vec(4);
-                        if (xmlLoadVertices(mon_ind, vert_vec) < 0)
-                            throw std::runtime_error("[appMainLoop] Error returned from xmlLoadVertices");
-                        MAZE_VERT_NDC_VEC[mon_ind] = vert_vec;
-                    }
+                    if (xmlLoadHMAT(mon_ind, _CAL_MODE, gr_i, gc_i, HMAT_ARR[mon_ind][_CAL_MODE][gr_i][gc_i]) < 0)
+                        throw std::runtime_error("[appInitVariables] Error returned from xmlLoadHMAT");
                 }
             }
         }
     }
 
-    ROS_INFO("[appLoadAssets] OpentCV mat images and 3D homography matrix array loaded successfully");
-}
+    // Load maze boundary vertices in NDC units for each projector
+    for (const int &mon_ind : I.proj_mon_vec) // for each monitor index
+    {
+        std::vector<cv::Point2f> maze_vert_ndc_vec(4);
+        std::vector<cv::Point2f> maze_vert_cm_vec(4);
 
-void appInitVariables()
-{
+        // Load the maze vertices from XML
+        if (xmlLoadVertices(mon_ind, maze_vert_ndc_vec) < 0)
+            throw std::runtime_error("[appInitVariables] Error returned from xmlLoadVertices");
+
+        // Compute the rotated maze vertices in centimeter units
+        populateMazeVertNdcVec(mon_ind, maze_vert_cm_vec);
+
+        // const std::vector<cv::Point2f> maze_vert_cm_vec = {
+        //     cv::Point2f(0, MAZE_WIDTH_HEIGHT_CM),
+        //     cv::Point2f(MAZE_WIDTH_HEIGHT_CM, MAZE_WIDTH_HEIGHT_CM),
+        //     cv::Point2f(MAZE_WIDTH_HEIGHT_CM, 0.0),
+        //     cv::Point2f(0.0, 0.0)};
+
+        // Compute the homography matrix for warping the rat mask marker from maze cm to ndc space for each projector
+        cv::Mat H;
+        if (computeHomographyMatrix(maze_vert_cm_vec, maze_vert_ndc_vec, H))
+            throw std::runtime_error("[appInitVariables] Monitor[" + std::to_string(mon_ind) + "]: Invalid homography matrix for rat mask image");
+
+        // Store the homography matrix
+        HMAT_CM_TO_NDC_ARR[mon_ind] = H;
+    }
 
     // Intialize the window offset vector
     winOffsetVec.clear();              // Clear any existing elements
     winOffsetVec.reserve(N.projector); // Reserve memory for efficiency
-    for (int win_ind = 0; win_ind < N.projector; ++win_ind)
+    for (int mon_ind = 0; mon_ind < N.projector; ++mon_ind)
     {
-        int offset = static_cast<int>(winOffsetDefualt * (win_ind + 0.05f));
+        int offset = static_cast<int>(winOffsetDefualt * (mon_ind + 0.05f));
         winOffsetVec.emplace_back(offset, offset);
     }
 
-    ROS_INFO("[appInitVariables] Variables initialized succesfully");
+    ROS_INFO("[appInitVariables] Finished loading and initializing variables successfully");
 }
 
 void appInitOpenGL()
@@ -223,12 +311,13 @@ void appInitOpenGL()
         throw std::runtime_error("[appInitOpenGL] Monitor index exceeds available monitors");
 
     // Initialize OpenGL for each projector
-    int win_ind = 0;
+    int cnt = 0;
     for (auto &projCtx : PROJ_CTX_VEC)
     {
+        int mon_ind = I.proj_mon_vec[cnt++];
 
         // Initialze render context for each projector
-        if (projCtx.initWindowContext(win_ind, I.starting_monitor, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, callbackKeyBinding) < 0)
+        if (projCtx.initWindowContext(mon_ind, I.starting_monitor, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, callbackKeyBinding) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
 
         // Initialize OpenGL wall image objects
@@ -244,31 +333,19 @@ void appInitOpenGL()
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to compile and link wall shader");
 
         // Create the shader program for CircleRenderer class rat mask rendering
-        if (CircleRenderer::CompileAndLinkCircleShaders() < 0)
+        if (CircleRenderer::CompileAndLinkCircleShaders(1.0) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
 
-        // Get angle and scaling factor for this projector's rat mask
-        cv::Point2f scaling_factors = cv::Point2f(ScalingFactors.x, ScalingFactors.y);
-        float rm_angle = 0;
-
-        // Compute the homography matrix for warp the rat mask from maze cm to ndc space for each projector
-        cv::Mat H;
-        if (computeHomographyMatrix(MAZE_VERT_CM_VEC, MAZE_VERT_NDC_VEC[win_ind], H))
-            throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Invalid homography matrix for floor image");
-
         // Initialize the CircleRenderer class object for rat masking
-        if (RM_CIRCREND_ARR[win_ind].initializeCircleObject(
-                rmPosition,       // position
-                rmMakerRadius,    // radius
-                rmRGB,            // color
-                rmRenderSegments, // segments
-                rm_angle,         // angle
-                scaling_factors,  // scaling factors
-                H                 // homography matrix
+        if (RM_CIRCREND_ARR[mon_ind].initializeCircleObject(
+                RT.marker_position,         // position
+                RT.marker_radius,           // radius
+                RT.marker_rgb,              // color
+                RT.marker_segments,         // segments
+                HMAT_CM_TO_NDC_ARR[mon_ind] // homography matrix
                 ) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
 
-        win_ind++;
         ROS_INFO("[appInitOpenGL] OpenGL initialized: Window[%d] Monitor[%d]", projCtx.windowInd, projCtx.monitorInd);
     }
 
@@ -299,7 +376,7 @@ void appMainLoop()
             for (auto &projCtx : PROJ_CTX_VEC)
             {
                 // Initialize wall image texture
-                if (updateTexture(I.proj_mon_vec[projCtx.windowInd], wallImgMatVec, floorImgMatVec, HMAT_ARR_VEC, projCtx))
+                if (updateTexture(I.proj_mon_vec[projCtx.windowInd], wallImgMatVec, floorImgMatVec, HMAT_ARR, projCtx))
                     throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to initialize wall texture");
             }
         }
@@ -324,10 +401,11 @@ void appMainLoop()
             if (projCtx.drawTexture() < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from drawTexture");
 
+            // TEMP
+            simulateRatMovement(0.5f, 45.0f, RT);
+
             // Draw/update rat mask marker
-            rmPosition.x = rmPosition.x < 90.0f ? rmPosition.x + 0.1f : 0.0f;
-            rmPosition.y = rmPosition.y < 90.0f ? rmPosition.y + 0.1f : 0.0f;
-            if (drawRatMask(rmPosition, RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
+            if (drawRatMask(RT, RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from drawRatMask");
 
             // Swap buffers and poll events
@@ -389,7 +467,6 @@ int main(int argc, char **argv)
     try
     {
         appInitVariables();
-        appLoadAssets();
         appInitOpenGL();
         appMainLoop();
     }

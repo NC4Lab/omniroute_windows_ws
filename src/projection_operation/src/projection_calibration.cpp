@@ -36,23 +36,23 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         {
             mon_ind = 0;
         }
-        else if (key == GLFW_KEY_1 && N.monitors > 1)
+        else if (key == GLFW_KEY_1 && N.monitor > 1)
         {
             mon_ind = 1;
         }
-        else if (key == GLFW_KEY_2 && N.monitors > 2)
+        else if (key == GLFW_KEY_2 && N.monitor > 2)
         {
             mon_ind = 2;
         }
-        else if (key == GLFW_KEY_3 && N.monitors > 3)
+        else if (key == GLFW_KEY_3 && N.monitor > 3)
         {
             mon_ind = 3;
         }
-        else if (key == GLFW_KEY_4 && N.monitors > 4)
+        else if (key == GLFW_KEY_4 && N.monitor > 4)
         {
             mon_ind = 4;
         }
-        else if (key == GLFW_KEY_5 && N.monitors > 5)
+        else if (key == GLFW_KEY_5 && N.monitor > 5)
         {
             mon_ind = 5;
         }
@@ -577,38 +577,17 @@ int updateTexture(
     return 0;
 }
 
-void appInitVariables()
-{
-    // Log setup parameters
-    ROS_INFO("[appInitVariables] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
-    ROS_INFO("[appInitVariables] Display: Width[%d] Height[%d]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
-    ROS_INFO("[appInitVariables] Floor (Pxl): Width[%d] Height[%d]", MAZE_IMAGE_WIDTH_PXL, MAZE_IMAGE_HEIGHT_PXL);
-    ROS_INFO("[appInitVariables] Floor (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
-    ROS_INFO("[appInitVariables] Wall (Pxl): Width[%d] Height[%d]", WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL);
-    ROS_INFO("[appInitVariables] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_IMAGE_WIDTH_NDC, WALL_IMAGE_HEIGHT_NDC);
-    ROS_INFO("[appInitVariables] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
-
-    // Initialize control point coordinate dataset
-    initControlPoints(CAL_MODE, CP_GRID_ARR);
-
-    // Update wall homographys
-    if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
-    {
-        if (updateWallHomographys(CAL_MODE, CP_GRID_ARR, HMAT_ARR) < 0)
-            throw std::runtime_error("[appInitVariables] Failed to initialize wall parameters");
-    }
-    // Update floor homography
-    else if (CAL_MODE == FLOOR)
-    {
-        if (updateFloorHomography(CP_GRID_ARR[0], HMAT_ARR[CAL_MODE][0][0]) < 0)
-            throw std::runtime_error("[appInitVariables] Failed to initialize floor parameters");
-    }
-
-    ROS_INFO("[appInitVariables] Data Structures CP_GRID_ARR and HMAT_ARR initialized succesfully");
-}
-
 void appLoadAssets()
 {
+    // Log setup parameters
+    ROS_INFO("[appLoadAssets] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
+    ROS_INFO("[appLoadAssets] Display: Width[%d] Height[%d]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
+    ROS_INFO("[appLoadAssets] Floor (Pxl): Width[%d] Height[%d]", MAZE_IMAGE_WIDTH_PXL, MAZE_IMAGE_HEIGHT_PXL);
+    ROS_INFO("[appLoadAssets] Floor (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
+    ROS_INFO("[appLoadAssets] Wall (Pxl): Width[%d] Height[%d]", WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL);
+    ROS_INFO("[appLoadAssets] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_IMAGE_WIDTH_NDC, WALL_IMAGE_HEIGHT_NDC);
+    ROS_INFO("[appLoadAssets] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
+
     // Load images using OpenCV
     if (loadImgMat(fiImgPathWallVec, wallImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall test images");
@@ -627,7 +606,7 @@ void appLoadAssets()
 void appInitOpenGL()
 {
     // Initialize GLFW and OpenGL settings
-    if (MazeRenderContext::SetupGraphicsLibraries(N.monitors) < 0)
+    if (MazeRenderContext::SetupGraphicsLibraries(N.monitor) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
 
     // Initialze render context
@@ -942,7 +921,6 @@ int main(int argc, char **argv)
 
     try
     {
-        appInitVariables();
         appLoadAssets();
         appInitOpenGL();
         appInitFileXML();

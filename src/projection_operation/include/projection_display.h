@@ -17,7 +17,8 @@
 /**
  * @brief Struct for global flags.
  *
- * @note update_textures is initialized as true to force the initial update of the textures.
+ * @details Flag update_textures is initialized as true to force the
+ * initial update of the displayed texture.
  */
 static struct FlagStruct
 {
@@ -33,10 +34,11 @@ static struct FlagStruct
 static struct IndStruct
 {
     const int starting_monitor = 0; // Default starting monitor index for the windows (hardcoded)
-    std::vector<int> proj_mon_vec = {
+    const std::vector<int> proj_mon_vec = {
         0,
         1,
-    }; // Index of the monitor associeted to each projector (hardcoded)
+        2,
+    }; // Vector of indeces of the monitor associeted to each projector (hardcoded)
 
 } I;
 
@@ -45,46 +47,41 @@ static struct IndStruct
  */
 static struct CountStruct
 {
-    int monitor;                                                   // Number of monitors connected to the system
+    int monitor;              // Number of monitors connected to the system
     const int projector = static_cast<int>(I.proj_mon_vec.size()); // Number of projectors
     const int wall_image = 6;                                      // Number of wall images
 } N;
 
 /**
+ * @brief  Struct for rat mask tracking and graphics.
+ */
+static struct RatTracker
+{
+    cv::Point2f marker_position = cv::Point2f(0.0f, 0.0f);      // Marker center (cm)
+    const GLfloat marker_radius = 5.0f;                         // Marker default circle radius (cm)
+    const cv::Scalar marker_rgb = cv::Scalar(1.0f, 0.0f, 0.0f); // Marker color (black)
+    const int marker_segments = 36;                             // Number of segments used to approximate the circle geometry
+} RT;
+
+/**
  * @brief A n_projectors sized element veoctor containing a 3x3x3 data contianer for storing 3x3 homography matrices (UGLY!)
  */
-std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> HMAT_ARR_VEC(N.projector);
+std::array<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>, 4> HMAT_ARR;
+
+/**
+ * @brief Array of homography matrices for warping the rat mask marker from maze cm to ndc space for each projector.
+ */
+std::array<cv::Mat, 4> HMAT_CM_TO_NDC_ARR;
+
+/**
+ * @brief  Array of marker for masking rat for each projector.
+ */
+std::array<CircleRenderer, 4> RM_CIRCREND_ARR;
 
 /**
  * @brief  Array of OpenGL context objects.
  */
 std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projector);
-
-/**
- * @brief  Marker for masking rat.
- */
-std::array<CircleRenderer, 4> RM_CIRCREND_ARR;
-
-// Rat mask graphics parameters
-cv::Point2f rmPosition = cv::Point2f(0.0f, 0.0f);    // Marker center (cm)
-const GLfloat rmMakerRadius = 10.0f;                   // Default control point rendered circle radius (cm)
-const cv::Scalar rmRGB = cv::Scalar(1.0f, 0.0f, 0.0f); // Marker color (black)
-const int rmRenderSegments = 36;                       // Number of segments used to approximate the circle geometry
-cv::Point2f ScalingFactors = cv::Point2f(1.0f, 1.0f);  // Marker scaling factors
-
-/**
- * @brief Vector of vertices of the maze corners in centimeter units.
- */
-const std::vector<cv::Point2f> MAZE_VERT_CM_VEC = {
-    cv::Point2f(0, MAZE_WIDTH_HEIGHT_CM),
-    cv::Point2f(MAZE_WIDTH_HEIGHT_CM, MAZE_WIDTH_HEIGHT_CM),
-    cv::Point2f(MAZE_WIDTH_HEIGHT_CM, 0.0),
-    cv::Point2f(0.0, 0.0)};
-
-/**
- * @brief Vector of vertices of the maze corners in NDC units.
- */
-std::vector<std::vector<cv::Point2f>> MAZE_VERT_NDC_VEC(4);
 
 /**
  * @brief Offset for the window position
@@ -151,12 +148,24 @@ void callbackKeyBinding(
     int mods);
 
 /**
+ * @brief Simulates rat movement.
+ *
+ * @param move_step Distance to move in cm.
+ * @param max_turn_angle Maximum angle to turn in degrees.
+ * @param[out] out_RT RatTracker struct object to be updated.
+ */
+void simulateRatMovement(
+    float move_step,
+    float max_turn_angle,
+    RatTracker &out_RT);
+
+/**
  * @brief Applies the homography matrices to warp wall image textures and combine them.
  *
  * @param _proj_mon_ind Index of the monitor associated to the projector.
  * @param _wallImgMatVec Vectors containing the loaded wall images in cv::Mat format
  * @param _floorImgMatVec Vectors containing the loaded floor images in cv::Mat format
- * @param _HMAT_ARR_VEC Big ass ugly vector of arrays of matrices of shit!
+ * @param _HMAT_ARR Big ass ugly array of arrays of matrices of shit!
  * @param[out] out_projCtx MazeRenderContext OpenGL context handler.
  *
  * @return Integer status code [-1:error, 0:successful].
@@ -165,39 +174,30 @@ int updateTexture(
     int proj_mon_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
     const std::vector<cv::Mat> &_floorImgMatVec,
-    const std::vector<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>> &_HMAT_ARR_VEC,
+    const std::array<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>, 4> &_HMAT_ARR,
     MazeRenderContext &out_projCtx);
 
 /**
  * @brief Draws control points associated with each corner wall.
  *
- * @param position Maker center position NDC.
+ * @param _RT RatTracker struct object.
  * @param[out] out_rmCircRend CircleRenderer objects used to draw the control points.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int drawRatMask(
-    cv::Point2f position,
+    const RatTracker &_RT,
     CircleRenderer &out_rmCircRend);
 
 /**
  * @brief Initializes the variables for the application.
  *
- * Just some shit.
+ * This function uses OpenCV to load wall images into memory.
+ * It also loads and computes various parameters used in the library
  *
  * @throws std::runtime_error.
  */
 void appInitVariables();
-
-/**
- * @brief Loads the images and homography matices array for the application.
- *
- * This function uses OpenCV to load wall images into memory.
- * It uses xmlLoadHMAT() to load the homography matrices from XML files.
- *
- * @throws std::runtime_error if image or xml loading fails.
- */
-void appLoadAssets();
 
 /**
  * @brief Initializes OpenGL settings and creates shader programs.
