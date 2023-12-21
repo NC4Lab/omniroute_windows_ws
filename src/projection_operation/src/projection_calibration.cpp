@@ -350,6 +350,10 @@ void initControlPoints(CalibrationMode _CAL_MODE, std::array<std::array<cv::Poin
             cv::Point2f(p_org.x, p_org.y + cp_spacing_height),                    // bottom left
         };
     }
+
+    // Reset the selected control points
+    I.cp_maze_vert_selected = {0, 0};
+    I.cp_wall_vert_selected = {1, 0};
 }
 
 int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,

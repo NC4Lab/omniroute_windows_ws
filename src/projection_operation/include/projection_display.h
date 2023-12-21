@@ -37,7 +37,6 @@ static struct IndStruct
     const std::vector<int> proj_mon_vec = {
         0,
         1,
-        2,
     }; // Vector of indeces of the monitor associeted to each projector (hardcoded)
 
 } I;

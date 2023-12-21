@@ -20,20 +20,20 @@
 	</monitor>
 	<monitor index="1">
 		<vertex>
-			<coord>-0.150000006</coord>
-			<coord>-0.266666681</coord>
+			<coord>-0.200000033</coord>
+			<coord>-0.458666563</coord>
 		</vertex>
 		<vertex>
-			<coord>0.150000006</coord>
-			<coord>-0.266666681</coord>
+			<coord>0.250500053</coord>
+			<coord>-0.491166502</coord>
 		</vertex>
 		<vertex>
-			<coord>0.150000006</coord>
-			<coord>0.266666681</coord>
+			<coord>0.190000027</coord>
+			<coord>0.563166261</coord>
 		</vertex>
 		<vertex>
-			<coord>-0.150000006</coord>
-			<coord>0.266666681</coord>
+			<coord>-0.140999988</coord>
+			<coord>0.572166681</coord>
 		</vertex>
 	</monitor>
 	<monitor index="2">
