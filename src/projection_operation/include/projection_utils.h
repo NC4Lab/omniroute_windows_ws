@@ -1479,6 +1479,23 @@ float bilinearInterpolation(
     int grid_row_i, int grid_col_i, int grid_size);
 
 /**
+ * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
+ *
+ * This function performs bilinear interpolation based on a point's position (grid_row_i, grid_col_i)
+ * within a 2D grid. The grid corners are defined by a set of 4x6 control point parameters.
+ *
+ * @param ctrl_point_params A 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
+ * @param ctrl_point_params_ind Index of the specific control point parameter to interpolate [0, 4].
+ * @param grid_row_i Index of the point along the first axis (rows) within the grid.
+ * @param grid_col_i Index of the point along the second axis (columns) within the grid.
+ * @param grid_size Number of cells along one axis in the grid.
+ * @param do_offset Flag to indicate whether to offset the interpolated value by the control point parameter at the origin.
+ *
+ * @return float The interpolated value calculated based on the specified control point parameters and grid position.
+ */
+float bilinearInterpolationOld(std::array<std::array<float, 6>, 4>, int, int, int, int, bool);
+
+/**
  * @brief Loads PNG images with alpha channel from specified file paths and stores them in a vector as cv::Mat objects.
  *
  * @param img_paths_vec A vector of file paths to the images to be loaded.
