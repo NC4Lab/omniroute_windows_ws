@@ -459,15 +459,15 @@ int updateWallHomographys(
                 cv::Point2f p_c = _CP_GRID_ARR[3][p_i]; // top-left interp == bottom left NDC
                 cv::Point2f p_d = _CP_GRID_ARR[2][p_i]; // top-right interp == bottom right NDC
 
-                // // Get the interpolated vertex x-coordinate
-                // cv::Point2f p_interp(
-                //     bilinearInterpolation(p_a.x, p_b.x, p_c.x, p_d.x, gr_i, gc_i, MAZE_SIZE),  // x
-                //     bilinearInterpolation(p_a.y, p_b.y, p_c.y, p_d.y, gr_i, gc_i, MAZE_SIZE)); // y
-
-                // TEMP
+                // Get the interpolated vertex x-coordinate
                 cv::Point2f p_interp(
-                    bilinearInterpolationOld(p_a.x, p_b.x, p_c.x, p_d.x, gr_i, gc_i, MAZE_SIZE),  // x
-                    bilinearInterpolationOld(p_a.y, p_b.y, p_c.y, p_d.y, gr_i, gc_i, MAZE_SIZE)); // y
+                    bilinearInterpolation(p_a.x, p_b.x, p_c.x, p_d.x, gr_i, gc_i, MAZE_SIZE),  // x
+                    bilinearInterpolation(p_a.y, p_b.y, p_c.y, p_d.y, gr_i, gc_i, MAZE_SIZE)); // y
+
+                // // TEMP
+                // cv::Point2f p_interp(
+                //     bilinearInterpolationOld(p_a.x, p_b.x, p_c.x, p_d.x, gr_i, gc_i, MAZE_SIZE),  // x
+                //     bilinearInterpolationOld(p_a.y, p_b.y, p_c.y, p_d.y, gr_i, gc_i, MAZE_SIZE)); // y
 
                 // Store the warped vertex coordinates
                 target_vertices_ndc[p_i] = p_interp;
