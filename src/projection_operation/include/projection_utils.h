@@ -684,17 +684,17 @@ public:
     cv::Mat circHomMatNDC;           // Homography matrix to convert position from cm to NDC space (default to identity).
 
 private:
-    static GLuint _ShaderProgram;                         // Shader program for rendering
-    GLuint _vao;                                          // Vertex Array Object for the circle.
-    GLuint _vbo;                                          // Vertex Buffer Object for the circle's vertices.
-    cv::Mat _transformationMatrix;                        // Transformation matrix for the circle's vertices.
-    static int _CircCnt;                                  // Static index counter for the CircleRenderer class objects
-    static GLint _ColorLocation;                          // Location of color uniform in shader
-    static GLint _TransformLocation;                      // Location of transform uniform in shader
-    static GLint _AspectRatioLocation;                    // Location of aspect ratio uniform in shader
-    static float _AspectRatioUniform;                     // Aspect ratio uniform for the shader program
-    static int CircleRenderer::_WindowWidthPxl;           // Width of the window in pixels
-    static int CircleRenderer::_WindowHeightPxl;          // Height of the window in pixels
+    static GLuint _ShaderProgram;                // Shader program for rendering
+    GLuint _vao;                                 // Vertex Array Object for the circle.
+    GLuint _vbo;                                 // Vertex Buffer Object for the circle's vertices.
+    cv::Mat _transformationMatrix;               // Transformation matrix for the circle's vertices.
+    static int _CircCnt;                         // Static index counter for the CircleRenderer class objects
+    static GLint _ColorLocation;                 // Location of color uniform in shader
+    static GLint _TransformLocation;             // Location of transform uniform in shader
+    static GLint _AspectRatioLocation;           // Location of aspect ratio uniform in shader
+    static float _AspectRatioUniform;            // Aspect ratio uniform for the shader program
+    static int CircleRenderer::_WindowWidthPxl;  // Width of the window in pixels
+    static int CircleRenderer::_WindowHeightPxl; // Height of the window in pixels
     /**
      * @brief Vertex shader source code with aspect ratio correction.
      *
@@ -1217,7 +1217,7 @@ extern const float WALL_IMAGE_HEIGHT_NDC = (MAZE_HEIGHT_NDC / (float(MAZE_SIZE) 
 const int DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
 
 // Pi
-static constexpr float PI = 3.14159265358979323846f; 
+static constexpr float PI = 3.14159265358979323846f;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -1479,21 +1479,31 @@ float bilinearInterpolation(
     int grid_row_i, int grid_col_i, int grid_size);
 
 /**
- * @brief Calculates an interpolated value using bilinear interpolation on a 2D grid.
+ * @brief Performs bilinear interpolation.
  *
+ * @param a The value at the bottom-left corner.
+ * @param b The value at the bottom-right corner.
+ * @param c The value at the top-left corner.
+ * @param d The value at the top-right corner.
+ * @param grid_row_i The row index in the grid.
+ * @param grid_col_i The column index in the grid.
+ * @param grid_size The size of the grid.
+ *
+ * @details
  * This function performs bilinear interpolation based on a point's position (grid_row_i, grid_col_i)
- * within a 2D grid. The grid corners are defined by a set of 4x6 control point parameters.
+ * within a 2D grid based on the vertex coordinates of the corner walls.
  *
- * @param ctrl_point_params A 4x6 array containing control point parameters (x, y, width, height, shear x, shear y).
- * @param ctrl_point_params_ind Index of the specific control point parameter to interpolate [0, 4].
- * @param grid_row_i Index of the point along the first axis (rows) within the grid.
- * @param grid_col_i Index of the point along the second axis (columns) within the grid.
- * @param grid_size Number of cells along one axis in the grid.
- * @param do_offset Flag to indicate whether to offset the interpolated value by the control point parameter at the origin.
+ * The corner values correspond to the following positions within a unit square:
+ * - a: Value at the bottom-left corner  (x, y) = (0, 0)
+ * - b: Value at the bottom-right corner (x, y) = (1, 0)
+ * - c: Value at the top-left corner     (x, y) = (0, 1)
+ * - d: Value at the top-right corner    (x, y) = (1, 1)
  *
- * @return float The interpolated value calculated based on the specified control point parameters and grid position.
+ * @return The interpolated value at the specified grid point.
  */
-float bilinearInterpolationOld(std::array<std::array<float, 6>, 4>, int, int, int, int, bool);
+float bilinearInterpolationOld(
+    float a, float b, float c, float d,
+    int grid_row_i, int grid_col_i, int grid_size);
 
 /**
  * @brief Loads PNG images with alpha channel from specified file paths and stores them in a vector as cv::Mat objects.

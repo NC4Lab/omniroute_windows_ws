@@ -1945,14 +1945,13 @@ float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, 
     return interp_val;
 }
 
-float bilinearInterpolationOld(std::array<std::array<float, 6>, 4> ctrl_point_params, int ctrl_point_params_ind, int grid_row_i, int grid_col_i, int grid_size, bool do_offset)
+float bilinearInterpolationOld(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size)
 {
     // Get control point values that will be used as the reference corners for interpolation.
     // Note: Only 3 control points are used in this implimentation.
-    float cp_val_0 = ctrl_point_params[0][ctrl_point_params_ind];
-    // float cp_val_1 = ctrl_point_params[1][ctrl_point_params_ind];
-    float cp_val_2 = ctrl_point_params[2][ctrl_point_params_ind];
-    float cp_val_3 = ctrl_point_params[3][ctrl_point_params_ind];
+    float cp_val_0 = a;
+    float cp_val_2 = b;
+    float cp_val_3 = c;
 
     // Calculate the relative position within the grid by dividing the current index by the maximum index (grid_size - 1).
     float norm_grid_row_i = static_cast<float>(grid_row_i) / (grid_size - 1);
@@ -1968,9 +1967,6 @@ float bilinearInterpolationOld(std::array<std::array<float, 6>, 4> ctrl_point_pa
 
     // Combine the 1D interpolated values to compute the final 2D interpolated value.
     float interp_2d = interp_1d_row + interp_1d_col;
-
-    // Optionally add an offset to the interpolated value. The offset is the parameter value of the control point at the origin (cp_val_3).
-    interp_2d += do_offset ? cp_val_3 : 0.0;
 
     // Return the final interpolated value.
     return interp_2d;
