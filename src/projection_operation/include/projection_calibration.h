@@ -231,7 +231,7 @@ void initVertexCoordinates(
     std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR,
     std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &out_WALL_GRID_ARR_DEFAULT);
 
-int updateControlPointsFromHomMat(
+void updateControlPointsFromHomMat(
     const cv::Mat &_H,
     std::array<cv::Point2f, 4> &out_CP_ARR);
 

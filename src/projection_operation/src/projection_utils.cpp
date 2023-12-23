@@ -1860,7 +1860,7 @@ int checkQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
     return 0;
 }
 
-std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &quad_vertices_ndc, int window_width_pxl, int window_height_pxl)
+std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &quad_vertices_ndc, int window_width_pxl, int window_height_pxl, bool do_y_invert)
 {
 
     std::vector<cv::Point2f> quad_vertices_pxl;
@@ -1871,8 +1871,14 @@ std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &quad_ve
         // Convert x point values from NDC to pixel coordinates
         float x_pixel = (vertex.x + 1.0f) * (window_width_pxl / 2.0f);
 
-        // Convet y points but keep y-axis direction the same as NDC, with origin at the bottom
-        float y_pixel = (vertex.y + 1.0f) * (window_height_pxl / 2.0f);
+        // Convet y points
+        float y_pixel;
+        if (!do_y_invert)
+            // Convet y points but keep y-axis direction the same
+            y_pixel = (vertex.y + 1.0f) * (window_height_pxl / 2.0f);
+        else
+            // Invert the y-axis direction
+            y_pixel = (1.0f - vertex.y) * ((float)window_height_pxl / 2.0f);
 
         // Store values
         quad_vertices_pxl.emplace_back(x_pixel, y_pixel);
@@ -1881,7 +1887,7 @@ std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &quad_ve
     return quad_vertices_pxl;
 }
 
-std::vector<cv::Point2f> quadVertPxl2Ndc(const std::vector<cv::Point2f> &quad_vertices_pxl, int window_width_pxl, int window_height_pxl)
+std::vector<cv::Point2f> quadVertPxl2Ndc(const std::vector<cv::Point2f> &quad_vertices_pxl, int window_width_pxl, int window_height_pxl, bool do_y_invert)
 {
     std::vector<cv::Point2f> quad_vertices_ndc;
     quad_vertices_ndc.reserve(quad_vertices_pxl.size());
@@ -1892,7 +1898,12 @@ std::vector<cv::Point2f> quadVertPxl2Ndc(const std::vector<cv::Point2f> &quad_ve
         float x_ndc = (vertex.x / (window_width_pxl / 2.0f)) - 1.0f;
 
         // Convert y point values from pixel to NDC coordinates
-        float y_ndc = (vertex.y / (window_height_pxl / 2.0f)) - 1.0f;
+        // Convet y points
+        float y_ndc;
+        if (!do_y_invert)
+            y_ndc = (vertex.y / (window_height_pxl / 2.0f)) - 1.0f;
+        else
+            y_ndc = 1.0f - (vertex.y / (window_height_pxl / 2.0f));
 
         // Store values
         quad_vertices_ndc.emplace_back(x_ndc, y_ndc);
@@ -1900,7 +1911,6 @@ std::vector<cv::Point2f> quadVertPxl2Ndc(const std::vector<cv::Point2f> &quad_ve
 
     return quad_vertices_ndc;
 }
-
 
 int computeHomographyMatrix(const std::vector<cv::Point2f> &source_vertices,
                             const std::vector<cv::Point2f> &target_vertices,

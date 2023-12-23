@@ -1423,7 +1423,8 @@ int checkQuadVertices(const std::vector<cv::Point2f> &quad_vertices);
 std::vector<cv::Point2f> quadVertNdc2Pxl(
     const std::vector<cv::Point2f> &quad_vertices_ndc,
     int window_width_pxl,
-    int window_height_pxl);
+    int window_height_pxl,
+    bool do_y_invert = false);
 
 /**
  * @brief Converts the units of the quadrilateral from pixels to NDC.
@@ -1442,7 +1443,8 @@ std::vector<cv::Point2f> quadVertNdc2Pxl(
 std::vector<cv::Point2f> quadVertPxl2Ndc(
     const std::vector<cv::Point2f> &quad_vertices_pxl,
     int window_width_pxl,
-    int window_height_pxl);
+    int window_height_pxl,
+    bool do_y_invert = false);
 
 /**
  * @brief Computes homography matrices for a geven set of vertices.

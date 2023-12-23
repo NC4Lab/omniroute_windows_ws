@@ -343,8 +343,6 @@ void initVertexCoordinates(
                 cv::Point2f(p_org_x + vert_space_x, p_org_y + vert_space_y), // Bottom right wall vertext
                 cv::Point2f(p_org_x, p_org_y + vert_space_y),                // Bottom left wall vertext
             };
-
-            ROS_INFO("Origin[%d][%d] X[%0.2f] Y[%0.2f]", gr_i, gc_i, p_org_x, p_org_y);
         }
     }
 
@@ -359,8 +357,23 @@ void initVertexCoordinates(
     I.cp_wall_vert_selected = {1, 0};
 }
 
-int updateControlPointsFromHomMat(const cv::Mat &_H, std::array<cv::Point2f, 4> &out_CP_ARR)
+void updateControlPointsFromHomMat(const cv::Mat &_H, std::array<cv::Point2f, 4> &out_CP_ARR)
 {
+    // Convert control points to vector
+    std::vector<cv::Point2f> cp_vec(out_CP_ARR.begin(), out_CP_ARR.end());
+
+    // Convert control points to pixels
+    std::vector<cv::Point2f> cp_pxl_vec = quadVertNdc2Pxl(cp_vec, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, false);
+
+    // Warp the control points
+    std::vector<cv::Point2f> cp_pxl_vec_warp;
+    cv::perspectiveTransform(cp_pxl_vec, cp_pxl_vec_warp, _H);
+
+    // Convert control points back to ndc
+    std::vector<cv::Point2f> cp_vec_warp = quadVertPxl2Ndc(cp_pxl_vec_warp, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, true);
+
+    // Convert control points back to array
+    std::copy(cp_vec_warp.begin(), cp_vec_warp.end(), out_CP_ARR.begin());
 }
 
 int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
@@ -496,8 +509,10 @@ int updateWallHomographys(
                 target_vertices_ndc[wv_i] = t_pnt[0];
             }
 
-            // Compute and store the homography matrix for this wall image
+            // Convert NDC coordinates to pixels
             std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
+
+            // Compute and store the homography matrix for this wall image
             if (computeHomographyMatrix(source_vertices_pxl, target_vertices_pxl, out_HMAT_ARR[_CAL_MODE][gr_i][gc_i]) < 0)
                 return -1;
         }
@@ -519,8 +534,10 @@ int updateFloorHomography(const std::array<cv::Point2f, 4> &_CP_ARR, cv::Mat &ou
     // Convert _CP_ARR to vector
     std::vector<cv::Point2f> target_vertices_ndc(_CP_ARR.begin(), _CP_ARR.end());
 
-    // Compute and store the homography matrix
+    // Convert NDC coordinates to pixels
     std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
+
+    // Compute and store the homography matrix
     if (computeHomographyMatrix(source_vertices_pxl, target_vertices_pxl, out_H) < 0)
         return -1;
 
@@ -771,8 +788,10 @@ void appMainLoop()
         if (F.xml_load_hmat || F.xml_save_hmat)
         {
             // Prompt for projector number if not specified
-            if (I.projector < 0)
-                I.projector = promptForProjectorNumber();
+            // if (I.projector < 0)
+            //     I.projector = promptForProjectorNumber();
+            // TEMP
+            I.projector = 3;
 
             // Specify number of rows/cols to loop through based on active calibration mode
             int grid_size = (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) ? MAZE_SIZE : 1;
@@ -804,6 +823,15 @@ void appMainLoop()
                             throw std::runtime_error("[appMainLoop] Error returned from xmlLoadHMAT");
                     }
                 }
+            }
+
+            // Update the control points from the loaded homography matrix
+            if (F.xml_load_hmat)
+            {
+                updateControlPointsFromHomMat(HMAT_ARR[CAL_MODE][0][0], CP_GRID_ARR[0]);                         // Top left maze corner
+                updateControlPointsFromHomMat(HMAT_ARR[CAL_MODE][0][MAZE_SIZE - 1], CP_GRID_ARR[1]);             // Top right maze corner
+                updateControlPointsFromHomMat(HMAT_ARR[CAL_MODE][MAZE_SIZE - 1][MAZE_SIZE - 1], CP_GRID_ARR[2]); // Bottom right maze corner
+                updateControlPointsFromHomMat(HMAT_ARR[CAL_MODE][MAZE_SIZE - 1][0], CP_GRID_ARR[3]);             // Bottom left maze corner
             }
 
             // Flash the background to indicate the file was loaded/saved
