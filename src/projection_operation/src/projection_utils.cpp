@@ -1874,15 +1874,33 @@ std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &quad_ve
         // Convet y points but keep y-axis direction the same as NDC, with origin at the bottom
         float y_pixel = (vertex.y + 1.0f) * (window_height_pxl / 2.0f);
 
-        // // Y is inverted because pixel coordinates increase downwards
-        // float y_pixel = (1.0f - vertex.y) * ((float)window_height_pxl / 2.0f);
-
         // Store values
         quad_vertices_pxl.emplace_back(x_pixel, y_pixel);
     }
 
     return quad_vertices_pxl;
 }
+
+std::vector<cv::Point2f> quadVertPxl2Ndc(const std::vector<cv::Point2f> &quad_vertices_pxl, int window_width_pxl, int window_height_pxl)
+{
+    std::vector<cv::Point2f> quad_vertices_ndc;
+    quad_vertices_ndc.reserve(quad_vertices_pxl.size());
+
+    for (const auto &vertex : quad_vertices_pxl)
+    {
+        // Convert x point values from pixel to NDC coordinates
+        float x_ndc = (vertex.x / (window_width_pxl / 2.0f)) - 1.0f;
+
+        // Convert y point values from pixel to NDC coordinates
+        float y_ndc = (vertex.y / (window_height_pxl / 2.0f)) - 1.0f;
+
+        // Store values
+        quad_vertices_ndc.emplace_back(x_ndc, y_ndc);
+    }
+
+    return quad_vertices_ndc;
+}
+
 
 int computeHomographyMatrix(const std::vector<cv::Point2f> &source_vertices,
                             const std::vector<cv::Point2f> &target_vertices,
@@ -1923,44 +1941,6 @@ int computeHomographyMatrix(const std::vector<cv::Point2f> &source_vertices,
 
     // Return success
     return 0;
-}
-
-float bilinearInterpolation(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size)
-{
-    // Calculate the relative position within the grid.
-    float x = static_cast<float>(grid_col_i) / (grid_size - 1);
-    float y = static_cast<float>(grid_row_i) / (grid_size - 1);
-
-    // Perform bilinear interpolation using the formula.
-    float interp_val = (1 - x) * (1 - y) * a +
-                       x * (1 - y) * b +
-                       (1 - x) * y * c +
-                       x * y * d;
-
-    // Return the final interpolated value.
-    return interp_val;
-}
-
-float bilinearInterpolationOld(float a, float b, float c, float d, int grid_row_i, int grid_col_i, int grid_size)
-{
-
-    // Calculate the relative position within the grid by dividing the current index by the maximum index (grid_size - 1).
-    float norm_grid_row_i = static_cast<float>(grid_row_i) / (grid_size - 1);
-    float norm_grid_col_i = static_cast<float>(grid_col_i) / (grid_size - 1);
-
-    // Perform 1D linear interpolation along the row.
-    // The interpolation is between the third and fourth control points (b and c).
-    float interp_1d_row = norm_grid_row_i * (a - c);
-
-    // Perform 1D linear interpolation along the column.
-    // The interpolation is between the first and fourth control points (a and c).
-    float interp_1d_col = norm_grid_col_i * (a - b);
-
-    // Combine the 1D interpolated values to compute the final 2D interpolated value.
-    float interp_2d = interp_1d_row + interp_1d_col;
-
-    // Return the final interpolated value.
-    return interp_2d;
 }
 
 int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Mat> &out_img_mat_vec)

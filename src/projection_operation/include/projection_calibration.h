@@ -231,6 +231,10 @@ void initVertexCoordinates(
     std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR,
     std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &out_WALL_GRID_ARR_DEFAULT);
 
+int updateControlPointsFromHomMat(
+    const cv::Mat &_H,
+    std::array<cv::Point2f, 4> &out_CP_ARR);
+
 /**
  * @brief Initialize OpenGL resources for CircleRenderer objects.
  *
@@ -260,20 +264,6 @@ int drawControlPoints(
     CalibrationMode _CAL_MODE,
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
     std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS);
-
-// /**
-//  * @brief Computes updated homography matrices for all walls.
-//  *
-//  * @param _CAL_MODE Enum of type CalibrationMode for the active calibration mode.
-//  * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
-//  * @param[out] out_HMAT_ARR Reference to array to store calibration matrices.
-//  *
-//  * @return Integer status code [-1:error, 0:successful].
-//  */
-// int updateWallHomographys(
-//     CalibrationMode _CAL_MODE,
-//     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
-//     std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &out_HMAT_ARR);
 
 /**
  * @brief Computes updated homography matrices for all walls.

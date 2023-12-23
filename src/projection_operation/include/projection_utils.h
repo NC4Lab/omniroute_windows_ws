@@ -1410,18 +1410,37 @@ int checkQuadVertices(const std::vector<cv::Point2f> &quad_vertices);
 /**
  * @brief Converts the units of the quadrilateral from NDC to pixels.
  *
+ * @details
+ * Convert from NDC [-1, 1] to pixel [0, width or height] and
+ * inverts the y to match OpenCV's top-left origin
+ *
  * @param quad_vertices_ndc The quadrilateral vertices in NDC
  * @param window_width_pxl The width of the window in pixels
  * @param window_height_pxl The height of the window in pixels
  *
  * @return Vector of quadrilateral vertices in pixels
- *
- * @details
- * Convert from NDC [-1, 1] to pixel [0, width or height] and
- * inverts the y to match OpenCV's top-left origin
  */
 std::vector<cv::Point2f> quadVertNdc2Pxl(
     const std::vector<cv::Point2f> &quad_vertices_ndc,
+    int window_width_pxl,
+    int window_height_pxl);
+
+/**
+ * @brief Converts the units of the quadrilateral from pixels to NDC.
+ *
+ * @details
+ * Converts from pixel coordinates [0, width or height] to NDC [-1, 1]
+ * while maintaining the y-axis direction the same as NDC, with origin at the bottom.
+ * This assumes that the input pixel coordinates are based on OpenCV's top-left origin.
+ *
+ * @param quad_vertices_pxl The quadrilateral vertices in pixel coordinates
+ * @param window_width_pxl The width of the window in pixels
+ * @param window_height_pxl The height of the window in pixels
+ *
+ * @return Vector of quadrilateral vertices in NDC
+ */
+std::vector<cv::Point2f> quadVertPxl2Ndc(
+    const std::vector<cv::Point2f> &quad_vertices_pxl,
     int window_width_pxl,
     int window_height_pxl);
 
@@ -1438,60 +1457,6 @@ int computeHomographyMatrix(
     const std::vector<cv::Point2f> &source_vertices_pxl,
     const std::vector<cv::Point2f> &target_vertices_ndc,
     cv::Mat &out_H);
-
-/**
- * @brief Performs bilinear interpolation.
- *
- * @param a The value at the bottom-left corner.
- * @param b The value at the bottom-right corner.
- * @param c The value at the top-left corner.
- * @param d The value at the top-right corner.
- * @param grid_row_i The row index in the grid.
- * @param grid_col_i The column index in the grid.
- * @param grid_size The size of the grid.
- *
- * @details
- * This function performs bilinear interpolation based on a point's position (grid_row_i, grid_col_i)
- * within a 2D grid based on the vertex coordinates of the corner walls.
- *
- * The corner values correspond to the following positions within a unit square:
- * - a: Value at the bottom-left corner  (x, y) = (0, 0)
- * - b: Value at the bottom-right corner (x, y) = (1, 0)
- * - c: Value at the top-left corner     (x, y) = (0, 1)
- * - d: Value at the top-right corner    (x, y) = (1, 1)
- *
- * @return The interpolated value at the specified grid point.
- */
-float bilinearInterpolation(
-    float a, float b, float c, float d,
-    int grid_row_i, int grid_col_i, int grid_size);
-
-/**
- * @brief Performs bilinear interpolation.
- *
- * @param a The value at the bottom-left corner.
- * @param b The value at the bottom-right corner.
- * @param c The value at the top-left corner.
- * @param d The value at the top-right corner.
- * @param grid_row_i The row index in the grid.
- * @param grid_col_i The column index in the grid.
- * @param grid_size The size of the grid.
- *
- * @details
- * This function performs bilinear interpolation based on a point's position (grid_row_i, grid_col_i)
- * within a 2D grid based on the vertex coordinates of the corner walls.
- *
- * The corner values correspond to the following positions within a unit square:
- * - a: Value at the bottom-left corner  (x, y) = (0, 0)
- * - b: Value at the bottom-right corner (x, y) = (1, 0)
- * - c: Value at the top-left corner     (x, y) = (0, 1)
- * - d: Value at the top-right corner    (x, y) = (1, 1)
- *
- * @return The interpolated value at the specified grid point.
- */
-float bilinearInterpolationOld(
-    float a, float b, float c, float d,
-    int grid_row_i, int grid_col_i, int grid_size);
 
 /**
  * @brief Loads PNG images with alpha channel from specified file paths and stores them in a vector as cv::Mat objects.

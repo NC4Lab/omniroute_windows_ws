@@ -359,6 +359,10 @@ void initVertexCoordinates(
     I.cp_wall_vert_selected = {1, 0};
 }
 
+int updateControlPointsFromHomMat(const cv::Mat &_H, std::array<cv::Point2f, 4> &out_CP_ARR)
+{
+}
+
 int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
                               std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
 {
@@ -433,59 +437,6 @@ int drawControlPoints(CalibrationMode _CAL_MODE,
     // Return GL status
     return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "drawControlPoints");
 }
-
-// int updateWallHomographys(
-//     CalibrationMode _CAL_MODE,
-//     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
-//     std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &out_HMAT_ARR)
-// {
-//     // Define source plane vertices
-//     std::vector<cv::Point2f> source_vertices_pxl = {
-//         cv::Point2f(0.0f, 0.0f),                                  // Top-left
-//         cv::Point2f(WALL_IMAGE_WIDTH_PXL, 0.0f),                  // Top-right
-//         cv::Point2f(WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL), // Bottom-right
-//         cv::Point2f(0.0f, WALL_IMAGE_HEIGHT_PXL)};                // Bottom-left
-
-//     // Iterate trough grid/wall rows
-//     for (float gr_i = 0; gr_i < MAZE_SIZE; gr_i++) // image bottom to top
-//     {
-//         // Iterate trough grid/wall columns
-//         for (float gc_i = 0; gc_i < MAZE_SIZE; gc_i++) // image left to right
-//         {
-//             std::vector<cv::Point2f> target_vertices_ndc(4);
-//             for (int p_i = 0; p_i < 4; p_i++)
-//             {
-//                 // Get the wall vertex values for each maze corner for the interpolation function
-//                 ///@note that y values must be flipped to account for the image origin being in the top-left corner
-//                 cv::Point2f p_a = _CP_GRID_ARR[0][p_i]; // bottom-left interp == top left NDC
-//                 cv::Point2f p_b = _CP_GRID_ARR[1][p_i]; // bottom-right interp == top right NDC
-//                 cv::Point2f p_c = _CP_GRID_ARR[3][p_i]; // top-left interp == bottom left NDC
-//                 cv::Point2f p_d = _CP_GRID_ARR[2][p_i]; // top-right interp == bottom right NDC
-
-//                 // Get the interpolated vertex x-coordinate
-//                 cv::Point2f p_interp(
-//                     bilinearInterpolation(p_a.x, p_b.x, p_c.x, p_d.x, gr_i, gc_i, MAZE_SIZE),  // x
-//                     bilinearInterpolation(p_a.y, p_b.y, p_c.y, p_d.y, gr_i, gc_i, MAZE_SIZE)); // y
-
-//                 // // TEMP
-//                 // cv::Point2f p_interp(
-//                 //     bilinearInterpolationOld(p_a.x, p_b.x, p_c.x, p_d.x, gr_i, gc_i, MAZE_SIZE),  // x
-//                 //     bilinearInterpolationOld(p_a.y, p_b.y, p_c.y, p_d.y, gr_i, gc_i, MAZE_SIZE)); // y
-
-//                 // Store the warped vertex coordinates
-//                 target_vertices_ndc[p_i] = p_interp;
-//             }
-
-//             // Compute and store the homography matrix
-//             std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
-//             if (computeHomographyMatrix(source_vertices_pxl, target_vertices_pxl, out_HMAT_ARR[_CAL_MODE][gr_i][gc_i]) < 0)
-//                 return -1;
-//         }
-//     }
-
-//     // Return success
-//     return 0;
-// }
 
 int updateWallHomographys(
     CalibrationMode _CAL_MODE,
