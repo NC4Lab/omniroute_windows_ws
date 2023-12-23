@@ -601,7 +601,7 @@ int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscre
     return CheckErrorGLFW(__LINE__, __FILE__, "changeWindowDisplayMode");
 }
 
-int MazeRenderContext::forceWindowStackOrder(bool is_top_always)
+int MazeRenderContext::forceWindowStackOrder()
 {
     // Set the GLFW window as the current OpenGL context
     if (windowID == nullptr)
@@ -611,13 +611,27 @@ int MazeRenderContext::forceWindowStackOrder(bool is_top_always)
     // Check if the window is minimized (iconified)
     if (glfwGetWindowAttrib(windowID, GLFW_ICONIFIED))
     {
-        // If the window is minimized and is_top_always is true, restore the window
-        if (is_top_always)
-            glfwRestoreWindow(windowID);
+        // If the window is minimized and its in fullscreen mode, restore the window
+        if (isFullScreen)
+        {
+            // NONE OF THESE APPROACHES WORK
+            // #define GLFW_EXPOSE_NATIVE_WIN32
+            // #include <GLFW/glfw3native.h>
+
+            // // Use Win32 API to bring the window to the front without activating it
+            // HWND hwnd = glfwGetWin32Window(windowID); // Get the native Win32 window handle
+
+            // // SWP_NOACTIVATE is used to not activate the window with the z-order change
+            // // SWP_NOMOVE and SWP_NOSIZE are used to retain the current positioning and size
+            // SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
+
+            // // TEMP
+            // glfwRestoreWindow(windowID);
+
+            // glfwPollEvents();
+        }
     }
 
-    // It may be useful to also call this here to process events such as restore
-    glfwPollEvents();
     return CheckErrorGLFW(__LINE__, __FILE__);
 }
 
@@ -1211,21 +1225,6 @@ void CircleRenderer::_computeVertices(std::vector<float> &out_circVertices)
 
 void CircleRenderer::_convertToNDC(std::vector<float> &out_circVertices)
 {
-    // // Log the raw vertices and homography matrix
-    // float minX = std::numeric_limits<float>::max();
-    // float maxX = std::numeric_limits<float>::lowest();
-    // float minY = std::numeric_limits<float>::max();
-    // float maxY = std::numeric_limits<float>::lowest();
-    // for (size_t i = 0; i < out_circVertices.size(); i += 2)
-    // {
-    //     minX = std::min(minX, out_circVertices[i]);
-    //     maxX = std::max(maxX, out_circVertices[i]);
-    //     minY = std::min(minY, out_circVertices[i + 1]);
-    //     maxY = std::max(maxY, out_circVertices[i + 1]);
-    // }
-    // ROS_INFO("[CircleRenderer::_warpCircle RAW] Min: (%0.2f, %0.2f), Max: (%0.2f, %0.2f)",
-    //          minX, minY, maxX, maxY);
-
     // Convert to vector of cv::Point2f
     std::vector<cv::Point2f> circPoints;
     for (size_t i = 0; i < out_circVertices.size(); i += 2)
@@ -1244,21 +1243,6 @@ void CircleRenderer::_convertToNDC(std::vector<float> &out_circVertices)
         out_circVertices.push_back(pt.x);
         out_circVertices.push_back(pt.y);
     }
-
-    // // Log the warped vertices and homography matrix
-    // minX = std::numeric_limits<float>::max();
-    // maxX = std::numeric_limits<float>::lowest();
-    // minY = std::numeric_limits<float>::max();
-    // maxY = std::numeric_limits<float>::lowest();
-    // for (size_t i = 0; i < out_circVertices.size(); i += 2)
-    // {
-    //     minX = std::min(minX, out_circVertices[i]);
-    //     maxX = std::max(maxX, out_circVertices[i]);
-    //     minY = std::min(minY, out_circVertices[i + 1]);
-    //     maxY = std::max(maxY, out_circVertices[i + 1]);
-    // }
-    // ROS_INFO("[CircleRenderer::_warpCircle WARPED] Min: (%0.2f, %0.2f), Max: (%0.2f, %0.2f)",
-    //          minX, minY, maxX, maxY);
 }
 
 // ================================================== FUNCTIONS ==================================================
@@ -1487,29 +1471,41 @@ void dbDispImgMat(const cv::Mat &img_mat)
     cv::destroyWindow("Warped Image Display");
 }
 
-std::string promptForProjectorNumber()
+int promptForProjectorNumber()
 {
     std::string input;
+    int proj_ind = -1;
+
+    // Loop until a valid input is received
     while (true)
     {
-        std::cout << "Enter the number of the projector being calibrated [0,1,2,3], or press 'q' to quit: ";
+        std::cout << "[promptForProjectorNumber] Enter the actual number/index of the projector being calibrated [0,1,2,3], or press 'q' to quit: ";
         std::cin >> input;
 
         // Check for quit command
         if (input == "q" || input == "Q")
         {
-            std::cout << "Operation cancelled by the user." << std::endl;
-            return ""; // Return an empty string or a specific value to indicate cancellation
+            std::cout << "[promptForProjectorNumber] Operation cancelled by the user." << std::endl;
+            return -1;
         }
 
-        // Check if the input is a single digit
+        // Check if the input is a single digit and is a number
         if (input.length() == 1 && std::isdigit(input[0]))
         {
-            return input;
+            proj_ind = std::stoi(input);
+
+            // Check if the input is between 0 and 3
+            if (proj_ind < 4)
+            {
+                std::cout << "[promptForProjectorNumber] Projector number/index set to " + std::to_string(proj_ind) + "." << std::endl;
+                return std::stoi(input);
+            }
+            else
+                std::cout << "[promptForProjectorNumber] Invalid input: Please enter a number between 0 and 3 or 'q' to quit." << std::endl;
         }
         else
         {
-            std::cout << "Invalid input. Please enter a single numeric digit or 'q' to quit." << std::endl;
+            std::cout << "[promptForProjectorNumber] Invalid input: Please enter a single numeric digit or 'q' to quit." << std::endl;
         }
 
         // Clear the input stream in case of invalid input (e.g., if more than one character was entered)
@@ -1518,13 +1514,13 @@ std::string promptForProjectorNumber()
     }
 }
 
-void xmlFrmtFileStringsHmat(int mon_ind, std::string &out_path)
+void xmlFrmtFileStringsHmat(int proj_ind, std::string &out_path)
 {
     // Format the output tag
     out_path =
         CONFIG_DIR_PATH + "/" +
         "hmats" +
-        "_m" + std::to_string(mon_ind) +
+        "_m" + std::to_string(proj_ind) +
         ".xml";
 }
 
@@ -1537,11 +1533,11 @@ void xmlFrmtFileStringsVertices(std::string &out_path)
         ".xml";
 }
 
-int xmlSaveHMAT(const cv::Mat &_H, int mon_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col)
+int xmlSaveHMAT(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col)
 {
     // Get the full file path and attribute string for the given calibration mode
     std::string file_path;
-    xmlFrmtFileStringsHmat(mon_ind, file_path);
+    xmlFrmtFileStringsHmat(proj_ind, file_path);
     std::string cal_mode_str = CAL_MADE_STR_VEC[_CAL_MODE];
 
     // Attempt to load the XML file
@@ -1614,11 +1610,11 @@ int xmlSaveHMAT(const cv::Mat &_H, int mon_ind, CalibrationMode _CAL_MODE, int g
     return 0;
 }
 
-int xmlLoadHMAT(int mon_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col, cv::Mat &out_H)
+int xmlLoadHMAT(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col, cv::Mat &out_H)
 {
     // Get the full file path and attribute string for the given calibration mode
     std::string file_path;
-    xmlFrmtFileStringsHmat(mon_ind, file_path);
+    xmlFrmtFileStringsHmat(proj_ind, file_path);
     std::string cal_mode_str = CAL_MADE_STR_VEC[_CAL_MODE];
 
     // Attempt to load the XML file
@@ -1693,7 +1689,7 @@ int xmlLoadHMAT(int mon_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_c
     return 0;
 }
 
-int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int mon_ind)
+int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int proj_ind)
 {
     // Define file path
     std::string file_path;
@@ -1713,7 +1709,7 @@ int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int mon_i
     pugi::xml_node monitor_node;
     for (pugi::xml_node node = root_node.child("monitor"); node; node = node.next_sibling("monitor"))
     {
-        if (node.attribute("index").as_int() == mon_ind)
+        if (node.attribute("index").as_int() == proj_ind)
         {
             monitor_node = node;
             break;
@@ -1724,7 +1720,7 @@ int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int mon_i
     if (!monitor_node)
     {
         monitor_node = root_node.append_child("monitor");
-        monitor_node.append_attribute("index") = mon_ind;
+        monitor_node.append_attribute("index") = proj_ind;
     }
     else
     {
@@ -1753,7 +1749,7 @@ int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int mon_i
     return 0;
 }
 
-int xmlLoadVertices(int mon_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc)
+int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc)
 {
     // Define file path
     std::string file_path;
@@ -1773,7 +1769,7 @@ int xmlLoadVertices(int mon_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc
     pugi::xml_node monitor_node;
     for (pugi::xml_node node = doc.child("Root").child("monitor"); node; node = node.next_sibling("monitor"))
     {
-        if (node.attribute("index").as_int() == mon_ind)
+        if (node.attribute("index").as_int() == proj_ind)
         {
             monitor_node = node;
             break;
@@ -1782,7 +1778,7 @@ int xmlLoadVertices(int mon_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc
 
     if (!monitor_node)
     {
-        ROS_ERROR("[xmlLoadHMAT] No monitor node[%d] found in XML File[%s]", mon_ind, file_path.c_str());
+        ROS_ERROR("[xmlLoadHMAT] No monitor node[%d] found in XML File[%s]", proj_ind, file_path.c_str());
         return -1;
     }
 
@@ -1817,7 +1813,7 @@ int xmlLoadVertices(int mon_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc
     if (out_quad_vertices_ndc.size() != 4)
     {
         ROS_ERROR("[xmlLoadHMAT] Loaded vector is wrong size for XML: Expected[4] Actual[%d] Monitor[%d] File[%s]",
-                  out_quad_vertices_ndc.size(), mon_ind, file_path.c_str());
+                  out_quad_vertices_ndc.size(), proj_ind, file_path.c_str());
         return -1;
     }
 
@@ -1966,7 +1962,6 @@ float bilinearInterpolationOld(float a, float b, float c, float d, int grid_row_
     // Return the final interpolated value.
     return interp_2d;
 }
-
 
 int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Mat> &out_img_mat_vec)
 {

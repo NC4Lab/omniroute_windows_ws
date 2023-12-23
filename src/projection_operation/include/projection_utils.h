@@ -542,20 +542,13 @@ public:
         cv::Point offset_xy = cv::Point(0.0f, 0.0f));
 
     /**
-     * @brief Sets the GLFW window to always be on top or not.
+     * @brief Sets the GLFW window to always be on top if it is in fullscreen mode.
      *
-     * This function uses the GLFW library to set the given window's
-     * floating attribute, which determines whether it should always
-     * stay on top of other windows.
-     *
-     * @note I don't think the glfwSetWindowAttrib() call does anything
-     * This needs to be called continually in a main loop.
-     *
-     * @param is_top_always A boolean flag to set or unset the window as always on top.
+     * @note This needs to be called continually in a main loop.
      *
      * @return Integer status code [-1:error, 0:successful].
      */
-    int forceWindowStackOrder(bool is_top_always);
+    int forceWindowStackOrder();
 
     /**
      * @brief Function to set the background color and redraw the window
@@ -880,13 +873,6 @@ private:
      * @return Integer status code [-1:error, 0:successful].
      */
     static int _CheckProgramLinking(GLuint ___ShaderProgram);
-
-    /**
-     * @brief Sets up the OpenGL Vertex Array Object and Vertex Buffer Object.
-     *
-     * @return Integer status code [-1:error, 0:successful].
-     */
-    int _setupRenderBuffers();
 
     /**
      * @brief Converts an OpenCV Mat to an array suitable for OpenGL transformations.
@@ -1289,6 +1275,7 @@ void dbLogHomMat(const cv::Mat &_HMAT);
 /**
  * @brief Displays a warped image in a window.
  *
+ * @details
  * This function creates a window with the name "Warped Image Display" and
  * displays the given image. The function waits for a key press before
  * closing the window and returning.
@@ -1300,11 +1287,8 @@ void dbDispImgMat(const cv::Mat &img_mat);
 /**
  * @brief Prompts the user for a single digit input or an option to quit.
  *
- * @return A std::string containing the single digit entered by the user.
- *         If the user enters 'q' or 'Q', an empty string is returned.
- *
- * @note To handle a cancellation, the calling code should check if the
- *       returned string is empty.
+ * @return A int containing the single digit entered by the user.
+ *         If the user enters 'q' or 'Q', an -1 is returned.
  *
  * Example:
  * @code
@@ -1316,41 +1300,43 @@ void dbDispImgMat(const cv::Mat &img_mat);
  * }
  * @endcode
  */
-std::string promptForProjectorNumber();
+int promptForProjectorNumber();
 
 /**
  * @brief Formats the file name for the XML file for homography matrices.
  *
+ * @details
  * Format:
  * - `hmats_m<number>.xml`
  * - `hmats_m0.xml`
  *
- * @param mon_ind Enum of type CalibrationMode for the active or desired monitor.
+ * @param proj_ind Index/number of the projector to load data for.
  * @param[out] out_path Reference to string that will store the path to the XML file.
  */
 void xmlFrmtFileStringsHmat(
-    int mon_ind,
+    int proj_ind,
     std::string &out_path);
 
 /**
  * @brief Formats the file name for the XML file for maze vertices matrices.
  *
+ * @details
  * Format:
  * - `maze_vertices.xml`
  *
- * @param mon_ind Enum of type CalibrationMode for the active or desired monitor.
  * @param[out] out_path Reference to string that will store the path to the XML file.
  */
 void xmlFrmtFileStringsVertices(std::string &out_path);
 
 /**
- * Save a single cv::Mat homography matrix to an XML file.
+ * @brief Save a single cv::Mat homography matrix to an XML file.
  *
+ * @details
  * This function uses the pugixml library to create an XML document and populate it with
  * the homography matrix for each wall in a 3x3 grid.
  *
  * @param _H The homography matrix to save.
- * @param mon_ind Monitor index for the active monitor.
+ * @param proj_ind Index/number of the projector to load data for.
  * @param _CAL_MODE Enum of type CalibrationMode for the active or desired calibration mode.
  * @param grid_row Row index for the array of homography matrices to save.
  * @param grid_col Column index for the array of homography matrices save.
@@ -1358,15 +1344,17 @@ void xmlFrmtFileStringsVertices(std::string &out_path);
  * @return Integer status code [-1:error, 0:successful].
  */
 int xmlSaveHMAT(const cv::Mat &_H,
-                int mon_ind,
+                int proj_ind,
                 CalibrationMode _CAL_MODE,
                 int grid_row,
                 int grid_col);
 
 /**
- * Load a single cv::Mat homography matrix from an XML file.
+ * @brief Load a single cv::Mat homography matrix from an XML file.
  *
- * @param mon_ind Monitor index for the active monitor.
+ * @note Input proj_ind should be -1 if projector index needs to be inputed manually.
+ *
+ * @param proj_ind Index/number of the projector to load data for.
  * @param _CAL_MODE Enum of type CalibrationMode for the active or desired calibration mode.
  * @param grid_row Row index for the array of homography matrices to load.
  * @param grid_col Column index for the array of homography matrices to load.
@@ -1375,34 +1363,34 @@ int xmlSaveHMAT(const cv::Mat &_H,
  * @return Integer status code [-1:error, 0:successful].
  */
 int xmlLoadHMAT(
-    int mon_ind,
+    int proj_ind,
     CalibrationMode _CAL_MODE,
     int grid_row,
     int grid_col,
     cv::Mat &out_H);
 
 /**
- * Save a vector of four vertices (cv::Point2f) to an XML file.
+ * @brief Save a vector of four vertices (cv::Point2f) to an XML file.
  *
  * @param quad_vertices_ndc Vector of cv::Point2f representing the vertices.
- * @param mon_ind Monitor index for the active monitor.
+ * @param proj_ind Index/number of the projector to load data for.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int mon_ind);
+int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int proj_ind);
 
 /**
- * Load a vector of four vertices (cv::Point2f) from an XML file.
+ * @brief Load a vector of four vertices (cv::Point2f) from an XML file.
  *
- * @param mon_ind Monitor index for the active monitor.
+ * @param proj_ind Index/number of the projector to load data for.
  * @param[out] out_quad_vertices_ndc Output vector of cv::Point2f for the vertices.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int xmlLoadVertices(int mon_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc);
+int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc);
 
 /**
- * Checks for size and signulararity issues in a homography matrix.
+ * @brief Checks for size and signulararity issues in a homography matrix.
  *
  * @param _H The homography matrix to check.
  *

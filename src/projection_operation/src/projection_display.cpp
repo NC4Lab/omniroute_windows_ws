@@ -237,7 +237,7 @@ void appInitVariables()
         throw std::runtime_error("[appInitVariables] Failed to load OpentCV wall images");
 
     // Load homography matrix XML file data
-    for (const int &mon_ind : I.proj_mon_vec) // for each monitor index
+    for (const int &proj_ind : I.proj_mon_vec) // for each monitor index
     {
         for (int cal_i = 0; cal_i < N_CAL_MODES; ++cal_i)
         {
@@ -252,7 +252,7 @@ void appInitVariables()
                 for (int gc_i = 0; gc_i < grid_size; ++gc_i)
                 {
                     // Load the homography matrix from XML
-                    if (xmlLoadHMAT(mon_ind, _CAL_MODE, gr_i, gc_i, HMAT_ARR[mon_ind][_CAL_MODE][gr_i][gc_i]) < 0)
+                    if (xmlLoadHMAT(proj_ind, _CAL_MODE, gr_i, gc_i, HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i]) < 0)
                         throw std::runtime_error("[appInitVariables] Error returned from xmlLoadHMAT");
                 }
             }
@@ -260,17 +260,17 @@ void appInitVariables()
     }
 
     // Load maze boundary vertices in NDC units for each projector
-    for (const int &mon_ind : I.proj_mon_vec) // for each monitor index
+    for (const int &proj_ind : I.proj_mon_vec) // for each monitor index
     {
         std::vector<cv::Point2f> maze_vert_ndc_vec(4);
         std::vector<cv::Point2f> maze_vert_cm_vec(4);
 
         // Load the maze vertices from XML
-        if (xmlLoadVertices(mon_ind, maze_vert_ndc_vec) < 0)
+        if (xmlLoadVertices(proj_ind, maze_vert_ndc_vec) < 0)
             throw std::runtime_error("[appInitVariables] Error returned from xmlLoadVertices");
 
         // Compute the rotated maze vertices in centimeter units
-        populateMazeVertNdcVec(mon_ind, maze_vert_cm_vec);
+        populateMazeVertNdcVec(proj_ind, maze_vert_cm_vec);
 
         // const std::vector<cv::Point2f> maze_vert_cm_vec = {
         //     cv::Point2f(0, MAZE_WIDTH_HEIGHT_CM),
@@ -281,10 +281,10 @@ void appInitVariables()
         // Compute the homography matrix for warping the rat mask marker from maze cm to ndc space for each projector
         cv::Mat H;
         if (computeHomographyMatrix(maze_vert_cm_vec, maze_vert_ndc_vec, H))
-            throw std::runtime_error("[appInitVariables] Monitor[" + std::to_string(mon_ind) + "]: Invalid homography matrix for rat mask image");
+            throw std::runtime_error("[appInitVariables] Monitor[" + std::to_string(proj_ind) + "]: Invalid homography matrix for rat mask image");
 
         // Store the homography matrix
-        HMAT_CM_TO_NDC_ARR[mon_ind] = H;
+        HMAT_CM_TO_NDC_ARR[proj_ind] = H;
     }
 
     // Intialize the window offset vector
@@ -314,10 +314,10 @@ void appInitOpenGL()
     int cnt = 0;
     for (auto &projCtx : PROJ_CTX_VEC)
     {
-        int mon_ind = I.proj_mon_vec[cnt++];
+        int proj_ind = I.proj_mon_vec[cnt++];
 
         // Initialze render context for each projector
-        if (projCtx.initWindowContext(mon_ind, I.starting_monitor, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, callbackKeyBinding) < 0)
+        if (projCtx.initWindowContext(proj_ind, I.starting_monitor, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, callbackKeyBinding) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
 
         // Initialize OpenGL wall image objects
@@ -337,12 +337,12 @@ void appInitOpenGL()
             throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
 
         // Initialize the CircleRenderer class object for rat masking
-        if (RM_CIRCREND_ARR[mon_ind].initializeCircleObject(
+        if (RM_CIRCREND_ARR[proj_ind].initializeCircleObject(
                 RT.marker_position,         // position
                 RT.marker_radius,           // radius
                 RT.marker_rgb,              // color
                 RT.marker_segments,         // segments
-                HMAT_CM_TO_NDC_ARR[mon_ind] // homography matrix
+                HMAT_CM_TO_NDC_ARR[proj_ind] // homography matrix
                 ) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
 
@@ -394,7 +394,7 @@ void appMainLoop()
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from MazeRenderContext::initWindowForDrawing");
 
             // Make sure winsow always stays on top in fullscreen mode
-            if (projCtx.forceWindowStackOrder(F.fullscreen_mode) < 0)
+            if (projCtx.forceWindowStackOrder() < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from MazeRenderContext::forceWindowStackOrder");
 
             // Draw/update wall images

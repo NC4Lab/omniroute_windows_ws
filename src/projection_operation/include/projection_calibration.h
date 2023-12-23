@@ -37,6 +37,16 @@
  */
 std::array<std::array<cv::Point2f, 4>, 4> CP_GRID_ARR;
 
+// /** TEMP
+//  * @brief  4x4 data container for storing the defualt control point coordinates.
+//  */
+// std::array<std::array<cv::Point2f, 4>, 4> CP_GRID_ARR_DEFAULT;
+
+/**
+ * @brief 3x3x4 data contianer for storing default wall vertices for each wall in NDC.
+ */
+std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WALL_GRID_ARR_DEFAULT;
+
 /**
  * @brief 3x3xN data contianer for storing wall homography matrices for each wall image and each calibration mode.
  */
@@ -68,27 +78,23 @@ const int cpRenderSegments = 36;                                       // Number
  */
 static struct FlagStruct
 {
-    bool db_run = false;              // Flag to indicate if something should be run for debugging
-    bool xml_load_hmat = false;       // Flag to indicate if the XML file needs to be loaded
-    bool xml_save_hmat = false;       // Flag to indicate if the XML file needs to be saved
-    bool change_window_mode = false;  // Flag to indicate if the window mode needs to be updated
+    bool db_run = false;             // Flag to indicate if something should be run for debugging
+    bool xml_load_hmat = false;      // Flag to indicate if the XML file needs to be loaded
+    bool xml_save_hmat = false;      // Flag to indicate if the XML file needs to be saved
+    bool change_window_mode = false; // Flag to indicate if the window mode needs to be updated
     bool init_control_points = true; // Flag to indicate if the control point markers need to be reinitialized
-    bool fullscreen_mode = false;     // Flag to indicate if the window is in full screen mode
-    bool update_mode_img = true;      // Flag to indicate if the monitor and calibration mode image needs to be updated
-    bool update_textures = true;      // Flag to indicate if image vertices, homography and texture need to be updated
+    bool fullscreen_mode = false;    // Flag to indicate if the window is in full screen mode
+    bool update_mode_img = true;     // Flag to indicate if the monitor and calibration mode image needs to be updated
+    bool update_textures = true;     // Flag to indicate if image vertices, homography and texture need to be updated
     bool update_homographys = true;  // Flag to indicate if image vertices, homography and texture need to be updated
 } F;
 
 /**
  * @brief Struct for global counts.
- *
- * @param monitors Number of monitors connected to the system
- * @param wall_image Number of wall test images
- * @param floor_image Number of floor test images
  */
 static struct CountStruct
 {
-    int monitor;              // Number of monitors connected to the system
+    int monitor;               // Number of monitors connected to the system
     const int wall_image = 4;  // Number of wall test images
     const int floor_image = 2; // Number of floor test images
 } N;
@@ -107,13 +113,14 @@ static struct CountStruct
 static struct IndStruct
 {
     int monitor = 0;     // Index of the active monitor to be loaded
+    int projector = -1;  // Index of the projector associated with the active monitor to be loaded
     int wall_image = 0;  // Index of the test wall image to be loaded
     int floor_image = 0; // Index of the test wall image to be loaded
     std::array<std::array<int, 2>, 2> CP_MAP = {{{0, 1},
                                                  {3, 2}}}; // Maps a given row and column cpRowColMap[1] index to the 1D control points vector.
-    std::array<int, 2> cp_maze_vert_selected = {0, 0}; // Selected maze vertex [row, col]
-    std::array<int, 2> cp_wall_vert_selected = {1, 0}; // Selected wall vertex [row, col]
-    const int cp_wall_origin_vertex = 3;               // Vertex index of the wall image origin (bottom-left)
+    std::array<int, 2> cp_maze_vert_selected = {0, 0};     // Selected maze vertex [row, col]
+    std::array<int, 2> cp_wall_vert_selected = {1, 0};     // Selected wall vertex [row, col]
+    const int cp_wall_origin_vertex = 3;                   // Vertex index of the wall image origin (bottom-left)
     // std::array<int, 2> cpSelected = {0, 0};
 } I;
 
@@ -212,15 +219,17 @@ void callbackKeyBinding(
  *
  * @param _CAL_MODE Enum of type CalibrationMode for the active calibration mode.
  * @param[out] out_CP_GRID_ARR Reference to the 4x4 array containing the coordinates of the corner wall's vertices.
+ * @param[out] out_WALL_GRID_ARR_DEFAULT Reference to 3x3x4 data contianer for storing default wall vertices for each wall.
  *
  * @details
  * Control point x and y coordinates are specified in Normalized Device Coordinates (NDC) [-1, 1].
  * The vertices for the entire projected image are calculated based on the dimensions that enclose
  * all control points (i.e., boundary dimensions in the control point plane).
  */
-void initControlPoints(
+void initVertexCoordinates(
     CalibrationMode _CAL_MODE,
-    std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR);
+    std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR,
+    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &out_WALL_GRID_ARR_DEFAULT);
 
 /**
  * @brief Initialize OpenGL resources for CircleRenderer objects.
@@ -252,11 +261,26 @@ int drawControlPoints(
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
     std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS);
 
+// /**
+//  * @brief Computes updated homography matrices for all walls.
+//  *
+//  * @param _CAL_MODE Enum of type CalibrationMode for the active calibration mode.
+//  * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
+//  * @param[out] out_HMAT_ARR Reference to array to store calibration matrices.
+//  *
+//  * @return Integer status code [-1:error, 0:successful].
+//  */
+// int updateWallHomographys(
+//     CalibrationMode _CAL_MODE,
+//     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
+//     std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &out_HMAT_ARR);
+
 /**
  * @brief Computes updated homography matrices for all walls.
  *
  * @param _CAL_MODE Enum of type CalibrationMode for the active calibration mode.
  * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
+ * @param _WALL_GRID_ARR_DEFAULT The 3x3x4 data contianer of default wall vertices for each wall.
  * @param[out] out_HMAT_ARR Reference to array to store calibration matrices.
  *
  * @return Integer status code [-1:error, 0:successful].
@@ -264,6 +288,7 @@ int drawControlPoints(
 int updateWallHomographys(
     CalibrationMode _CAL_MODE,
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
+    const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &_WALL_GRID_ARR_DEFAULT,
     std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &out_HMAT_ARR);
 
 /**
