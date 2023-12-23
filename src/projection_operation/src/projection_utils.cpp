@@ -117,7 +117,6 @@ void MazeRenderContext::CallbackErrorGLFW(int error, const char *description)
 
 int MazeRenderContext::CheckErrorOpenGL(int line, const char *file_str, const char *msg_str)
 {
-    // ROS_INFO("        [CheckErrorOpenGL] DEBUG: File[%s] Line[%d]", file_str, line); // TEMP
     GLenum gl_err;
     while ((gl_err = glGetError()) != GL_NO_ERROR)
     {
@@ -130,7 +129,6 @@ int MazeRenderContext::CheckErrorOpenGL(int line, const char *file_str, const ch
 
 int MazeRenderContext::CheckErrorGLFW(int line, const char *file_str, const char *msg_str)
 {
-    // ROS_INFO("        [CheckErrorGLFW] DEBUG: File[%s] Line[%d]", file_str, line); // TEMP
     const char *description;
     int glfw_err = glfwGetError(&description);
     if (glfw_err != GLFW_NO_ERROR)
@@ -968,10 +966,6 @@ int CircleRenderer::initializeCircleObject(cv::Point2f _circPosition, float _cir
     status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     return status;
-
-    // // TEMP
-    // ROS_INFO("[CircleRenderer] Initialized Instance[%d]: Position[%0.2f, %0.2f] Radius[%0.4f] Color[%.2f, %.2f, %.2f] Segments[%d]",
-    //          circID, circPosition.x, circPosition.y, cirRadius, circColor[0], circColor[1], circColor[2], circSegments);
 }
 
 int CircleRenderer::CompileAndLinkCircleShaders(float __AspectRatioUniform)
@@ -1514,13 +1508,23 @@ int promptForProjectorNumber()
     }
 }
 
+void xmlFrmtFileStringsControlPoints(int proj_ind, std::string &out_path)
+{
+    // Format the output tag
+    out_path =
+        CONFIG_DIR_PATH + "/" +
+        "cp" +
+        "_p" + std::to_string(proj_ind) +
+        ".xml";
+}
+
 void xmlFrmtFileStringsHmat(int proj_ind, std::string &out_path)
 {
     // Format the output tag
     out_path =
         CONFIG_DIR_PATH + "/" +
         "hmats" +
-        "_m" + std::to_string(proj_ind) +
+        "_p" + std::to_string(proj_ind) +
         ".xml";
 }
 
@@ -1533,12 +1537,168 @@ void xmlFrmtFileStringsVertices(std::string &out_path)
         ".xml";
 }
 
+int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind, CalibrationMode _CAL_MODE, int cp_ind)
+{
+    // Define file path and calibration mode string
+    std::string file_path;
+    xmlFrmtFileStringsControlPoints(proj_ind, file_path);  // Assume you have a similar function to set file path
+    std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
+
+    // Attempt to load the XML file
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_file(file_path.c_str());
+
+    // Check if the file exists and has a proper Root node
+    pugi::xml_node root_node = doc.child("Root");
+    if (!result || !root_node)
+    {
+        root_node = doc.append_child("Root");
+    }
+
+    // Look for the calibration node with the matching mode attribute
+    pugi::xml_node calibration_node;
+    for (pugi::xml_node node = root_node.child("calibration");
+         node; node = node.next_sibling("calibration"))
+    {
+        if (node.attribute("mode").value() == cal_mode_str)
+        {
+            calibration_node = node;
+            break;
+        }
+    }
+
+    if (!calibration_node)
+    {
+        calibration_node = root_node.append_child("calibration");
+        calibration_node.append_attribute("mode") = cal_mode_str.c_str();
+    }
+
+    // Search for an existing CP node with the same cp_ind
+    pugi::xml_node cp_node;
+    for (pugi::xml_node node = calibration_node.child("CP");
+         node; node = node.next_sibling("CP"))
+    {
+        if (node.attribute("cp_index").as_int() == cp_ind)
+        {
+            cp_node = node;
+            break;
+        }
+    }
+
+    // If a CP node with the index is not found, add it
+    if (!cp_node)
+    {
+        cp_node = calibration_node.append_child("CP");
+        cp_node.append_attribute("cp_index") = cp_ind;
+    }
+    else
+    {
+        // Clear existing data to replace with new points
+        calibration_node.remove_child(cp_node);
+        cp_node = calibration_node.append_child("CP");
+        cp_node.append_attribute("cp_index") = cp_ind;
+    }
+
+    // Add control points data to the CP node
+    for (int i = 0; i < CP_ARR.size(); ++i)
+    {
+        const auto &point = CP_ARR[i];
+        pugi::xml_node point_node = cp_node.append_child("Point");
+        point_node.append_attribute("id") = i; // Unique ID for each point
+        point_node.append_attribute("x") = point.x;
+        point_node.append_attribute("y") = point.y;
+    }
+
+    // Save the document
+    if (!doc.save_file(file_path.c_str()))
+    {
+        ROS_ERROR("[xmlSaveControlPoints] Failed to save control points to XML File[%s]", file_path.c_str());
+        return -1;
+    }
+
+    return 0;
+}
+
+int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, std::array<cv::Point2f, 4> &out_CP_ARR)
+{
+    // Define file path and calibration mode string
+    std::string file_path;
+    xmlFrmtFileStringsControlPoints(proj_ind, file_path);  // Assume you have a similar function to set file path
+    std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
+
+    // Attempt to load the XML file
+    pugi::xml_document doc;
+    pugi::xml_parse_result result = doc.load_file(file_path.c_str());
+
+    // Check if the file was loaded successfully
+    if (!result)
+    {
+        ROS_ERROR("[xmlLoadControlPoints] Failed to load control points from XML File[%s]", file_path.c_str());
+        return -1;
+    }
+
+    // Look for the calibration node with the matching mode attribute
+    pugi::xml_node calibration_node;
+    for (pugi::xml_node node = doc.child("Root").child("calibration");
+         node; node = node.next_sibling("calibration"))
+    {
+        if (node.attribute("mode").value() == cal_mode_str)
+        {
+            calibration_node = node;
+            break;
+        }
+    }
+
+    if (!calibration_node)
+    {
+        ROS_ERROR("[xmlLoadControlPoints] No calibration node[%s] found in XML File[%s]", cal_mode_str.c_str(), file_path.c_str());
+        return -1;
+    }
+
+    // Search for a CP node with the same cp_ind
+    pugi::xml_node cp_node;
+    for (pugi::xml_node node = calibration_node.child("CP");
+         node; node = node.next_sibling("CP"))
+    {
+        if (node.attribute("cp_index").as_int() == cp_ind)
+        {
+            cp_node = node;
+            break;
+        }
+    }
+
+    if (!cp_node)
+    {
+        ROS_ERROR("[xmlLoadControlPoints] No CP node with cp_index[%d] found in calibration mode[%s] for XML File[%s]",
+                  cp_ind, cal_mode_str.c_str(), file_path.c_str());
+        return -1;
+    }
+
+    // Load the control points data
+    int i = 0;
+    for (pugi::xml_node point_node = cp_node.child("Point"); point_node && i < 4; point_node = point_node.next_sibling("Point"), ++i)
+    {
+        out_CP_ARR[i].x = point_node.attribute("x").as_float();
+        out_CP_ARR[i].y = point_node.attribute("y").as_float();
+    }
+
+    if (i != 4) // Ensure that exactly 4 control points are loaded
+    {
+        ROS_ERROR("[xmlLoadControlPoints] Incorrect number of control points in CP. Expected 4, got %d", i);
+        return -1;
+    }
+
+    return 0;
+}
+
+
+
 int xmlSaveHMAT(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col)
 {
     // Get the full file path and attribute string for the given calibration mode
     std::string file_path;
     xmlFrmtFileStringsHmat(proj_ind, file_path);
-    std::string cal_mode_str = CAL_MADE_STR_VEC[_CAL_MODE];
+    std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
 
     // Attempt to load the XML file
     pugi::xml_document doc;
@@ -1615,7 +1775,7 @@ int xmlLoadHMAT(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_
     // Get the full file path and attribute string for the given calibration mode
     std::string file_path;
     xmlFrmtFileStringsHmat(proj_ind, file_path);
-    std::string cal_mode_str = CAL_MADE_STR_VEC[_CAL_MODE];
+    std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
 
     // Attempt to load the XML file
     pugi::xml_document doc;
@@ -1707,7 +1867,7 @@ int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int proj_
 
     // Search for an existing monitor node with the same index
     pugi::xml_node monitor_node;
-    for (pugi::xml_node node = root_node.child("monitor"); node; node = node.next_sibling("monitor"))
+    for (pugi::xml_node node = root_node.child("projector"); node; node = node.next_sibling("projector"))
     {
         if (node.attribute("index").as_int() == proj_ind)
         {
@@ -1719,7 +1879,7 @@ int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int proj_
     // If a monitor node with the index is not found, add it
     if (!monitor_node)
     {
-        monitor_node = root_node.append_child("monitor");
+        monitor_node = root_node.append_child("projector");
         monitor_node.append_attribute("index") = proj_ind;
     }
     else
@@ -1767,7 +1927,7 @@ int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_nd
 
     // Search for the monitor node with the same index
     pugi::xml_node monitor_node;
-    for (pugi::xml_node node = doc.child("Root").child("monitor"); node; node = node.next_sibling("monitor"))
+    for (pugi::xml_node node = doc.child("Root").child("projector"); node; node = node.next_sibling("projector"))
     {
         if (node.attribute("index").as_int() == proj_ind)
         {
@@ -1812,7 +1972,7 @@ int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_nd
     // Check if the vector has exactly four vertices
     if (out_quad_vertices_ndc.size() != 4)
     {
-        ROS_ERROR("[xmlLoadHMAT] Loaded vector is wrong size for XML: Expected[4] Actual[%d] Monitor[%d] File[%s]",
+        ROS_ERROR("[xmlLoadHMAT] Loaded vector is wrong size for XML: Expected[4] Actual[%d] Projector[%d] File[%s]",
                   out_quad_vertices_ndc.size(), proj_ind, file_path.c_str());
         return -1;
     }

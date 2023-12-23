@@ -357,25 +357,6 @@ void initVertexCoordinates(
     I.cp_wall_vert_selected = {1, 0};
 }
 
-void updateControlPointsFromHomMat(const cv::Mat &_H, std::array<cv::Point2f, 4> &out_CP_ARR)
-{
-    // Convert control points to vector
-    std::vector<cv::Point2f> cp_vec(out_CP_ARR.begin(), out_CP_ARR.end());
-
-    // Convert control points to pixels
-    std::vector<cv::Point2f> cp_pxl_vec = quadVertNdc2Pxl(cp_vec, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, false);
-
-    // Warp the control points
-    std::vector<cv::Point2f> cp_pxl_vec_warp;
-    cv::perspectiveTransform(cp_pxl_vec, cp_pxl_vec_warp, _H);
-
-    // Convert control points back to ndc
-    std::vector<cv::Point2f> cp_vec_warp = quadVertPxl2Ndc(cp_pxl_vec_warp, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, true);
-
-    // Convert control points back to array
-    std::copy(cp_vec_warp.begin(), cp_vec_warp.end(), out_CP_ARR.begin());
-}
-
 int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
                               std::array<std::array<CircleRenderer, 4>, 4> &out_CP_RENDERERS)
 {
@@ -387,7 +368,7 @@ int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_
         {
             out_CP_RENDERERS[mv_i][wv_i].initializeCircleObject(
                 _CP_GRID_ARR[mv_i][wv_i], // position
-                cpDefualtMakerRadius,     // radius
+                cpMakerRadius,            // radius
                 cpDefaultRGB,             // color
                 cpRenderSegments          // segments
             );
@@ -421,12 +402,8 @@ int drawControlPoints(CalibrationMode _CAL_MODE,
             cv::Scalar col = (cp_i == mv_ind && cp_j == wv_ind) ? cpWallVertSelectedRGB : (cp_i == mv_ind) ? cpMazeVertSelectedRGB
                                                                                                            : cpDefaultRGB;
 
-            // Define the marker radius
-            GLfloat rad = cp_j == 3 ? cpSelectedMakerRadius : cpDefualtMakerRadius;
-
             // Set the marker parameters
             out_CP_RENDERERS[cp_i][cp_j].setPosition(_CP_GRID_ARR[cp_i][cp_j]);
-            out_CP_RENDERERS[cp_i][cp_j].setRadius(rad);
             out_CP_RENDERERS[cp_i][cp_j].setColor(col);
 
             // Recompute the marker parameters
@@ -694,10 +671,9 @@ void appInitFileXML()
     };
     std::vector<int> mon_missing_vec;
     std::string file_path;
-    int n_mon_max = 6; // want to have files for up to 6 monitors
 
     // Check for non-initialized XML files and initialize them
-    for (int mon_i = 0; mon_i < n_mon_max; ++mon_i)
+    for (int proj_i = 0; proj_i < 4; ++proj_i)
     {
         bool isMonMissing = false;
 
@@ -714,15 +690,15 @@ void appInitFileXML()
                 for (int gc_i = 0; gc_i < grid_size && !isMonMissing; ++gc_i)
                 {
                     // Check if the file exists
-                    xmlFrmtFileStringsHmat(mon_i, file_path);
+                    xmlFrmtFileStringsHmat(proj_i, file_path);
                     if (!fileExists(file_path))
                     {
                         // Check if mon_i is already in mon_missing_vec
-                        if (std::find(mon_missing_vec.begin(), mon_missing_vec.end(), mon_i) == mon_missing_vec.end())
+                        if (std::find(mon_missing_vec.begin(), mon_missing_vec.end(), proj_i) == mon_missing_vec.end())
                         {
-                            mon_missing_vec.push_back(mon_i);
+                            mon_missing_vec.push_back(proj_i);
                             isMonMissing = true; // Break out of the nested loops
-                            ROS_WARN("[appInitFileXML] Initilizing XML file for Monitor[%d]: %s", mon_i, file_path.c_str());
+                            ROS_WARN("[appInitFileXML] Initilizing XML file for Projector[%d]: %s", proj_i, file_path.c_str());
                         }
                     }
                 }
@@ -736,7 +712,7 @@ void appInitFileXML()
     std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> _HMAT_ARR;
 
     // Loop through the missing projectors
-    for (auto &mon_i : mon_missing_vec)
+    for (auto &proj_i : mon_missing_vec)
     {
         for (int cal_i = 0; cal_i < N_CAL_MODES; ++cal_i)
         {
@@ -763,15 +739,22 @@ void appInitFileXML()
             {
                 for (int gc_i = 0; gc_i < grid_size; ++gc_i)
                 {
-                    if (xmlSaveHMAT(_HMAT_ARR[_CAL_MODE][gr_i][gc_i], mon_i, _CAL_MODE, gr_i, gc_i) < 0)
+                    if (xmlSaveHMAT(_HMAT_ARR[_CAL_MODE][gr_i][gc_i], proj_i, _CAL_MODE, gr_i, gc_i) < 0)
                         throw std::runtime_error("[appInitFileXML] Error returned from xmlSaveHMAT");
                     if (_CAL_MODE == FLOOR)
                     {
                         std::vector<cv::Point2f> vert_vec(_CP_GRID_ARR[0].begin(), _CP_GRID_ARR[0].end());
-                        if (xmlSaveVertices(vert_vec, mon_i) < 0)
-                            throw std::runtime_error("[appMainLoop] Error returned from xmlSaveVertices");
+                        if (xmlSaveVertices(vert_vec, proj_i) < 0)
+                            throw std::runtime_error("[appInitFileXML] Error returned from xmlSaveVertices");
                     }
                 }
+            }
+
+            // Save the control points to XML
+            for (int cp_i = 0; cp_i < grid_size; ++cp_i)
+            {
+                if (xmlSaveControlPoints(_CP_GRID_ARR[cp_i], proj_i, _CAL_MODE, cp_i) < 0)
+                    throw std::runtime_error("[appInitFileXML] Error returned from xmlSaveControlPoints");
             }
         }
     }
@@ -807,9 +790,10 @@ void appMainLoop()
                         // Save the homography matrix to XML
                         if (xmlSaveHMAT(HMAT_ARR[CAL_MODE][gr_i][gc_i], I.projector, CAL_MODE, gr_i, gc_i) < 0)
                             throw std::runtime_error("[appMainLoop] Error returned from xmlSaveHMAT");
+
+                        // Save the maze vertices to XML
                         if (CAL_MODE == FLOOR)
                         {
-                            // Save the maze vertices to XML
                             std::vector<cv::Point2f> vert_vec(CP_GRID_ARR[0].begin(), CP_GRID_ARR[0].end());
                             if (xmlSaveVertices(vert_vec, I.projector) < 0)
                                 throw std::runtime_error("[appMainLoop] Error returned from xmlSaveVertices");
@@ -825,13 +809,19 @@ void appMainLoop()
                 }
             }
 
-            // Update the control points from the loaded homography matrix
-            if (F.xml_load_hmat)
+            // Save/load the control points to XML
+            for (int cp_i = 0; cp_i < grid_size; ++cp_i)
             {
-                updateControlPointsFromHomMat(HMAT_ARR[CAL_MODE][0][0], CP_GRID_ARR[0]);                         // Top left maze corner
-                updateControlPointsFromHomMat(HMAT_ARR[CAL_MODE][0][MAZE_SIZE - 1], CP_GRID_ARR[1]);             // Top right maze corner
-                updateControlPointsFromHomMat(HMAT_ARR[CAL_MODE][MAZE_SIZE - 1][MAZE_SIZE - 1], CP_GRID_ARR[2]); // Bottom right maze corner
-                updateControlPointsFromHomMat(HMAT_ARR[CAL_MODE][MAZE_SIZE - 1][0], CP_GRID_ARR[3]);             // Bottom left maze corner
+                if (F.xml_save_hmat)
+                {
+                    if (xmlSaveControlPoints(CP_GRID_ARR[cp_i], I.projector, CAL_MODE, cp_i) < 0)
+                        throw std::runtime_error("[appMainLoop] Error returned from xmlSaveControlPoints");
+                }
+                if (F.xml_load_hmat)
+                {
+                    if (xmlLoadControlPoints(I.projector, CAL_MODE, cp_i, CP_GRID_ARR[cp_i]) < 0)
+                        throw std::runtime_error("[appMainLoop] Error returned from xmlSaveControlPoints");
+                }
             }
 
             // Flash the background to indicate the file was loaded/saved

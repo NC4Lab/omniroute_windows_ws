@@ -1168,7 +1168,7 @@ enum CalibrationMode
 CalibrationMode CAL_MODE = WALLS_MIDDLE;
 
 // Calibration mode strings
-std::vector<std::string> CAL_MADE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};
+std::vector<std::string> CAL_MODE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};
 
 // Number of rows and columns in the maze
 extern const int MAZE_SIZE = 3;
@@ -1303,12 +1303,25 @@ void dbDispImgMat(const cv::Mat &img_mat);
 int promptForProjectorNumber();
 
 /**
+ * @brief Formats the file name for the XML file for control point arrays.
+ *
+ * @details
+ * Format:
+ * - `cp_p<number>.xml`
+ * - `cp_p0.xml`
+ *
+ * @param proj_ind Index/number of the projector to load data for.
+ * @param[out] out_path Reference to string that will store the path to the XML file.
+ */
+void xmlFrmtFileStringsControlPoints(int proj_ind, std::string &out_path);
+
+/**
  * @brief Formats the file name for the XML file for homography matrices.
  *
  * @details
  * Format:
- * - `hmats_m<number>.xml`
- * - `hmats_m0.xml`
+ * - `hmats_p<number>.xml`
+ * - `hmats_p0.xml`
  *
  * @param proj_ind Index/number of the projector to load data for.
  * @param[out] out_path Reference to string that will store the path to the XML file.
@@ -1327,6 +1340,47 @@ void xmlFrmtFileStringsHmat(
  * @param[out] out_path Reference to string that will store the path to the XML file.
  */
 void xmlFrmtFileStringsVertices(std::string &out_path);
+
+/**
+ * @brief Save an array of control points to an XML file.
+ *
+ * @details
+ * This function uses the pugixml library to create or modify an XML document and populate it with
+ * the control points for the specified calibration mode and control point index. It allows for updating
+ * or adding new sets of control points to the calibration configuration.
+ *
+ * @param CP_ARR The array of 4 control points to save.
+ * @param proj_ind Index/number of the projector to load data for.
+ * @param _CAL_MODE Enum of type CalibrationMode for the active or desired calibration mode.
+ * @param cp_ind Index for the set of control points to save or update.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int xmlSaveControlPoints(
+    const std::array<cv::Point2f, 4> &CP_ARR,
+    int proj_ind,
+    CalibrationMode _CAL_MODE,
+    int cp_ind);
+
+/**
+ * @brief Load an array of control points from an XML file.
+ *
+ * @details
+ * This function uses the pugixml library to read an XML document and populate the array with
+ * control points for the specified calibration mode and control point index. It is designed to work
+ * with the XML structure created by xmlSaveControlPoints.
+ *
+ * @param proj_ind Index/number of the projector to load data for.
+ * @param _CAL_MODE Enum of type CalibrationMode for the active or desired calibration mode.
+ * @param cp_ind Index for the set of control points to load.
+ * @param[out] out_CP_ARR The output array of 4 control points.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int xmlLoadControlPoints(int proj_ind,
+                         CalibrationMode _CAL_MODE,
+                         int cp_ind,
+                         std::array<cv::Point2f, 4> &out_CP_ARR);
 
 /**
  * @brief Save a single cv::Mat homography matrix to an XML file.

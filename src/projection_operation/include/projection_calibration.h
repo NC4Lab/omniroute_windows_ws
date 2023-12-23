@@ -37,11 +37,6 @@
  */
 std::array<std::array<cv::Point2f, 4>, 4> CP_GRID_ARR;
 
-// /** TEMP
-//  * @brief  4x4 data container for storing the defualt control point coordinates.
-//  */
-// std::array<std::array<cv::Point2f, 4>, 4> CP_GRID_ARR_DEFAULT;
-
 /**
  * @brief 3x3x4 data contianer for storing default wall vertices for each wall in NDC.
  */
@@ -63,9 +58,8 @@ MazeRenderContext projCtx;
 std::array<std::array<CircleRenderer, 4>, 4> CP_CIRCREND_ARR;
 
 // Control point graphics parameters
+const GLfloat cpMakerRadius = 0.0025f;                                 // Control point rendered circle radius
 const cv::Scalar cpWallVertSelectedRGB = cv::Scalar(1.0f, 0.0f, 0.0f); // Select control point marker color (red)
-const GLfloat cpDefualtMakerRadius = 0.0025f;                          // Default control point rendered circle radius
-const GLfloat cpSelectedMakerRadius = 0.005f;                          // Selected control point rendered circle radius
 const cv::Scalar cpMazeVertSelectedRGB = cv::Scalar(0.0f, 1.0f, 0.0f); // Selected control point wall color (green)
 const cv::Scalar cpDefaultRGB = cv::Scalar(0.0f, 0.0f, 1.0f);          // Default control point marker color (blue)
 const int cpRenderSegments = 36;                                       // Number of segments used to approximate the circle geometry
@@ -230,10 +224,6 @@ void initVertexCoordinates(
     CalibrationMode _CAL_MODE,
     std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR,
     std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &out_WALL_GRID_ARR_DEFAULT);
-
-void updateControlPointsFromHomMat(
-    const cv::Mat &_H,
-    std::array<cv::Point2f, 4> &out_CP_ARR);
 
 /**
  * @brief Initialize OpenGL resources for CircleRenderer objects.
