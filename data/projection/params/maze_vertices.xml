@@ -56,20 +56,20 @@
 	</projector>
 	<projector index="3">
 		<vertex>
-			<coord>-0.150000006</coord>
-			<coord>-0.266666681</coord>
+			<coord>-0.240000054</coord>
+			<coord>-0.356666595</coord>
 		</vertex>
 		<vertex>
-			<coord>0.150000006</coord>
-			<coord>-0.266666681</coord>
+			<coord>0.129999995</coord>
+			<coord>-0.276666671</coord>
 		</vertex>
 		<vertex>
-			<coord>0.150000006</coord>
-			<coord>0.266666681</coord>
+			<coord>0.129999995</coord>
+			<coord>0.25666669</coord>
 		</vertex>
 		<vertex>
-			<coord>-0.150000006</coord>
-			<coord>0.266666681</coord>
+			<coord>-0.170000017</coord>
+			<coord>0.25666669</coord>
 		</vertex>
 	</projector>
 </Root>
