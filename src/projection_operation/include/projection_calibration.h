@@ -72,7 +72,6 @@ const int cpRenderSegments = 36;                                       // Number
  */
 static struct FlagStruct
 {
-    bool db_run = false;             // Flag to indicate if something should be run for debugging
     bool xml_load_hmat = false;      // Flag to indicate if the XML file needs to be loaded
     bool xml_save_hmat = false;      // Flag to indicate if the XML file needs to be saved
     bool change_window_mode = false; // Flag to indicate if the window mode needs to be updated

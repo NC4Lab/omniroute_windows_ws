@@ -95,6 +95,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             I.wall_image = img_ind;
             // Set the update texture flag
             F.update_homographys = true;
+            // Set the update mode image flag
+            F.update_mode_img = true;
         }
         if ((CAL_MODE == FLOOR) &&
             (img_ind != I.floor_image) &&
@@ -105,6 +107,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             I.floor_image = img_ind;
             // Set the update texture flag
             F.update_homographys = true;
+            // Set the update mode image flag
+            F.update_mode_img = true;
         }
 
         // ---------- XML Handling [ENTER, L] ----------
@@ -774,10 +778,8 @@ void appMainLoop()
         if (F.xml_load_hmat || F.xml_save_hmat)
         {
             // Prompt for projector number if not specified
-            // if (I.projector < 0)
-            //     I.projector = promptForProjectorNumber();
-            // TEMP
-            I.projector = 3;
+            if (I.projector < 0)
+                I.projector = promptForProjectorNumber();
 
             // Specify number of rows/cols to loop through based on active calibration mode
             int grid_size = (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) ? MAZE_SIZE : 1;
@@ -873,6 +875,7 @@ void appMainLoop()
             {
                 if (updateModeImage(wallImgMatVec[I.wall_image], monWallImgMatVec[I.monitor], calImgMatVec[CAL_MODE], modeImgMat) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from updateModeImage for wall image");
+                ROS_INFO("TEST1");
             }
             // Update floor texture
             else if (CAL_MODE == FLOOR)
