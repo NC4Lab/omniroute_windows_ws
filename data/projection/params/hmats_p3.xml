@@ -158,154 +158,154 @@
 	<calibration mode="cwm">
 		<HMAT grid_row="0" grid_col="0">
 			<row>
-				<cell>0.397645</cell>
-				<cell>0.000000</cell>
-				<cell>1632.000000</cell>
+				<cell>9.541332</cell>
+				<cell>3.202429</cell>
+				<cell>1497.599976</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.220914</cell>
-				<cell>727.200012</cell>
+				<cell>4.284223</cell>
+				<cell>2.073426</cell>
+				<cell>748.800049</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.000000</cell>
+				<cell>0.005346</cell>
+				<cell>0.001991</cell>
 				<cell>1.000000</cell>
 			</row>
 		</HMAT>
 		<HMAT grid_row="0" grid_col="1">
 			<row>
-				<cell>0.397645</cell>
-				<cell>0.000000</cell>
-				<cell>1903.957520</cell>
+				<cell>4.940683</cell>
+				<cell>2.121455</cell>
+				<cell>1786.577026</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.220914</cell>
-				<cell>691.505615</cell>
+				<cell>1.911724</cell>
+				<cell>1.254573</cell>
+				<cell>737.999451</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.000000</cell>
+				<cell>0.002255</cell>
+				<cell>0.001110</cell>
 				<cell>1.000000</cell>
 			</row>
 		</HMAT>
 		<HMAT grid_row="0" grid_col="2">
 			<row>
-				<cell>0.397645</cell>
-				<cell>0.000000</cell>
-				<cell>2208.000000</cell>
+				<cell>1.538694</cell>
+				<cell>3.726182</cell>
+				<cell>2075.520020</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.220914</cell>
-				<cell>651.600098</cell>
+				<cell>0.548944</cell>
+				<cell>1.736685</cell>
+				<cell>727.200012</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.000000</cell>
+				<cell>0.000462</cell>
+				<cell>0.001700</cell>
 				<cell>1.000000</cell>
 			</row>
 		</HMAT>
 		<HMAT grid_row="1" grid_col="0">
 			<row>
-				<cell>0.397645</cell>
-				<cell>0.000000</cell>
-				<cell>1632.000000</cell>
+				<cell>9.118887</cell>
+				<cell>3.232676</cell>
+				<cell>1536.063477</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.220914</cell>
-				<cell>1047.599976</cell>
+				<cell>5.371117</cell>
+				<cell>2.617845</cell>
+				<cell>1053.503906</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.000000</cell>
+				<cell>0.005125</cell>
+				<cell>0.002033</cell>
 				<cell>1.000000</cell>
 			</row>
 		</HMAT>
 		<HMAT grid_row="1" grid_col="1">
 			<row>
-				<cell>0.397645</cell>
-				<cell>0.000000</cell>
-				<cell>1903.957520</cell>
+				<cell>5.544746</cell>
+				<cell>1.557355</cell>
+				<cell>1824.559692</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.220914</cell>
-				<cell>1029.752808</cell>
+				<cell>2.717716</cell>
+				<cell>1.182368</cell>
+				<cell>1042.703247</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.000000</cell>
+				<cell>0.002548</cell>
+				<cell>0.000809</cell>
 				<cell>1.000000</cell>
 			</row>
 		</HMAT>
 		<HMAT grid_row="1" grid_col="2">
 			<row>
-				<cell>0.397645</cell>
-				<cell>0.000000</cell>
-				<cell>2208.000000</cell>
+				<cell>5.164195</cell>
+				<cell>3.068608</cell>
+				<cell>2113.021973</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.220914</cell>
-				<cell>1009.800049</cell>
+				<cell>2.228619</cell>
+				<cell>1.835646</cell>
+				<cell>1031.903809</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.000000</cell>
+				<cell>0.002034</cell>
+				<cell>0.001369</cell>
 				<cell>1.000000</cell>
 			</row>
 		</HMAT>
 		<HMAT grid_row="2" grid_col="0">
 			<row>
-				<cell>0.397645</cell>
-				<cell>0.000000</cell>
-				<cell>1632.000000</cell>
+				<cell>4.169678</cell>
+				<cell>2.308712</cell>
+				<cell>1574.400024</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.220914</cell>
-				<cell>1368.000000</cell>
+				<cell>3.022626</cell>
+				<cell>2.386056</cell>
+				<cell>1357.199951</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.000000</cell>
+				<cell>0.002227</cell>
+				<cell>0.001466</cell>
 				<cell>1.000000</cell>
 			</row>
 		</HMAT>
 		<HMAT grid_row="2" grid_col="1">
 			<row>
-				<cell>0.397645</cell>
-				<cell>0.000000</cell>
-				<cell>1903.957520</cell>
+				<cell>4.821251</cell>
+				<cell>0.917001</cell>
+				<cell>1862.416870</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.220914</cell>
-				<cell>1368.000000</cell>
+				<cell>2.995302</cell>
+				<cell>0.949512</cell>
+				<cell>1346.399414</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.000000</cell>
+				<cell>0.002159</cell>
+				<cell>0.000472</cell>
 				<cell>1.000000</cell>
 			</row>
 		</HMAT>
 		<HMAT grid_row="2" grid_col="2">
 			<row>
-				<cell>0.397645</cell>
-				<cell>0.000000</cell>
-				<cell>2208.000000</cell>
+				<cell>7.771491</cell>
+				<cell>2.080961</cell>
+				<cell>2150.399902</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.220914</cell>
-				<cell>1368.000000</cell>
+				<cell>4.329541</cell>
+				<cell>1.610785</cell>
+				<cell>1335.599976</cell>
 			</row>
 			<row>
-				<cell>0.000000</cell>
-				<cell>0.000000</cell>
+				<cell>0.003086</cell>
+				<cell>0.000894</cell>
 				<cell>1.000000</cell>
 			</row>
 		</HMAT>

@@ -750,8 +750,11 @@ void appInitFileXML()
                 }
             }
 
+            // Specify number of control point groups to loop through based on active calibration mode
+            int cp_group_size = (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) ? 4 : 1;
+
             // Save the control points to XML
-            for (int cp_i = 0; cp_i < grid_size; ++cp_i)
+            for (int cp_i = 0; cp_i < cp_group_size; ++cp_i)
             {
                 if (xmlSaveControlPoints(_CP_GRID_ARR[cp_i], proj_i, _CAL_MODE, cp_i) < 0)
                     throw std::runtime_error("[appInitFileXML] Error returned from xmlSaveControlPoints");
@@ -809,8 +812,11 @@ void appMainLoop()
                 }
             }
 
+            // Specify number of control point groups to loop through based on active calibration mode
+            int cp_group_size = (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) ? 4 : 1;
+
             // Save/load the control points to XML
-            for (int cp_i = 0; cp_i < grid_size; ++cp_i)
+            for (int cp_i = 0; cp_i < cp_group_size; ++cp_i)
             {
                 if (F.xml_save_hmat)
                 {
