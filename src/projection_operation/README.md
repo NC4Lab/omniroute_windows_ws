@@ -7,49 +7,35 @@
 
 ## PROJECTION CALIBRATION UI KEYBINDINGS
 
-The following keyboard shortcuts are available for interacting with the application. The actions are grouped by the type of key event they are associated with: **Key Release Actions** and **Key Press or Repeat Actions**.
-
-### Key Release Actions
+The following keyboard shortcuts are available for interacting with the application, organized by **Key Release Actions** and **Key Press or Repeat Actions** as they correspond to the callbackKeyBinding function.
 
 - **Fullscreen and Monitor Control**:
-  - **`F`**: Toggle fullscreen mode.
-  - **`0` - `5`**: Select monitor index (Only if the monitor is available).
+  - **`F`**: Toggle fullscreen mode or switch window mode.
+  - **`0` - `5`**: Move the window to another monitor, if available.
 
 - **XML Handling**:
-  - **`Enter`**: Save coordinates to XML.
+  - **`S`**: Save coordinates to XML (was previously Enter).
   - **`L`**: Load coordinates from XML.
 
 - **`R`**: Reset control point parameters.
 
-- **Select Control Point**:
-  - `F1`: Select Top-Left control point.
-  - `F2`: Select Top-Right control point.
-  - `F3`: Select Bottom-Right control point.
-  - `F4`: Select Bottom-Left control point.
-  
-- **Calibration Point Parameters**:
-  - **`A`**: Switch to control point position adjustment mode.
-  - **`D`**: Switch to wall dimension (height) adjustment mode.
-  - **`S`**: Switch to wall shear adjustment mode.
+- **Select Control Point (Image Selector)**:
+  - **`F1` - `F4`**: Select control points for different calibration images based on the current calibration mode.
 
-### Key Press or Repeat Actions
+- **Monitor and Projector Configuration**:
+  - **Number Keys (`0`-`5`)**: Change the monitor index and initiate monitor change along with projector number prompt and update various flags.
 
-- **Calibration Mode**:
-  - **`Ctrl + Left/Right`**: Change calibration mode and reset control point parameters.
+- **Calibration Mode Changes**:
+  - **`Ctrl + Shift + Left/Right`**: Change the calibration mode to cycle through available modes and reset control points (updated key combination).
 
-- **Image Change**:
-  - **`Alt + Left/Right`**: Change displayed image.
+- **Control Point Maze Vertex Selection**:
+  - **`Ctrl + Arrow keys`**: Select specific maze vertices for control points in calibration modes.
+
+- **Control Point Wall Vertex Selection**:
+  - **`Alt + Arrow keys`**: Select specific wall vertices for control points.
 
 - **Control Point Adjustments**:
-  - **`Shift or no modifier + Arrow keys`**: 
-    - In **Position Adjustment Mode (`A`)**: 
-      - `Left/Right`: Move selected control point left or right.
-      - `Up/Down`: Move selected control point up or down.
-    - In **Dimension Adjustment Mode (`D`)**:
-      - `Left/Right`: Decrease or increase the wall width.
-      - `Up/Down`: Decrease or increase the wall height.
-    - In **Shear Adjustment Mode (`S`)**:
-      - `Left/Right`: Skew the wall to the left or right.
+  - **`Arrow keys with Shift or no modifier`**: Adjust the selected control point's position, including left, right, up, and down movements with varying increments. This also includes adjustments for the origin of control points, translating all control points if the origin moves.
 
 ## INSTALL GLAD LIBRARY 
 
