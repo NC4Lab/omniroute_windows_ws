@@ -875,7 +875,6 @@ void appMainLoop()
             {
                 if (updateModeImage(wallImgMatVec[I.wall_image], monWallImgMatVec[I.monitor], calImgMatVec[CAL_MODE], modeImgMat) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from updateModeImage for wall image");
-                ROS_INFO("TEST1");
             }
             // Update floor texture
             else if (CAL_MODE == FLOOR)
