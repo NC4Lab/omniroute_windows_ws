@@ -520,7 +520,7 @@ int MazeRenderContext::bufferSwapPoll()
     return CheckErrorGLFW(__LINE__, __FILE__);
 }
 
-int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscreen, cv::Point offset_xy)
+int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscreen, cv::Point offset_xy, bool do_verbose)
 {
     int win_x, win_y;
     int win_width, win_height;
@@ -593,8 +593,10 @@ int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscre
     std::string new_title = "Window[" + std::to_string(windowInd) + "] Monitor[" + std::to_string(mon_ind_new) + "]";
     glfwSetWindowTitle(windowID, new_title.c_str());
 
-    ROS_INFO("[MazeRenderContext::changeWindowDisplayMode] Modified Window[%d]: Monitor[%d] Position[%d,%d,%d,%d] Format[%s]",
-             windowInd, monitorInd, win_x, win_y, win_width, win_height, isFullScreen ? "fullscreen" : "windowed");
+    // Log the new window display mode
+    if (do_verbose)
+        ROS_INFO("[MazeRenderContext::changeWindowDisplayMode] Modified Window[%d]: Monitor[%d] Position[%d,%d,%d,%d] Format[%s]",
+                 windowInd, monitorInd, win_x, win_y, win_width, win_height, isFullScreen ? "fullscreen" : "windowed");
 
     return CheckErrorGLFW(__LINE__, __FILE__, "changeWindowDisplayMode");
 }
@@ -1241,7 +1243,7 @@ void CircleRenderer::_convertToNDC(std::vector<float> &out_circVertices)
 
 // ================================================== FUNCTIONS ==================================================
 
-bool dbRunDT(int dt_wait)
+bool dbDelayRun(int dt_wait)
 {
     // Initialize with 0 to return true on the first call
     static ros::Time ts_wait = ros::Time(0);
@@ -1541,7 +1543,7 @@ int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind,
 {
     // Define file path and calibration mode string
     std::string file_path;
-    xmlFrmtFileStringsControlPoints(proj_ind, file_path);  // Assume you have a similar function to set file path
+    xmlFrmtFileStringsControlPoints(proj_ind, file_path); // Assume you have a similar function to set file path
     std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
 
     // Attempt to load the XML file
@@ -1623,7 +1625,7 @@ int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, st
 {
     // Define file path and calibration mode string
     std::string file_path;
-    xmlFrmtFileStringsControlPoints(proj_ind, file_path);  // Assume you have a similar function to set file path
+    xmlFrmtFileStringsControlPoints(proj_ind, file_path); // Assume you have a similar function to set file path
     std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
 
     // Attempt to load the XML file
@@ -1690,8 +1692,6 @@ int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, st
 
     return 0;
 }
-
-
 
 int xmlSaveHMAT(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col)
 {

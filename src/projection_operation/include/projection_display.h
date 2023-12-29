@@ -35,8 +35,8 @@ static struct IndStruct
 {
     const int starting_monitor = 0; // Default starting monitor index for the windows (hardcoded)
     const std::vector<int> proj_mon_vec = {
-        1,
-        2,
+        1, // Projector 0 
+        2, // Projector 1
     }; // Vector of indeces of the monitor associeted to each projector (hardcoded)
 
 } I;
@@ -46,7 +46,7 @@ static struct IndStruct
  */
 static struct CountStruct
 {
-    int monitor;              // Number of monitors connected to the system
+    int monitor;                                                   // Number of monitors connected to the system
     const int projector = static_cast<int>(I.proj_mon_vec.size()); // Number of projectors
     const int wall_image = 6;                                      // Number of wall images
 } N;
@@ -159,9 +159,22 @@ void simulateRatMovement(
     RatTracker &out_RT);
 
 /**
+ * @brief Get the vertices cooresponding to the maze boundaries in centimeters.
+ *
+ * @details
+ * This function returns the vertices of the maze boundaries in centimeters for use
+ * with the NCD to centimeter transform. Vertices are rotated based on the orientation
+ * of a given projector.
+ *
+ * @param proj_ind Index of the projector.
+ * @param[out] maze_vert_cm_vec Vector of maze vertices.
+ */
+void populateMazeVertNdcVec(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec);
+
+/**
  * @brief Applies the homography matrices to warp wall image textures and combine them.
  *
- * @param _proj_mon_ind Index of the monitor associated to the projector.
+ * @param _proj_ind Index of the projector.
  * @param _wallImgMatVec Vectors containing the loaded wall images in cv::Mat format
  * @param _floorImgMatVec Vectors containing the loaded floor images in cv::Mat format
  * @param _HMAT_ARR Big ass ugly array of arrays of matrices of shit!
@@ -170,7 +183,7 @@ void simulateRatMovement(
  * @return Integer status code [-1:error, 0:successful].
  */
 int updateTexture(
-    int proj_mon_ind,
+    int proj_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
     const std::vector<cv::Mat> &_floorImgMatVec,
     const std::array<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>, 4> &_HMAT_ARR,

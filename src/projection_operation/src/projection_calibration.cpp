@@ -648,7 +648,7 @@ void appInitOpenGL()
         throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
 
     // Update monitor and window mode settings
-    if (projCtx.changeWindowDisplayMode(I.monitor, F.fullscreen_mode) < 0)
+    if (projCtx.changeWindowDisplayMode(I.monitor, F.fullscreen_mode, cv::Point(0.0f, 0.0f)) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed Initial update of window monitor mode");
 
     // Create the shader program for wall image rendering
@@ -839,7 +839,7 @@ void appMainLoop()
         // Update the window monitor and mode
         if (F.change_window_mode)
         {
-            if (projCtx.changeWindowDisplayMode(I.monitor, F.fullscreen_mode) < 0)
+            if (projCtx.changeWindowDisplayMode(I.monitor, F.fullscreen_mode, cv::Point(0.0f, 0.0f), true) < 0)
                 throw std::runtime_error("[appMainLoop] Error returned from changeWindowDisplayMode");
         }
 

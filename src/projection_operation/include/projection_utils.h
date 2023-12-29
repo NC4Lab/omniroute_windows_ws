@@ -268,7 +268,7 @@ public:
      * Initializes all member variables to default states,
      * deferring the setup until resources are available.
      */
-    MazeRenderContext::MazeRenderContext();
+    MazeRenderContext();
 
     /**
      * @brief Destructor to clean up resources.
@@ -276,7 +276,7 @@ public:
      * Cleans up OpenGL and GLFW resources if the context
      * has been initialized to ensure proper resource management.
      */
-    MazeRenderContext::~MazeRenderContext();
+    ~MazeRenderContext();
 
     /**
      * @brief Deleted copy constructor.
@@ -440,7 +440,7 @@ public:
      *
      * @return Integer status code [-1:error, 0:successful].
      */
-    int MazeRenderContext::checkShaderProgram();
+    int checkShaderProgram();
 
     /**
      * @brief Initializes a new rendering context.
@@ -505,14 +505,14 @@ public:
      *
      * @note This function assumes that the input image is of type CV_8UC3 and has no alpha channel.
      */
-    int MazeRenderContext::loadMatTexture(cv::Mat img_mat);
+    int loadMatTexture(cv::Mat img_mat);
 
     /**
      * @brief Renders the current texture stored in a given class instance.
      *
      * @return Integer status code [-1:error, 0:successful].
      */
-    int MazeRenderContext::drawTexture();
+    int drawTexture();
 
     /**
      * @brief Swap and poll the buffer.
@@ -532,14 +532,16 @@ public:
      *
      * @param mon_ind Enum of type CalibrationMode for the monitor to move the window to.
      * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
-     * @param offset_xy Optional offset to apply to window position (default to (0, 0)).
+     * @param offset_xy Optional offset to apply to window position.
+     * @param do_verbose Optional flag to print verbose messages (default to false).
      *
      * @return Integer status code [-1:error, 0:successful].
      */
     int changeWindowDisplayMode(
         int mon_ind,
         bool is_fullscreen,
-        cv::Point offset_xy = cv::Point(0.0f, 0.0f));
+        cv::Point offset_xy = cv::Point(0.0f, 0.0f),
+        bool do_verbose = false);
 
     /**
      * @brief Sets the GLFW window to always be on top if it is in fullscreen mode.
@@ -1218,7 +1220,7 @@ static constexpr float PI = 3.14159265358979323846f;
  *
  * @return True if the delay has elapsed, otherwise false.
  */
-bool dbRunDT(int dt_wait);
+bool dbDelayRun(int dt_wait);
 
 /**
  * @brief Track and print the elapsed time between calls with line and function info.
