@@ -15,12 +15,12 @@
 // ================================================== VARIABLES ==================================================
 
 /**
- * @brief Struct for global flags.
+ * @brief Struct for flaging state changes.
  *
  * @details Flag update_textures is initialized as true to force the
  * initial update of the displayed texture.
  */
-static struct FlagStruct
+static struct FlagStateStruct
 {
     bool change_window_mode = false;  // Flag to indicate if all window modes needs to be updated
     bool windows_set_to_proj = false; // Flag to indicate if the windows are set to their respective projectors
@@ -60,9 +60,21 @@ static struct RatTracker
 {
     cv::Point2f marker_position = cv::Point2f(0.0f, 0.0f); // Marker center (cm)
     const GLfloat marker_radius = 5.0f;                    // Marker default circle radius (cm)
-    cv::Scalar marker_rgb = cv::Scalar(0.0f, 0.0f, 0.0f);  // Marker color (black)
+    cv::Scalar marker_rgb = cv::Scalar(1.0f, 0.0f, 0.0f);  // Marker color (black)
     const int marker_segments = 36;                        // Number of segments used to approximate the circle geometry
 } RT;
+
+/**
+ * @brief Struct for ROS communication.
+ */
+struct ROSComm
+{
+    std::unique_ptr<ros::NodeHandle> node_handle; // Smart pointer to ROS node handler
+    std::unique_ptr<ros::Rate> loop_rate;         // Smart pointer to ros::Rate
+    ros::Subscriber projection_cmd_sub;           // ROS subscriber
+    int last_projection_cmd = -1;                 // Variable to store the last command received, initialize with an invalid value
+    bool is_message_received = false;             // Flag to indicate if a message has been received
+} RC;
 
 /**
  * @brief A n_projectors sized element veoctor containing a 3x3x3 data contianer for storing 3x3 homography matrices (UGLY!)
@@ -109,12 +121,12 @@ std::vector<std::string> fiImgPathWallVec = {
  * @brief List of floor image file paths
  */
 std::vector<std::string> fiImgPathFloorVec = {
-    runtime_wall_image_path + "/f_black.png", // [0] Black 
-    runtime_wall_image_path + "/f_gray_0.png", // [1] Gray (20%) 
+    runtime_wall_image_path + "/f_black.png",  // [0] Black
+    runtime_wall_image_path + "/f_gray_0.png", // [1] Gray (20%)
     runtime_wall_image_path + "/f_gray_1.png", // [2] Gray (40%)
     runtime_wall_image_path + "/f_gray_2.png", // [3] Gray (60%)
     runtime_wall_image_path + "/f_gray_3.png", // [4] Gray (80%)
-    runtime_wall_image_path + "/f_white.png", // [5] White
+    runtime_wall_image_path + "/f_white.png",  // [5] White
 };
 
 // Vectors to store the loaded images in cv::Mat format
@@ -126,18 +138,18 @@ std::vector<cv::Mat> floorImgMatVec; // Vector of floor image texture matrices
 /**
  * @brief GLFW key callback function to handle key events and execute corresponding actions.
  *
- * @param window Pointer to the GLFW window that received the event.
- * @param key The keyboard key that was pressed or released.
- * @param scancode The system-specific scancode of the key.
- * @param action GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT.
- * @param mods Bit field describing which modifier keys were held down.
- *
  * @details
  * This function is set as the GLFW key callback and gets called whenever a key event occurs.
  * It handles various key events for control points, monitor handling, XML operations, and more.
  *
  * ## Keybindings:
  * @see README.md
+ *
+ * @param window Pointer to the GLFW window that received the event.
+ * @param key The keyboard key that was pressed or released.
+ * @param scancode The system-specific scancode of the key.
+ * @param action GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT.
+ * @param mods Bit field describing which modifier keys were held down.
  */
 void callbackKeyBinding(
     GLFWwindow *window,
@@ -145,6 +157,44 @@ void callbackKeyBinding(
     int scancode,
     int action,
     int mods);
+
+/**
+ * @brief Callback function for the "projection_cmd" topic subscription.
+ *
+ * @details
+ * This function is called whenever a new message is received on the "projection_cmd" topic.
+ * It stores the received data and flags the new message.
+ *
+ * @param msg Const pointer to the received message.
+ * @param out_RC Pointer to the ROSComm struct where the last command and message received flag are updated.
+ */
+void callbackCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC);
+
+/**
+ * @brief Initializes the ROS subscriber for the "projection_cmd" topic within the given ROSComm structure.
+ *
+ * @details
+ * This function sets up a subscriber to the "projection_cmd" topic, which receives Int32 messages.
+ * The received command updates the last_projection_cmd field in the ROSComm struct and sets
+ * a flag indicating a message has been received.
+ *
+ * @param out_RC Reference to the ROSComm struct that holds the ROS node handle and subscriber.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int initSubscriberROS(ROSComm &out_RC);
+
+/**
+ * @brief Processes commands received from the "projection_cmd" topic.
+ *
+ * @details
+ * This function checks if a new message has been received adn logs the command and resets the flag.
+ *
+ * @param out_RC Reference to the ROSComm struct containing the last received command and message flag.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int procCmdROS(ROSComm &out_RC);
 
 /**
  * @brief Simulates rat movement.
@@ -202,8 +252,24 @@ int drawRatMask(
     CircleRenderer &out_rmCircRend);
 
 /**
+ * @brief Initializes the ROS node and sets up the subscriber for the "projection_cmd" topic.
+ *
+ * @details
+ * This function initializes the ROS node, creates a node handle and private node handle, then calls
+ * initSubscriberROS to set up the subscriber.
+ *
+ * @param argc The argc argument from the main function (number of command-line arguments).
+ * @param argv The argv argument from the main function (array of command-line argument strings).
+ * @param out_RC Reference to the ROSComm struct to be used for storing the node handle and subscriber.
+ *
+ * @throws std::runtime_error.
+ */
+void appInitROS(int argc, char **argv, ROSComm &out_RC);
+
+/**
  * @brief Initializes the variables for the application.
  *
+ * @details
  * This function uses OpenCV to load wall images into memory.
  * It also loads and computes various parameters used in the library
  *
@@ -214,6 +280,7 @@ void appInitVariables();
 /**
  * @brief Initializes OpenGL settings and creates shader programs.
  *
+ * @details
  * This function sets up the graphics libraries, initializes the rendering
  * context, and creates shader programs for wall image and control point rendering.
  *
@@ -224,6 +291,7 @@ void appInitOpenGL();
 /**
  * @brief The main loop of the application.
  *
+ * @details
  * Handles the application's main loop, including checking keyboard callbacks,
  * updating window mode, and rendering frames. Exits on window close, escape key,
  * or when an error occurs.
@@ -235,6 +303,7 @@ void appMainLoop();
 /**
  * @brief Cleans up resources upon application shutdown.
  *
+ * @details
  * This function deletes the CircleRenderer class shader program, cleans up
  * OpenGL wall image objects, and terminates the graphics library.
  */
@@ -243,6 +312,7 @@ void appCleanup();
 /**
  * @brief  Entry point for the projection_display ROS node.
  *
+ * @details
  * This program initializes ROS, DevIL, and GLFW, and then enters a main loop
  * to handle image projection and calibration tasks.
  *

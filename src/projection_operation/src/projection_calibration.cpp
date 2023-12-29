@@ -619,15 +619,15 @@ void appLoadAssets()
     ROS_INFO("[appLoadAssets] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL);
 
     // Load images using OpenCV
-    if (loadImgMat(fiImgPathWallVec, wallImgMatVec) < 0)
+    if (loadImgMat(fiImgPathWallVec, false, wallImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall test images");
-    if (loadImgMat(fiImgPathFloorVec, floorImgMatVec) < 0)
+    if (loadImgMat(fiImgPathFloorVec, false, floorImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV floor test images");
-    if (loadImgMat(fiImgPathCalVec, calImgMatVec) < 0)
+    if (loadImgMat(fiImgPathCalVec, false, calImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV calibration mode images");
-    if (loadImgMat(fiImgPathMonWallVec, monWallImgMatVec) < 0)
+    if (loadImgMat(fiImgPathMonWallVec, false, monWallImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV monitor number wall images");
-    if (loadImgMat(fiImgPathMonFloorVec, monFloorImgMatVec) < 0)
+    if (loadImgMat(fiImgPathMonFloorVec, false, monFloorImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV onitor number floor images");
 
     ROS_INFO("[appLoadAssets] OpentCV mat images loaded succesfully");
@@ -744,12 +744,12 @@ void appInitFileXML()
                 for (int gc_i = 0; gc_i < grid_size; ++gc_i)
                 {
                     if (xmlSaveHMAT(_HMAT_ARR[_CAL_MODE][gr_i][gc_i], proj_i, _CAL_MODE, gr_i, gc_i) < 0)
-                        throw std::runtime_error("[appInitFileXML] Error returned from xmlSaveHMAT");
+                        throw std::runtime_error("[appInitFileXML] Error returned from: xmlSaveHMAT");
                     if (_CAL_MODE == FLOOR)
                     {
                         std::vector<cv::Point2f> vert_vec(_CP_GRID_ARR[0].begin(), _CP_GRID_ARR[0].end());
                         if (xmlSaveVertices(vert_vec, proj_i) < 0)
-                            throw std::runtime_error("[appInitFileXML] Error returned from xmlSaveVertices");
+                            throw std::runtime_error("[appInitFileXML] Error returned from: xmlSaveVertices");
                     }
                 }
             }
@@ -761,7 +761,7 @@ void appInitFileXML()
             for (int cp_i = 0; cp_i < cp_group_size; ++cp_i)
             {
                 if (xmlSaveControlPoints(_CP_GRID_ARR[cp_i], proj_i, _CAL_MODE, cp_i) < 0)
-                    throw std::runtime_error("[appInitFileXML] Error returned from xmlSaveControlPoints");
+                    throw std::runtime_error("[appInitFileXML] Error returned from: xmlSaveControlPoints");
             }
         }
     }
@@ -794,14 +794,14 @@ void appMainLoop()
                     {
                         // Save the homography matrix to XML
                         if (xmlSaveHMAT(HMAT_ARR[CAL_MODE][gr_i][gc_i], I.projector, CAL_MODE, gr_i, gc_i) < 0)
-                            throw std::runtime_error("[appMainLoop] Error returned from xmlSaveHMAT");
+                            throw std::runtime_error("[appMainLoop] Error returned from: xmlSaveHMAT");
 
                         // Save the maze vertices to XML
                         if (CAL_MODE == FLOOR)
                         {
                             std::vector<cv::Point2f> vert_vec(CP_GRID_ARR[0].begin(), CP_GRID_ARR[0].end());
                             if (xmlSaveVertices(vert_vec, I.projector) < 0)
-                                throw std::runtime_error("[appMainLoop] Error returned from xmlSaveVertices");
+                                throw std::runtime_error("[appMainLoop] Error returned from: xmlSaveVertices");
                         }
                     }
                     // Load XML file
@@ -809,7 +809,7 @@ void appMainLoop()
                     {
                         // Load the homography matrix from XML
                         if (xmlLoadHMAT(I.projector, CAL_MODE, gr_i, gc_i, HMAT_ARR[CAL_MODE][gr_i][gc_i]) < 0)
-                            throw std::runtime_error("[appMainLoop] Error returned from xmlLoadHMAT");
+                            throw std::runtime_error("[appMainLoop] Error returned from: xmlLoadHMAT");
                     }
                 }
             }
@@ -823,12 +823,12 @@ void appMainLoop()
                 if (F.xml_save_hmat)
                 {
                     if (xmlSaveControlPoints(CP_GRID_ARR[cp_i], I.projector, CAL_MODE, cp_i) < 0)
-                        throw std::runtime_error("[appMainLoop] Error returned from xmlSaveControlPoints");
+                        throw std::runtime_error("[appMainLoop] Error returned from: xmlSaveControlPoints");
                 }
                 if (F.xml_load_hmat)
                 {
                     if (xmlLoadControlPoints(I.projector, CAL_MODE, cp_i, CP_GRID_ARR[cp_i]) < 0)
-                        throw std::runtime_error("[appMainLoop] Error returned from xmlSaveControlPoints");
+                        throw std::runtime_error("[appMainLoop] Error returned from: xmlSaveControlPoints");
                 }
             }
 
@@ -840,7 +840,7 @@ void appMainLoop()
         if (F.change_window_mode)
         {
             if (projCtx.changeWindowDisplayMode(I.monitor, F.fullscreen_mode, cv::Point(0.0f, 0.0f), true) < 0)
-                throw std::runtime_error("[appMainLoop] Error returned from changeWindowDisplayMode");
+                throw std::runtime_error("[appMainLoop] Error returned from: changeWindowDisplayMode");
         }
 
         // Initialize/reinitialize control point coordinate dataset
@@ -857,13 +857,13 @@ void appMainLoop()
             if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
             {
                 if (updateWallHomographys(CAL_MODE, CP_GRID_ARR, WALL_GRID_ARR_DEFAULT, HMAT_ARR) < 0)
-                    throw std::runtime_error("[appMainLoop] Error returned from updateWallHomographys");
+                    throw std::runtime_error("[appMainLoop] Error returned from: updateWallHomographys");
             }
             // Update floor homography
             else if (CAL_MODE == FLOOR)
             {
                 if (updateFloorHomography(CP_GRID_ARR[0], HMAT_ARR[CAL_MODE][0][0]) < 0)
-                    throw std::runtime_error("[appMainLoop] Error returned from updateFloorHomography");
+                    throw std::runtime_error("[appMainLoop] Error returned from: updateFloorHomography");
             }
         }
 
@@ -874,13 +874,13 @@ void appMainLoop()
             if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
             {
                 if (updateModeImage(wallImgMatVec[I.wall_image], monWallImgMatVec[I.monitor], calImgMatVec[CAL_MODE], modeImgMat) < 0)
-                    throw std::runtime_error("[appMainLoop] Error returned from updateModeImage for wall image");
+                    throw std::runtime_error("[appMainLoop] Error returned from: updateModeImage for wall image");
             }
             // Update floor texture
             else if (CAL_MODE == FLOOR)
             {
                 if (updateModeImage(floorImgMatVec[I.floor_image], monFloorImgMatVec[I.monitor], calImgMatVec[CAL_MODE], modeImgMat) < 0)
-                    throw std::runtime_error("[appMainLoop] Error returned from updateModeImage for floor image");
+                    throw std::runtime_error("[appMainLoop] Error returned from: updateModeImage for floor image");
             }
         }
 
@@ -893,13 +893,13 @@ void appMainLoop()
             if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
             {
                 if (updateTexture(wallImgMatVec[I.wall_image], modeImgMat, CAL_MODE, HMAT_ARR, projCtx) < 0)
-                    throw std::runtime_error("[appMainLoop] Error returned from updateTexture for wall images");
+                    throw std::runtime_error("[appMainLoop] Error returned from: updateTexture for wall images");
             }
             // Update floor texture
             else if (CAL_MODE == FLOOR)
             {
                 if (updateTexture(floorImgMatVec[I.floor_image], modeImgMat, CAL_MODE, HMAT_ARR, projCtx) < 0)
-                    throw std::runtime_error("[appMainLoop] Error returned from updateTexture for floor images");
+                    throw std::runtime_error("[appMainLoop] Error returned from: updateTexture for floor images");
             }
         }
 
@@ -916,23 +916,23 @@ void appMainLoop()
 
         // Prepare the frame for rendering (make context clear the back buffer)
         if (projCtx.initWindowForDrawing() < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from MazeRenderContext::initWindowForDrawing");
+            throw std::runtime_error("[appMainLoop] Error returned from: MazeRenderContext::initWindowForDrawing");
 
         // Make sure winsow always stays on top in fullscreen mode
         if (projCtx.forceWindowStackOrder() < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from MazeRenderContext::forceWindowStackOrder");
+            throw std::runtime_error("[appMainLoop] Error returned from: MazeRenderContext::forceWindowStackOrder");
 
         // Draw/update texture
         if (projCtx.drawTexture() < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from drawTexture");
+            throw std::runtime_error("[appMainLoop] Error returned from: drawTexture");
 
         // Draw/update control point markers
         if (drawControlPoints(CAL_MODE, CP_GRID_ARR, CP_CIRCREND_ARR) < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from drawControlPoints");
+            throw std::runtime_error("[appMainLoop] Error returned from: drawControlPoints");
 
         // Swap buffers and poll events
         if (projCtx.bufferSwapPoll() < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from MazeRenderContext::bufferSwapPoll");
+            throw std::runtime_error("[appMainLoop] Error returned from: MazeRenderContext::bufferSwapPoll");
 
         // Check if ROS shutdown
         if (!ros::ok())
@@ -941,7 +941,7 @@ void appMainLoop()
         // Check for exit
         status = projCtx.checkExitRequest();
         if (status < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from MazeRenderContext::checkExitRequest");
+            throw std::runtime_error("[appMainLoop] Error returned from: MazeRenderContext::checkExitRequest");
     }
 
     // Check which condition caused the loop to exit

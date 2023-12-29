@@ -38,6 +38,63 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     }
 }
 
+void callbackCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC)
+{
+    // Update the last received command
+    out_RC->last_projection_cmd = msg->data;
+    out_RC->is_message_received = true;
+    ROS_INFO("[callbackCmdROS] Received projection command: %d", out_RC->last_projection_cmd);
+}
+
+int initSubscriberROS(ROSComm &out_RC)
+{
+    // Check if node handle is initialized
+    if (!out_RC.node_handle)
+    {
+        ROS_ERROR("[initSubscriberROS]Node handle is not initialized!");
+        return -1;
+    }
+
+    // Initialize the subscriber using boost::bind
+    out_RC.projection_cmd_sub = out_RC.node_handle->subscribe<std_msgs::Int32>(
+        "projection_cmd", 10, boost::bind(&callbackCmdROS, _1, &out_RC));
+
+    if (!out_RC.projection_cmd_sub)
+    {
+        ROS_ERROR("[initSubscriberROS]Failed to subscribe to 'projection_cmd' topic!");
+        return -1;
+    }
+
+    return 0;
+}
+
+int procCmdROS(ROSComm &out_RC)
+{
+    // Check if node handle is initialized
+    if (!ros::ok())
+    {
+        ROS_ERROR("[procCmdROS]ROS is no longer running!");
+        return -1;
+    }
+
+    // Check for ROS messages
+    ros::spinOnce();
+
+    if (out_RC.is_message_received)
+    {
+        // Process the message
+        ROS_INFO("[procCmdROS] Processing received projection command: %d", out_RC.last_projection_cmd);
+
+        // Reset the flag
+        out_RC.is_message_received = false;
+    }
+
+    // Sleep for a short time to prevent busy looping
+    ros::Duration(0.01).sleep();
+
+    return 0;
+}
+
 void simulateRatMovement(float move_step, float max_turn_angle, RatTracker &out_RT)
 {
     // Track marker angle
@@ -78,7 +135,7 @@ void populateMazeVertNdcVec(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm
     auto circShift = [](const std::vector<cv::Point2f> &vec, int shift) -> std::vector<cv::Point2f>
     {
         std::vector<cv::Point2f> shifted_vec(vec.size());
-        int n = vec.size();
+        int n = static_cast<int>(vec.size());
         for (int v_i = 0; v_i < n; ++v_i)
         {
             shifted_vec[v_i] = vec[(v_i + shift + n) % n];
@@ -228,12 +285,32 @@ int drawRatMask(
     return 0;
 }
 
+void appInitROS(int argc, char **argv, ROSComm &out_RC)
+{
+    // Initialize ROS
+    ros::init(argc, argv, "projection_calibration", ros::init_options::AnonymousName);
+    if (!ros::master::check())
+        throw std::runtime_error("[appInitROS] Failed initialzie ROS: ROS master is not running");
+
+    // Initialize NodeHandle inside RC
+    RC.node_handle = std::make_unique<ros::NodeHandle>();
+
+    // Initialize the ros::Rate object with a specific rate, e.g., 100 Hz
+    out_RC.loop_rate = std::make_unique<ros::Rate>(100); // 100 Hz
+
+    // Initialize the subscriber
+    if (initSubscriberROS(out_RC) < 0)
+        throw std::runtime_error("[appInitROS] Failed to initialize ROS subscriber");
+
+    ROS_INFO("[appInitVariables] Finished initializing ROS successfully");
+}
+
 void appInitVariables()
 {
     // Load images using OpenCV
-    if (loadImgMat(fiImgPathWallVec, wallImgMatVec) < 0)
+    if (loadImgMat(fiImgPathWallVec, false, wallImgMatVec) < 0)
         throw std::runtime_error("[appInitVariables] Failed to load OpentCV wall images");
-    if (loadImgMat(fiImgPathFloorVec, floorImgMatVec) < 0)
+    if (loadImgMat(fiImgPathFloorVec, false, floorImgMatVec) < 0)
         throw std::runtime_error("[appInitVariables] Failed to load OpentCV wall images");
 
     // Load homography matrix XML file data
@@ -253,7 +330,7 @@ void appInitVariables()
                 {
                     // Load the homography matrix from XML
                     if (xmlLoadHMAT(proj_ind, _CAL_MODE, gr_i, gc_i, HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i]) < 0)
-                        throw std::runtime_error("[appInitVariables] Error returned from xmlLoadHMAT");
+                        throw std::runtime_error("[appInitVariables] Error returned from: xmlLoadHMAT");
                 }
             }
         }
@@ -267,7 +344,7 @@ void appInitVariables()
 
         // Load the maze vertices from XML
         if (xmlLoadVertices(proj_ind, maze_vert_ndc_vec) < 0)
-            throw std::runtime_error("[appInitVariables] Error returned from xmlLoadVertices");
+            throw std::runtime_error("[appInitVariables] Error returned from: xmlLoadVertices");
 
         // Compute the rotated maze vertices in centimeter units
         populateMazeVertNdcVec(proj_ind, maze_vert_cm_vec);
@@ -362,7 +439,7 @@ void appMainLoop()
             {
                 int mon_ind = F.windows_set_to_proj ? I.proj_mon_vec[projCtx.windowInd] : I.starting_monitor;
                 if (projCtx.changeWindowDisplayMode(mon_ind, F.fullscreen_mode, winOffsetVec[projCtx.windowInd], true) < 0)
-                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from MazeRenderContext::changeWindowDisplayMode");
+                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::changeWindowDisplayMode");
             }
         }
 
@@ -387,38 +464,45 @@ void appMainLoop()
         {
             // Prepare the frame for rendering (clear the back buffer)
             if (projCtx.initWindowForDrawing() < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from MazeRenderContext::initWindowForDrawing");
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::initWindowForDrawing");
 
             // Make sure winsow always stays on top in fullscreen mode
             if (projCtx.forceWindowStackOrder() < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from MazeRenderContext::forceWindowStackOrder");
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::forceWindowStackOrder");
 
             // Draw/update wall images
             if (projCtx.drawTexture() < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from drawTexture");
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawTexture");
 
             // TEMP Simulate rat movement for testing (set color to red)
             simulateRatMovement(0.5f, 45.0f, RT);
 
             // Draw/update rat mask marker
             if (drawRatMask(RT, RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from drawRatMask");
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawRatMask");
 
             // Swap buffers and poll events
             if (projCtx.bufferSwapPoll() < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from MazeRenderContext::bufferSwapPoll");
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::bufferSwapPoll");
 
             // Check if ROS shutdown
             if (!ros::ok())
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Unextpected ROS shutdown");
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Unexpected ROS shutdown");
 
             // Check for exit
             status = projCtx.checkExitRequest();
             if (status > 0)
                 break;
             else if (status < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from MazeRenderContext::checkExitRequest");
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::checkExitRequest");
         }
+
+        // Process ROS messages
+        if (procCmdROS(RC) < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from: procCmdROS");
+
+        // Sleep to maintain the loop rate
+        RC.loop_rate->sleep();
     }
 
     // Check which condition caused the loop to exit
@@ -454,12 +538,9 @@ void appCleanup()
 
 int main(int argc, char **argv)
 {
-    ros::init(argc, argv, "projection_calibration", ros::init_options::AnonymousName);
-    ros::NodeHandle n;
-    ros::NodeHandle nh("~");
-
     try
     {
+        appInitROS(argc, argv, RC);
         appInitVariables();
         appInitOpenGL();
         appMainLoop();

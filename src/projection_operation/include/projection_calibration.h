@@ -70,12 +70,12 @@ const cv::Scalar cpDefaultRGB = cv::Scalar(0.0f, 0.0f, 1.0f);          // Defaul
 const int cpRenderSegments = 36;                                       // Number of segments used to approximate the circle geometry
 
 /**
- * @brief Struct for global flags.
+ * @brief Struct for flaging state changes.
  *
  * @details Flags update_mode_img and update_textures are initialized as true
  * to force the initial update of the mode image and displayed texture.
  */
-static struct FlagStruct
+static struct FlagStateStruct
 {
     bool xml_load_hmat = false;      // Flag to indicate if the XML file needs to be loaded
     bool xml_save_hmat = false;      // Flag to indicate if the XML file needs to be saved

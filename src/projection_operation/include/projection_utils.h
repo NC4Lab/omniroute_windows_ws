@@ -202,6 +202,7 @@
 #include <ros/ros.h>
 #include <ros/console.h>
 #include <ros/package.h>
+#include <std_msgs/Int32.h>
 #include <XmlRpcValue.h>
 
 // Standard Library for various utilities
@@ -216,6 +217,7 @@
 #include <cstring>
 #include <cmath>
 #include <tuple>
+#include <memory>
 
 // PugiXML for XML parsing
 #include "pugixml.hpp"
@@ -1372,6 +1374,7 @@ int computeHomographyMatrix(
  * @brief Loads PNG images with alpha channel from specified file paths and stores them in a vector as cv::Mat objects.
  *
  * @param img_paths_vec A vector of file paths to the images to be loaded.
+ * @param do_verbose Flag to print verbose messages.
  * @param[out] out_img_mat_vec Reference to a vector of cv::Mat where the loaded images will be stored.
  *
  * @return Integer status code [-1:error, 0:successful].
@@ -1392,6 +1395,7 @@ int computeHomographyMatrix(
  */
 int loadImgMat(
     const std::vector<std::string> &img_paths_vec,
+    bool do_verbose,
     std::vector<cv::Mat> &out_img_mat_vec);
 
 /**
