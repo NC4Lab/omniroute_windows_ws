@@ -35,8 +35,10 @@ static struct IndStruct
 {
     const int starting_monitor = 0; // Default starting monitor index for the windows (hardcoded)
     const std::vector<int> proj_mon_vec = {
-        1, // Projector 0 
-        2, // Projector 1
+        2, // Projector 0 
+        1, // Projector 1
+        4, // Projector 2
+        3, // Projector 3
     }; // Vector of indeces of the monitor associeted to each projector (hardcoded)
 
 } I;
@@ -65,7 +67,7 @@ static struct RatTracker
 /**
  * @brief A n_projectors sized element veoctor containing a 3x3x3 data contianer for storing 3x3 homography matrices (UGLY!)
  */
-std::array<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>, 4> HMAT_ARR;
+std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES>, 4> HMAT_ARR;
 
 /**
  * @brief Array of homography matrices for warping the rat mask marker from maze cm to ndc space for each projector.
@@ -85,17 +87,12 @@ std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projector);
 /**
  * @brief Offset for the window position
  */
-float winOffsetDefualt = 500.0f;
-
-/**
- * @brief Offset for the window position
- */
 std::vector<cv::Point> winOffsetVec;
 
 /**
  * @brief Image file sub-directory path
  */
-std::string runtime_wall_image_path = IMAGE_TOP_DIR_PATH + "/runtime";
+std::string runtime_wall_image_path = GLB_IMAGE_TOP_DIR_PATH + "/runtime";
 
 /**
  * @brief List of wall image file paths
@@ -186,7 +183,7 @@ int updateTexture(
     int proj_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
     const std::vector<cv::Mat> &_floorImgMatVec,
-    const std::array<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>, 4> &_HMAT_ARR,
+    const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES>, 4> &_HMAT_ARR,
     MazeRenderContext &out_projCtx);
 
 /**

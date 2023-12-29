@@ -40,12 +40,12 @@ std::array<std::array<cv::Point2f, 4>, 4> CP_GRID_ARR;
 /**
  * @brief 3x3x4 data contianer for storing default wall vertices for each wall in NDC.
  */
-std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> WALL_GRID_ARR_DEFAULT;
+std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> WALL_GRID_ARR_DEFAULT;
 
 /**
  * @brief 3x3xN data contianer for storing wall homography matrices for each wall image and each calibration mode.
  */
-std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> HMAT_ARR;
+std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES> HMAT_ARR;
 
 /**
  * @brief  OpenGL context objects.
@@ -56,6 +56,11 @@ MazeRenderContext projCtx;
  * @brief  4x4 array of the CircleRenderer class objects.
  */
 std::array<std::array<CircleRenderer, 4>, 4> CP_CIRCREND_ARR;
+
+/**
+ * @brief  Enum for tracking the current calibration mode
+ */
+CalibrationMode CAL_MODE = WALLS_MIDDLE;
 
 // Control point graphics parameters
 const GLfloat cpMakerRadius = 0.0025f;                                 // Control point rendered circle radius
@@ -120,7 +125,7 @@ static struct IndStruct
 /**
  * @brief Image file sub-directory path
  */
-std::string calib_image_path = IMAGE_TOP_DIR_PATH + "/calibration";
+std::string calib_image_path = GLB_IMAGE_TOP_DIR_PATH + "/calibration";
 
 /**
  * @brief List of test wall image file paths
@@ -222,7 +227,7 @@ void callbackKeyBinding(
 void initVertexCoordinates(
     CalibrationMode _CAL_MODE,
     std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR,
-    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &out_WALL_GRID_ARR_DEFAULT);
+    std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> &out_WALL_GRID_ARR_DEFAULT);
 
 /**
  * @brief Initialize OpenGL resources for CircleRenderer objects.
@@ -267,8 +272,8 @@ int drawControlPoints(
 int updateWallHomographys(
     CalibrationMode _CAL_MODE,
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
-    const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &_WALL_GRID_ARR_DEFAULT,
-    std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &out_HMAT_ARR);
+    const std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> &_WALL_GRID_ARR_DEFAULT,
+    std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES> &out_HMAT_ARR);
 
 /**
  * @brief Computes updated homography matrices for the floor image.
@@ -309,7 +314,7 @@ int updateTexture(
     cv::Mat img_base_mat,
     cv::Mat img_mode_mat,
     CalibrationMode _CAL_MODE,
-    const std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &_HMAT_ARR,
+    const std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES> &_HMAT_ARR,
     MazeRenderContext &out_projCtx);
 
 /**

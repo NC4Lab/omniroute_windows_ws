@@ -61,7 +61,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         {
             // Prompt for projector number if not specified
             I.projector = promptForProjectorNumber();
-            ROS_INFO("[callbackKeyBinding] Initiated monitor change: Monitor[%d] Projector[%d]", mon_ind, I.projector);
+            ROS_INFO("[callbackKeyBinding] Initiated monitor change: Projector[%d], Monitor[%d]", I.projector, mon_ind);
             // Update the monitor index
             I.monitor = mon_ind;
             // Set the window update flag
@@ -310,19 +310,19 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 void initVertexCoordinates(
     CalibrationMode _CAL_MODE,
     std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR,
-    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &out_WALL_GRID_ARR_DEFAULT)
+    std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> &out_WALL_GRID_ARR_DEFAULT)
 {
     // Spacing between vertices for the x and y axis
     // Set the spacing to be the wall image size for wall calibration and the maze size for floor calibration
-    float vert_space_x = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? WALL_IMAGE_WIDTH_NDC : MAZE_WIDTH_NDC;
-    float vert_space_y = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? WALL_IMAGE_HEIGHT_NDC : MAZE_HEIGHT_NDC;
+    float vert_space_x = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_WALL_IMAGE_WIDTH_NDC : GLB_MAZE_WIDTH_NDC;
+    float vert_space_y = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_WALL_IMAGE_HEIGHT_NDC : GLB_MAZE_HEIGHT_NDC;
 
     // Starting and ending points for x and y
-    cv::Point2f start_point(-(MAZE_WIDTH_NDC / 2), -(MAZE_HEIGHT_NDC / 2));
-    cv::Point2f end_point(+(MAZE_WIDTH_NDC / 2), +(MAZE_HEIGHT_NDC / 2));
+    cv::Point2f start_point(-(GLB_MAZE_WIDTH_NDC / 2), -(GLB_MAZE_HEIGHT_NDC / 2));
+    cv::Point2f end_point(+(GLB_MAZE_WIDTH_NDC / 2), +(GLB_MAZE_HEIGHT_NDC / 2));
 
     // Specify number of rows/cols to loop through
-    int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? MAZE_SIZE : 1;
+    int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
 
     // Iterate through the maze grid rows
     for (int gr_i = 0; gr_i < grid_size; gr_i++) // image bottom to top
@@ -352,9 +352,9 @@ void initVertexCoordinates(
 
     // Reinitialize the control points
     out_CP_GRID_ARR[0] = out_WALL_GRID_ARR_DEFAULT[0][0];                         // Top left maze corner
-    out_CP_GRID_ARR[1] = out_WALL_GRID_ARR_DEFAULT[0][MAZE_SIZE - 1];             // Top right maze corner
-    out_CP_GRID_ARR[2] = out_WALL_GRID_ARR_DEFAULT[MAZE_SIZE - 1][MAZE_SIZE - 1]; // Bottom right maze corner
-    out_CP_GRID_ARR[3] = out_WALL_GRID_ARR_DEFAULT[MAZE_SIZE - 1][0];             // Bottom left maze corner
+    out_CP_GRID_ARR[1] = out_WALL_GRID_ARR_DEFAULT[0][GLB_MAZE_SIZE - 1];             // Top right maze corner
+    out_CP_GRID_ARR[2] = out_WALL_GRID_ARR_DEFAULT[GLB_MAZE_SIZE - 1][GLB_MAZE_SIZE - 1]; // Bottom right maze corner
+    out_CP_GRID_ARR[3] = out_WALL_GRID_ARR_DEFAULT[GLB_MAZE_SIZE - 1][0];             // Bottom left maze corner
 
     // Reset the selected control points
     I.cp_maze_vert_selected = {0, 0};
@@ -435,21 +435,21 @@ int drawControlPoints(CalibrationMode _CAL_MODE,
 int updateWallHomographys(
     CalibrationMode _CAL_MODE,
     const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
-    const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &_WALL_GRID_ARR_DEFAULT,
-    std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &out_HMAT_ARR)
+    const std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> &_WALL_GRID_ARR_DEFAULT,
+    std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES> &out_HMAT_ARR)
 {
     // Define source plane vertices
     std::vector<cv::Point2f> source_vertices_pxl = {
         cv::Point2f(0.0f, 0.0f),                                  // Top-left
-        cv::Point2f(WALL_IMAGE_WIDTH_PXL, 0.0f),                  // Top-right
-        cv::Point2f(WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL), // Bottom-right
-        cv::Point2f(0.0f, WALL_IMAGE_HEIGHT_PXL)};                // Bottom-left
+        cv::Point2f(GLB_WALL_IMAGE_WIDTH_PXL, 0.0f),                  // Top-right
+        cv::Point2f(GLB_WALL_IMAGE_WIDTH_PXL, GLB_WALL_IMAGE_HEIGHT_PXL), // Bottom-right
+        cv::Point2f(0.0f, GLB_WALL_IMAGE_HEIGHT_PXL)};                // Bottom-left
 
     // Iterate trough grid/wall rows
-    for (float gr_i = 0; gr_i < MAZE_SIZE; gr_i++) // image bottom to top
+    for (float gr_i = 0; gr_i < GLB_MAZE_SIZE; gr_i++) // image bottom to top
     {
         // Iterate trough grid/wall columns
-        for (float gc_i = 0; gc_i < MAZE_SIZE; gc_i++) // image left to right
+        for (float gc_i = 0; gc_i < GLB_MAZE_SIZE; gc_i++) // image left to right
         {
             std::vector<cv::Point2f> target_vertices_ndc(4);
 
@@ -460,9 +460,9 @@ int updateWallHomographys(
                 std::vector<cv::Point2f> s_vert =
                     {
                         _WALL_GRID_ARR_DEFAULT[0][0][wv_i],                         // Top left maze corner
-                        _WALL_GRID_ARR_DEFAULT[0][MAZE_SIZE - 1][wv_i],             // Top right maze corner
-                        _WALL_GRID_ARR_DEFAULT[MAZE_SIZE - 1][MAZE_SIZE - 1][wv_i], // Bottom right maze corner
-                        _WALL_GRID_ARR_DEFAULT[MAZE_SIZE - 1][0][wv_i],             // Bottom left maze corner
+                        _WALL_GRID_ARR_DEFAULT[0][GLB_MAZE_SIZE - 1][wv_i],             // Top right maze corner
+                        _WALL_GRID_ARR_DEFAULT[GLB_MAZE_SIZE - 1][GLB_MAZE_SIZE - 1][wv_i], // Bottom right maze corner
+                        _WALL_GRID_ARR_DEFAULT[GLB_MAZE_SIZE - 1][0][wv_i],             // Bottom left maze corner
                     };
 
                 // Get the target vertices corresponding to this wall vertex
@@ -491,7 +491,7 @@ int updateWallHomographys(
             }
 
             // Convert NDC coordinates to pixels
-            std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
+            std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL);
 
             // Compute and store the homography matrix for this wall image
             if (computeHomographyMatrix(source_vertices_pxl, target_vertices_pxl, out_HMAT_ARR[_CAL_MODE][gr_i][gc_i]) < 0)
@@ -508,15 +508,15 @@ int updateFloorHomography(const std::array<cv::Point2f, 4> &_CP_ARR, cv::Mat &ou
     // Define source plane vertices
     std::vector<cv::Point2f> source_vertices_pxl = {
         cv::Point2f(0.0f, 0.0f),                                  // Top-left
-        cv::Point2f(MAZE_IMAGE_WIDTH_PXL, 0.0f),                  // Top-right
-        cv::Point2f(MAZE_IMAGE_WIDTH_PXL, MAZE_IMAGE_HEIGHT_PXL), // Bottom-right
-        cv::Point2f(0.0f, MAZE_IMAGE_HEIGHT_PXL)};                // Bottom-left
+        cv::Point2f(GLB_MAZE_IMAGE_WIDTH_PXL, 0.0f),                  // Top-right
+        cv::Point2f(GLB_MAZE_IMAGE_WIDTH_PXL, GLB_MAZE_IMAGE_HEIGHT_PXL), // Bottom-right
+        cv::Point2f(0.0f, GLB_MAZE_IMAGE_HEIGHT_PXL)};                // Bottom-left
 
     // Convert _CP_ARR to vector
     std::vector<cv::Point2f> target_vertices_ndc(_CP_ARR.begin(), _CP_ARR.end());
 
     // Convert NDC coordinates to pixels
-    std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
+    std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL);
 
     // Compute and store the homography matrix
     if (computeHomographyMatrix(source_vertices_pxl, target_vertices_pxl, out_H) < 0)
@@ -544,14 +544,14 @@ int updateModeImage(cv::Mat img_main_mat, cv::Mat img_mon_mat, cv::Mat img_cal_m
 
 int updateTexture(
     cv::Mat img_base_mat, cv::Mat img_mode_mat, CalibrationMode _CAL_MODE,
-    const std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> &_HMAT_ARR,
+    const std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES> &_HMAT_ARR,
     MazeRenderContext &out_projCtx)
 {
     // Initialize the image to be used as the texture
-    cv::Mat img_merge = cv::Mat::zeros(WINDOW_HEIGHT_PXL, WINDOW_WIDTH_PXL, CV_8UC4);
+    cv::Mat img_merge = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
 
     // Specify number of rows/cols to loop through
-    int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? MAZE_SIZE : 1;
+    int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
 
     // Iterate through the maze grid rows
     for (int gr_i = 0; gr_i < grid_size; gr_i++) // image bottom to top
@@ -610,13 +610,13 @@ int updateTexture(
 void appLoadAssets()
 {
     // Log setup parameters
-    ROS_INFO("[appLoadAssets] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
-    ROS_INFO("[appLoadAssets] Display: Width[%d] Height[%d]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
-    ROS_INFO("[appLoadAssets] Floor (Pxl): Width[%d] Height[%d]", MAZE_IMAGE_WIDTH_PXL, MAZE_IMAGE_HEIGHT_PXL);
-    ROS_INFO("[appLoadAssets] Floor (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", MAZE_WIDTH_NDC, MAZE_HEIGHT_NDC);
-    ROS_INFO("[appLoadAssets] Wall (Pxl): Width[%d] Height[%d]", WALL_IMAGE_WIDTH_PXL, WALL_IMAGE_HEIGHT_PXL);
-    ROS_INFO("[appLoadAssets] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", WALL_IMAGE_WIDTH_NDC, WALL_IMAGE_HEIGHT_NDC);
-    ROS_INFO("[appLoadAssets] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL);
+    ROS_INFO("[appLoadAssets] Config XML Path: %s", GLB_CONFIG_DIR_PATH.c_str());
+    ROS_INFO("[appLoadAssets] Display: Width[%d] Height[%d]", GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL);
+    ROS_INFO("[appLoadAssets] Floor (Pxl): Width[%d] Height[%d]", GLB_MAZE_IMAGE_WIDTH_PXL, GLB_MAZE_IMAGE_HEIGHT_PXL);
+    ROS_INFO("[appLoadAssets] Floor (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", GLB_MAZE_WIDTH_NDC, GLB_MAZE_HEIGHT_NDC);
+    ROS_INFO("[appLoadAssets] Wall (Pxl): Width[%d] Height[%d]", GLB_WALL_IMAGE_WIDTH_PXL, GLB_WALL_IMAGE_HEIGHT_PXL);
+    ROS_INFO("[appLoadAssets] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", GLB_WALL_IMAGE_WIDTH_NDC, GLB_WALL_IMAGE_HEIGHT_NDC);
+    ROS_INFO("[appLoadAssets] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL);
 
     // Load images using OpenCV
     if (loadImgMat(fiImgPathWallVec, wallImgMatVec) < 0)
@@ -640,11 +640,11 @@ void appInitOpenGL()
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
 
     // Initialze render context
-    if (projCtx.initWindowContext(0, 0, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, callbackKeyBinding) < 0)
+    if (projCtx.initWindowContext(0, 0, GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL, callbackKeyBinding) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
 
     // Initialize OpenGL wall image objects
-    if (projCtx.initRenderObjects(QUAD_GL_VERTICES, sizeof(QUAD_GL_VERTICES), QUAD_GL_INDICES, sizeof(QUAD_GL_INDICES)) < 0)
+    if (projCtx.initRenderObjects(GLB_QUAD_GL_VERTICES, sizeof(GLB_QUAD_GL_VERTICES), GLB_QUAD_GL_INDICES, sizeof(GLB_QUAD_GL_INDICES)) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
 
     // Update monitor and window mode settings
@@ -652,11 +652,11 @@ void appInitOpenGL()
         throw std::runtime_error("[appInitOpenGL] Failed Initial update of window monitor mode");
 
     // Create the shader program for wall image rendering
-    if (projCtx.compileAndLinkShaders(QUAD_GL_VERTEX_SOURCE, QUAD_GL_FRAGMENT_SOURCE) < 0)
+    if (projCtx.compileAndLinkShaders(GLB_QUAD_GL_VERTEX_SOURCE, GLB_QUAD_GL_FRAGMENT_SOURCE) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to compile and link wall shader");
 
     // Create the shader program for CircleRenderer class control point rendering
-    if (CircleRenderer::CompileAndLinkCircleShaders(WINDOW_AP) < 0)
+    if (CircleRenderer::CompileAndLinkCircleShaders(GLB_MONITOR_AR) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
 
     // Initialize the CircleRenderer class objects array
@@ -686,7 +686,7 @@ void appInitFileXML()
             CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
 
             // Specify number of rows/cols to loop through based on active calibration mode
-            int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? MAZE_SIZE : 1;
+            int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
 
             // Iterate through the maze grid rows
             for (int gr_i = 0; gr_i < grid_size && !isMonMissing; ++gr_i)
@@ -712,8 +712,8 @@ void appInitFileXML()
 
     // Hack: make temp variables for control point grid and wall homography matrices
     std::array<std::array<cv::Point2f, 4>, 4> _CP_GRID_ARR;
-    std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> _WALL_GRID_ARR_DEFAULT;
-    std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES> _HMAT_ARR;
+    std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> _WALL_GRID_ARR_DEFAULT;
+    std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES> _HMAT_ARR;
 
     // Loop through the missing projectors
     for (auto &proj_i : mon_missing_vec)
@@ -736,7 +736,7 @@ void appInitFileXML()
             }
 
             // Specify number of rows/cols to loop through based on active calibration mode
-            int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? MAZE_SIZE : 1;
+            int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
 
             // Save each homography matrix to XML
             for (int gr_i = 0; gr_i < grid_size; ++gr_i)
@@ -782,7 +782,7 @@ void appMainLoop()
                 I.projector = promptForProjectorNumber();
 
             // Specify number of rows/cols to loop through based on active calibration mode
-            int grid_size = (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) ? MAZE_SIZE : 1;
+            int grid_size = (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
 
             // Loop through the maze grid rows
             for (int gr_i = 0; gr_i < grid_size; ++gr_i)

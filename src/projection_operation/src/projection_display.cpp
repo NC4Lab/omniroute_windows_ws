@@ -47,8 +47,8 @@ void simulateRatMovement(float move_step, float max_turn_angle, RatTracker &out_
     auto keepWithinBoundsAndTurn = [&](cv::Point2f &position)
     {
         cv::Point2f original_position = position;
-        position.x = std::min(std::max(position.x, 0.0f), MAZE_WIDTH_HEIGHT_CM);
-        position.y = std::min(std::max(position.y, 0.0f), MAZE_WIDTH_HEIGHT_CM);
+        position.x = std::min(std::max(position.x, 0.0f), GLB_MAZE_WIDTH_HEIGHT_CM);
+        position.y = std::min(std::max(position.y, 0.0f), GLB_MAZE_WIDTH_HEIGHT_CM);
 
         // If position changed (rat hits the wall), rotate randomly up to 180 degrees
         if (position != original_position)
@@ -88,9 +88,9 @@ void populateMazeVertNdcVec(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm
 
     // Template vertices
     const std::vector<cv::Point2f> template_maze_vert_cm_vec = {
-        cv::Point2f(0, MAZE_WIDTH_HEIGHT_CM),
-        cv::Point2f(MAZE_WIDTH_HEIGHT_CM, MAZE_WIDTH_HEIGHT_CM),
-        cv::Point2f(MAZE_WIDTH_HEIGHT_CM, 0.0),
+        cv::Point2f(0, GLB_MAZE_WIDTH_HEIGHT_CM),
+        cv::Point2f(GLB_MAZE_WIDTH_HEIGHT_CM, GLB_MAZE_WIDTH_HEIGHT_CM),
+        cv::Point2f(GLB_MAZE_WIDTH_HEIGHT_CM, 0.0),
         cv::Point2f(0.0, 0.0)};
 
     // Apply circular shift based on the given projector
@@ -117,11 +117,11 @@ int updateTexture(
     int proj_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
     const std::vector<cv::Mat> &_floorImgMatVec,
-    const std::array<std::array<std::array<std::array<cv::Mat, MAZE_SIZE>, MAZE_SIZE>, N_CAL_MODES>, 4> &_HMAT_ARR,
+    const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES>, 4> &_HMAT_ARR,
     MazeRenderContext &out_projCtx)
 {
     // Initialize the image to be used as the texture
-    cv::Mat img_merge = cv::Mat::zeros(WINDOW_HEIGHT_PXL, WINDOW_WIDTH_PXL, CV_8UC4);
+    cv::Mat img_merge = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
 
     // Iterate through through calibration modes in descending order so floor is drawn first
     for (int cal_i = N_CAL_MODES - 1; cal_i >= 0; --cal_i)
@@ -133,7 +133,7 @@ int updateTexture(
             continue;
 
         // Specify number of rows/cols to loop through
-        int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? MAZE_SIZE : 1;
+        int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
 
         // Iterate through the maze grid rows
         for (int gr_i = 0; gr_i < grid_size; gr_i++) // image bottom to top
@@ -145,7 +145,7 @@ int updateTexture(
                 cv::Mat img_copy;
                 if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT)
                 {
-                    int img_ind = WALL_IMG_PROJ_MAP[proj_ind][gr_i][gc_i][_CAL_MODE];
+                    int img_ind = GLB_WALL_IMG_PROJ_MAP[proj_ind][gr_i][gc_i][_CAL_MODE];
                     if (_wallImgMatVec[img_ind].empty())
                     {
                         ROS_ERROR("[updateTexture] Stored OpenCV wall image is empty: Window[%d] Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
@@ -159,7 +159,7 @@ int updateTexture(
                 }
                 else
                 {
-                    int img_ind = MAZE_IMG_PROJ_MAP[proj_ind];
+                    int img_ind = GLB_MAZE_IMG_PROJ_MAP[proj_ind];
                     if (_floorImgMatVec[img_ind].empty())
                     {
                         ROS_ERROR("[updateTexture] Stored OpenCV floor image is empty: Window[%d] Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
@@ -244,7 +244,7 @@ void appInitVariables()
             CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
 
             // Specify number of rows/cols to loop through based on active calibration mode
-            int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? MAZE_SIZE : 1;
+            int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
 
             // Iterate through the maze grid rows
             for (int gr_i = 0; gr_i < grid_size; ++gr_i)
@@ -286,8 +286,10 @@ void appInitVariables()
     winOffsetVec.reserve(N.projector); // Reserve memory for efficiency
     for (int mon_ind = 0; mon_ind < N.projector; ++mon_ind)
     {
-        int offset = static_cast<int>(winOffsetDefualt * (mon_ind + 0.05f));
-        winOffsetVec.emplace_back(offset, offset);
+        // Calculate x and y offsets based on the monitor resolution
+        int x_offset = mon_ind * (GLB_MONITOR_WIDTH_PXL / N.projector) * 0.9f;
+        int y_offset = mon_ind * (GLB_MONITOR_HEIGHT_PXL / N.projector) * 0.9f;
+        winOffsetVec.emplace_back(x_offset, y_offset);
     }
 
     ROS_INFO("[appInitVariables] Finished loading and initializing variables successfully");
@@ -296,7 +298,7 @@ void appInitVariables()
 void appInitOpenGL()
 {
 
-    // Initialize GLFW and OpenGL settings
+    // Initialize GLFW and OpenGL settings and get number of monitors on the system
     if (MazeRenderContext::SetupGraphicsLibraries(N.monitor) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
 
@@ -307,32 +309,35 @@ void appInitOpenGL()
     // Initialize OpenGL for each projector
     for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind)
     {
+        // Start on the default screen
+        int mon_ind = I.starting_monitor;
+
         // Initialze render context for each projector
-        if (PROJ_CTX_VEC[proj_ind].initWindowContext(proj_ind, I.starting_monitor, WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL, callbackKeyBinding) < 0)
+        if (PROJ_CTX_VEC[proj_ind].initWindowContext(proj_ind, mon_ind, GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL, callbackKeyBinding) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
 
         // Initialize OpenGL wall image objects
-        if (PROJ_CTX_VEC[proj_ind].initRenderObjects(QUAD_GL_VERTICES, sizeof(QUAD_GL_VERTICES), QUAD_GL_INDICES, sizeof(QUAD_GL_INDICES)) < 0)
+        if (PROJ_CTX_VEC[proj_ind].initRenderObjects(GLB_QUAD_GL_VERTICES, sizeof(GLB_QUAD_GL_VERTICES), GLB_QUAD_GL_INDICES, sizeof(GLB_QUAD_GL_INDICES)) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
 
-        // Set all projectors to the starting monitor and include xy offset
-        if (PROJ_CTX_VEC[proj_ind].changeWindowDisplayMode(I.starting_monitor, F.fullscreen_mode, winOffsetVec[PROJ_CTX_VEC[proj_ind].windowInd]) < 0)
-            throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(PROJ_CTX_VEC[proj_ind].windowInd) + "]: Failed Initial update of window monitor mode");
-
         // Create the shader program for wall image rendering
-        if (PROJ_CTX_VEC[proj_ind].compileAndLinkShaders(QUAD_GL_VERTEX_SOURCE, QUAD_GL_FRAGMENT_SOURCE) < 0)
+        if (PROJ_CTX_VEC[proj_ind].compileAndLinkShaders(GLB_QUAD_GL_VERTEX_SOURCE, GLB_QUAD_GL_FRAGMENT_SOURCE) < 0)
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(PROJ_CTX_VEC[proj_ind].windowInd) + "]: Failed to compile and link wall shader");
 
         // Create the shader program for CircleRenderer class rat mask rendering
         if (CircleRenderer::CompileAndLinkCircleShaders(1.0) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
 
+        // Set all projectors to the starting monitor and include xy offset
+        if (PROJ_CTX_VEC[proj_ind].changeWindowDisplayMode(mon_ind, F.fullscreen_mode, winOffsetVec[PROJ_CTX_VEC[proj_ind].windowInd]) < 0)
+            throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(PROJ_CTX_VEC[proj_ind].windowInd) + "]: Failed Initial update of window monitor mode");
+
         // Initialize the CircleRenderer class object for rat masking
         if (RM_CIRCREND_ARR[proj_ind].initializeCircleObject(
-                RT.marker_position,         // position
-                RT.marker_radius,           // radius
-                RT.marker_rgb,              // color
-                RT.marker_segments,         // segments
+                RT.marker_position,          // position
+                RT.marker_radius,            // radius
+                RT.marker_rgb,               // color
+                RT.marker_segments,          // segments
                 HMAT_CM_TO_NDC_ARR[proj_ind] // homography matrix
                 ) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
@@ -356,6 +361,7 @@ void appMainLoop()
             for (auto &projCtx : PROJ_CTX_VEC)
             {
                 int mon_ind = F.windows_set_to_proj ? I.proj_mon_vec[projCtx.windowInd] : I.starting_monitor;
+                ROS_INFO("TEMP: mon_ind = %d", mon_ind);
                 if (projCtx.changeWindowDisplayMode(mon_ind, F.fullscreen_mode, winOffsetVec[projCtx.windowInd], true) < 0)
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from MazeRenderContext::changeWindowDisplayMode");
             }

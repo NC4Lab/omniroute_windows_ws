@@ -228,6 +228,9 @@
 #include "opencv2/imgcodecs.hpp"
 #include "opencv2/highgui.hpp"
 
+// Configuration parameters
+#include <projection_config.h>
+
 // ================================================== CLASS: MazeRenderContext ==================================================
 
 #ifndef MAZE_RENDER_CONTEXT_CALLBACKS_H
@@ -244,13 +247,16 @@ using KeyCallbackFunc = void (*)(GLFWwindow *, int, int, int, int);
 class MazeRenderContext
 {
 public:
-    GLuint textureID;          // Texture for the wall
-    GLFWwindow *windowID;      // The window associated with this context
-    GLFWmonitor *monitorID;    // The monitor associated with this context
-    int windowInd;             // Enum of type CalibrationMode for the window associated with this context
-    int monitorInd;            // Enum of type CalibrationMode for the monitor associated with this context
-    bool isContextInitialized; // Flag indicating whether there context has been initialized
-    bool isFullScreen;         // Flag indicating whether the window is in full screen mode
+    GLuint textureID;                     // Texture for the wall
+    GLFWwindow *windowID;                 // The window associated with this context
+    GLFWmonitor *monitorID;               // The monitor associated with this context
+    int windowInd;                        // Enum of type CalibrationMode for the window associated with this context
+    int monitorInd;                       // Enum of type CalibrationMode for the monitor associated with this context
+    bool isContextInitialized;            // Flag indicating whether there context has been initialized
+    bool isFullScreen;                    // Flag indicating whether the window is in full screen mode
+    static int WindowWidthWindowedPxl;  // Width of the window in windowed mode
+    static int WindowHeightWindowedPxl; // Height of the window in windowed mode
+
 private:
     int _windowWidthPxl;              // Width of the window
     int _windowHeightPxl;             // Height of the window
@@ -402,7 +408,7 @@ public:
      * @param[out] out_n_mon Reference to an integer to store the number of monitors found.
      * @return int Status of setup (0 for success, -1 for failure).
      */
-    int static SetupGraphicsLibraries(int &n_mon);
+    int static SetupGraphicsLibraries(int &out_n_mon);
 
     /**
      * @brief Compiles and links shaders for a given class instance.
@@ -547,6 +553,7 @@ public:
      * @brief Sets the GLFW window to always be on top if it is in fullscreen mode.
      *
      * @note This needs to be called continually in a main loop.
+     * This is not a good way to do this as it steals focus from other windows
      *
      * @return Integer status code [-1:error, 0:successful].
      */
@@ -633,15 +640,10 @@ private:
      * @brief  Private method to check monitor index and id is valid.
      *
      * @param mon_ind Index of monitor ID to check.
-     * @param out_monitorInd Refernce to global just to make it clear the value is being set.
-     * @param out_monitorID Refernce to global just to make it clear the value is being set.
      *
      * @return Integer status code [-1:error, 0:successful].
      */
-    int _setMonitor(
-        int mon_ind,
-        GLFWmonitor *&out_monitorID,
-        int &out_monitorInd);
+    int _setMonitor(int mon_ind);
 
     /**
      * @brief  Simple test of OpenGL and GLFW callbacks.
@@ -929,7 +931,7 @@ private:
  *
  * The texture coordinates are flipped vertically to align with OpenCV's top-left origin.
  */
-float QUAD_GL_VERTICES[] = {
+extern float GLB_QUAD_GL_VERTICES[] = {
     -1.0f, 1.0f, 0.0f, 0.0f, // Top-left
     1.0f, 1.0f, 1.0f, 0.0f,  // Top-right
     1.0f, -1.0f, 1.0f, 1.0f, // Bottom-right
@@ -952,7 +954,7 @@ float QUAD_GL_VERTICES[] = {
  * array form each of the two triangles that make up the rectangle. This technique
  * allows for the re-use of vertices, thus reducing the amount of data sent to the GPU.
  */
-unsigned int QUAD_GL_INDICES[] = {
+extern unsigned int GLB_QUAD_GL_INDICES[] = {
     0, 1, 2, // First Triangle
     0, 2, 3  // Second Triangle
 };
@@ -968,7 +970,7 @@ unsigned int QUAD_GL_INDICES[] = {
  * - `out vec2 Texcoord;`: Declares an output variable that will be passed to the fragment shader.
  * - `void main() { ... }`: Main function where the vertex shader performs its work.
  */
-const char *QUAD_GL_VERTEX_SOURCE = R"glsl(
+extern const char *GLB_QUAD_GL_VERTEX_SOURCE = R"glsl(
     #version 330 core
     in vec2 position;
     in vec2 texcoord;
@@ -991,7 +993,7 @@ const char *QUAD_GL_VERTEX_SOURCE = R"glsl(
  * - `uniform sampler2D tex;`: Declares a uniform variable representing a 2D texture.
  * - `void main() { ... }`: Main function of the fragment shader, samples the texture at the given coordinates and sets the output color.
  */
-const char *QUAD_GL_FRAGMENT_SOURCE = R"glsl(
+extern const char *GLB_QUAD_GL_FRAGMENT_SOURCE = R"glsl(
     #version 330 core
     in vec2 Texcoord;
     out vec4 outColor;
@@ -1007,156 +1009,45 @@ extern const std::string package_path = ros::package::getPath("projection_operat
 extern const std::string workspace_path = package_path.substr(0, package_path.rfind("/src"));
 
 // Directory paths for configuration files
-extern const std::string CONFIG_DIR_PATH = workspace_path + "/data/projection/params";
+extern const std::string GLB_CONFIG_DIR_PATH = workspace_path + "/data/projection/params";
 
 // Directory paths for configuration images
-extern const std::string IMAGE_TOP_DIR_PATH = workspace_path + "/data/projection/images";
+extern const std::string GLB_IMAGE_TOP_DIR_PATH = workspace_path + "/data/projection/images";
 
-/**
- * @brief 4D array of hardcoded image indices to display.
- *
- * @todo: Change these to std::array
- *
- * This array is used to map specific image indices to a combination of
- * projector, chamber row, chamber column, calibration mode, and wall position.
- *
- * The array dimensions are as follows:
- * - Projector: 0 to 3
- * - Maze Chamber Row: 0 to 2
- * - Maze Chamber Column: 0 to 2
- * - Calibration Mode: 0 to 2 (represents l_wall, m_wall, r_wall)
- *
- * Format: array[4][3][3][3] = array[Projector][Chamber Row][Chamber Column][Calibration Mode{Left, Center, Right}]
- */
+// Number of rows and columns in the maze grid
+extern const int GLB_MAZE_SIZE = 3;
 
-// Template of 4D array for hardcoded image indices to display
-int WALL_IMG_PROJ_MAP_TEMPLATE[4][3][3][3] = {
-    // Projector 0: East
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-    // Projector 1: North
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-    // Projector 2: West
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-    // Projector 3: South
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-};
+// Sprecify window resolution: 4K resolution (3840x2160)
+extern const int GLB_MONITOR_WIDTH_PXL = 3840;
+extern const int GLB_MONITOR_HEIGHT_PXL = 2160;
 
-// // Actual hardcoded wall image indices used to display
-// /// @note Used for RTI grant 2023
-// int WALL_IMG_PROJ_MAP[4][3][3][3] = {
-//     // Projector 0: East
-//     {
-//         // Chamber Row: Top, Column: Left, Center, Right
-//         {{0, 0, 0}, {1, 1, 1}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-//         // Chamber Row: Middle
-//         {{0, 0, 0}, {0, 0, 4}, {0, 2, 2}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-//         // Chamber Row: Bottom
-//         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-//     },
-//     // Projector 1: North
-//     {
-//         // Chamber Row: Top, Column: Left, Center, Right
-//         {{0, 0, 0}, {0, 2, 2}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-//         // Chamber Row: Middle
-//         {{0, 1, 1}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-//         // Chamber Row: Bottom
-//         {{0, 0, 0}, {0, 0, 0}, {0, 3, 3}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-//     },
-//     // Projector 2: West
-//     {
-//         // Chamber Row: Top, Column: Left, Center, Right
-//         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-//         // Chamber Row: Middle
-//         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-//         // Chamber Row: Bottom
-//         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-//     },
-//     // Projector 3: South
-//     {
-//         // Chamber Row: Top, Column: Left, Center, Right
-//         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-//         // Chamber Row: Middle
-//         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-//         // Chamber Row: Bottom
-//         {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-//     },
-// };
+// Specify window aspect ratio
+extern const float GLB_MONITOR_AR = (float)GLB_MONITOR_WIDTH_PXL / GLB_MONITOR_HEIGHT_PXL;
 
-// Actual hardcoded wall image indices used to display
-int WALL_IMG_PROJ_MAP[4][3][3][3] = {
-    // Projector 0: East
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{1, 2, 3}, {0, 0, 0}, {3, 2, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{3, 4, 5}, {0, 0, 0}, {5, 4, 3}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-    // Projector 1: North
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {1, 2, 3}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{1, 2, 3}, {4, 4, 4}, {3, 2, 1}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {3, 2, 1}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-    // Projector 2: West
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-    // Projector 3: South
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-};
+// Maze width and height (pixels)
+extern const int GLB_MAZE_IMAGE_WIDTH_PXL = 1800;
+extern const int GLB_MAZE_IMAGE_HEIGHT_PXL = 1800;
 
-// Template of 1D array for hardcoded floor image indices to display
-int MAZE_IMG_PROJ_MAP[4] = {
-    1, // Projector 0: East
-    1, // Projector 1: North
-    1, // Projector 2: West
-    1, // Projector 3: South
-};
+// Maze width and height (NDC)
+extern const float GLB_MAZE_WIDTH_NDC = 0.3f;
+extern const float GLB_MAZE_HEIGHT_NDC = GLB_MAZE_WIDTH_NDC * GLB_MONITOR_AR;
+
+// Maze width and height (cm)
+extern const float GLB_MAZE_WIDTH_HEIGHT_CM = 90.0f;
+
+// Wall image size (pixels)
+extern const int GLB_WALL_IMAGE_WIDTH_PXL = 300;
+extern const int GLB_WALL_IMAGE_HEIGHT_PXL = 540;
+
+// Default wall width and height (NDC)
+extern const float GLB_WALL_IMAGE_WIDTH_NDC = (GLB_MAZE_WIDTH_NDC / (float(GLB_MAZE_SIZE) - 1)) / (1 + std::sqrt(2));   // Wall width based on octogonal geometry in NDC
+extern const float GLB_WALL_IMAGE_HEIGHT_NDC = (GLB_MAZE_HEIGHT_NDC / (float(GLB_MAZE_SIZE) - 1)) / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
+
+// Pi
+static constexpr float PI = 3.14159265358979323846f;
+
+// Calibration mode strings
+extern const std::vector<std::string> CAL_MODE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};
 
 // Enum for tracking the current calibration mode
 enum CalibrationMode
@@ -1167,45 +1058,6 @@ enum CalibrationMode
     FLOOR = 3,
     N_CAL_MODES
 };
-CalibrationMode CAL_MODE = WALLS_MIDDLE;
-
-// Calibration mode strings
-std::vector<std::string> CAL_MODE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};
-
-// Number of rows and columns in the maze
-extern const int MAZE_SIZE = 3;
-
-// Sprecify window resolution: 4K resolution (3840x2160)
-extern const int WINDOW_WIDTH_PXL = 3840;
-extern const int WINDOW_HEIGHT_PXL = 2160;
-
-// Specify window aspect ratio
-extern const float WINDOW_AP = (float)WINDOW_WIDTH_PXL / WINDOW_HEIGHT_PXL;
-
-// Maze width and height (pixels)
-const int MAZE_IMAGE_WIDTH_PXL = 1800;
-const int MAZE_IMAGE_HEIGHT_PXL = 1800;
-
-// Maze width and height (NDC)
-const float MAZE_WIDTH_NDC = 0.3f;
-const float MAZE_HEIGHT_NDC = MAZE_WIDTH_NDC * WINDOW_AP;
-
-// Maze width and height (cm)
-const float MAZE_WIDTH_HEIGHT_CM = 90.0f;
-
-// Wall image size (pixels)
-extern const int WALL_IMAGE_WIDTH_PXL = 300;
-extern const int WALL_IMAGE_HEIGHT_PXL = 540;
-
-// Default wall width and height (NDC)
-extern const float WALL_IMAGE_WIDTH_NDC = (MAZE_WIDTH_NDC / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2));   // Wall width based on octogonal geometry in NDC
-extern const float WALL_IMAGE_HEIGHT_NDC = (MAZE_HEIGHT_NDC / (float(MAZE_SIZE) - 1)) / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
-
-// Global variable to set the OpenGL debug level.
-const int DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
-
-// Pi
-static constexpr float PI = 3.14159265358979323846f;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -1265,7 +1117,7 @@ void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &
  *
  * @param _WALL_WARP_COORDS Reference to the warped wall vertices array.
  */
-void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &_WALL_WARP_COORDS);
+void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> &_WALL_WARP_COORDS);
 
 /**
  * @brief Prints the coordinates of all entries in the homography matrix.

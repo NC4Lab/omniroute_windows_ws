@@ -18,13 +18,12 @@ int MazeRenderContext::_NumMonitors = 0;
 MazeRenderContext::MazeRenderContext()
     : _shaderProgram(0), _vao(0), _vbo(0), _ebo(0), textureID(0),
       windowID(nullptr), monitorID(nullptr),
-      _windowWidthPxl(800), _windowHeightPxl(600),
+      _windowWidthPxl(1024), _windowHeightPxl(576),
       windowInd(-1), monitorInd(-1)
 {
     // Members are initialized to default values, setup is deferred
 }
 
-// DESTRUCTOR
 MazeRenderContext::~MazeRenderContext()
 {
     // Clean up resources without logging
@@ -34,7 +33,6 @@ MazeRenderContext::~MazeRenderContext()
     }
 }
 
-// COPY CONSTRUCTOR
 MazeRenderContext::MazeRenderContext(MazeRenderContext &&other) noexcept
     : textureID(other.textureID),
       windowID(other.windowID),
@@ -54,7 +52,6 @@ MazeRenderContext::MazeRenderContext(MazeRenderContext &&other) noexcept
     other._resetMembers(); // Use a member function for resetting
 }
 
-// MOVE CONSTRUCTOR
 MazeRenderContext &MazeRenderContext::operator=(MazeRenderContext &&other) noexcept
 {
     if (this != &other)
@@ -100,7 +97,7 @@ void MazeRenderContext::CallbackDebugOpenGL(GLenum source, GLenum type, GLuint i
                                                                  : (severity == GL_DEBUG_SEVERITY_HIGH)   ? 4
                                                                                                           : 0;
     // Check if the message is below the specified debug level
-    if (s_level < DEBUG_LEVEL_GL)
+    if (s_level < GLB_DEBUG_LEVEL_GL)
     {
         return;
     }
@@ -282,7 +279,7 @@ int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width
     int status = 0;
 
     // Check/set the new monitor id
-    if (_setMonitor(mon_ind, monitorID, monitorInd) < 0)
+    if (_setMonitor(mon_ind) < 0)
     {
         ROS_ERROR("[MazeRenderContext::initWindowContext] Context Setup Failed: Window[%d] Monitor[%d]", win_ind, mon_ind);
         return -1;
@@ -534,7 +531,7 @@ int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscre
     isFullScreen = do_fullscreen;
 
     // Check/set the new monitor id
-    if (_setMonitor(mon_ind_new, monitorID, monitorInd) < 0)
+    if (_setMonitor(mon_ind_new) < 0)
     {
         ROS_ERROR("[MazeRenderContext::changeWindowDisplayMode] Context Setup Failed: Window[%d] Monitor[%d]", windowInd, mon_ind_new);
         return -1;
@@ -579,7 +576,7 @@ int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscre
 
         // Calculate window size based on aspect ratio of the inialized window dimensions
         win_width = static_cast<int>(576.0f * (_windowWidthPxl / static_cast<float>(_windowHeightPxl)));
-        win_height = 576;
+        win_height = 576.0f;
 
         // Compute window position based on monitor position and offset with a minimum offset of 100 pixels
         win_x = monitor_x + offset_xy.x + 100;
@@ -611,25 +608,10 @@ int MazeRenderContext::forceWindowStackOrder()
     // Check if the window is minimized (iconified)
     if (glfwGetWindowAttrib(windowID, GLFW_ICONIFIED))
     {
-        // If the window is minimized and its in fullscreen mode, restore the window
-        if (isFullScreen)
-        {
-            // NONE OF THESE APPROACHES WORK
-            // #define GLFW_EXPOSE_NATIVE_WIN32
-            // #include <GLFW/glfw3native.h>
-
-            // // Use Win32 API to bring the window to the front without activating it
-            // HWND hwnd = glfwGetWin32Window(windowID); // Get the native Win32 window handle
-
-            // // SWP_NOACTIVATE is used to not activate the window with the z-order change
-            // // SWP_NOMOVE and SWP_NOSIZE are used to retain the current positioning and size
-            // SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE);
-
-            // // TEMP
-            // glfwRestoreWindow(windowID);
-
-            // glfwPollEvents();
-        }
+        // If the window is minimized and in fullscreen mode, restore the window
+        // TEMP
+        // if (isFullScreen)
+        //     glfwRestoreWindow(windowID);
     }
 
     return CheckErrorGLFW(__LINE__, __FILE__);
@@ -833,7 +815,7 @@ int MazeRenderContext::_checkProgramLinking(GLuint __shaderProgram)
     return 0;
 }
 
-int MazeRenderContext::_setMonitor(int mon_ind, GLFWmonitor *&out_monitorID, int &out_monitorInd)
+int MazeRenderContext::_setMonitor(int mon_ind)
 {
     // Validate the inputs
     if (mon_ind >= _NumMonitors)
@@ -851,8 +833,8 @@ int MazeRenderContext::_setMonitor(int mon_ind, GLFWmonitor *&out_monitorID, int
     }
 
     // Set the references to the class intance monitor id and index
-    out_monitorID = monitor_id;
-    out_monitorInd = mon_ind;
+    monitorID = monitor_id;
+    monitorInd = mon_ind;
 
     return 0;
 }
@@ -1391,7 +1373,7 @@ void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &
     ROS_INFO("=========================================");
 }
 
-void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, MAZE_SIZE>, MAZE_SIZE> &_WALL_WARP_COORDS)
+void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> &_WALL_WARP_COORDS)
 {
     ROS_INFO("                                       Warped Wall Coordinates                                               ");
     ROS_INFO("=============================================================================================================");
@@ -1399,7 +1381,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
     ROS_INFO("-------------------------------------------------------------------------------------------------------------");
 
     // Loop through each row and column in the maze
-    for (int row = 0; row < MAZE_SIZE; ++row)
+    for (int row = 0; row < GLB_MAZE_SIZE; ++row)
     {
         ROS_INFO("        ||   X   ,   Y   |   X   ,   Y   ||   X   ,   Y   |   X   ,   Y   ||   X   ,   Y   |   X   ,   Y   ||");
         ROS_INFO("-------------------------------------------------------------------------------------------------------------");
@@ -1409,7 +1391,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
 
         // Format and print the Top row coordinates
         snprintf(buffer, sizeof(buffer), "(%d) Top ||", row);
-        for (int col = 0; col < MAZE_SIZE; ++col)
+        for (int col = 0; col < GLB_MAZE_SIZE; ++col)
         {
             // Fetch the quad vertices for the current [row][col]
             auto &quad_vertices = _WALL_WARP_COORDS[row][col];
@@ -1420,7 +1402,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
 
         // Format and print the Bottom row coordinates
         snprintf(buffer, sizeof(buffer), "(%d) Btm ||", row);
-        for (int col = 0; col < MAZE_SIZE; ++col)
+        for (int col = 0; col < GLB_MAZE_SIZE; ++col)
         {
             // Fetch the quad vertices for the current [row][col]
             auto &quad = _WALL_WARP_COORDS[row][col];
@@ -1514,7 +1496,7 @@ void xmlFrmtFileStringsControlPoints(int proj_ind, std::string &out_path)
 {
     // Format the output tag
     out_path =
-        CONFIG_DIR_PATH + "/" +
+        GLB_CONFIG_DIR_PATH + "/" +
         "cp" +
         "_p" + std::to_string(proj_ind) +
         ".xml";
@@ -1524,7 +1506,7 @@ void xmlFrmtFileStringsHmat(int proj_ind, std::string &out_path)
 {
     // Format the output tag
     out_path =
-        CONFIG_DIR_PATH + "/" +
+        GLB_CONFIG_DIR_PATH + "/" +
         "hmats" +
         "_p" + std::to_string(proj_ind) +
         ".xml";
@@ -1534,7 +1516,7 @@ void xmlFrmtFileStringsVertices(std::string &out_path)
 {
     // Format the output tag
     out_path =
-        CONFIG_DIR_PATH + "/" +
+        GLB_CONFIG_DIR_PATH + "/" +
         "maze_vertices" +
         ".xml";
 }
@@ -2233,7 +2215,7 @@ int warpImgMat(cv::Mat img_mat, cv::Mat _H, cv::Mat &out_img_mat)
     }
 
     // Warp Perspective
-    cv::warpPerspective(img_mat, out_img_mat, _H, cv::Size(WINDOW_WIDTH_PXL, WINDOW_HEIGHT_PXL));
+    cv::warpPerspective(img_mat, out_img_mat, _H, cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
 
     return 0;
 }
