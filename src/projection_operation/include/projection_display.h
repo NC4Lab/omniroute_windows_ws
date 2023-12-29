@@ -35,11 +35,11 @@ static struct IndStruct
 {
     const int starting_monitor = 0; // Default starting monitor index for the windows (hardcoded)
     const std::vector<int> proj_mon_vec = {
-        2, // Projector 0 
+        2, // Projector 0
         1, // Projector 1
         4, // Projector 2
         3, // Projector 3
-    }; // Vector of indeces of the monitor associeted to each projector (hardcoded)
+    };     // Vector of indeces of the monitor associeted to each projector (hardcoded)
 
 } I;
 
@@ -58,10 +58,10 @@ static struct CountStruct
  */
 static struct RatTracker
 {
-    cv::Point2f marker_position = cv::Point2f(0.0f, 0.0f);      // Marker center (cm)
-    const GLfloat marker_radius = 5.0f;                         // Marker default circle radius (cm)
-    cv::Scalar marker_rgb = cv::Scalar(0.0f, 0.0f, 0.0f); // Marker color (black)
-    const int marker_segments = 36;                             // Number of segments used to approximate the circle geometry
+    cv::Point2f marker_position = cv::Point2f(0.0f, 0.0f); // Marker center (cm)
+    const GLfloat marker_radius = 5.0f;                    // Marker default circle radius (cm)
+    cv::Scalar marker_rgb = cv::Scalar(0.0f, 0.0f, 0.0f);  // Marker color (black)
+    const int marker_segments = 36;                        // Number of segments used to approximate the circle geometry
 } RT;
 
 /**
@@ -98,20 +98,23 @@ std::string runtime_wall_image_path = GLB_IMAGE_TOP_DIR_PATH + "/runtime";
  * @brief List of wall image file paths
  */
 std::vector<std::string> fiImgPathWallVec = {
-    runtime_wall_image_path + "/w_blank.png",    // [0] Blank image
-    runtime_wall_image_path + "/w_square.png",   // [1] Square image
-    runtime_wall_image_path + "/w_circle.png",   // [2] Circle image
-    runtime_wall_image_path + "/w_triangle.png", // [3] Triangle image
-    runtime_wall_image_path + "/w_star.png",     // [4] Star image
-    runtime_wall_image_path + "/w_pentagon.png", // [5] Pentagon image
+    runtime_wall_image_path + "/w_blank.png",    // [0] Blank shape
+    runtime_wall_image_path + "/w_square.png",   // [1] Square shape
+    runtime_wall_image_path + "/w_circle.png",   // [2] Circle shape
+    runtime_wall_image_path + "/w_triangle.png", // [3] Triangle shape
+    runtime_wall_image_path + "/w_star.png",     // [4] Star shape
+    runtime_wall_image_path + "/w_pentagon.png", // [5] Pentagon shape
 };
 /**
  * @brief List of floor image file paths
  */
 std::vector<std::string> fiImgPathFloorVec = {
-    runtime_wall_image_path + "/f_blank.png",
-    runtime_wall_image_path + "/f_white.png",
-    runtime_wall_image_path + "/f_chambers.png",
+    runtime_wall_image_path + "/f_black.png", // [0] Black 
+    runtime_wall_image_path + "/f_gray_0.png", // [1] Gray (20%) 
+    runtime_wall_image_path + "/f_gray_1.png", // [2] Gray (40%)
+    runtime_wall_image_path + "/f_gray_2.png", // [3] Gray (60%)
+    runtime_wall_image_path + "/f_gray_3.png", // [4] Gray (80%)
+    runtime_wall_image_path + "/f_white.png", // [5] White
 };
 
 // Vectors to store the loaded images in cv::Mat format

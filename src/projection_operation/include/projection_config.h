@@ -32,8 +32,8 @@ const int GLB_DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Mediu
  *
  * @todo: Change these to std::array
  *
- * @details This array is used to map specific image indices to a combination of
- * This array is used to map specific image indices to a combination of
+ * @details 
+ * This array is used to map specific wall image indices to a combination of
  * projector, chamber row, chamber column, calibration mode, and wall position.
  *
  * The array dimensions are as follows:
@@ -42,7 +42,7 @@ const int GLB_DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Mediu
  * - Maze Chamber Column: 0 to 2
  * - Calibration Mode: 0 to 2 (represents l_wall, m_wall, r_wall)
  *
- * Image file mapping
+ * Image file mapping for shapes:
  * [0] Blank
  * [1] Square
  * [2] Circle
@@ -91,7 +91,21 @@ extern const int GLB_WALL_IMG_PROJ_MAP[4][3][3][3] = {
     },
 };
 
-// Template of 1D array for hardcoded floor image indices to display
+/**
+ * @brief 1D array for hardcoded floor image indices to display
+ * 
+  * @details 
+ * This array is used to map specific floor image indices to a combination a
+ * given projector.
+ * 
+ * Image file mapping for grayscale:
+ * [0] Black
+ * [1] Gray (20%)
+ * [2] Gray (40%)
+ * [3] Gray (60%)
+ * [4] Gray (80%)
+ * [5] White
+ */ 
 extern const int GLB_MAZE_IMG_PROJ_MAP[4] = {
     1, // Projector 0: East
     1, // Projector 1: North
