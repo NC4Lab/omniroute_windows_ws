@@ -128,9 +128,9 @@ int updateTexture(
     {
         CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
 
-        // TEMP
-        if (_CAL_MODE != FLOOR)
-            continue;
+        // // TEMP
+        // if (_CAL_MODE != FLOOR)
+        //     continue;
 
         // Specify number of rows/cols to loop through
         int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
@@ -361,7 +361,6 @@ void appMainLoop()
             for (auto &projCtx : PROJ_CTX_VEC)
             {
                 int mon_ind = F.windows_set_to_proj ? I.proj_mon_vec[projCtx.windowInd] : I.starting_monitor;
-                ROS_INFO("TEMP: mon_ind = %d", mon_ind);
                 if (projCtx.changeWindowDisplayMode(mon_ind, F.fullscreen_mode, winOffsetVec[projCtx.windowInd], true) < 0)
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from MazeRenderContext::changeWindowDisplayMode");
             }
@@ -398,7 +397,7 @@ void appMainLoop()
             if (projCtx.drawTexture() < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from drawTexture");
 
-            // TEMP
+            // TEMP Simulate rat movement for testing (set color to red)
             simulateRatMovement(0.5f, 45.0f, RT);
 
             // Draw/update rat mask marker

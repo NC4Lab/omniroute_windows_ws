@@ -60,7 +60,7 @@ static struct RatTracker
 {
     cv::Point2f marker_position = cv::Point2f(0.0f, 0.0f);      // Marker center (cm)
     const GLfloat marker_radius = 5.0f;                         // Marker default circle radius (cm)
-    const cv::Scalar marker_rgb = cv::Scalar(1.0f, 0.0f, 0.0f); // Marker color (black)
+    cv::Scalar marker_rgb = cv::Scalar(0.0f, 0.0f, 0.0f); // Marker color (black)
     const int marker_segments = 36;                             // Number of segments used to approximate the circle geometry
 } RT;
 
