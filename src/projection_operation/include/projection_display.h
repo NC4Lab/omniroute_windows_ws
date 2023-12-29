@@ -35,8 +35,8 @@ static struct IndStruct
 {
     const int starting_monitor = 0; // Default starting monitor index for the windows (hardcoded)
     const std::vector<int> proj_mon_vec = {
-        0,
         1,
+        2,
     }; // Vector of indeces of the monitor associeted to each projector (hardcoded)
 
 } I;

@@ -2,74 +2,74 @@
 <Root>
 	<projector index="0">
 		<vertex>
-			<coord>-0.150000006</coord>
-			<coord>-0.266666681</coord>
+			<coord>-0.164500028</coord>
+			<coord>-0.404166758</coord>
 		</vertex>
 		<vertex>
-			<coord>0.150000006</coord>
-			<coord>-0.266666681</coord>
+			<coord>0.275000095</coord>
+			<coord>-0.379666835</coord>
 		</vertex>
 		<vertex>
-			<coord>0.150000006</coord>
-			<coord>0.266666681</coord>
+			<coord>0.19900018</coord>
+			<coord>0.628166437</coord>
 		</vertex>
 		<vertex>
-			<coord>-0.150000006</coord>
-			<coord>0.266666681</coord>
+			<coord>-0.124499999</coord>
+			<coord>0.609166503</coord>
 		</vertex>
 	</projector>
 	<projector index="1">
 		<vertex>
-			<coord>-0.150000006</coord>
-			<coord>-0.266666681</coord>
+			<coord>-0.226500094</coord>
+			<coord>-0.472166926</coord>
 		</vertex>
 		<vertex>
-			<coord>0.150000006</coord>
-			<coord>-0.266666681</coord>
+			<coord>0.242000028</coord>
+			<coord>-0.521166503</coord>
 		</vertex>
 		<vertex>
-			<coord>0.150000006</coord>
-			<coord>0.266666681</coord>
+			<coord>0.180499882</coord>
+			<coord>0.591166139</coord>
 		</vertex>
 		<vertex>
-			<coord>-0.150000006</coord>
-			<coord>0.266666681</coord>
+			<coord>-0.153000101</coord>
+			<coord>0.613666236</coord>
 		</vertex>
 	</projector>
 	<projector index="2">
 		<vertex>
-			<coord>-0.150000006</coord>
-			<coord>-0.266666681</coord>
+			<coord>-0.161499962</coord>
+			<coord>-0.414167076</coord>
 		</vertex>
 		<vertex>
-			<coord>0.150000006</coord>
-			<coord>-0.266666681</coord>
+			<coord>0.292499959</coord>
+			<coord>-0.46566689</coord>
 		</vertex>
 		<vertex>
-			<coord>0.150000006</coord>
-			<coord>0.266666681</coord>
+			<coord>0.226999924</coord>
+			<coord>0.746666253</coord>
 		</vertex>
 		<vertex>
-			<coord>-0.150000006</coord>
-			<coord>0.266666681</coord>
+			<coord>-0.107499994</coord>
+			<coord>0.766666234</coord>
 		</vertex>
 	</projector>
 	<projector index="3">
 		<vertex>
-			<coord>-0.150000006</coord>
-			<coord>-0.266666681</coord>
+			<coord>-0.200000033</coord>
+			<coord>-0.45716688</coord>
 		</vertex>
 		<vertex>
-			<coord>0.150000006</coord>
-			<coord>-0.266666681</coord>
+			<coord>0.25000006</coord>
+			<coord>-0.491166919</coord>
 		</vertex>
 		<vertex>
-			<coord>0.150000006</coord>
-			<coord>0.266666681</coord>
+			<coord>0.188000053</coord>
+			<coord>0.563166261</coord>
 		</vertex>
 		<vertex>
-			<coord>-0.150000006</coord>
-			<coord>0.266666681</coord>
+			<coord>-0.141499981</coord>
+			<coord>0.575166345</coord>
 		</vertex>
 	</projector>
 </Root>
