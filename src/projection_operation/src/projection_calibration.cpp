@@ -619,15 +619,15 @@ void appLoadAssets()
     ROS_INFO("[appLoadAssets] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL);
 
     // Load images using OpenCV
-    if (loadImgMat(fiImgPathWallVec, false, wallImgMatVec) < 0)
+    if (loadImgMat(fiImgPathWallVec, wallImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall test images");
-    if (loadImgMat(fiImgPathFloorVec, false, floorImgMatVec) < 0)
+    if (loadImgMat(fiImgPathFloorVec, floorImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV floor test images");
-    if (loadImgMat(fiImgPathCalVec, false, calImgMatVec) < 0)
+    if (loadImgMat(fiImgPathCalVec, calImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV calibration mode images");
-    if (loadImgMat(fiImgPathMonWallVec, false, monWallImgMatVec) < 0)
+    if (loadImgMat(fiImgPathMonWallVec, monWallImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV monitor number wall images");
-    if (loadImgMat(fiImgPathMonFloorVec, false, monFloorImgMatVec) < 0)
+    if (loadImgMat(fiImgPathMonFloorVec, monFloorImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV onitor number floor images");
 
     ROS_INFO("[appLoadAssets] OpentCV mat images loaded succesfully");
@@ -839,7 +839,7 @@ void appMainLoop()
         // Update the window monitor and mode
         if (F.change_window_mode)
         {
-            if (projCtx.changeWindowDisplayMode(I.monitor, F.fullscreen_mode, cv::Point(0.0f, 0.0f), true) < 0)
+            if (projCtx.changeWindowDisplayMode(I.monitor, F.fullscreen_mode) < 0)
                 throw std::runtime_error("[appMainLoop] Error returned from: changeWindowDisplayMode");
         }
 
@@ -919,8 +919,8 @@ void appMainLoop()
             throw std::runtime_error("[appMainLoop] Error returned from: MazeRenderContext::initWindowForDrawing");
 
         // Make sure winsow always stays on top in fullscreen mode
-        if (projCtx.forceWindowStackOrder() < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: MazeRenderContext::forceWindowStackOrder");
+        if (projCtx.forceWindowFocus() < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from: MazeRenderContext::forceWindowFocus");
 
         // Draw/update texture
         if (projCtx.drawTexture() < 0)

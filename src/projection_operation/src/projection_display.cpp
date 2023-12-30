@@ -20,7 +20,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     if (action == GLFW_RELEASE)
     {
 
-        // ----------Set/unset Fullscreen [F] ----------
+        // ---------- Set/unset Fullscreen [F] ----------
 
         if (key == GLFW_KEY_F)
         {
@@ -28,7 +28,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             F.change_window_mode = true;
         }
 
-        // ----------Check for move monitor command [M] ----------
+        // ---------- Check for change window monitor command [M] ----------
 
         if (key == GLFW_KEY_M)
         {
@@ -77,20 +77,42 @@ int procCmdROS(ROSComm &out_RC)
         return -1;
     }
 
-    // Check for ROS messages
+    // Process a single round of callbacks for ROS messages
     ros::spinOnce();
 
-    if (out_RC.is_message_received)
-    {
-        // Process the message
-        ROS_INFO("[procCmdROS] Processing received projection command: %d", out_RC.last_projection_cmd);
+    // Bail if no message received
+    if (!out_RC.is_message_received)
+        return 0;
 
-        // Reset the flag
-        out_RC.is_message_received = false;
+    // Reset the flag
+    out_RC.is_message_received = false;
+
+    // Log the received command
+    ROS_INFO("[procCmdROS] Processing received projection command: %d", out_RC.last_projection_cmd);
+
+    // ---------- Monitor Mode Change Commmands ----------
+
+    // Move monitor command [-1]
+    if (out_RC.last_projection_cmd == -1)
+    {
+        F.windows_set_to_proj = !F.windows_set_to_proj;
+        F.change_window_mode = true;
     }
 
-    // Sleep for a short time to prevent busy looping
-    ros::Duration(0.01).sleep();
+    // Set/unset Fullscreen [-2] ----------
+    if (out_RC.last_projection_cmd == -2)
+    {
+        F.fullscreen_mode = !F.fullscreen_mode;
+        F.change_window_mode = true;
+    }
+
+    // Force window to top [-3] ----------
+    if (out_RC.last_projection_cmd == -3)
+    {
+        F.force_window_focus = true;
+    }
+
+    // ---------- Change image configuraton ----------
 
     return 0;
 }
@@ -127,6 +149,49 @@ void simulateRatMovement(float move_step, float max_turn_angle, RatTracker &out_
 
     // Keep the rat within the enclosure and turn if hitting the wall
     keepWithinBoundsAndTurn(out_RT.marker_position);
+}
+
+void addImageConfiguration(const std::string &direction, int left, int right,
+                           std::vector<ProjWallImageCfg4D> &out_PROJ_WALL_IMAGE_CFG_4D_VEC)
+{
+    // Initialize a new 4D array with all zeros
+    ProjWallImageCfg4D new_array = {};
+
+    // Determine indices based on direction
+    int primary_ind = -1;
+    int secondary_ind = -1;
+
+    if (direction == "east")
+    {
+        primary_ind = 0;   // Projector 0: East
+        secondary_ind = 3; // Shared with Projector 3: South
+    }
+    else if (direction == "north")
+    {
+        primary_ind = 1;   // Projector 1: North
+        secondary_ind = 2; // Shared with Projector 2: West
+    }
+    else if (direction == "west")
+    {
+        primary_ind = 2;   // Projector 2: West
+        secondary_ind = 1; // Shared with Projector 1: North
+    }
+    else if (direction == "south")
+    {
+        primary_ind = 3;   // Projector 3: South
+        secondary_ind = 0; // Shared with Projector 0: East
+    }
+
+    // Set the left and right values for the primary and secondary projectors
+    new_array[primary_ind][1][1][0] = left;  // Center left
+    new_array[primary_ind][1][1][2] = right; // Center right
+
+    // For secondary projector, 'left' corresponds to the right value and vice versa
+    new_array[secondary_ind][1][1][2] = left;  // Center right
+    new_array[secondary_ind][1][1][0] = right; // Center left
+
+    // Add the new configuration to the vector
+    out_PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(new_array);
 }
 
 void populateMazeVertNdcVec(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec)
@@ -216,7 +281,7 @@ int updateTexture(
                 }
                 else
                 {
-                    int img_ind = GLB_MAZE_IMG_PROJ_MAP[proj_ind];
+                    int img_ind = PROJ_FLOOR_IMAGE_CFG_1D[proj_ind];
                     if (_floorImgMatVec[img_ind].empty())
                     {
                         ROS_ERROR("[updateTexture] Stored OpenCV floor image is empty: Window[%d] Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
@@ -308,9 +373,9 @@ void appInitROS(int argc, char **argv, ROSComm &out_RC)
 void appInitVariables()
 {
     // Load images using OpenCV
-    if (loadImgMat(fiImgPathWallVec, false, wallImgMatVec) < 0)
+    if (loadImgMat(fiImgPathWallVec, wallImgMatVec) < 0)
         throw std::runtime_error("[appInitVariables] Failed to load OpentCV wall images");
-    if (loadImgMat(fiImgPathFloorVec, false, floorImgMatVec) < 0)
+    if (loadImgMat(fiImgPathFloorVec, floorImgMatVec) < 0)
         throw std::runtime_error("[appInitVariables] Failed to load OpentCV wall images");
 
     // Load homography matrix XML file data
@@ -430,7 +495,7 @@ void appMainLoop()
     int status = 0;
     while (status == 0)
     {
-        // --------------- Check Kayboard Callback Flags ---------------
+        // --------------- Check State Flags ---------------
 
         // Update the window monitor and mode
         if (F.change_window_mode)
@@ -438,8 +503,18 @@ void appMainLoop()
             for (auto &projCtx : PROJ_CTX_VEC)
             {
                 int mon_ind = F.windows_set_to_proj ? I.proj_mon_vec[projCtx.windowInd] : I.starting_monitor;
-                if (projCtx.changeWindowDisplayMode(mon_ind, F.fullscreen_mode, winOffsetVec[projCtx.windowInd], true) < 0)
+                if (projCtx.changeWindowDisplayMode(mon_ind, F.fullscreen_mode, winOffsetVec[projCtx.windowInd]) < 0)
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::changeWindowDisplayMode");
+            }
+        }
+
+        // Force to windows so thay are on top
+        if (F.force_window_focus)
+        {
+            for (auto &projCtx : PROJ_CTX_VEC)
+            {
+                if (projCtx.forceWindowFocus() < 0)
+                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::forceWindowFocus");
             }
         }
 
@@ -457,6 +532,7 @@ void appMainLoop()
         // Reset keybinding flags
         F.change_window_mode = false;
         F.update_textures = false;
+        F.force_window_focus = false;
 
         // --------------- Handle Image Processing for Next Frame ---------------
 
@@ -465,10 +541,6 @@ void appMainLoop()
             // Prepare the frame for rendering (clear the back buffer)
             if (projCtx.initWindowForDrawing() < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::initWindowForDrawing");
-
-            // Make sure winsow always stays on top in fullscreen mode
-            if (projCtx.forceWindowStackOrder() < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::forceWindowStackOrder");
 
             // Draw/update wall images
             if (projCtx.drawTexture() < 0)
@@ -496,6 +568,8 @@ void appMainLoop()
             else if (status < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::checkExitRequest");
         }
+
+        // --------------- Handle ROS Messages and Opperations ---------------
 
         // Process ROS messages
         if (procCmdROS(RC) < 0)

@@ -249,13 +249,13 @@ using KeyCallbackFunc = void (*)(GLFWwindow *, int, int, int, int);
 class MazeRenderContext
 {
 public:
-    GLuint textureID;                     // Texture for the wall
-    GLFWwindow *windowID;                 // The window associated with this context
-    GLFWmonitor *monitorID;               // The monitor associated with this context
-    int windowInd;                        // Enum of type CalibrationMode for the window associated with this context
-    int monitorInd;                       // Enum of type CalibrationMode for the monitor associated with this context
-    bool isContextInitialized;            // Flag indicating whether there context has been initialized
-    bool isFullScreen;                    // Flag indicating whether the window is in full screen mode
+    GLuint textureID;                   // Texture for the wall
+    GLFWwindow *windowID;               // The window associated with this context
+    GLFWmonitor *monitorID;             // The monitor associated with this context
+    int windowInd;                      // Enum of type CalibrationMode for the window associated with this context
+    int monitorInd;                     // Enum of type CalibrationMode for the monitor associated with this context
+    bool isContextInitialized;          // Flag indicating whether there context has been initialized
+    bool isFullScreen;                  // Flag indicating whether the window is in full screen mode
     static int WindowWidthWindowedPxl;  // Width of the window in windowed mode
     static int WindowHeightWindowedPxl; // Height of the window in windowed mode
 
@@ -540,26 +540,23 @@ public:
      *
      * @param mon_ind Enum of type CalibrationMode for the monitor to move the window to.
      * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
-     * @param offset_xy Optional offset to apply to window position.
-     * @param do_verbose Optional flag to print verbose messages (default to false).
+     * @param offset_xy Optional offset to apply to window position (default to (0, 0)).
      *
      * @return Integer status code [-1:error, 0:successful].
      */
     int changeWindowDisplayMode(
         int mon_ind,
         bool is_fullscreen,
-        cv::Point offset_xy = cv::Point(0.0f, 0.0f),
-        bool do_verbose = false);
+        cv::Point offset_xy = cv::Point(0.0f, 0.0f));
 
     /**
-     * @brief Sets the GLFW window to always be on top if it is in fullscreen mode.
+     * @brief Sets the GLFW window to take focus.
      *
-     * @note This needs to be called continually in a main loop.
-     * This is not a good way to do this as it steals focus from other windows
+     * @note  This is not ideal as  it steals focus from other windows.
      *
      * @return Integer status code [-1:error, 0:successful].
      */
-    int forceWindowStackOrder();
+    int forceWindowFocus();
 
     /**
      * @brief Function to set the background color and redraw the window
@@ -1374,7 +1371,6 @@ int computeHomographyMatrix(
  * @brief Loads PNG images with alpha channel from specified file paths and stores them in a vector as cv::Mat objects.
  *
  * @param img_paths_vec A vector of file paths to the images to be loaded.
- * @param do_verbose Flag to print verbose messages.
  * @param[out] out_img_mat_vec Reference to a vector of cv::Mat where the loaded images will be stored.
  *
  * @return Integer status code [-1:error, 0:successful].
@@ -1395,7 +1391,6 @@ int computeHomographyMatrix(
  */
 int loadImgMat(
     const std::vector<std::string> &img_paths_vec,
-    bool do_verbose,
     std::vector<cv::Mat> &out_img_mat_vec);
 
 /**

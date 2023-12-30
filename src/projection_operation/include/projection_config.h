@@ -24,15 +24,16 @@
 
 // ================================================== VARIABLES ==================================================
 
+// Global variable for verbose logging.
+const bool GLB_DO_VERBOSE_DEBUG = false;
+
 // Global variable to set the OpenGL debug level.
 const int GLB_DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
 
 /**
  * @brief 4D array of hardcoded image indices to display.
  *
- * @todo: Change these to std::array
- *
- * @details 
+ * @details
  * This array is used to map specific wall image indices to a combination of
  * projector, chamber row, chamber column, calibration mode, and wall position.
  *
@@ -49,55 +50,57 @@ const int GLB_DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Mediu
  * [3] Triangle
  * [4] Star
  * [5] Pentagon
- *
+ * 
  * Format: array[4][3][3][3] = array[Projector][Chamber Row][Chamber Column][Calibration Mode{Left, Center, Right}]
+ *
+ * Element mapping:
+ *
+ *    {{// Projector 0: East
+ *      {{
+ *          // Chamber Row: Top, Column: Left, Center, Right
+ *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+ *                                               // Chamber Row: Middle
+ *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+ *                                               // Chamber Row: Bottom
+ *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
+ *      }},
+ *      // Projector 1: North
+ *      {{
+ *          // Chamber Row: Top, Column: Left, Center, Right
+ *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+ *                                               // Chamber Row: Middle
+ *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+ *                                               // Chamber Row: Bottom
+ *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
+ *      }},
+ *      // Projector 2: West
+ *      {{
+ *          // Chamber Row: Top, Column: Left, Center, Right
+ *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+ *                                               // Chamber Row: Middle
+ *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+ *                                               // Chamber Row: Bottom
+ *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
+ *      }},
+ *      // Projector 3: South
+ *      {{
+ *          // Chamber Row: Top, Column: Left, Center, Right
+ *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+ *                                               // Chamber Row: Middle
+ *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+ *                                               // Chamber Row: Bottom
+ *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
+ *      }}}};
  */
-extern const int GLB_WALL_IMG_PROJ_MAP[4][3][3][3] = {
-    // Projector 0: East
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {1, 0, 1}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-    // Projector 1: North
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {2, 0, 2}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-    // Projector 2: West
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {3, 0, 3}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-    // Projector 3: South
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {4, 0, 4}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-};
+using ProjWallImageCfg4D = std::array<std::array<std::array<std::array<int, 3>, 3>, 3>, 4>;
 
 /**
  * @brief 1D array for hardcoded floor image indices to display
- * 
-  * @details 
+ *
+ * @details
  * This array is used to map specific floor image indices to a combination a
  * given projector.
- * 
+ *
  * Image file mapping for grayscale:
  * [0] Black
  * [1] Gray (20%)
@@ -105,52 +108,53 @@ extern const int GLB_WALL_IMG_PROJ_MAP[4][3][3][3] = {
  * [3] Gray (60%)
  * [4] Gray (80%)
  * [5] White
- */ 
-extern const int GLB_MAZE_IMG_PROJ_MAP[4] = {
-    1, // Projector 0: East
-    1, // Projector 1: North
-    1, // Projector 2: West
-    1, // Projector 3: South
-};
+ * 
+ * Element mapping:
+ * {
+ *    0, // Projector 0: West
+ *    0, // Projector 1: North
+ *    0, // Projector 2: East
+ *    0, // Projector 3: South
+ * };
+ */
+using ProjFloorImageCfg1D = std::array<int, 4>;
 
-// Template of 4D array for hardcoded image indices to display
-extern const int TEMPLATE_WALL_IMG_PROJ_MAP[4][3][3][3] = {
-    // Projector 0: East
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-    // Projector 1: North
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-    // Projector 2: West
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-    // Projector 3: South
-    {
-        // Chamber Row: Top, Column: Left, Center, Right
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Middle
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-        // Chamber Row: Bottom
-        {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}}
-    },
-};
+// std::array<std::array<std::array<std::array<int, 3>, 3>, 3>, 4> GLB_WALL_IMG_PROJ_MAP =
+//     {{// Projector 0: West Projector (Facing East)
+//       {{
+//           // Chamber Row: Top, Column: Left, Center, Right
+//           {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+//                                                // Chamber Row: Middle
+//           {{{0, 0, 0}, {A, 0, B}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+//                                                // Chamber Row: Bottom
+//           {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
+//       }},
+//       // Projector 1: North Projector (Facing South)
+//       {{
+//           // Chamber Row: Top, Column: Left, Center, Right
+//           {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+//                                                // Chamber Row: Middle
+//           {{{0, 0, 0}, {B, 0, C}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+//                                                // Chamber Row: Bottom
+//           {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
+//       }},
+//       // Projector 2: Ease Projector (Facing West)
+//       {{
+//           // Chamber Row: Top, Column: Left, Center, Right
+//           {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+//                                                // Chamber Row: Middle
+//           {{{0, 0, 0}, {C, 0, D}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+//                                                // Chamber Row: Bottom
+//           {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
+//       }},
+//       // Projector 3: South Projector (Facing North)
+//       {{
+//           // Chamber Row: Top, Column: Left, Center, Right
+//           {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+//                                                // Chamber Row: Middle
+//           {{{0, 0, 0}, {D, 0, A}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
+//                                                // Chamber Row: Bottom
+//           {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
+//       }}}};
 
 #endif

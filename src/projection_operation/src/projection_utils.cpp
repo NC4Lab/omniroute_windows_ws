@@ -517,7 +517,7 @@ int MazeRenderContext::bufferSwapPoll()
     return CheckErrorGLFW(__LINE__, __FILE__);
 }
 
-int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscreen, cv::Point offset_xy, bool do_verbose)
+int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscreen, cv::Point offset_xy)
 {
     int win_x, win_y;
     int win_width, win_height;
@@ -590,15 +590,15 @@ int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscre
     std::string new_title = "Window[" + std::to_string(windowInd) + "] Monitor[" + std::to_string(mon_ind_new) + "]";
     glfwSetWindowTitle(windowID, new_title.c_str());
 
-    // Log the new window display mode
-    if (do_verbose)
+    // Log the new window display mode if verbose logging is enabled
+    if (GLB_DO_VERBOSE_DEBUG)
         ROS_INFO("[MazeRenderContext::changeWindowDisplayMode] Modified Window[%d]: Monitor[%d] Position[%d,%d,%d,%d] Format[%s]",
                  windowInd, monitorInd, win_x, win_y, win_width, win_height, isFullScreen ? "fullscreen" : "windowed");
 
     return CheckErrorGLFW(__LINE__, __FILE__, "changeWindowDisplayMode");
 }
 
-int MazeRenderContext::forceWindowStackOrder()
+int MazeRenderContext::forceWindowFocus()
 {
     // Set the GLFW window as the current OpenGL context
     if (windowID == nullptr)
@@ -609,9 +609,7 @@ int MazeRenderContext::forceWindowStackOrder()
     if (glfwGetWindowAttrib(windowID, GLFW_ICONIFIED))
     {
         // If the window is minimized and in fullscreen mode, restore the window
-        // TEMP
-        // if (isFullScreen)
-        //     glfwRestoreWindow(windowID);
+        glfwRestoreWindow(windowID);
     }
 
     return CheckErrorGLFW(__LINE__, __FILE__);
@@ -2095,7 +2093,7 @@ int computeHomographyMatrix(const std::vector<cv::Point2f> &source_vertices,
     return 0;
 }
 
-int loadImgMat(const std::vector<std::string> &img_paths_vec, bool do_verbose, std::vector<cv::Mat> &out_img_mat_vec)
+int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Mat> &out_img_mat_vec)
 {
     out_img_mat_vec.clear(); // Ensure the output vector is empty before starting
     int img_cnt = 0;
@@ -2152,7 +2150,7 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, bool do_verbose, s
         out_img_mat_vec.push_back(img);
 
         // Log the image information
-        if (do_verbose)
+        if (GLB_DO_VERBOSE_DEBUG)
             ROS_INFO("[loadImgMat] Image[%d of %d] loaded sucesfully: Size[%d,%d] Channels[%d] Depth[%s] Path[%s]",
                      img_cnt++, img_paths_vec.size() - 1, img.cols, img.rows, img.channels(), depth_str.c_str(), img_path.c_str());
     }

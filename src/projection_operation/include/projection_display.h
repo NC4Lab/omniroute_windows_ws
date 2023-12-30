@@ -22,10 +22,11 @@
  */
 static struct FlagStateStruct
 {
+    bool update_textures = true;      // Flag to indicate if wall vertices, homography and texture need to be updated
     bool change_window_mode = false;  // Flag to indicate if all window modes needs to be updated
     bool windows_set_to_proj = false; // Flag to indicate if the windows are set to their respective projectors
     bool fullscreen_mode = false;     // Flag to indicate if the window is in full screen mode
-    bool update_textures = true;      // Flag to indicate if wall vertices, homography and texture need to be updated
+    bool force_window_focus = false;  // Flag to indicate if the window should be forced into focus
 } F;
 
 /**
@@ -35,12 +36,12 @@ static struct IndStruct
 {
     const int starting_monitor = 0; // Default starting monitor index for the windows (hardcoded)
     const std::vector<int> proj_mon_vec = {
-        2, // Projector 0
-        1, // Projector 1
-        4, // Projector 2
-        3, // Projector 3
-    };     // Vector of indeces of the monitor associeted to each projector (hardcoded)
-
+        2,                  // Projector 0
+        1,                  // Projector 1
+        4,                  // Projector 2
+        3,                  // Projector 3
+    };                      // Vector of indeces of the monitor associeted to each projector (hardcoded)
+    int wall_image_cfg = 0; // Index of the curren wall image configuration
 } I;
 
 /**
@@ -75,6 +76,21 @@ struct ROSComm
     int last_projection_cmd = -1;                 // Variable to store the last command received, initialize with an invalid value
     bool is_message_received = false;             // Flag to indicate if a message has been received
 } RC;
+
+/**
+ * @brief A n_projectors vector containing a 4x3x3x3 array contianer for storring different wall image configurations
+ */
+std::vector<ProjWallImageCfg4D> PROJ_WALL_IMAGE_CFG_4D_VEC;
+
+/**
+ * @brief A n_projectors array contianer for storring different floor image configurations
+ */
+ProjFloorImageCfg1D PROJ_FLOOR_IMAGE_CFG_1D = {
+    1, // Projector 0: West
+    1, // Projector 1: North
+    1, // Projector 2: East
+    1, // Projector 3: South
+};
 
 /**
  * @brief A n_projectors sized element veoctor containing a 3x3x3 data contianer for storing 3x3 homography matrices (UGLY!)
@@ -207,6 +223,26 @@ void simulateRatMovement(
     float move_step,
     float max_turn_angle,
     RatTracker &out_RT);
+
+/**
+ * @brief Add a new projector image configuration to the vector.
+ *
+ * @details
+ * This function adds a new 4D array configuration to a vector of existing configurations based on the specified projector direction.
+ * It initializes a new configuration with all elements set to zero, then sets specific 'left' and 'right' values in the center cell of the
+ * middle row for the primary and secondary projectors. The primary and secondary projectors are determined by the direction parameter.
+ * The new configuration is then added to the provided vector.
+ *
+ * @param vec Reference to the vector of existing projector image configurations.
+ * @param direction The direction of the primary projector ("east", "north", "west", or "south").
+ * @param left The value to set for the 'left' element in the center cell of the middle row.
+ * @param right The value to set for the 'right' element in the center cell of the middle row.
+ * @param[out] out_PROJ_WALL_IMAGE_CFG_4D_VEC Vector of ProjWallImageCfg4D projector image configurations.
+ */
+void addImageConfiguration(const std::string &direction,
+                           int left,
+                           int right,
+                           std::vector<ProjWallImageCfg4D> &out_PROJ_WALL_IMAGE_CFG_4D_VEC);
 
 /**
  * @brief Get the vertices cooresponding to the maze boundaries in centimeters.
