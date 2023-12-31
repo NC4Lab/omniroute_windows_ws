@@ -1439,6 +1439,41 @@ void dbLogHomMat(const cv::Mat &r_HMAT)
     ROS_INFO("==================================");
 }
 
+void dbLogProjWallImageCfg4D(const ProjWallImageCfg4D &wallImageConfig)
+{
+    ROS_INFO("                                Projector Wall Image Configuration                                       ");
+    ROS_INFO("=========================================================================================================");
+    ROS_INFO("       ||   Cell [0]   |   Cell [1]   |   Cell [2]   ||   Cell [0]   |   Cell [1]   |   Cell [2]   ||");
+    ROS_INFO("---------------------------------------------------------------------------------------------------------");
+
+    // Loop through each projector, row, and column
+    for (int proj = 0; proj < 4; ++proj)
+    {
+        ROS_INFO("Projector %d", proj);
+        ROS_INFO("---------------------------------------------------------------------------------------------------------");
+
+        for (int row = 0; row < 3; ++row)
+        {
+            // Buffer to hold the formatted string for each row
+            char buffer[512]; // Adjust size as necessary for your specific logging needs
+            snprintf(buffer, sizeof(buffer), "(%d) Row ||", row);
+
+            for (int col = 0; col < 3; ++col)
+            {
+                auto &cell = wallImageConfig[proj][row][col];
+                snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %3d,%3d,%3d |",
+                         cell[0], cell[1], cell[2]);
+            }
+
+            // Print the formatted string for the current row
+            ROS_INFO("%s", buffer);
+        }
+
+        ROS_INFO("---------------------------------------------------------------------------------------------------------");
+    }
+}
+
+
 void dbDispImgMat(const cv::Mat &img_mat)
 {
     cv::namedWindow("Warped Image Display", cv::WINDOW_AUTOSIZE);

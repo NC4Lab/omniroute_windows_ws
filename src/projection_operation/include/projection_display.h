@@ -233,15 +233,14 @@ void simulateRatMovement(
  * middle row for the primary and secondary projectors. The primary and secondary projectors are determined by the direction parameter.
  * The new configuration is then added to the provided vector.
  *
- * @param vec Reference to the vector of existing projector image configurations.
- * @param direction The direction of the primary projector ("east", "north", "west", or "south").
- * @param left The value to set for the 'left' element in the center cell of the middle row.
- * @param right The value to set for the 'right' element in the center cell of the middle row.
+ * @param direction The direction the rat is facing at the choice point ("east", "north", "west", or "south").
+ * @param left_shape_ind The index of the image to use the 'left' wall of the center cell of the middle row.
+ * @param right_shape_ind The index of the image to use the 'right' wall of the center cell of the middle row.
  * @param[out] out_PROJ_WALL_IMAGE_CFG_4D_VEC Vector of ProjWallImageCfg4D projector image configurations.
  */
 void addImageConfiguration(const std::string &direction,
-                           int left,
-                           int right,
+                           int left_shape_ind,
+                           int right_shape_ind,
                            std::vector<ProjWallImageCfg4D> &out_PROJ_WALL_IMAGE_CFG_4D_VEC);
 
 /**
@@ -260,18 +259,20 @@ void populateMazeVertNdcVec(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm
 /**
  * @brief Applies the homography matrices to warp wall image textures and combine them.
  *
- * @param _proj_ind Index of the projector.
  * @param _wallImgMatVec Vectors containing the loaded wall images in cv::Mat format
  * @param _floorImgMatVec Vectors containing the loaded floor images in cv::Mat format
+ * @param _PROJ_WALL_IMAGE_CFG_3D 3D array of image indices for each projector, wall, and calibration mode.
+ * @param _PROJ_FLOOR_IMAGE_CFG_1D 1D array of floor image indices for each projector.
  * @param _HMAT_ARR Big ass ugly array of arrays of matrices of shit!
  * @param[out] out_projCtx MazeRenderContext OpenGL context handler.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int updateTexture(
-    int proj_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
     const std::vector<cv::Mat> &_floorImgMatVec,
+    const ProjWallImageCfg4D &_PROJ_WALL_IMAGE_CFG_3D,
+    const ProjFloorImageCfg1D &_PROJ_FLOOR_IMAGE_CFG_1D,
     const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES>, 4> &_HMAT_ARR,
     MazeRenderContext &out_projCtx);
 
@@ -303,11 +304,21 @@ int drawRatMask(
 void appInitROS(int argc, char **argv, ROSComm &out_RC);
 
 /**
+ * @brief Loads the necessary images and data for the application.
+ *
+ * This function uses OpenCV to load wall images, homography matrices,
+ * control point vertices and floor vertices.
+ *
+ * @throws std::runtime_error if image loading fails.
+ */
+void appLoadAssets();
+
+/**
  * @brief Initializes the variables for the application.
  *
  * @details
- * This function uses OpenCV to load wall images into memory.
- * It also loads and computes various parameters used in the library
+ * This function initializes several veriables including wall configuration
+ * arrays.
  *
  * @throws std::runtime_error.
  */

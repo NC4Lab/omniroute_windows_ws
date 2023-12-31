@@ -1126,6 +1126,13 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
 void dbLogHomMat(const cv::Mat &_HMAT);
 
 /**
+ * @brief Prints the wall image indecies of all entries in the wall image configuration array.
+ *
+ * @param _HMAT ProjWallImageCfg4D array to print.
+ */
+void dbLogProjWallImageCfg4D(const ProjWallImageCfg4D &wallImageConfig);
+
+/**
  * @brief Displays a warped image in a window.
  *
  * @details
