@@ -38,20 +38,20 @@
 	</projector>
 	<projector index="2">
 		<vertex>
-			<coord>-0.161499962</coord>
-			<coord>-0.414167076</coord>
+			<coord>-0.174999937</coord>
+			<coord>-0.44166711</coord>
 		</vertex>
 		<vertex>
-			<coord>0.292499959</coord>
-			<coord>-0.46566689</coord>
+			<coord>0.278500021</coord>
+			<coord>-0.484667003</coord>
 		</vertex>
 		<vertex>
-			<coord>0.226999924</coord>
-			<coord>0.746666253</coord>
+			<coord>0.215999916</coord>
+			<coord>0.584666312</coord>
 		</vertex>
 		<vertex>
-			<coord>-0.107499994</coord>
-			<coord>0.766666234</coord>
+			<coord>-0.111500002</coord>
+			<coord>0.606666386</coord>
 		</vertex>
 	</projector>
 	<projector index="3">
