@@ -11,6 +11,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(catkin REQUIRED COMPONENTS
   roslib
   roscpp
+  rospy
   std_msgs
   cv_bridge  # Added for OpenCV support
 )
