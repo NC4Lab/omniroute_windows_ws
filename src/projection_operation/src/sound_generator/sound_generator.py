@@ -2,6 +2,7 @@ import rospy
 from std_msgs.msg import String
 import sounddevice as sd
 from scipy.io import wavfile
+import threading
 
 
 class SoundGenerator:
@@ -33,21 +34,28 @@ class SoundGenerator:
         #     self.loop()
         #     r.sleep()
 
+        self.white_noise_threads = [threading.Thread(target=self.play_sound, args=(self.white_noise, self.white_noise_samplerate, device['name'])) for device in self.sound_devices]
+        self.five_KHz_threads = [threading.Thread(target=self.play_sound, args=(self.five_KHz, self.five_KHz_samplerate, device['name'])) for device in self.sound_devices]
+    
+    def play_sound(self, sound, samplerate, device):
+        sd.play(sound, samplerate, device=device)
+    
+
     # @brief Callback function for the sound topic
     def sound_callback(self, msg):
         rospy.loginfo('Sound received: ' + msg.data)
 
         if msg.data == 'White_Noise':
-            for device in self.sound_devices:
-                rospy.loginfo('Playing white noise on ' + device['name'])
-                sd.play(self.white_noise, self.white_noise_samplerate, device=device['name'])
-                sd.wait()
+            for thread in self.white_noise_threads:
+                thread.start()
+            for thread in self.white_noise_threads:
+                thread.join()
         elif msg.data == '5KHz':
-            for device in self.sound_devices:
-                rospy.loginfo('Playing 5 KHz on ' + device['name'])
-                sd.play(self.five_KHz, self.five_KHz_samplerate, device=device['name'])
-                sd.wait()
-
+            for thread in self.five_KHz_threads:
+                thread.start()
+            for thread in self.five_KHz_threads:
+                thread.join()
+                
     # @brief Loop function to keep the node alive
     def loop(self):
         pass
