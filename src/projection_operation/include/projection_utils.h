@@ -203,6 +203,7 @@
 #include <ros/console.h>
 #include <ros/package.h>
 #include <std_msgs/Int32.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <XmlRpcValue.h>
 
 // Standard Library for various utilities

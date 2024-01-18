@@ -62,6 +62,17 @@ void callbackCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC)
     ROS_INFO("[callbackCmdROS] Received projection command: %d", out_RC->last_projection_cmd);
 }
 
+void callbackHarnessPoseROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSComm *out_RC)
+{
+    // Update the last received command
+    out_RC->last_harness_pose = *msg;
+    // out_RC->is_message_received = true;
+    //  ROS_INFO("[callbackHarnessPosROS] Received harness position: x=%f y=%f z=%f",
+    //           out_RC->last_harness_pose.pose.position.x,
+    //           out_RC->last_harness_pose.pose.position.y,
+    //           out_RC->last_harness_pose.pose.position.z);
+}
+
 int initSubscriberROS(ROSComm &out_RC)
 {
     // Check if node handle is initialized
@@ -74,6 +85,9 @@ int initSubscriberROS(ROSComm &out_RC)
     // Initialize the subscriber using boost::bind
     out_RC.projection_cmd_sub = out_RC.node_handle->subscribe<std_msgs::Int32>(
         "projection_cmd", 10, boost::bind(&callbackCmdROS, _1, &out_RC));
+
+    out_RC.harness_pose_sub = out_RC.node_handle->subscribe<geometry_msgs::PoseStamped>(
+        "harness_pose_in_maze", 10, boost::bind(&callbackHarnessPoseROS, _1, &out_RC));
 
     if (!out_RC.projection_cmd_sub)
     {
@@ -149,6 +163,13 @@ int procCmdROS(ROSComm &out_RC)
     }
 
     return 0;
+}
+
+void placeRatTracker(geometry_msgs::PoseStamped harness_pose, RatTracker &out_RT)
+{
+    // Convert the harness pose to centimeters
+    out_RT.marker_position.x = harness_pose.pose.position.x * 100.0f;
+    out_RT.marker_position.y = harness_pose.pose.position.y * 100.0f;
 }
 
 void simulateRatMovement(float move_step, float max_turn_angle, RatTracker &out_RT)
@@ -268,20 +289,39 @@ void populateMazeVertNdcVec(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm
         cv::Point2f(GLB_MAZE_WIDTH_HEIGHT_CM, 0.0),
         cv::Point2f(0.0, 0.0)};
 
+    // // Apply circular shift based on the given projector
+    // switch (proj_ind)
+    // {
+    // case 0: // Circular shift left by 1
+    //     maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, -1);
+    //     break;
+    // case 1: // No shift
+    //     maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 0);
+    //     break;
+    // case 2: // Circular shift right by 1
+    //     maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 1);
+    //     break;
+    // case 3: // Circular shift right by 2
+    //     maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 2);
+    //     break;
+    // default:
+    //     break;
+    // }
+
     // Apply circular shift based on the given projector
     switch (proj_ind)
     {
     case 0: // Circular shift left by 1
-        maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, -1);
-        break;
-    case 1: // No shift
-        maze_vert_cm_vec = template_maze_vert_cm_vec;
-        break;
-    case 2: // Circular shift right by 1
         maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 1);
         break;
-    case 3: // Circular shift right by 2
+    case 1: // No shift
         maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 2);
+        break;
+    case 2: // Circular shift right by 1
+        maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, -1);
+        break;
+    case 3: // Circular shift right by 2
+        maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 0);
         break;
     default:
         break;
@@ -403,7 +443,7 @@ int drawRatMask(
 void appInitROS(int argc, char **argv, ROSComm &out_RC)
 {
     // Initialize ROS
-    ros::init(argc, argv, "projection_calibration", ros::init_options::AnonymousName);
+    ros::init(argc, argv, "projection_display", ros::init_options::AnonymousName);
     if (!ros::master::check())
         throw std::runtime_error("[appInitROS] Failed initialzie ROS: ROS master is not running");
 
@@ -572,9 +612,20 @@ void appInitOpenGL()
 
 void appMainLoop()
 {
+    glfwInit();
     int status = 0;
+
+    double currentTime = glfwGetTime();
+    double lastTime = currentTime;
+
     while (status == 0)
     {
+
+        // --------------- Calculate Frame Time ---------------
+        double currentTime = glfwGetTime();
+        double deltaTime = currentTime - lastTime;
+        lastTime = currentTime;
+
         // --------------- Check State Flags ---------------
 
         // Update the window monitor and mode
@@ -626,8 +677,11 @@ void appMainLoop()
             if (projCtx.drawTexture() < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawTexture");
 
-            // TEMP Simulate rat movement for testing (set color to red)
-            simulateRatMovement(0.5f, 45.0f, RT);
+            // TEMP Simulate rat movement for testing
+            // simulateRatMovement(0.5f, 45.0f, RT);
+
+            // Place rat tracker marker
+            placeRatTracker(RC.last_harness_pose, RT);
 
             // Draw/update rat mask marker
             if (drawRatMask(RT, RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
@@ -649,7 +703,7 @@ void appMainLoop()
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::checkExitRequest");
         }
 
-        // --------------- Handle ROS Messages and Opperations ---------------
+        // --------------- Handle ROS Messages and Operations ---------------
 
         // Process ROS messages
         if (procCmdROS(RC) < 0)

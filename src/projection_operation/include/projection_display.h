@@ -73,7 +73,9 @@ struct ROSComm
     std::unique_ptr<ros::NodeHandle> node_handle; // Smart pointer to ROS node handler
     std::unique_ptr<ros::Rate> loop_rate;         // Smart pointer to ros::Rate
     ros::Subscriber projection_cmd_sub;           // ROS subscriber
+    ros::Subscriber harness_pose_sub;              // ROS subscriber
     int last_projection_cmd = -1;                 // Variable to store the last command received, initialize with an invalid value
+    geometry_msgs::PoseStamped last_harness_pose; // Variable to store the last harness pose received
     bool is_message_received = false;             // Flag to indicate if a message has been received
 } RC;
 
@@ -187,6 +189,18 @@ void callbackKeyBinding(
 void callbackCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC);
 
 /**
+ * @brief Callback function for the "harness_pose" topic subscription.
+ *
+ * @details
+ * This function is called whenever a new message is received on the "harness_pose_in_maze" topic.
+ * It stores the received data and flags the new message.
+ *
+ * @param msg Const pointer to the received message.
+ * @param out_RC Pointer to the ROSComm struct where the last command and message received flag are updated.
+ */
+void callbackHarnessPoseROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSComm *out_RC);
+
+/**
  * @brief Initializes the ROS subscriber for the "projection_cmd" topic within the given ROSComm structure.
  *
  * @details
@@ -222,6 +236,16 @@ int procCmdROS(ROSComm &out_RC);
 void simulateRatMovement(
     float move_step,
     float max_turn_angle,
+    RatTracker &out_RT);
+
+/**
+ * @brief 
+ * 
+ * @param harness_pose Position and orientation of the rat harness in the maze (in m). 
+ * @param out_RT Rat tracker struct object to be updated.
+ */
+void placeRatTracker(
+    geometry_msgs::PoseStamped harness_pose,
     RatTracker &out_RT);
 
 /**
