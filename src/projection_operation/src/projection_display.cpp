@@ -358,6 +358,9 @@ int updateTexture(
                 if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT)
                 {
                     int img_ind = _PROJ_WALL_IMAGE_CFG_3D[out_projCtx.windowInd][gr_i][gc_i][_CAL_MODE];
+                    // TEMP
+                    if (img_ind == 0)
+                        continue;
                     if (_wallImgMatVec[img_ind].empty())
                     {
                         ROS_ERROR("[updateTexture] Stored OpenCV wall image is empty: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
@@ -610,9 +613,24 @@ void appInitOpenGL()
     ROS_INFO("[appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
 }
 
+void printElapsedTime(double &lastTime, std::string msg)
+{
+    double currentTime = glfwGetTime();
+    double deltaTime = currentTime - lastTime;
+    lastTime = currentTime;
+    ROS_INFO("%s: %f ms", msg.c_str(), deltaTime*1000.0);
+}
+
 void appMainLoop()
 {
-    glfwInit();
+    // #define TIMING 1
+    // #ifdef TIMING
+    //     glfwInit();
+    //     double intervals[10]; 
+    //     std::string names[10];
+    //     int intervalCount = 0;           
+    // #endif
+
     int status = 0;
 
     double currentTime = glfwGetTime();
@@ -621,14 +639,22 @@ void appMainLoop()
     while (status == 0)
     {
 
-        // --------------- Calculate Frame Time ---------------
-        double currentTime = glfwGetTime();
-        double deltaTime = currentTime - lastTime;
-        lastTime = currentTime;
+        // #ifdef TIMING
+        //     currentTime = glfwGetTime();
+        //     double deltaTime = currentTime - lastTime;
+        //     lastTime = currentTime;
+        //     ROS_INFO("Loop time: %f ms", deltaTime*1000.0);
+        //     ROS_INFO("Loop rate: %f Hz", 1.0/deltaTime);
+        // #endif
 
         // --------------- Check State Flags ---------------
 
         // Update the window monitor and mode
+        // #ifdef TIMING
+        //     intervalCount++;
+        //     intervals[intervalCount] = glfwGetTime();
+        // #endif 
+
         if (F.change_window_mode)
         {
             for (auto &projCtx : PROJ_CTX_VEC)
@@ -639,6 +665,13 @@ void appMainLoop()
             }
         }
 
+        // #ifdef TIMING
+        //     intervals[intervalCount] = glfwGetTime() - intervals[intervalCount];
+        //     names[intervalCount] = "Change window mode";
+
+        //     intervals[++intervalCount] = glfwGetTime();
+        // #endif
+
         // Force to windows so thay are on top
         if (F.force_window_focus)
         {
@@ -648,6 +681,13 @@ void appMainLoop()
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::forceWindowFocus");
             }
         }
+
+        // #ifdef TIMING
+        //     intervals[intervalCount] = glfwGetTime() - intervals[intervalCount];
+        //     names[intervalCount] = "Force window focus";
+
+        //     intervals[++intervalCount] = glfwGetTime();
+        // #endif
 
         // Recompute wall parameters and update wall image texture
         if (F.update_textures)
@@ -660,6 +700,12 @@ void appMainLoop()
             }
         }
 
+        // #ifdef TIMING
+        //     intervals[intervalCount] = glfwGetTime() - intervals[intervalCount];
+        //     names[intervalCount] = "Update textures";
+        // #endif
+
+
         // Reset keybinding flags
         F.change_window_mode = false;
         F.update_textures = false;
@@ -667,15 +713,20 @@ void appMainLoop()
 
         // --------------- Handle Image Processing for Next Frame ---------------
 
+        currentTime = glfwGetTime();
         for (auto &projCtx : PROJ_CTX_VEC)
         {
             // Prepare the frame for rendering (clear the back buffer)
             if (projCtx.initWindowForDrawing() < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::initWindowForDrawing");
+            
+            // printElapsedTime(currentTime, "initWindowForDrawing");
 
             // Draw/update wall images
             if (projCtx.drawTexture() < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawTexture");
+            
+            // printElapsedTime(currentTime, "drawTexture");
 
             // TEMP Simulate rat movement for testing
             // simulateRatMovement(0.5f, 45.0f, RT);
@@ -683,24 +734,35 @@ void appMainLoop()
             // Place rat tracker marker
             placeRatTracker(RC.last_harness_pose, RT);
 
+            // printElapsedTime(currentTime, "placeRatTracker");
+
             // Draw/update rat mask marker
             if (drawRatMask(RT, RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawRatMask");
+            
+            // printElapsedTime(currentTime, "drawRatMask");
 
             // Swap buffers and poll events
             if (projCtx.bufferSwapPoll() < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::bufferSwapPoll");
+            
+            // printElapsedTime(currentTime, "bufferSwapPoll");
 
             // Check if ROS shutdown
             if (!ros::ok())
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Unexpected ROS shutdown");
+            
+            // printElapsedTime(currentTime, "ros::ok");
 
             // Check for exit
-            status = projCtx.checkExitRequest();
-            if (status > 0)
-                break;
-            else if (status < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::checkExitRequest");
+            // status = projCtx.checkExitRequest();
+            // if (status > 0)
+            //     break;
+            // else if (status < 0)
+            //     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::checkExitRequest");
+            
+            // printElapsedTime(currentTime, "checkExitRequest");
+
         }
 
         // --------------- Handle ROS Messages and Operations ---------------
@@ -712,6 +774,13 @@ void appMainLoop()
         // Sleep to maintain the loop rate
         RC.loop_rate->sleep();
     }
+
+    // #ifdef TIMING
+    //     for (int i = 0; i < intervalCount; i++)
+    //     {
+    //         ROS_INFO("%s: %f ms", names[i].c_str(), intervals[i]*1000.0);
+    //     }
+    // #endif
 
     // Check which condition caused the loop to exit
     if (status == 1)

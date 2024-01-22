@@ -73,7 +73,7 @@ struct ROSComm
     std::unique_ptr<ros::NodeHandle> node_handle; // Smart pointer to ROS node handler
     std::unique_ptr<ros::Rate> loop_rate;         // Smart pointer to ros::Rate
     ros::Subscriber projection_cmd_sub;           // ROS subscriber
-    ros::Subscriber harness_pose_sub;              // ROS subscriber
+    ros::Subscriber harness_pose_sub;             // ROS subscriber
     int last_projection_cmd = -1;                 // Variable to store the last command received, initialize with an invalid value
     geometry_msgs::PoseStamped last_harness_pose; // Variable to store the last harness pose received
     bool is_message_received = false;             // Flag to indicate if a message has been received
@@ -88,10 +88,10 @@ std::vector<ProjWallImageCfg4D> PROJ_WALL_IMAGE_CFG_4D_VEC;
  * @brief A n_projectors array contianer for storring different floor image configurations
  */
 ProjFloorImageCfg1D PROJ_FLOOR_IMAGE_CFG_1D = {
-    1, // Projector 0: West
-    1, // Projector 1: North
-    1, // Projector 2: East
-    1, // Projector 3: South
+    5, // Projector 0: West
+    0, // Projector 1: North
+    0, // Projector 2: East
+    5, // Projector 3: South
 };
 
 /**
@@ -139,12 +139,12 @@ std::vector<std::string> fiImgPathWallVec = {
  * @brief List of floor image file paths
  */
 std::vector<std::string> fiImgPathFloorVec = {
-    runtime_wall_image_path + "/f_black.png",  // [0] Black
-    runtime_wall_image_path + "/f_gray_0.png", // [1] Gray (20%)
-    runtime_wall_image_path + "/f_gray_1.png", // [2] Gray (40%)
-    runtime_wall_image_path + "/f_gray_2.png", // [3] Gray (60%)
-    runtime_wall_image_path + "/f_gray_3.png", // [4] Gray (80%)
-    runtime_wall_image_path + "/f_white.png",  // [5] White
+    runtime_wall_image_path + "/f_black.png",   // [0] Black
+    runtime_wall_image_path + "/f_gray_0.png",  // [1] Gray (20%)
+    runtime_wall_image_path + "/f_gray_1.png",  // [2] Gray (40%)
+    runtime_wall_image_path + "/f_gray_2.png",  // [3] Gray (60%)
+    runtime_wall_image_path + "/f_gray_3.png",  // [4] Gray (80%)
+    runtime_wall_image_path + "/f_pattern.png",   // [5] White
 };
 
 // Vectors to store the loaded images in cv::Mat format
@@ -239,9 +239,9 @@ void simulateRatMovement(
     RatTracker &out_RT);
 
 /**
- * @brief 
- * 
- * @param harness_pose Position and orientation of the rat harness in the maze (in m). 
+ * @brief
+ *
+ * @param harness_pose Position and orientation of the rat harness in the maze (in m).
  * @param out_RT Rat tracker struct object to be updated.
  */
 void placeRatTracker(

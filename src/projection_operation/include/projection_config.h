@@ -108,6 +108,7 @@ using ProjWallImageCfg4D = std::array<std::array<std::array<std::array<int, 3>, 
  * [3] Gray (60%)
  * [4] Gray (80%)
  * [5] White
+ * [6] Pattern
  * 
  * Element mapping:
  * {
