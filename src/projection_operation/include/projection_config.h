@@ -24,11 +24,17 @@
 
 // ================================================== VARIABLES ==================================================
 
-// Global variable for verbose logging.
+/**
+ * @brief Global variable for verbose logging.
+ */
 const bool GLB_DO_VERBOSE_DEBUG = false;
 
-// Global variable to set the OpenGL debug level.
-const int GLB_DEBUG_LEVEL_GL = 2; // [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
+/**
+ * @brief Global variable to set the OpenGL debug level.
+ * 
+ * @details  [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
+ */
+const int GLB_DEBUG_LEVEL_GL = 2;
 
 /**
  * @brief 4D array of hardcoded image indices to display.

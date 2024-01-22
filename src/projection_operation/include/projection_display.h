@@ -35,11 +35,17 @@ static struct FlagStateStruct
 static struct IndStruct
 {
     const int starting_monitor = 0; // Default starting monitor index for the windows (hardcoded)
+    // const std::vector<int> proj_mon_vec = {
+    //     2, // Projector 0
+    //     1, // Projector 1
+    //     4, // Projector 2
+    //     3, // Projector 3
+    // };     // Vector of indeces of the monitor associeted to each projector (hardcoded)
     const std::vector<int> proj_mon_vec = {
-        2,                  // Projector 0
-        1,                  // Projector 1
-        4,                  // Projector 2
-        3,                  // Projector 3
+        0,                  // Projector 0
+        0,                  // Projector 1
+        0,                  // Projector 2
+        0,                  // Projector 3
     };                      // Vector of indeces of the monitor associeted to each projector (hardcoded)
     int wall_image_cfg = 0; // Index of the curren wall image configuration
 } I;
@@ -88,10 +94,10 @@ std::vector<ProjWallImageCfg4D> PROJ_WALL_IMAGE_CFG_4D_VEC;
  * @brief A n_projectors array contianer for storring different floor image configurations
  */
 ProjFloorImageCfg1D PROJ_FLOOR_IMAGE_CFG_1D = {
-    5, // Projector 0: West
+    0, // Projector 0: West
     0, // Projector 1: North
     0, // Projector 2: East
-    5, // Projector 3: South
+    0, // Projector 3: South
 };
 
 /**
@@ -144,7 +150,8 @@ std::vector<std::string> fiImgPathFloorVec = {
     runtime_wall_image_path + "/f_gray_1.png",  // [2] Gray (40%)
     runtime_wall_image_path + "/f_gray_2.png",  // [3] Gray (60%)
     runtime_wall_image_path + "/f_gray_3.png",  // [4] Gray (80%)
-    runtime_wall_image_path + "/f_pattern.png",   // [5] White
+    runtime_wall_image_path + "/f_white.png",   // [5] White
+    runtime_wall_image_path + "/f_pattern.png", // [6] Pattern
 };
 
 // Vectors to store the loaded images in cv::Mat format
@@ -281,24 +288,26 @@ void addImageConfiguration(const std::string &direction,
 void populateMazeVertNdcVec(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec);
 
 /**
- * @brief Applies the homography matrices to warp wall image textures and combine them.
+ * @brief Applies the homography matrices to warp wall image textures and combine them into a new image.
  *
+ * @param proj_ind Index of the projector associated with the given image.
  * @param _wallImgMatVec Vectors containing the loaded wall images in cv::Mat format
  * @param _floorImgMatVec Vectors containing the loaded floor images in cv::Mat format
  * @param _PROJ_WALL_IMAGE_CFG_3D 3D array of image indices for each projector, wall, and calibration mode.
  * @param _PROJ_FLOOR_IMAGE_CFG_1D 1D array of floor image indices for each projector.
  * @param _HMAT_ARR Big ass ugly array of arrays of matrices of shit!
- * @param[out] out_projCtx MazeRenderContext OpenGL context handler.
+ * @param[out] out_img_mat Reference to store the new cv::Mat image.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int updateTexture(
+    int proj_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
     const std::vector<cv::Mat> &_floorImgMatVec,
     const ProjWallImageCfg4D &_PROJ_WALL_IMAGE_CFG_3D,
     const ProjFloorImageCfg1D &_PROJ_FLOOR_IMAGE_CFG_1D,
     const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES>, 4> &_HMAT_ARR,
-    MazeRenderContext &out_projCtx);
+    cv::Mat &out_img_mat);
 
 /**
  * @brief Draws control points associated with each corner wall.
