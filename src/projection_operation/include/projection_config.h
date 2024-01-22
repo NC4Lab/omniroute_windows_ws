@@ -27,7 +27,7 @@
 /**
  * @brief Global variable for verbose logging.
  */
-const bool GLB_DO_VERBOSE_DEBUG = false;
+const bool GLB_DO_VERBOSE_DEBUG = true;
 
 /**
  * @brief Global variable to set the OpenGL debug level.

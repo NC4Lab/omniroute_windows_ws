@@ -94,10 +94,10 @@ std::vector<ProjWallImageCfg4D> PROJ_WALL_IMAGE_CFG_4D_VEC;
  * @brief A n_projectors array contianer for storring different floor image configurations
  */
 ProjFloorImageCfg1D PROJ_FLOOR_IMAGE_CFG_1D = {
-    0, // Projector 0: West
-    0, // Projector 1: North
-    0, // Projector 2: East
-    0, // Projector 3: South
+    3, // Projector 0: West
+    3, // Projector 1: North
+    3, // Projector 2: East
+    3, // Projector 3: South
 };
 
 /**
@@ -246,6 +246,9 @@ void simulateRatMovement(
     RatTracker &out_RT);
 
 /**
+ * @brief
+ *
+ * @param harness_pose Position and orientation of the rat harness in the maze (in m).
  * @brief
  *
  * @param harness_pose Position and orientation of the rat harness in the maze (in m).

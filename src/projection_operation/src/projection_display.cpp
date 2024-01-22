@@ -299,9 +299,6 @@ void addImageConfiguration(const std::string &direction, int left_shape_ind, int
         // if (GLB_DO_VERBOSE_DEBUG)
         ROS_INFO("[addImageConfiguration] Added image configuration for direction %s: Projectors Primary[%d] Left:%d Right:%d]",
                  direction.c_str(), proj_primary_ind, proj_left_wall_ind, proj_right_wall_ind);
-
-        if (GLB_DO_VERBOSE_DEBUG)
-            dbLogProjWallImageCfg4D(new_array);
     }
 
     // Add the new configuration to the vector
@@ -328,25 +325,6 @@ void populateMazeVertNdcVec(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm
         cv::Point2f(GLB_MAZE_WIDTH_HEIGHT_CM, GLB_MAZE_WIDTH_HEIGHT_CM),
         cv::Point2f(GLB_MAZE_WIDTH_HEIGHT_CM, 0.0),
         cv::Point2f(0.0, 0.0)};
-
-    // // Apply circular shift based on the given projector
-    // switch (proj_ind)
-    // {
-    // case 0: // Circular shift left by 1
-    //     maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, -1);
-    //     break;
-    // case 1: // No shift
-    //     maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 0);
-    //     break;
-    // case 2: // Circular shift right by 1
-    //     maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 1);
-    //     break;
-    // case 3: // Circular shift right by 2
-    //     maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 2);
-    //     break;
-    // default:
-    //     break;
-    // }
 
     // Apply circular shift based on the given projector
     switch (proj_ind)
@@ -391,11 +369,11 @@ int updateTexture(
             // Iterate through each column in the maze row
             for (int gc_i = 0; gc_i < grid_size; gc_i++) // image left to right
             {
-                // Get the wall image to be used
-                cv::Mat img_copy;
+                // Get the index of the wall image to be used
+                int img_ind;
                 if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT)
                 {
-                    int img_ind = _PROJ_WALL_IMAGE_CFG_3D[proj_ind][gr_i][gc_i][_CAL_MODE];
+                    img_ind = _PROJ_WALL_IMAGE_CFG_3D[proj_ind][gr_i][gc_i][_CAL_MODE];
 
                     if (_wallImgMatVec[img_ind].empty())
                     {
@@ -403,24 +381,31 @@ int updateTexture(
                                   proj_ind, gr_i, gc_i, _CAL_MODE, img_ind);
                         return -1;
                     }
-                    else
-                    {
-                        _wallImgMatVec[img_ind].copyTo(img_copy);
-                    }
                 }
                 else
                 {
-                    int img_ind = _PROJ_FLOOR_IMAGE_CFG_1D[proj_ind];
+                    img_ind = _PROJ_FLOOR_IMAGE_CFG_1D[proj_ind];
                     if (_floorImgMatVec[img_ind].empty())
                     {
                         ROS_ERROR("[updateTexture] Stored OpenCV floor image is empty: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
                                   proj_ind, gr_i, gc_i, _CAL_MODE, img_ind);
                         return -1;
                     }
-                    else
-                    {
-                        _floorImgMatVec[img_ind].copyTo(img_copy);
-                    }
+                }
+
+                // Skip empty images
+                if (img_ind == 0)
+                    continue;
+
+                // Copy the wall image to be used
+                cv::Mat img_copy;
+                if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT)
+                {
+                    _wallImgMatVec[img_ind].copyTo(img_copy);
+                }
+                else
+                {
+                    _floorImgMatVec[img_ind].copyTo(img_copy);
                 }
 
                 // Get homography matrix for this wall
@@ -657,8 +642,6 @@ void appMainLoop()
     while (status == 0)
     {
 
-        dbTraceCalls(true, __LINE__, __FILE__);
-
         // --------------- Check State Flags ---------------
 
         if (F.change_window_mode)
@@ -671,8 +654,6 @@ void appMainLoop()
             }
         }
 
-        dbTraceCalls(true, __LINE__, __FILE__);
-
         // Force to windows so thay are on top
         if (F.force_window_focus)
         {
@@ -683,7 +664,8 @@ void appMainLoop()
             }
         }
 
-        dbTraceCalls(true, __LINE__, __FILE__);
+        // TEMP Simulate rat movement for testing
+        // simulateRatMovement(0.5f, 45.0f, RT);
 
         // Recompute wall parameters and update wall image texture
         if (F.update_textures)
@@ -692,82 +674,63 @@ void appMainLoop()
             {
                 cv::Mat img_mat = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
 
-                // // Initialize wall image texture
-                // if (updateTexture(projCtx.windowInd, wallImgMatVec, floorImgMatVec, PROJ_WALL_IMAGE_CFG_4D_VEC[I.wall_image_cfg], PROJ_FLOOR_IMAGE_CFG_1D, HMAT_ARR, img_mat))
-                //     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to initialize wall texture");
+                // Initialize wall image texture
+                if (updateTexture(projCtx.windowInd, wallImgMatVec, floorImgMatVec, PROJ_WALL_IMAGE_CFG_4D_VEC[I.wall_image_cfg], PROJ_FLOOR_IMAGE_CFG_1D, HMAT_ARR, img_mat))
+                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
 
-                // // Load the new texture
-                // if (projCtx.loadMatTexture(img_mat) < 0)
-                //     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to load wall texture");
+                // Load the new texture
+                if (projCtx.loadMatTexture(img_mat) < 0)
+                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to load wall texture");
             }
-
-            // TEMP Simulate rat movement for testing
-            // simulateRatMovement(0.5f, 45.0f, RT);
-
-            dbTraceCalls(true, __LINE__, __FILE__);
-
-            // Reset keybinding flags
-            F.change_window_mode = false;
-            F.update_textures = false;
-            F.force_window_focus = false;
-
-            // --------------- Handle Image Processing for Next Frame ---------------
-            for (auto &projCtx : PROJ_CTX_VEC)
-            {
-                // Prepare the frame for rendering (clear the back buffer)
-                if (projCtx.initWindowForDrawing() < 0)
-                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::initWindowForDrawing");
-
-                dbTraceCalls(true, __LINE__, __FILE__);
-
-                // Draw/update wall images
-                if (projCtx.drawTexture() < 0)
-                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawTexture");
-
-                dbTraceCalls(true, __LINE__, __FILE__);
-
-                // Place rat tracker marker
-                placeRatTracker(RC.last_harness_pose, RT);
-
-                dbTraceCalls(true, __LINE__, __FILE__);
-
-                // Draw/update rat mask marker
-                if (drawRatMask(RT, RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
-                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawRatMask");
-
-                dbTraceCalls(true, __LINE__, __FILE__);
-
-                // Swap buffers and poll events
-                if (projCtx.bufferSwapPoll() < 0)
-                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::bufferSwapPoll");
-
-                dbTraceCalls(true, __LINE__, __FILE__);
-
-                // Check if ROS shutdown
-                if (!ros::ok())
-                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Unexpected ROS shutdown");
-
-                dbTraceCalls(true, __LINE__, __FILE__);
-
-                // Check for exit
-                status = projCtx.checkExitRequest();
-                if (status > 0)
-                    break;
-                else if (status < 0)
-                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::checkExitRequest");
-
-                dbTraceCalls(true, __LINE__, __FILE__);
-            }
-
-            // --------------- Handle ROS Messages and Operations ---------------
-
-            // Process ROS messages
-            if (procCmdROS(RC) < 0)
-                throw std::runtime_error("[appMainLoop] Error returned from: procCmdROS");
-
-            // Sleep to maintain the loop rate
-            RC.loop_rate->sleep();
         }
+
+        // Reset keybinding flags
+        F.change_window_mode = false;
+        F.update_textures = false;
+        F.force_window_focus = false;
+
+        // --------------- Handle Image Processing for Next Frame ---------------
+        for (auto &projCtx : PROJ_CTX_VEC)
+        {
+            // Prepare the frame for rendering (clear the back buffer)
+            if (projCtx.initWindowForDrawing() < 0)
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::initWindowForDrawing");
+
+            // Draw/update wall images
+            if (projCtx.drawTexture() < 0)
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawTexture");
+
+            // Place rat tracker marker
+            placeRatTracker(RC.last_harness_pose, RT);
+
+            // Draw/update rat mask marker
+            if (drawRatMask(RT, RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawRatMask");
+
+            // Swap buffers and poll events
+            if (projCtx.bufferSwapPoll() < 0)
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::bufferSwapPoll");
+
+            // Check if ROS shutdown
+            if (!ros::ok())
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Unexpected ROS shutdown");
+
+            // Check for exit
+            status = projCtx.checkExitRequest();
+            if (status > 0)
+                break;
+            else if (status < 0)
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::checkExitRequest");
+        }
+
+        // --------------- Handle ROS Messages and Operations ---------------
+
+        // Process ROS messages
+        if (procCmdROS(RC) < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from: procCmdROS");
+
+        // Sleep to maintain the loop rate
+        RC.loop_rate->sleep();
     }
 
     // Check which condition caused the loop to exit
