@@ -527,8 +527,8 @@ void appInitROS(int argc, char **argv, ROSComm &out_RC)
     // Initialize NodeHandle inside RC
     RC.node_handle = std::make_unique<ros::NodeHandle>();
 
-    // Initialize the ros::Rate object with a specific rate, e.g., 100 Hz
-    out_RC.loop_rate = std::make_unique<ros::Rate>(100); // 100 Hz
+    // Initialize the ros::Rate object with a specific rate
+    out_RC.loop_rate = std::make_unique<ros::Rate>(GLB_ROS_LOOP_RATE);
 
     // Initialize the subscriber
     if (initSubscriberROS(out_RC) < 0)
@@ -627,7 +627,7 @@ void appInitVariables()
     configWallImages(shape2_ind, 4, 5, proj_mat_east_1);             // Set the right wall image for the center chamber
     configWallImages(shape2_ind, 7, walls_ind_all, proj_mat_east_1); // Set all wall image for the right chamber
     configWallImages(shape_blank_ind, 7, 2, proj_mat_east_1);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_east_1);       // Add to the vector
+    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_east_1);           // Add to the vector
 
     // East facing choice point condition 2;
     ProjWallImageCfg4D proj_mat_east_2 = {};
@@ -637,7 +637,7 @@ void appInitVariables()
     configWallImages(shape1_ind, 4, 5, proj_mat_east_2);             // Set the right wall image for the center chamber
     configWallImages(shape1_ind, 7, walls_ind_all, proj_mat_east_2); // Set all wall image for the right chamber
     configWallImages(shape_blank_ind, 7, 2, proj_mat_east_2);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_east_2);       // Add to the vector
+    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_east_2);           // Add to the vector
 
     // South facing choice point condition 1;
     ProjWallImageCfg4D proj_mat_south_1 = {};
@@ -647,7 +647,7 @@ void appInitVariables()
     configWallImages(shape2_ind, 4, 7, proj_mat_south_1);             // Set the right wall image for the center chamber
     configWallImages(shape2_ind, 3, walls_ind_all, proj_mat_south_1); // Set all wall image for the right chamber
     configWallImages(shape_blank_ind, 3, 4, proj_mat_south_1);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_south_1);       // Add to the vector
+    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_south_1);           // Add to the vector
 
     // South facing choice point condition 2;
     ProjWallImageCfg4D proj_mat_south_2 = {};
@@ -657,7 +657,7 @@ void appInitVariables()
     configWallImages(shape1_ind, 4, 7, proj_mat_south_2);             // Set the right wall image for the center chamber
     configWallImages(shape1_ind, 3, walls_ind_all, proj_mat_south_2); // Set all wall image for the right chamber
     configWallImages(shape_blank_ind, 3, 4, proj_mat_south_2);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_south_2);       // Add to the vector
+    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_south_2);           // Add to the vector
 
     // West facing choice point condition 1;
     ProjWallImageCfg4D proj_mat_west_1 = {};
@@ -667,7 +667,7 @@ void appInitVariables()
     configWallImages(shape2_ind, 4, 1, proj_mat_west_1);             // Set the right wall image for the center chamber
     configWallImages(shape2_ind, 1, walls_ind_all, proj_mat_west_1); // Set all wall image for the right chamber
     configWallImages(shape_blank_ind, 1, 6, proj_mat_west_1);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_west_1);       // Add to the vector
+    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_west_1);           // Add to the vector
 
     // West facing choice point condition 2;
     ProjWallImageCfg4D proj_mat_west_2 = {};
@@ -677,7 +677,7 @@ void appInitVariables()
     configWallImages(shape1_ind, 4, 1, proj_mat_west_2);             // Set the right wall image for the center chamber
     configWallImages(shape1_ind, 1, walls_ind_all, proj_mat_west_2); // Set all wall image for the right chamber
     configWallImages(shape_blank_ind, 1, 6, proj_mat_west_2);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_west_2);       // Add to the vector
+    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_west_2);           // Add to the vector
 
     // North facing choice point condition 1;
     ProjWallImageCfg4D proj_mat_north_1 = {};
@@ -687,7 +687,7 @@ void appInitVariables()
     configWallImages(shape2_ind, 4, 3, proj_mat_north_1);             // Set the right wall image for the center chamber
     configWallImages(shape2_ind, 5, walls_ind_all, proj_mat_north_1); // Set all wall image for the right chamber
     configWallImages(shape_blank_ind, 5, 0, proj_mat_north_1);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_north_1);       // Add to the vector
+    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_north_1);           // Add to the vector
 
     // North facing choice point condition 2;
     ProjWallImageCfg4D proj_mat_north_2 = {};
@@ -697,10 +697,7 @@ void appInitVariables()
     configWallImages(shape1_ind, 4, 3, proj_mat_north_2);             // Set the right wall image for the center chamber
     configWallImages(shape1_ind, 5, walls_ind_all, proj_mat_north_2); // Set all wall image for the right chamber
     configWallImages(shape_blank_ind, 5, 0, proj_mat_north_2);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_north_2);       // Add to the vector
-
-    // TEMP
-    // dbLogProjWallImageCfg4D(proj_mat_south_1);
+    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_north_2);           // Add to the vector
 
     ROS_INFO("[appInitVariables] Finished initializing variables successfully");
 }
@@ -823,6 +820,7 @@ void appMainLoop()
         // --------------- Handle Image Processing for Next Frame ---------------
         for (auto &projCtx : PROJ_CTX_VEC)
         {
+
             // Prepare the frame for rendering (clear the back buffer)
             if (projCtx.initWindowForDrawing() < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::initWindowForDrawing");
@@ -846,13 +844,15 @@ void appMainLoop()
             if (!ros::ok())
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Unexpected ROS shutdown");
 
-            // Check for exit
-            status = projCtx.checkExitRequest();
-            if (status > 0)
-                break;
-            else if (status < 0)
+            // Get exit request status
+            status = status == 0 ? projCtx.checkExitRequest() : status;
+            if (status < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::checkExitRequest");
         }
+
+        // Check for exit
+        if (status > 0)
+            break;
 
         // --------------- Handle ROS Messages and Operations ---------------
 

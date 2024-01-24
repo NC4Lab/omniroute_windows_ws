@@ -1223,10 +1223,10 @@ void CircleRenderer::_convertToNDC(std::vector<float> &out_circVertices)
 
 // ================================================== FUNCTIONS ==================================================
 
-void dbTraceCalls(bool do_reset, int line, const char *file_path)
+int64_t dbTraceCalls(bool do_reset, int line, const char *file_path)
 {
     if (!GLB_DO_VERBOSE_DEBUG)
-        return;
+        return 0;
 
     static ros::Time start_time = ros::Time::now();
     static int cnt_calls = 0;
@@ -1273,22 +1273,46 @@ void dbTraceCalls(bool do_reset, int line, const char *file_path)
         file_name_start = extractFileName(file_path);
         start_time = ros::Time::now();
     }
+
+    // Return elapsed time in ms
+    return static_cast<int64_t>(elapsed_time.toNSec() / 1e6);
 }
 
+/**
+ * @brief Manages timed delays within a loop.
+ *
+ * @param dt_wait Latency in milliseconds for the delay; used only on the initial call.
+ *
+ * @details
+ * Maintains a static timestamp to enforce a delay relative to `ros::Time::now()`.
+ * Returns false if the delay has not elapsed, true otherwise, resetting the timer.
+ *
+ * @return True if the delay has elapsed, otherwise false.
+ *
+ * @example 
+ * dbDelayRun(500); // Delay for 500 ms
+ * while (!dbDelayRun()){}; // Loop till delay has elapsed
+ */
 bool dbDelayRun(int dt_wait)
 {
     if (!GLB_DO_VERBOSE_DEBUG)
         return false;
 
-    // Initialize with 0 to return true on the first call
+    // Initialize static variable
     static ros::Time ts_wait = ros::Time(0);
+
+    // Get the current time
     ros::Time now = ros::Time::now();
 
-    // Check if ts_wait is set to zero or the current time is past ts_wait
-    if (ts_wait == ros::Time(0) || now > ts_wait)
+    // Set the next wait timestamp
+    if (dt_wait > 0)
     {
-        // Set the next wait timestamp
         ts_wait = now + ros::Duration(0, dt_wait * 1000000); // Convert ms to ns
+    }
+
+    // Check if ts_wait is set to zero or the current time is past ts_wait
+    if (now > ts_wait)
+    {
         return true;
     }
 

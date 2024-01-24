@@ -906,10 +906,12 @@ enum CalibrationMode
  * @param do_reset If true, resets the start time. If false, prints the elapsed time.
  * @param line Line number where the function is called.
  * @param file_path File path where the function is called.
+ * 
+ * @return Elapsed time in milliseconds.
  *
  * @example dbTraceCalls(true, __LINE__, __FILE__);
  */
-void dbTraceCalls(
+int64_t dbTraceCalls(
     bool do_reset = false,
     int line = 0,
     const char *file_path = nullptr);
@@ -924,8 +926,11 @@ void dbTraceCalls(
  * Returns false if the delay has not elapsed, true otherwise, resetting the timer.
  *
  * @return True if the delay has elapsed, otherwise false.
+ * 
+ * @example dbDelayRun(500); // Delay for 500 ms
+ * @example dbDelayRun(); // Check if delay has elapsed
  */
-bool dbDelayRun(int dt_wait);
+bool dbDelayRun(int dt_wait = 0);
 
 /**
  * @brief Pauses program and waits for any keypress.
