@@ -44,8 +44,48 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         }
 
         // ---------- Change wall configuration [0-8] ----------
-        if (RC.last_projection_cmd < PROJ_WALL_IMAGE_CFG_4D_VEC.size())
+        int proj_cmd = RC.last_projection_cmd;
+        if (key == GLFW_KEY_0)
         {
+            proj_cmd = 0;
+        }
+        else if (key == GLFW_KEY_1 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 1)
+        {
+            proj_cmd = 1;
+        }
+        else if (key == GLFW_KEY_2 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 2)
+        {
+            proj_cmd = 2;
+        }
+        else if (key == GLFW_KEY_3 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 3)
+        {
+            proj_cmd = 3;
+        }
+        else if (key == GLFW_KEY_4 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 4)
+        {
+            proj_cmd = 4;
+        }
+        else if (key == GLFW_KEY_5 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 5)
+        {
+            proj_cmd = 5;
+        }
+        else if (key == GLFW_KEY_6 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 6)
+        {
+            proj_cmd = 6;
+        }
+        else if (key == GLFW_KEY_7 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 7)
+        {
+            proj_cmd = 7;
+        }
+        else if (key == GLFW_KEY_8 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 8)
+        {
+            proj_cmd = 8;
+        }
+        // Check for configuration change
+        if (proj_cmd != RC.last_projection_cmd)
+        {
+            ROS_INFO("[callbackKeyBinding] Initiated change image configuration from %d to %d", RC.last_projection_cmd, proj_cmd);
+            RC.last_projection_cmd = proj_cmd;
             // Update the image configuration index
             I.wall_image_cfg = RC.last_projection_cmd;
             // Set the flag to update the textures
@@ -259,9 +299,6 @@ void addImageConfiguration(const std::string &direction, int left_shape_ind, int
         // if (GLB_DO_VERBOSE_DEBUG)
         ROS_INFO("[addImageConfiguration] Added image configuration for direction %s: Projectors Primary[%d] Left:%d Right:%d]",
                  direction.c_str(), proj_primary_ind, proj_left_wall_ind, proj_right_wall_ind);
-
-        if (GLB_DO_VERBOSE_DEBUG)
-            dbLogProjWallImageCfg4D(new_array);
     }
 
     // Add the new configuration to the vector
@@ -289,25 +326,6 @@ void populateMazeVertNdcVec(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm
         cv::Point2f(GLB_MAZE_WIDTH_HEIGHT_CM, 0.0),
         cv::Point2f(0.0, 0.0)};
 
-    // // Apply circular shift based on the given projector
-    // switch (proj_ind)
-    // {
-    // case 0: // Circular shift left by 1
-    //     maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, -1);
-    //     break;
-    // case 1: // No shift
-    //     maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 0);
-    //     break;
-    // case 2: // Circular shift right by 1
-    //     maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 1);
-    //     break;
-    // case 3: // Circular shift right by 2
-    //     maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 2);
-    //     break;
-    // default:
-    //     break;
-    // }
-
     // Apply circular shift based on the given projector
     switch (proj_ind)
     {
@@ -329,16 +347,14 @@ void populateMazeVertNdcVec(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm
 }
 
 int updateTexture(
+    int proj_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
     const std::vector<cv::Mat> &_floorImgMatVec,
     const ProjWallImageCfg4D &_PROJ_WALL_IMAGE_CFG_3D,
     const ProjFloorImageCfg1D &_PROJ_FLOOR_IMAGE_CFG_1D,
     const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES>, 4> &_HMAT_ARR,
-    MazeRenderContext &out_projCtx)
+    cv::Mat &out_img_mat)
 {
-    // Initialize the image to be used as the texture
-    cv::Mat img_merge = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
-
     // Iterate through through calibration modes in descending order so floor is drawn first
     for (int cal_i = N_CAL_MODES - 1; cal_i >= 0; --cal_i)
     {
@@ -353,64 +369,62 @@ int updateTexture(
             // Iterate through each column in the maze row
             for (int gc_i = 0; gc_i < grid_size; gc_i++) // image left to right
             {
-                // Get the wall image to be used
-                cv::Mat img_copy;
+                // Get the index of the wall image to be used
+                int img_ind;
                 if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT)
                 {
-                    int img_ind = _PROJ_WALL_IMAGE_CFG_3D[out_projCtx.windowInd][gr_i][gc_i][_CAL_MODE];
-                    // TEMP
-                    if (img_ind == 0)
-                        continue;
+                    img_ind = _PROJ_WALL_IMAGE_CFG_3D[proj_ind][gr_i][gc_i][_CAL_MODE];
+
                     if (_wallImgMatVec[img_ind].empty())
                     {
                         ROS_ERROR("[updateTexture] Stored OpenCV wall image is empty: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
-                                  out_projCtx.windowInd, gr_i, gc_i, _CAL_MODE, img_ind);
+                                  proj_ind, gr_i, gc_i, _CAL_MODE, img_ind);
                         return -1;
-                    }
-                    else
-                    {
-                        _wallImgMatVec[img_ind].copyTo(img_copy);
                     }
                 }
                 else
                 {
-                    int img_ind = _PROJ_FLOOR_IMAGE_CFG_1D[out_projCtx.windowInd];
+                    img_ind = _PROJ_FLOOR_IMAGE_CFG_1D[proj_ind];
                     if (_floorImgMatVec[img_ind].empty())
                     {
                         ROS_ERROR("[updateTexture] Stored OpenCV floor image is empty: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
-                                  out_projCtx.windowInd, gr_i, gc_i, _CAL_MODE, img_ind);
+                                  proj_ind, gr_i, gc_i, _CAL_MODE, img_ind);
                         return -1;
-                    }
-                    else
-                    {
-                        _floorImgMatVec[img_ind].copyTo(img_copy);
                     }
                 }
 
+                // Skip empty images
+                if (img_ind == 0)
+                    continue;
+
+                // Copy the wall image to be used
+                cv::Mat img_copy;
+                if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT)
+                {
+                    _wallImgMatVec[img_ind].copyTo(img_copy);
+                }
+                else
+                {
+                    _floorImgMatVec[img_ind].copyTo(img_copy);
+                }
+
                 // Get homography matrix for this wall
-                cv::Mat H = _HMAT_ARR[out_projCtx.windowInd][_CAL_MODE][gr_i][gc_i];
+                cv::Mat H = _HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i];
 
                 // Warp Perspective
                 cv::Mat img_warp;
                 if (warpImgMat(img_copy, H, img_warp) < 0)
                 {
                     ROS_ERROR("[updateTexture] Warp image error: Projector[%d] Wall[%d][%d] Calibration[%d]",
-                              out_projCtx.windowInd, gr_i, gc_i, _CAL_MODE);
+                              proj_ind, gr_i, gc_i, _CAL_MODE);
                     return -1;
                 }
 
                 // Merge the warped image with the final image
-                if (mergeImgMat(img_warp, img_merge) < 0)
+                if (mergeImgMat(img_warp, out_img_mat) < 0)
                     return -1;
             }
         }
-    }
-
-    // Load the new texture and return status
-    if (out_projCtx.loadMatTexture(img_merge) < 0)
-    {
-        ROS_ERROR("[updateTexture] Failed to load texture");
-        return -1;
     }
 
     return 0;
@@ -618,42 +632,17 @@ void printElapsedTime(double &lastTime, std::string msg)
     double currentTime = glfwGetTime();
     double deltaTime = currentTime - lastTime;
     lastTime = currentTime;
-    ROS_INFO("%s: %f ms", msg.c_str(), deltaTime*1000.0);
+    ROS_INFO("%s: %f ms", msg.c_str(), deltaTime * 1000.0);
 }
 
 void appMainLoop()
 {
-    // #define TIMING 1
-    // #ifdef TIMING
-    //     glfwInit();
-    //     double intervals[10]; 
-    //     std::string names[10];
-    //     int intervalCount = 0;           
-    // #endif
-
     int status = 0;
-
-    double currentTime = glfwGetTime();
-    double lastTime = currentTime;
 
     while (status == 0)
     {
 
-        // #ifdef TIMING
-        //     currentTime = glfwGetTime();
-        //     double deltaTime = currentTime - lastTime;
-        //     lastTime = currentTime;
-        //     ROS_INFO("Loop time: %f ms", deltaTime*1000.0);
-        //     ROS_INFO("Loop rate: %f Hz", 1.0/deltaTime);
-        // #endif
-
         // --------------- Check State Flags ---------------
-
-        // Update the window monitor and mode
-        // #ifdef TIMING
-        //     intervalCount++;
-        //     intervals[intervalCount] = glfwGetTime();
-        // #endif 
 
         if (F.change_window_mode)
         {
@@ -665,13 +654,6 @@ void appMainLoop()
             }
         }
 
-        // #ifdef TIMING
-        //     intervals[intervalCount] = glfwGetTime() - intervals[intervalCount];
-        //     names[intervalCount] = "Change window mode";
-
-        //     intervals[++intervalCount] = glfwGetTime();
-        // #endif
-
         // Force to windows so thay are on top
         if (F.force_window_focus)
         {
@@ -682,29 +664,25 @@ void appMainLoop()
             }
         }
 
-        // #ifdef TIMING
-        //     intervals[intervalCount] = glfwGetTime() - intervals[intervalCount];
-        //     names[intervalCount] = "Force window focus";
-
-        //     intervals[++intervalCount] = glfwGetTime();
-        // #endif
+        // TEMP Simulate rat movement for testing
+        // simulateRatMovement(0.5f, 45.0f, RT);
 
         // Recompute wall parameters and update wall image texture
         if (F.update_textures)
         {
             for (auto &projCtx : PROJ_CTX_VEC)
             {
+                cv::Mat img_mat = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
+
                 // Initialize wall image texture
-                if (updateTexture(wallImgMatVec, floorImgMatVec, PROJ_WALL_IMAGE_CFG_4D_VEC[I.wall_image_cfg], PROJ_FLOOR_IMAGE_CFG_1D, HMAT_ARR, projCtx))
-                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to initialize wall texture");
+                if (updateTexture(projCtx.windowInd, wallImgMatVec, floorImgMatVec, PROJ_WALL_IMAGE_CFG_4D_VEC[I.wall_image_cfg], PROJ_FLOOR_IMAGE_CFG_1D, HMAT_ARR, img_mat))
+                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
+
+                // Load the new texture
+                if (projCtx.loadMatTexture(img_mat) < 0)
+                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to load wall texture");
             }
         }
-
-        // #ifdef TIMING
-        //     intervals[intervalCount] = glfwGetTime() - intervals[intervalCount];
-        //     names[intervalCount] = "Update textures";
-        // #endif
-
 
         // Reset keybinding flags
         F.change_window_mode = false;
@@ -712,57 +690,37 @@ void appMainLoop()
         F.force_window_focus = false;
 
         // --------------- Handle Image Processing for Next Frame ---------------
-
-        currentTime = glfwGetTime();
         for (auto &projCtx : PROJ_CTX_VEC)
         {
             // Prepare the frame for rendering (clear the back buffer)
             if (projCtx.initWindowForDrawing() < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::initWindowForDrawing");
-            
-            // printElapsedTime(currentTime, "initWindowForDrawing");
 
             // Draw/update wall images
             if (projCtx.drawTexture() < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawTexture");
-            
-            // printElapsedTime(currentTime, "drawTexture");
-
-            // TEMP Simulate rat movement for testing
-            // simulateRatMovement(0.5f, 45.0f, RT);
 
             // Place rat tracker marker
             placeRatTracker(RC.last_harness_pose, RT);
 
-            // printElapsedTime(currentTime, "placeRatTracker");
-
             // Draw/update rat mask marker
             if (drawRatMask(RT, RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawRatMask");
-            
-            // printElapsedTime(currentTime, "drawRatMask");
 
             // Swap buffers and poll events
             if (projCtx.bufferSwapPoll() < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::bufferSwapPoll");
-            
-            // printElapsedTime(currentTime, "bufferSwapPoll");
 
             // Check if ROS shutdown
             if (!ros::ok())
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Unexpected ROS shutdown");
-            
-            // printElapsedTime(currentTime, "ros::ok");
 
             // Check for exit
-            // status = projCtx.checkExitRequest();
-            // if (status > 0)
-            //     break;
-            // else if (status < 0)
-            //     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::checkExitRequest");
-            
-            // printElapsedTime(currentTime, "checkExitRequest");
-
+            status = projCtx.checkExitRequest();
+            if (status > 0)
+                break;
+            else if (status < 0)
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::checkExitRequest");
         }
 
         // --------------- Handle ROS Messages and Operations ---------------
@@ -774,13 +732,6 @@ void appMainLoop()
         // Sleep to maintain the loop rate
         RC.loop_rate->sleep();
     }
-
-    // #ifdef TIMING
-    //     for (int i = 0; i < intervalCount; i++)
-    //     {
-    //         ROS_INFO("%s: %f ms", names[i].c_str(), intervals[i]*1000.0);
-    //     }
-    // #endif
 
     // Check which condition caused the loop to exit
     if (status == 1)

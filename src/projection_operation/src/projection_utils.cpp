@@ -1223,27 +1223,13 @@ void CircleRenderer::_convertToNDC(std::vector<float> &out_circVertices)
 
 // ================================================== FUNCTIONS ==================================================
 
-bool dbDelayRun(int dt_wait)
-{
-    // Initialize with 0 to return true on the first call
-    static ros::Time ts_wait = ros::Time(0);
-    ros::Time now = ros::Time::now();
-
-    // Check if ts_wait is set to zero or the current time is past ts_wait
-    if (ts_wait == ros::Time(0) || now > ts_wait)
-    {
-        // Set the next wait timestamp
-        ts_wait = now + ros::Duration(0, dt_wait * 1000000); // Convert ms to ns
-        return true;
-    }
-
-    return false;
-}
-
 void dbTraceCalls(bool do_reset, int line, const char *file_path)
 {
+    if (!GLB_DO_VERBOSE_DEBUG)
+        return;
+
+    static ros::Time start_time = ros::Time::now();
     static int cnt_calls = 0;
-    static ros::Time start_time;
     static int line_start = 0;
     static std::string file_name_start = "";
 
@@ -1264,6 +1250,21 @@ void dbTraceCalls(bool do_reset, int line, const char *file_path)
         return std::string(path); // No separator found, return the whole string
     };
 
+    // Print elapsed time
+    cnt_calls++;
+    ros::Duration elapsed_time = ros::Time::now() - start_time;
+    std::string file_name_current = extractFileName(file_path);
+    if (line_start == 0 || line == 0)
+    {
+        ROS_INFO("[dbTraceCalls] Call[%d]: Elapsed Time: %f milliseconds", cnt_calls, elapsed_time.toNSec() / 1e6);
+    }
+    else
+    {
+        ROS_INFO("[dbTraceCalls] Call[%d]: Elapsed Time from %s[%d] to %s[%d] is %0.2f milliseconds",
+                 cnt_calls, file_name_start.c_str(), line_start, file_name_current.c_str(), line,
+                 elapsed_time.toNSec() / 1e6);
+    }
+
     // Reset start time
     if (do_reset)
     {
@@ -1272,23 +1273,26 @@ void dbTraceCalls(bool do_reset, int line, const char *file_path)
         file_name_start = extractFileName(file_path);
         start_time = ros::Time::now();
     }
-    // Print elapsed time
-    else
+}
+
+bool dbDelayRun(int dt_wait)
+{
+    if (!GLB_DO_VERBOSE_DEBUG)
+        return false;
+
+    // Initialize with 0 to return true on the first call
+    static ros::Time ts_wait = ros::Time(0);
+    ros::Time now = ros::Time::now();
+
+    // Check if ts_wait is set to zero or the current time is past ts_wait
+    if (ts_wait == ros::Time(0) || now > ts_wait)
     {
-        cnt_calls++;
-        ros::Duration elapsed_time = ros::Time::now() - start_time;
-        std::string file_name_current = extractFileName(file_path);
-        if (line_start == 0 || line == 0)
-        {
-            ROS_INFO("[dbTraceCalls] Call[%d]: Elapsed Time: %f milliseconds", cnt_calls, elapsed_time.toNSec() / 1e6);
-        }
-        else
-        {
-            ROS_INFO("[dbTraceCalls] Call[%d]: Elapsed Time from %s[%d] to %s[%d] is %0.2f milliseconds",
-                     cnt_calls, file_name_start.c_str(), line_start, file_name_current.c_str(), line,
-                     elapsed_time.toNSec() / 1e6);
-        }
+        // Set the next wait timestamp
+        ts_wait = now + ros::Duration(0, dt_wait * 1000000); // Convert ms to ns
+        return true;
     }
+
+    return false;
 }
 
 void dbWaitForInput()
@@ -1299,6 +1303,9 @@ void dbWaitForInput()
 
 void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
 {
+    if (!GLB_DO_VERBOSE_DEBUG)
+        return;
+
     if (quad_vertices.size() != 4)
     {
         ROS_ERROR("[dbLogQuadVertices] Invalid number of vertices. Expected 4.");
@@ -1342,6 +1349,9 @@ void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
 
 void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &r_ctrl_pnt_coords)
 {
+    if (!GLB_DO_VERBOSE_DEBUG)
+        return;
+
     ROS_INFO("        Control Point Coordinates        ");
     ROS_INFO("=========================================");
     ROS_INFO("        |      Left     |     Right     |");
@@ -1373,6 +1383,9 @@ void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &
 
 void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> &_WALL_WARP_COORDS)
 {
+    if (!GLB_DO_VERBOSE_DEBUG)
+        return;
+
     ROS_INFO("                                       Warped Wall Coordinates                                               ");
     ROS_INFO("=============================================================================================================");
     ROS_INFO("        ||   (0) Left    |   (0) Right   ||   (1) Left    |   (1) Right   ||   (2) Left    |   (2) Right   ||");
@@ -1415,6 +1428,9 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
 
 void dbLogHomMat(const cv::Mat &r_HMAT)
 {
+    if (!GLB_DO_VERBOSE_DEBUG)
+        return;
+
     // Check if the input matrix is 3x3
     if (r_HMAT.rows != 3 || r_HMAT.cols != 3)
     {
@@ -1441,6 +1457,9 @@ void dbLogHomMat(const cv::Mat &r_HMAT)
 
 void dbLogProjWallImageCfg4D(const ProjWallImageCfg4D &wallImageConfig)
 {
+    if (!GLB_DO_VERBOSE_DEBUG)
+        return;
+
     ROS_INFO("                                Projector Wall Image Configuration                                       ");
     ROS_INFO("=========================================================================================================");
     ROS_INFO("       ||   Cell [0]   |   Cell [1]   |   Cell [2]   ||   Cell [0]   |   Cell [1]   |   Cell [2]   ||");
@@ -1473,13 +1492,15 @@ void dbLogProjWallImageCfg4D(const ProjWallImageCfg4D &wallImageConfig)
     }
 }
 
-
 void dbDispImgMat(const cv::Mat &img_mat)
 {
-    cv::namedWindow("Warped Image Display", cv::WINDOW_AUTOSIZE);
-    cv::imshow("Warped Image Display", img_mat);
+    if (!GLB_DO_VERBOSE_DEBUG)
+        return;
+
+    cv::namedWindow("Debug display image", cv::WINDOW_AUTOSIZE);
+    cv::imshow("Debug display image", img_mat);
     cv::waitKey(0);
-    cv::destroyWindow("Warped Image Display");
+    cv::destroyWindow("Debug display image");
 }
 
 int promptForProjectorNumber()

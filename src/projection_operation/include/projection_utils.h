@@ -253,8 +253,8 @@ public:
     GLuint textureID;                   // Texture for the wall
     GLFWwindow *windowID;               // The window associated with this context
     GLFWmonitor *monitorID;             // The monitor associated with this context
-    int windowInd;                      // Enum of type CalibrationMode for the window associated with this context
-    int monitorInd;                     // Enum of type CalibrationMode for the monitor associated with this context
+    int windowInd;                      // Index for the window associated with this context
+    int monitorInd;                     // Index for the monitor associated with this context
     bool isContextInitialized;          // Flag indicating whether there context has been initialized
     bool isFullScreen;                  // Flag indicating whether the window is in full screen mode
     static int WindowWidthWindowedPxl;  // Width of the window in windowed mode
@@ -457,8 +457,8 @@ public:
      * Checks and sets a new monitor based on the monitor index, creates a new GLFW window,
      * and sets up the OpenGL context with necessary callbacks and extensions.
      *
-     * @param win_ind Enum of type CalibrationMode for the window to initialize.
-     * @param mon_ind Enum of type CalibrationMode for the monitor to use for the window.
+     * @param win_ind Index for the window to initialize.
+     * @param mon_ind Index for the monitor to use for the window.
      * @param win_width Width of the window to create.
      * @param win_height Height of the window to create.
      * @param key_callback Optional key callback function to set for the window (default to nullptr).
@@ -539,7 +539,7 @@ public:
      * This function switches the application window between full-screen and windowed modes
      * and moves it to the monitor specified by the global variable imgMonNumInd.
      *
-     * @param mon_ind Enum of type CalibrationMode for the monitor to move the window to.
+     * @param mon_ind Index for the monitor to move the window to.
      * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
      * @param offset_xy Optional offset to apply to window position (default to (0, 0)).
      *
@@ -672,7 +672,7 @@ class CircleRenderer
 {
 
 public:
-    int circID;                      // Enum of type CalibrationMode for the circle, used for identification.
+    int circID;                      // Index for the circle, used for identification.
     std::vector<float> circVertices; // Vertex data for the circle's geometry.
     cv::Point2f circPosition;        // Position of the circle in 2D space.
     float cirRadius;                 // Radius of the circle.
@@ -1062,19 +1062,6 @@ enum CalibrationMode
 // ================================================== FUNCTIONS ==================================================
 
 /**
- * @brief Manages timed delays within a loop.
- *
- * @param dt_wait Latency in milliseconds for the delay; used only on the initial call.
- *
- * @details
- * Maintains a static timestamp to enforce a delay relative to `ros::Time::now()`.
- * Returns false if the delay has not elapsed, true otherwise, resetting the timer.
- *
- * @return True if the delay has elapsed, otherwise false.
- */
-bool dbDelayRun(int dt_wait);
-
-/**
  * @brief Track and print the elapsed time between calls with line and function info.
  *
  * @details
@@ -1091,6 +1078,19 @@ void dbTraceCalls(
     bool do_reset = false,
     int line = 0,
     const char *file_path = nullptr);
+
+/**
+ * @brief Manages timed delays within a loop.
+ *
+ * @param dt_wait Latency in milliseconds for the delay; used only on the initial call.
+ *
+ * @details
+ * Maintains a static timestamp to enforce a delay relative to `ros::Time::now()`.
+ * Returns false if the delay has not elapsed, true otherwise, resetting the timer.
+ *
+ * @return True if the delay has elapsed, otherwise false.
+ */
+bool dbDelayRun(int dt_wait);
 
 /**
  * @brief Pauses program and waits for any keypress.
