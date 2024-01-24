@@ -1461,15 +1461,15 @@ void dbLogProjWallImageCfg4D(const ProjWallImageCfg4D &wallImageConfig)
         return;
 
     ROS_INFO("                                Projector Wall Image Configuration                                       ");
-    ROS_INFO("=========================================================================================================");
-    ROS_INFO("       ||   Cell [0]   |   Cell [1]   |   Cell [2]   ||   Cell [0]   |   Cell [1]   |   Cell [2]   ||");
-    ROS_INFO("---------------------------------------------------------------------------------------------------------");
+    ROS_INFO("=======================================================");
+    ROS_INFO("       ||  Column [0]  |  Column [0]  |  Column [2]  ||");
+    ROS_INFO("-------------------------------------------------------");
 
     // Loop through each projector, row, and column
     for (int proj = 0; proj < 4; ++proj)
     {
         ROS_INFO("Projector %d", proj);
-        ROS_INFO("---------------------------------------------------------------------------------------------------------");
+        ROS_INFO("-------------------------------------------------------");
 
         for (int row = 0; row < 3; ++row)
         {
@@ -1488,7 +1488,7 @@ void dbLogProjWallImageCfg4D(const ProjWallImageCfg4D &wallImageConfig)
             ROS_INFO("%s", buffer);
         }
 
-        ROS_INFO("---------------------------------------------------------------------------------------------------------");
+        ROS_INFO("-------------------------------------------------------");
     }
 }
 

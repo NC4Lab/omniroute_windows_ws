@@ -278,6 +278,25 @@ void addImageConfiguration(const std::string &direction,
                            std::vector<ProjWallImageCfg4D> &out_PROJ_WALL_IMAGE_CFG_4D_VEC);
 
 /**
+ * @brief Sets the wall image configuration for a projector array.
+ *
+ * This function updates the out_PROJ_WALL_IMAGE_CFG_4D_VEC array to set images on specified walls 
+ * in a chamber, considering each projector's orientation. It supports setting images for multiple walls.
+ *
+ * @param image_ind Index of the image to be projected.
+ * @param chamber_ind Index of the target chamber.
+ * @param wall_ind Index of the wall for single-wall overload.
+ * @param walls_ind Vector of wall indices for multiple-wall overload.
+ * @param out_PROJ_WALL_IMAGE_CFG_4D_VEC Reference to the 4D projector configuration array.
+ */
+
+// Overload for setting an image on a single wall
+void setWallImage(int image_ind, int chamber_ind, int wall_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC);
+
+// Overload for setting images on multiple walls
+void setWallImage(int image_ind, int chamber_ind, const std::vector<int>& walls_ind, ProjWallImageCfg4D& out_PROJ_WALL_IMAGE_CFG_4D_VEC);
+
+/**
  * @brief Get the vertices cooresponding to the maze boundaries in centimeters.
  *
  * @details
