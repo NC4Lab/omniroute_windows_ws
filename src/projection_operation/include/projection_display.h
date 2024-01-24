@@ -35,18 +35,18 @@ static struct FlagStateStruct
 static struct IndStruct
 {
     const int starting_monitor = 0; // Default starting monitor index for the windows (hardcoded)
-    // const std::vector<int> proj_mon_vec = {
-    //     2, // Projector 0
-    //     1, // Projector 1
-    //     4, // Projector 2
-    //     3, // Projector 3
-    // };     // Vector of indeces of the monitor associeted to each projector (hardcoded)
     const std::vector<int> proj_mon_vec = {
-        0,                  // Projector 0
-        0,                  // Projector 1
-        0,                  // Projector 2
-        0,                  // Projector 3
-    };                      // Vector of indeces of the monitor associeted to each projector (hardcoded)
+        2, // Projector 0
+        1, // Projector 1
+        4, // Projector 2
+        3, // Projector 3
+    };     // Vector of indeces of the monitor associeted to each projector (hardcoded)
+    // const std::vector<int> proj_mon_vec = {
+    //     0,                  // Projector 0
+    //     0,                  // Projector 1
+    //     0,                  // Projector 2
+    //     0,                  // Projector 3
+    // };                      // Vector of indeces of the monitor associeted to each projector (hardcoded)
     int wall_image_cfg = 0; // Index of the curren wall image configuration
 } I;
 
@@ -94,10 +94,10 @@ std::vector<ProjWallImageCfg4D> PROJ_WALL_IMAGE_CFG_4D_VEC;
  * @brief A n_projectors array contianer for storring different floor image configurations
  */
 ProjFloorImageCfg1D PROJ_FLOOR_IMAGE_CFG_1D = {
-    3, // Projector 0: West
-    3, // Projector 1: North
-    3, // Projector 2: East
-    3, // Projector 3: South
+    0, // Projector 0: West
+    0, // Projector 1: North
+    0, // Projector 2: East
+    0, // Projector 3: South
 };
 
 /**
@@ -291,10 +291,10 @@ void addImageConfiguration(const std::string &direction,
  */
 
 // Overload for setting an image on a single wall
-void setWallImage(int image_ind, int chamber_ind, int wall_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC);
+void configWallImages(int image_ind, int chamber_ind, int wall_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC);
 
 // Overload for setting images on multiple walls
-void setWallImage(int image_ind, int chamber_ind, const std::vector<int>& walls_ind, ProjWallImageCfg4D& out_PROJ_WALL_IMAGE_CFG_4D_VEC);
+void configWallImages(int image_ind, int chamber_ind, const std::vector<int>& walls_ind, ProjWallImageCfg4D& out_PROJ_WALL_IMAGE_CFG_4D_VEC);
 
 /**
  * @brief Get the vertices cooresponding to the maze boundaries in centimeters.

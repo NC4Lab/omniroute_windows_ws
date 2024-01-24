@@ -305,73 +305,13 @@ void addImageConfiguration(const std::string &direction, int left_shape_ind, int
     out_PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(new_array);
 }
 
-// void setWallImage(int image_ind, int chamber_ind, int wall_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC)
-// {
-//     std::vector<int> walls_ind = {wall_ind};
-//     setWallImage(image_ind, chamber_ind, walls_ind, out_PROJ_WALL_IMAGE_CFG_4D_VEC);
-// }
-
-// void setWallImage(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC)
-// {
-//     // Determine the row and column based on chamber index
-//     int row = chamber_ind / 3;
-//     int col = chamber_ind % 3;
-
-//     // Wall to array index mapping for each projector
-//     std::unordered_map<int, std::unordered_map<int, int>> wallToIndexMapping = {
-//         {0, {{3, 0}, {4, 1}, {5, 2}}}, // Projector 0 (West) - East walls
-//         {1, {{5, 0}, {6, 1}, {7, 2}}}, // Projector 1 (North) - South walls
-//         {2, {{7, 0}, {0, 1}, {1, 2}}}, // Projector 2 (East) - West walls
-//         {3, {{1, 0}, {2, 1}, {3, 2}}}  // Projector 3 (South) - North walls
-//     };
-
-//     // Iterate through each projector
-//     for (int proj = 0; proj < 4; ++proj)
-//     {
-//         // Calculate adjusted row and column for each projector
-//         int adjusted_row = row;
-//         int adjusted_col = col;
-
-//         // Adjust the indices based on the projector orientation
-//         switch (proj)
-//         {
-//         case 0: // Adjustments for Projector 0 (West)
-//             adjusted_row = col;
-//             adjusted_col = row;
-//             break;
-//         case 1: // Adjustments for Projector 1 (North)
-//             adjusted_row = 2 - row;
-//             adjusted_col = 2 - col;
-//             break;
-//         case 2: // Adjustments for Projector 2 (East)
-//             adjusted_row = 2 - col;
-//             adjusted_col = 2 - row;
-//             break;
-//         case 3: // No adjustments needed for Projector 3 (South)
-//             break;
-//         }
-
-//         // Iterate through each wall index
-//         for (int wall : walls_ind)
-//         {
-//             // Check if wall index is valid and has a mapping
-//             auto wallMapping = wallToIndexMapping[proj].find(wall);
-//             if (wallMapping != wallToIndexMapping[proj].end())
-//             {
-//                 // Set the image index for the corresponding wall
-//                 out_PROJ_WALL_IMAGE_CFG_4D_VEC[proj][adjusted_row][adjusted_col][wallMapping->second] = image_ind;
-//             }
-//         }
-//     }
-// }
-
-void setWallImage(int image_ind, int chamber_ind, int wall_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC)
+void configWallImages(int image_ind, int chamber_ind, int wall_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC)
 {
     std::vector<int> walls_ind = {wall_ind};
-    setWallImage(image_ind, chamber_ind, walls_ind, out_PROJ_WALL_IMAGE_CFG_4D_VEC);
+    configWallImages(image_ind, chamber_ind, walls_ind, out_PROJ_WALL_IMAGE_CFG_4D_VEC);
 }
 
-void setWallImage(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC)
+void configWallImages(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC)
 {
     // Determine the row and column based on chamber index
     int row = chamber_ind / 3;
@@ -675,60 +615,92 @@ void appInitVariables()
 
     std::vector<int> walls_ind_all = {0, 1, 2, 3, 4, 5, 6, 7};
 
-    // // Blank choice point;
-    // ProjWallImageCfg4D proj_mat_blank = {}; // Initialize to all zeros
-    // PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_blank);
+    // Blank choice point;
+    ProjWallImageCfg4D proj_mat_blank = {}; // Initialize to all zeros
+    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_blank);
 
     // East facing choice point condition 1;
     ProjWallImageCfg4D proj_mat_east_1 = {};
-    setWallImage(shape1_ind, 4, 3, proj_mat_east_1);             // Set the left wall image for the center chamber
-    setWallImage(shape1_ind, 1, walls_ind_all, proj_mat_east_1); // Set all wall image for the left chamber
-    setWallImage(shape_blank_ind, 1, 6, proj_mat_east_1);        // Set the left chamber open wall to blank
-    setWallImage(shape2_ind, 4, 5, proj_mat_east_1);             // Set the right wall image for the center chamber
-    setWallImage(shape2_ind, 7, walls_ind_all, proj_mat_east_1); // Set all wall image for the right chamber
-    setWallImage(shape_blank_ind, 7, 2, proj_mat_east_1);        // Set the right chamber open wall to blank
+    configWallImages(shape1_ind, 4, 3, proj_mat_east_1);             // Set the left wall image for the center chamber
+    configWallImages(shape1_ind, 1, walls_ind_all, proj_mat_east_1); // Set all wall image for the left chamber
+    configWallImages(shape_blank_ind, 1, 6, proj_mat_east_1);        // Set the left chamber open wall to blank
+    configWallImages(shape2_ind, 4, 5, proj_mat_east_1);             // Set the right wall image for the center chamber
+    configWallImages(shape2_ind, 7, walls_ind_all, proj_mat_east_1); // Set all wall image for the right chamber
+    configWallImages(shape_blank_ind, 7, 2, proj_mat_east_1);        // Set the right chamber open wall to blank
     PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_east_1);       // Add to the vector
 
-    // // East facing choice point condition 2;
-    // ProjWallImageCfg4D proj_mat_east_2 = {};
-    // setWallImage(shape2_ind, 4, 3, proj_mat_east_2);             // Set the left wall image for the center chamber
-    // setWallImage(shape2_ind, 1, walls_ind_all, proj_mat_east_2); // Set all wall image for the left chamber
-    // setWallImage(shape_blank_ind, 1, 6, proj_mat_east_2);        // Set the left chamber open wall to blank
-    // setWallImage(shape1_ind, 4, 5, proj_mat_east_2);             // Set the right wall image for the center chamber
-    // setWallImage(shape1_ind, 7, walls_ind_all, proj_mat_east_2); // Set all wall image for the right chamber
-    // setWallImage(shape_blank_ind, 7, 2, proj_mat_east_2);        // Set the right chamber open wall to blank
-    // PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_east_2);       // Add to the vector
+    // East facing choice point condition 2;
+    ProjWallImageCfg4D proj_mat_east_2 = {};
+    configWallImages(shape2_ind, 4, 3, proj_mat_east_2);             // Set the left wall image for the center chamber
+    configWallImages(shape2_ind, 1, walls_ind_all, proj_mat_east_2); // Set all wall image for the left chamber
+    configWallImages(shape_blank_ind, 1, 6, proj_mat_east_2);        // Set the left chamber open wall to blank
+    configWallImages(shape1_ind, 4, 5, proj_mat_east_2);             // Set the right wall image for the center chamber
+    configWallImages(shape1_ind, 7, walls_ind_all, proj_mat_east_2); // Set all wall image for the right chamber
+    configWallImages(shape_blank_ind, 7, 2, proj_mat_east_2);        // Set the right chamber open wall to blank
+    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_east_2);       // Add to the vector
 
     // South facing choice point condition 1;
     ProjWallImageCfg4D proj_mat_south_1 = {};
-    setWallImage(shape1_ind, 4, 5, proj_mat_south_1);             // Set the left wall image for the center chamber
-    setWallImage(shape1_ind, 5, walls_ind_all, proj_mat_south_1); // Set all wall image for the left chamber
-    setWallImage(shape_blank_ind, 5, 0, proj_mat_south_1);        // Set the left chamber open wall to blank
-    setWallImage(shape2_ind, 4, 7, proj_mat_south_1);             // Set the right wall image for the center chamber
-    setWallImage(shape2_ind, 3, walls_ind_all, proj_mat_south_1); // Set all wall image for the right chamber
-    setWallImage(shape_blank_ind, 3, 4, proj_mat_south_1);        // Set the right chamber open wall to blank
+    configWallImages(shape1_ind, 4, 5, proj_mat_south_1);             // Set the left wall image for the center chamber
+    configWallImages(shape1_ind, 5, walls_ind_all, proj_mat_south_1); // Set all wall image for the left chamber
+    configWallImages(shape_blank_ind, 5, 0, proj_mat_south_1);        // Set the left chamber open wall to blank
+    configWallImages(shape2_ind, 4, 7, proj_mat_south_1);             // Set the right wall image for the center chamber
+    configWallImages(shape2_ind, 3, walls_ind_all, proj_mat_south_1); // Set all wall image for the right chamber
+    configWallImages(shape_blank_ind, 3, 4, proj_mat_south_1);        // Set the right chamber open wall to blank
     PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_south_1);       // Add to the vector
 
-    dbLogProjWallImageCfg4D(proj_mat_south_1);
+    // South facing choice point condition 2;
+    ProjWallImageCfg4D proj_mat_south_2 = {};
+    configWallImages(shape2_ind, 4, 5, proj_mat_south_2);             // Set the left wall image for the center chamber
+    configWallImages(shape2_ind, 5, walls_ind_all, proj_mat_south_2); // Set all wall image for the left chamber
+    configWallImages(shape_blank_ind, 5, 0, proj_mat_south_2);        // Set the left chamber open wall to blank
+    configWallImages(shape1_ind, 4, 7, proj_mat_south_2);             // Set the right wall image for the center chamber
+    configWallImages(shape1_ind, 3, walls_ind_all, proj_mat_south_2); // Set all wall image for the right chamber
+    configWallImages(shape_blank_ind, 3, 4, proj_mat_south_2);        // Set the right chamber open wall to blank
+    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_south_2);       // Add to the vector
 
-    // // Blank choice point;
-    // addImageConfiguration("blank", shape1_ind, shape2_ind, PROJ_WALL_IMAGE_CFG_4D_VEC); // Index[0]
+    // West facing choice point condition 1;
+    ProjWallImageCfg4D proj_mat_west_1 = {};
+    configWallImages(shape1_ind, 4, 7, proj_mat_west_1);             // Set the left wall image for the center chamber
+    configWallImages(shape1_ind, 7, walls_ind_all, proj_mat_west_1); // Set all wall image for the left chamber
+    configWallImages(shape_blank_ind, 7, 2, proj_mat_west_1);        // Set the left chamber open wall to blank
+    configWallImages(shape2_ind, 4, 1, proj_mat_west_1);             // Set the right wall image for the center chamber
+    configWallImages(shape2_ind, 1, walls_ind_all, proj_mat_west_1); // Set all wall image for the right chamber
+    configWallImages(shape_blank_ind, 1, 6, proj_mat_west_1);        // Set the right chamber open wall to blank
+    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_west_1);       // Add to the vector
 
-    // // East facing choice point;
-    // addImageConfiguration("east", shape1_ind, shape2_ind, PROJ_WALL_IMAGE_CFG_4D_VEC); // Index[1], Left: shape 1, Right: shape 2
-    addImageConfiguration("east", shape2_ind, shape1_ind, PROJ_WALL_IMAGE_CFG_4D_VEC); // Index[2], Left: shape 2, Right: shape 1
+    // West facing choice point condition 2;
+    ProjWallImageCfg4D proj_mat_west_2 = {};
+    configWallImages(shape2_ind, 4, 7, proj_mat_west_2);             // Set the left wall image for the center chamber
+    configWallImages(shape2_ind, 7, walls_ind_all, proj_mat_west_2); // Set all wall image for the left chamber
+    configWallImages(shape_blank_ind, 7, 2, proj_mat_west_2);        // Set the left chamber open wall to blank
+    configWallImages(shape1_ind, 4, 1, proj_mat_west_2);             // Set the right wall image for the center chamber
+    configWallImages(shape1_ind, 1, walls_ind_all, proj_mat_west_2); // Set all wall image for the right chamber
+    configWallImages(shape_blank_ind, 1, 6, proj_mat_west_2);        // Set the right chamber open wall to blank
+    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_west_2);       // Add to the vector
 
-    // South facing choice point;
-    addImageConfiguration("south", shape1_ind, shape2_ind, PROJ_WALL_IMAGE_CFG_4D_VEC); // Index[3], Left: shape 1, Right: shape 2
-    addImageConfiguration("south", shape2_ind, shape1_ind, PROJ_WALL_IMAGE_CFG_4D_VEC); // Index[4], Left: shape 2, Right: shape 1
+    // North facing choice point condition 1;
+    ProjWallImageCfg4D proj_mat_north_1 = {};
+    configWallImages(shape1_ind, 4, 1, proj_mat_north_1);             // Set the left wall image for the center chamber
+    configWallImages(shape1_ind, 3, walls_ind_all, proj_mat_north_1); // Set all wall image for the left chamber
+    configWallImages(shape_blank_ind, 3, 4, proj_mat_north_1);        // Set the left chamber open wall to blank
+    configWallImages(shape2_ind, 4, 3, proj_mat_north_1);             // Set the right wall image for the center chamber
+    configWallImages(shape2_ind, 5, walls_ind_all, proj_mat_north_1); // Set all wall image for the right chamber
+    configWallImages(shape_blank_ind, 5, 0, proj_mat_north_1);        // Set the right chamber open wall to blank
+    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_north_1);       // Add to the vector
 
-    // West facing choice point;
-    addImageConfiguration("west", shape1_ind, shape2_ind, PROJ_WALL_IMAGE_CFG_4D_VEC); // Index[5], eft: shape 1, Right: shape 2
-    addImageConfiguration("west", shape2_ind, shape1_ind, PROJ_WALL_IMAGE_CFG_4D_VEC); // Index[6], Left: shape 2, Right: shape 1
+    // North facing choice point condition 2;
+    ProjWallImageCfg4D proj_mat_north_2 = {};
+    configWallImages(shape2_ind, 4, 1, proj_mat_north_2);             // Set the left wall image for the center chamber
+    configWallImages(shape2_ind, 3, walls_ind_all, proj_mat_north_2); // Set all wall image for the left chamber
+    configWallImages(shape_blank_ind, 3, 4, proj_mat_north_2);        // Set the left chamber open wall to blank
+    configWallImages(shape1_ind, 4, 3, proj_mat_north_2);             // Set the right wall image for the center chamber
+    configWallImages(shape1_ind, 5, walls_ind_all, proj_mat_north_2); // Set all wall image for the right chamber
+    configWallImages(shape_blank_ind, 5, 0, proj_mat_north_2);        // Set the right chamber open wall to blank
+    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_north_2);       // Add to the vector
 
-    // North facing choice point;
-    addImageConfiguration("north", shape1_ind, shape2_ind, PROJ_WALL_IMAGE_CFG_4D_VEC); // Index[7], Left: shape 1, Right: shape 2
-    addImageConfiguration("north", shape2_ind, shape1_ind, PROJ_WALL_IMAGE_CFG_4D_VEC); // Index[8], Left: shape 2, Right: shape 1
+    // TEMP
+    // dbLogProjWallImageCfg4D(proj_mat_south_1);
 
     ROS_INFO("[appInitVariables] Finished initializing variables successfully");
 }
