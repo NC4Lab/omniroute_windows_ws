@@ -2,7 +2,6 @@ import rospy
 from std_msgs.msg import String
 import sounddevice as sd
 from scipy.io import wavfile
-import threading
 
 
 class SoundGenerator:
@@ -29,41 +28,25 @@ class SoundGenerator:
         # Create a subscriber for the sound topic
         self.sound_sub = rospy.Subscriber('/sound_cmd', String, self.sound_callback)
 
-        # r = rospy.Rate(10)
-        # while not rospy.is_shutdown():
-        #     self.loop()
-        #     r.sleep()
-
-        self.white_noise_threads = [threading.Thread(target=self.play_sound, args=(self.white_noise, self.white_noise_samplerate, device['name'])) for device in self.sound_devices]
-        self.five_KHz_threads = [threading.Thread(target=self.play_sound, args=(self.five_KHz, self.five_KHz_samplerate, device['name'])) for device in self.sound_devices]
-    
-    def play_sound(self, sound, samplerate, device):
-        sd.play(sound, samplerate, device=device)
+        r = rospy.Rate(10)
+        while not rospy.is_shutdown():
+            r.sleep()
     
 
     # @brief Callback function for the sound topic
     def sound_callback(self, msg):
         rospy.loginfo('Sound received: ' + msg.data)
-
         if msg.data == 'White_Noise':
-            for thread in self.white_noise_threads:
-                thread.start()
-            for thread in self.white_noise_threads:
-                thread.join()
+            [sd.play(self.white_noise, self.white_noise_samplerate, device=device['name']) for device in self.sound_devices] 
         elif msg.data == '5KHz':
-            for thread in self.five_KHz_threads:
-                thread.start()
-            for thread in self.five_KHz_threads:
-                thread.join()
-                
-    # @brief Loop function to keep the node alive
-    def loop(self):
-        pass
+            [sd.play(self.five_KHz, self.five_KHz_samplerate, device=device['name']) for device in self.sound_devices]
+        else:
+            rospy.logwarn('Sound not recognized: ' + msg.data)
         
 
 # @brief Main code
 if __name__ == '__main__':
-    # Initialize the ROS node with name 'gantry_operation'
+    # Initialize the ROS node with name 'sound_generator'
     rospy.init_node('sound_generator')
     SoundGenerator()  # Create an instance of the class
     rospy.spin()  # Keep the program running until it is explicitly shutdown
