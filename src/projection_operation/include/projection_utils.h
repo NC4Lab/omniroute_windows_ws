@@ -40,20 +40,7 @@
 #include <std_msgs/Int32.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <XmlRpcValue.h>
-
-// Standard Library for various utilities
-#include <fstream>
-#include <cstdlib>
-#include <iostream>
-#include <algorithm>
-#include <limits>
-#include <array>
-#include <vector>
-#include <string>
-#include <cstring>
-#include <cmath>
-#include <tuple>
-#include <memory>
+#include <tf/tf.h>
 
 // PugiXML for XML parsing
 #include "pugixml.hpp"
@@ -877,9 +864,6 @@ extern const int GLB_WALL_IMAGE_HEIGHT_PXL = 540;
 // Default wall width and height (NDC)
 extern const float GLB_WALL_IMAGE_WIDTH_NDC = (GLB_MAZE_WIDTH_NDC / (float(GLB_MAZE_SIZE) - 1)) / (1 + std::sqrt(2));   // Wall width based on octogonal geometry in NDC
 extern const float GLB_WALL_IMAGE_HEIGHT_NDC = (GLB_MAZE_HEIGHT_NDC / (float(GLB_MAZE_SIZE) - 1)) / (1 + std::sqrt(2)); // Wall height based on octogonal geometry in NDC
-
-// Pi
-static constexpr float PI = 3.14159265358979323846f;
 
 // Calibration mode strings
 extern const std::vector<std::string> CAL_MODE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};

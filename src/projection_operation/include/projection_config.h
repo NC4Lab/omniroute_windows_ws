@@ -31,7 +31,7 @@
  * @section license License
  * Licensing information.
  *
- * 
+ *
  * @details Omniroute Chamber and Wall Image Layout
  *
  * - The 3x3 verstion of the maze consitsts of 9 octogonal 'Chambers' arranged in a 3x3 grid.
@@ -187,6 +187,7 @@
 #include <cstring>
 #include <cmath>
 #include <tuple>
+#include <memory>
 #include <unordered_map>
 
 // ================================================== VARIABLES ==================================================
@@ -199,14 +200,19 @@ const int GLB_ROS_LOOP_RATE = 100;
 /**
  * @brief Global variable for verbose logging.
  */
-const bool GLB_DO_VERBOSE_DEBUG = true;
+const bool GLB_DO_VERBOSE_DEBUG = false;
 
 /**
  * @brief Global variable to set the OpenGL debug level.
- * 
+ *
  * @details  [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
  */
 const int GLB_DEBUG_LEVEL_GL = 2;
+
+/**
+ * @brief Pi
+ */
+static constexpr float GLOB_PI = 3.14159265358979323846f;
 
 /**
  * @brief 4D array of hardcoded image indices to display.
@@ -228,7 +234,7 @@ const int GLB_DEBUG_LEVEL_GL = 2;
  * [3] Triangle
  * [4] Star
  * [5] Pentagon
- * 
+ *
  * Format: array[4][3][3][3] = array[Projector][Chamber Row][Chamber Column][Calibration Mode{Left, Center, Right}]
  *
  * Element mapping:
@@ -287,7 +293,7 @@ using ProjWallImageCfg4D = std::array<std::array<std::array<std::array<int, 3>, 
  * [4] Gray (80%)
  * [5] White
  * [6] Pattern
- * 
+ *
  * Element mapping:
  * {
  *    0, // Projector 0: West
@@ -297,8 +303,6 @@ using ProjWallImageCfg4D = std::array<std::array<std::array<std::array<int, 3>, 
  * };
  */
 using ProjFloorImageCfg1D = std::array<int, 4>;
-
-
 
 std::array<std::array<std::array<std::array<int, 3>, 3>, 3>, 4> out_PROJ_W0LL_IMAGE_CFG_4D_VEC =
     {{// Projector 0: West Projector (Facing East)

@@ -78,11 +78,13 @@ struct ROSComm
 {
     std::unique_ptr<ros::NodeHandle> node_handle; // Smart pointer to ROS node handler
     std::unique_ptr<ros::Rate> loop_rate;         // Smart pointer to ros::Rate
-    ros::Subscriber projection_cmd_sub;           // ROS subscriber
-    ros::Subscriber harness_pose_sub;             // ROS subscriber
-    int last_projection_cmd = -1;                 // Variable to store the last command received, initialize with an invalid value
-    geometry_msgs::PoseStamped last_harness_pose; // Variable to store the last harness pose received
-    bool is_message_received = false;             // Flag to indicate if a message has been received
+    ros::Subscriber proj_cmd_sub;                 // ROS subscriber for projection commands
+    int last_proj_cmd = -1;                       // Variable to store the last command received, initialize with an invalid value
+    bool is_proj_message_received = false;        // Flag to indicate if a projection message has been received
+    ros::Subscriber track_pos_sub;                // ROS subscriber for tracking rat position
+    geometry_msgs::PoseStamped last_track_pos;    // Variable to store the last tracking rat pose received
+    bool is_track_message_received = false;       // Flag to indicate if a track position message has been received
+
 } RC;
 
 /**
@@ -94,10 +96,10 @@ std::vector<ProjWallImageCfg4D> PROJ_WALL_IMAGE_CFG_4D_VEC;
  * @brief A n_projectors array contianer for storring different floor image configurations
  */
 ProjFloorImageCfg1D PROJ_FLOOR_IMAGE_CFG_1D = {
-    0, // Projector 0: West
-    0, // Projector 1: North
-    0, // Projector 2: East
-    0, // Projector 3: South
+    2, // Projector 0: West
+    2, // Projector 1: North
+    2, // Projector 2: East
+    2, // Projector 3: South
 };
 
 /**
@@ -193,10 +195,10 @@ void callbackKeyBinding(
  * @param msg Const pointer to the received message.
  * @param out_RC Pointer to the ROSComm struct where the last command and message received flag are updated.
  */
-void callbackCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC);
+void callbackProjMsgROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC);
 
 /**
- * @brief Callback function for the "harness_pose" topic subscription.
+ * @brief Callback function for the "track_pose" topic subscription.
  *
  * @details
  * This function is called whenever a new message is received on the "harness_pose_in_maze" topic.
@@ -205,14 +207,14 @@ void callbackCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC);
  * @param msg Const pointer to the received message.
  * @param out_RC Pointer to the ROSComm struct where the last command and message received flag are updated.
  */
-void callbackHarnessPoseROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSComm *out_RC);
+void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSComm *out_RC);
 
 /**
  * @brief Initializes the ROS subscriber for the "projection_cmd" topic within the given ROSComm structure.
  *
  * @details
  * This function sets up a subscriber to the "projection_cmd" topic, which receives Int32 messages.
- * The received command updates the last_projection_cmd field in the ROSComm struct and sets
+ * The received command updates the last_proj_cmd field in the ROSComm struct and sets
  * a flag indicating a message has been received.
  *
  * @param out_RC Reference to the ROSComm struct that holds the ROS node handle and subscriber.
@@ -225,13 +227,26 @@ int initSubscriberROS(ROSComm &out_RC);
  * @brief Processes commands received from the "projection_cmd" topic.
  *
  * @details
- * This function checks if a new message has been received adn logs the command and resets the flag.
+ * This function checks if a new projection message has been received and processes the message.
  *
- * @param out_RC Reference to the ROSComm struct containing the last received command and message flag.
+ * @param[out] out_RC Reference to the ROSComm struct containing the ROS coms data.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int procCmdROS(ROSComm &out_RC);
+int procProjMsgROS(ROSComm &out_RC);
+
+/**
+ * @brief Processes commands received from the "harness_pose_in_maze" topic.
+ *
+ * @details
+ * This function checks if a new position tracking message has been received and processes the message.
+ *
+ * @param[out] out_RC Reference to the ROSComm struct containing the ROS coms data.
+ * @param[out] out_RT Rat tracker struct object to be updated.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT);
 
 /**
  * @brief Simulates rat movement.
@@ -243,19 +258,6 @@ int procCmdROS(ROSComm &out_RC);
 void simulateRatMovement(
     float move_step,
     float max_turn_angle,
-    RatTracker &out_RT);
-
-/**
- * @brief
- *
- * @param harness_pose Position and orientation of the rat harness in the maze (in m).
- * @brief
- *
- * @param harness_pose Position and orientation of the rat harness in the maze (in m).
- * @param out_RT Rat tracker struct object to be updated.
- */
-void placeRatTracker(
-    geometry_msgs::PoseStamped harness_pose,
     RatTracker &out_RT);
 
 /**
@@ -280,7 +282,7 @@ void addImageConfiguration(const std::string &direction,
 /**
  * @brief Sets the wall image configuration for a projector array.
  *
- * This function updates the out_PROJ_WALL_IMAGE_CFG_4D_VEC array to set images on specified walls 
+ * This function updates the out_PROJ_WALL_IMAGE_CFG_4D_VEC array to set images on specified walls
  * in a chamber, considering each projector's orientation. It supports setting images for multiple walls.
  *
  * @param image_ind Index of the image to be projected.
@@ -294,7 +296,7 @@ void addImageConfiguration(const std::string &direction,
 void configWallImages(int image_ind, int chamber_ind, int wall_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC);
 
 // Overload for setting images on multiple walls
-void configWallImages(int image_ind, int chamber_ind, const std::vector<int>& walls_ind, ProjWallImageCfg4D& out_PROJ_WALL_IMAGE_CFG_4D_VEC);
+void configWallImages(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC);
 
 /**
  * @brief Get the vertices cooresponding to the maze boundaries in centimeters.

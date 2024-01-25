@@ -44,7 +44,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         }
 
         // ---------- Change wall configuration [0-8] ----------
-        int proj_cmd = RC.last_projection_cmd;
+        int proj_cmd = RC.last_proj_cmd;
         if (key == GLFW_KEY_0)
         {
             proj_cmd = 0;
@@ -82,35 +82,44 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             proj_cmd = 8;
         }
         // Check for configuration change
-        if (proj_cmd != RC.last_projection_cmd)
+        if (proj_cmd != RC.last_proj_cmd)
         {
-            ROS_INFO("[callbackKeyBinding] Initiated change image configuration from %d to %d", RC.last_projection_cmd, proj_cmd);
-            RC.last_projection_cmd = proj_cmd;
+            ROS_INFO("[callbackKeyBinding] Initiated change image configuration from %d to %d", RC.last_proj_cmd, proj_cmd);
+            RC.last_proj_cmd = proj_cmd;
             // Update the image configuration index
-            I.wall_image_cfg = RC.last_projection_cmd;
+            I.wall_image_cfg = RC.last_proj_cmd;
             // Set the flag to update the textures
             F.update_textures = true;
         }
     }
 }
 
-void callbackCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC)
+void callbackProjMsgROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC)
 {
     // Update the last received command
-    out_RC->last_projection_cmd = msg->data;
-    out_RC->is_message_received = true;
-    ROS_INFO("[callbackCmdROS] Received projection command: %d", out_RC->last_projection_cmd);
+    out_RC->last_proj_cmd = msg->data;
+    out_RC->is_proj_message_received = true;
+
+    // Log projection command
+    if (GLB_DO_VERBOSE_DEBUG)
+        ROS_INFO("[callbackProjMsgROS] Received projection command: %d", out_RC->last_proj_cmd);
 }
 
-void callbackHarnessPoseROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSComm *out_RC)
+void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSComm *out_RC)
 {
     // Update the last received command
-    out_RC->last_harness_pose = *msg;
-    // out_RC->is_message_received = true;
-    //  ROS_INFO("[callbackHarnessPosROS] Received harness position: x=%f y=%f z=%f",
-    //           out_RC->last_harness_pose.pose.position.x,
-    //           out_RC->last_harness_pose.pose.position.y,
-    //           out_RC->last_harness_pose.pose.position.z);
+    out_RC->last_track_pos = *msg;
+    out_RC->is_track_message_received = true;
+
+    // Log position data
+    if (GLB_DO_VERBOSE_DEBUG)
+        ROS_INFO("[callbackHarnessPosROS] Received tracking: position x[%f] y[%f] z[%f], orientation x[%f] y[%f] z[%f]",
+                 out_RC->last_track_pos.pose.position.x,
+                 out_RC->last_track_pos.pose.position.y,
+                 out_RC->last_track_pos.pose.position.z,
+                 out_RC->last_track_pos.pose.orientation.x,
+                 out_RC->last_track_pos.pose.orientation.y,
+                 out_RC->last_track_pos.pose.orientation.z);
 }
 
 int initSubscriberROS(ROSComm &out_RC)
@@ -122,94 +131,176 @@ int initSubscriberROS(ROSComm &out_RC)
         return -1;
     }
 
-    // Initialize the subscriber using boost::bind
-    out_RC.projection_cmd_sub = out_RC.node_handle->subscribe<std_msgs::Int32>(
-        "projection_cmd", 10, boost::bind(&callbackCmdROS, _1, &out_RC));
-
-    out_RC.harness_pose_sub = out_RC.node_handle->subscribe<geometry_msgs::PoseStamped>(
-        "harness_pose_in_maze", 10, boost::bind(&callbackHarnessPoseROS, _1, &out_RC));
-
-    if (!out_RC.projection_cmd_sub)
+    // Initialize the "projection_cmd" subscriber using boost::bind
+    out_RC.proj_cmd_sub = out_RC.node_handle->subscribe<std_msgs::Int32>(
+        "projection_cmd", 10, boost::bind(&callbackProjMsgROS, _1, &out_RC));
+    if (!out_RC.proj_cmd_sub)
     {
         ROS_ERROR("[initSubscriberROS]Failed to subscribe to 'projection_cmd' topic!");
+        return -1;
+    }
+
+    out_RC.track_pos_sub = out_RC.node_handle->subscribe<geometry_msgs::PoseStamped>(
+        "harness_pose_in_maze", 10, boost::bind(&callbackTrackPosROS, _1, &out_RC));
+    if (!out_RC.track_pos_sub)
+    {
+        ROS_ERROR("[initSubscriberROS]Failed to subscribe to 'harness_pose_in_maze' topic!");
         return -1;
     }
 
     return 0;
 }
 
-int procCmdROS(ROSComm &out_RC)
+int procProjMsgROS(ROSComm &out_RC)
 {
     // Check if node handle is initialized
     if (!ros::ok())
     {
-        ROS_ERROR("[procCmdROS]ROS is no longer running!");
+        ROS_ERROR("[procProjMsgROS]ROS is no longer running!");
         return -1;
     }
 
-    // Process a single round of callbacks for ROS messages
-    ros::spinOnce();
-
     // Bail if no message received
-    if (!out_RC.is_message_received)
+    if (!out_RC.is_proj_message_received)
         return 0;
 
     // Reset the flag
-    out_RC.is_message_received = false;
+    out_RC.is_proj_message_received = false;
 
     // Log the received command
-    ROS_INFO("[procCmdROS] Processing received projection command: %d", out_RC.last_projection_cmd);
+    if (GLB_DO_VERBOSE_DEBUG)
+        ROS_INFO("[procProjMsgROS] Processing received projection command: %d", out_RC.last_proj_cmd);
 
     // ---------- Monitor Mode Change Commmands ----------
 
     // Move monitor command [-1]
-    if (out_RC.last_projection_cmd == -1)
+    if (out_RC.last_proj_cmd == -1)
     {
         F.windows_set_to_proj = !F.windows_set_to_proj;
         F.change_window_mode = true;
     }
 
     // Set/unset Fullscreen [-2] ----------
-    else if (out_RC.last_projection_cmd == -2)
+    else if (out_RC.last_proj_cmd == -2)
     {
         F.fullscreen_mode = !F.fullscreen_mode;
         F.change_window_mode = true;
     }
 
     // Force window to top [-3] ----------
-    else if (out_RC.last_projection_cmd == -3)
+    else if (out_RC.last_proj_cmd == -3)
     {
         F.force_window_focus = true;
     }
 
     // ---------- Change image configuraton ----------
 
-    else if (out_RC.last_projection_cmd >= 0 && out_RC.last_projection_cmd <= 9)
+    else if (out_RC.last_proj_cmd >= 0 && out_RC.last_proj_cmd <= 9)
     {
-        if (out_RC.last_projection_cmd >= PROJ_WALL_IMAGE_CFG_4D_VEC.size())
+        if (out_RC.last_proj_cmd >= PROJ_WALL_IMAGE_CFG_4D_VEC.size())
         {
-            ROS_WARN("[procCmdROS] Received image configuration index exceeds image configurations vector");
+            ROS_WARN("[procProjMsgROS] Received image configuration index exceeds image configurations vector");
             return 0;
         }
         // Update the image configuration index
-        I.wall_image_cfg = out_RC.last_projection_cmd;
+        I.wall_image_cfg = out_RC.last_proj_cmd;
         // Set the flag to update the textures
         F.update_textures = true;
     }
 
     else
     {
-        ROS_WARN("[procCmdROS] Received invalid projection command: %d", out_RC.last_projection_cmd);
+        ROS_WARN("[procProjMsgROS] Received invalid projection command: %d", out_RC.last_proj_cmd);
     }
 
     return 0;
 }
 
-void placeRatTracker(geometry_msgs::PoseStamped harness_pose, RatTracker &out_RT)
+int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT)
 {
-    // Convert the harness pose to centimeters
-    out_RT.marker_position.x = harness_pose.pose.position.x * 100.0f;
-    out_RT.marker_position.y = harness_pose.pose.position.y * 100.0f;
+    // Check if node handle is initialized
+    if (!ros::ok())
+    {
+        ROS_ERROR("[procTrackMsgROS]ROS is no longer running!");
+        return -1;
+    }
+
+    // Bail if no message received
+    if (!out_RC.is_track_message_received)
+        return 0;
+
+    // Reset the flag
+    out_RC.is_track_message_received = false;
+
+    // Log the received command
+    if (GLB_DO_VERBOSE_DEBUG)
+        ROS_INFO("[procTrackMsgROS] Processing received projection command: %d", out_RC.last_proj_cmd);
+
+    // Convert the track pose to centimeters
+    geometry_msgs::Point position_cm;
+    position_cm.x = out_RC.last_track_pos.pose.position.x * 100.0f;
+    position_cm.y = out_RC.last_track_pos.pose.position.y * 100.0f;
+
+    // Specify offset distance and angle
+    double offset_distance = 5.0f; // 10 cm offset
+    double offset_angle = -115.0f;     // 0 degrees offset
+
+    // Extract the quaternion
+    tf::Quaternion q(
+        out_RC.last_track_pos.pose.orientation.x,
+        out_RC.last_track_pos.pose.orientation.y,
+        out_RC.last_track_pos.pose.orientation.z,
+        out_RC.last_track_pos.pose.orientation.w);
+
+    // Convert quaternion to RPY (roll, pitch, yaw)
+    tf::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+
+    // Convert offset angle from degrees to radians
+    double offset_angle_rad = offset_angle * GLOB_PI / 180.0f;
+
+    // Adjust the yaw by the offset angle
+    double adjusted_yaw = yaw + offset_angle_rad;
+
+    // Calculate the offset in global frame
+    double offset_x = offset_distance * cos(adjusted_yaw);
+    double offset_y = offset_distance * sin(adjusted_yaw);
+
+    // Apply the offset to the original position
+    geometry_msgs::Point new_position;
+    out_RT.marker_position.x = position_cm.x + offset_x;
+    out_RT.marker_position.y = position_cm.y + offset_y;
+
+    return 0;
+}
+
+// Function to convert quaternion to yaw
+double getYawFromQuaternion(const geometry_msgs::Quaternion &quat)
+{
+    tf::Quaternion q(quat.x, quat.y, quat.z, quat.w);
+    tf::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+    return yaw;
+}
+
+// Function to calculate the new position with offset
+geometry_msgs::Point getOffsetPosition(const geometry_msgs::Pose &pose, double offset_distance)
+{
+    double yaw = getYawFromQuaternion(pose.orientation);
+
+    // Calculate the offset in global frame
+    double offset_x = offset_distance * cos(yaw);
+    double offset_y = offset_distance * sin(yaw);
+
+    // Apply the offset to the original position
+    geometry_msgs::Point new_position;
+    new_position.x = pose.position.x + offset_x;
+    new_position.y = pose.position.y + offset_y;
+    new_position.z = pose.position.z; // Assuming no change in z-axis
+
+    return new_position;
 }
 
 void simulateRatMovement(float move_step, float max_turn_angle, RatTracker &out_RT)
@@ -238,7 +329,7 @@ void simulateRatMovement(float move_step, float max_turn_angle, RatTracker &out_
     }
 
     // Calculate new position
-    float radian_angle = marker_angle * PI / 180.0f;
+    float radian_angle = marker_angle * GLOB_PI / 180.0f;
     out_RT.marker_position.x += move_step * cos(radian_angle);
     out_RT.marker_position.y += move_step * sin(radian_angle);
 
@@ -829,9 +920,6 @@ void appMainLoop()
             if (projCtx.drawTexture() < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawTexture");
 
-            // Place rat tracker marker
-            placeRatTracker(RC.last_harness_pose, RT);
-
             // Draw/update rat mask marker
             if (drawRatMask(RT, RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawRatMask");
@@ -856,9 +944,16 @@ void appMainLoop()
 
         // --------------- Handle ROS Messages and Operations ---------------
 
-        // Process ROS messages
-        if (procCmdROS(RC) < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: procCmdROS");
+        // Process a single round of callbacks for ROS messages
+        ros::spinOnce();
+
+        // Process ROS projection messages
+        if (procProjMsgROS(RC) < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from: procProjMsgROS");
+
+        // Process ROS tracking position messages
+        if (procTrackMsgROS(RC, RT) < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from: procTrackMsgROS");
 
         // Sleep to maintain the loop rate
         RC.loop_rate->sleep();
