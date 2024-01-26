@@ -2,11 +2,14 @@ import rospy
 from std_msgs.msg import String
 import sounddevice as sd
 from scipy.io import wavfile
+import os
 
 
 class SoundGenerator:
     def __init__(self):
         rospy.loginfo('Sound Generator node started')
+
+        curDir = os.path.dirname(__file__)
 
         # List sound devices
         self.sound_devices = sd.query_devices()
@@ -16,10 +19,10 @@ class SoundGenerator:
             rospy.loginfo(device['name'])
 
         white_noise_file = 'audiocheck.net_whitenoise.wav'
-        self.white_noise_samplerate, self.white_noise = wavfile.read(white_noise_file)
+        self.white_noise_samplerate, self.white_noise = wavfile.read(os.path.join(curDir, white_noise_file))
 
         five_KHz_file = 'audiocheck.net_sin_5000Hz_-3dBFS_3s.wav'
-        self.five_KHz_samplerate, self.five_KHz = wavfile.read(five_KHz_file)
+        self.five_KHz_samplerate, self.five_KHz = wavfile.read(os.path.join(curDir, five_KHz_file))
 
         self.sound_duration = 1  # seconds
         self.white_noise = self.white_noise[:self.white_noise_samplerate*self.sound_duration]
@@ -27,6 +30,7 @@ class SoundGenerator:
 
         # Create a subscriber for the sound topic
         self.sound_sub = rospy.Subscriber('/sound_cmd', String, self.sound_callback)
+
 
         r = rospy.Rate(10)
         while not rospy.is_shutdown():
