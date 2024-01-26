@@ -233,6 +233,14 @@ add_custom_command(TARGET projection_display_node POST_BUILD
                    "$ENV{DevIL_DIR}/lib/x64/Release/ILUT.dll"
                    $<TARGET_FILE_DIR:projection_display_node>)
 
+
+# ==================== SETUP SOUND_GENERATOR LIBRARY ====================
+
+# Create executable
+# Install Python script
+catkin_install_python(PROGRAMS src/sound_generator/sound_generator.py
+                      DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
 # ==================== INSTALL TARGETS ====================
 
 install(TARGETS projection_calibration_node projection_display_node projection_utils
