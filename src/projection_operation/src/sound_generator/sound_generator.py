@@ -24,9 +24,14 @@ class SoundGenerator:
         five_KHz_file = 'audiocheck.net_sin_5000Hz_-3dBFS_3s.wav'
         self.five_KHz_samplerate, self.five_KHz = wavfile.read(os.path.join(curDir, five_KHz_file))
 
-        self.sound_duration = 1  # seconds
+        error_sound_file = 'mixkit-game-show-wrong-answer-buzz-950.wav'
+        self.error_sound_samplerate, self.error_sound = wavfile.read(os.path.join(curDir, error_sound_file))
+
+        self.sound_duration = 5  # seconds
+        #self.error_sound_duration = 0.1  # seconds
         self.white_noise = self.white_noise[:self.white_noise_samplerate*self.sound_duration]
         self.five_KHz = self.five_KHz[:self.five_KHz_samplerate*self.sound_duration]
+        #self.error_sound = self.error_sound[:self.error_sound_samplerate*self.error_sound_duration]
 
         # Create a subscriber for the sound topic
         self.sound_sub = rospy.Subscriber('/sound_cmd', String, self.sound_callback)
@@ -44,6 +49,8 @@ class SoundGenerator:
             [sd.play(self.white_noise, self.white_noise_samplerate, device=device['name']) for device in self.sound_devices] 
         elif msg.data == '5KHz':
             [sd.play(self.five_KHz, self.five_KHz_samplerate, device=device['name']) for device in self.sound_devices]
+        elif msg.data == 'Error':
+            [sd.play(self.error_sound, self.error_sound_samplerate, device=device['name']) for device in self.sound_devices]
         else:
             rospy.logwarn('Sound not recognized: ' + msg.data)
         
