@@ -242,8 +242,8 @@ int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT)
     position_cm.y = out_RC.last_track_pos.pose.position.y * 100.0f;
 
     // Specify offset distance and angle
-    double offset_distance = 5.0f; // 10 cm offset
-    double offset_angle = -115.0f;     // 0 degrees offset
+    double offset_distance = 5.0f; //5 cm offset
+    double offset_angle = -125.0f; // 0 degrees offset
 
     // Extract the quaternion
     tf::Quaternion q(

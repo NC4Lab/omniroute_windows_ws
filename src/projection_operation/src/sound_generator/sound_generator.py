@@ -28,10 +28,10 @@ class SoundGenerator:
         self.error_sound_samplerate, self.error_sound = wavfile.read(os.path.join(curDir, error_sound_file))
 
         self.sound_duration = 5  # seconds
-        #self.error_sound_duration = 0.1  # seconds
+        self.error_sound_duration = 0.1  # seconds
         self.white_noise = self.white_noise[:self.white_noise_samplerate*self.sound_duration]
         self.five_KHz = self.five_KHz[:self.five_KHz_samplerate*self.sound_duration]
-        #self.error_sound = self.error_sound[:self.error_sound_samplerate*self.error_sound_duration]
+        self.error_sound = self.error_sound[:int(self.error_sound_samplerate*self.error_sound_duration)]
 
         # Create a subscriber for the sound topic
         self.sound_sub = rospy.Subscriber('/sound_cmd', String, self.sound_callback)
