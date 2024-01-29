@@ -111,6 +111,9 @@ void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSCom
     out_RC->last_track_pos = *msg;
     out_RC->is_track_message_received = true;
 
+    // TEMP
+    dbTraceCalls(true, __LINE__, __FILE__);
+
     // Log position data
     if (GLB_DO_VERBOSE_DEBUG)
         ROS_INFO("[callbackHarnessPosROS] Received tracking: position x[%f] y[%f] z[%f], orientation x[%f] y[%f] z[%f]",
@@ -242,8 +245,8 @@ int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT)
     position_cm.y = out_RC.last_track_pos.pose.position.y * 100.0f;
 
     // Specify offset distance and angle
-    double offset_distance = 5.0f; //5 cm offset
-    double offset_angle = -125.0f; // 0 degrees offset
+    double offset_distance = 5.0f; // offset from harness (cm)
+    double offset_angle = -125.0f; // rotation offset (degree)
 
     // Extract the quaternion
     tf::Quaternion q(
@@ -950,6 +953,12 @@ void appMainLoop()
         // Process ROS projection messages
         if (procProjMsgROS(RC) < 0)
             throw std::runtime_error("[appMainLoop] Error returned from: procProjMsgROS");
+
+        // TEMP
+        static int64_t t_max = 0;
+        int64_t t = dbTraceCalls(true, __LINE__, __FILE__);
+        t_max = t > t_max ? t : t_max;
+        ROS_INFO("t_max: %ld", t_max);
 
         // Process ROS tracking position messages
         if (procTrackMsgROS(RC, RT) < 0)
