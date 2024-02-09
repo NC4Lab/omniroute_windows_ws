@@ -241,10 +241,6 @@ int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT)
     position_cm.x = out_RC.last_track_pos.pose.position.x * 100.0f;
     position_cm.y = out_RC.last_track_pos.pose.position.y * 100.0f;
 
-    // Specify offset distance and angle
-    double offset_distance = 10.0f; // offset from harness (cm)
-    double offset_angle = 0.0f;    // rotation offset (degree)
-
     // Extract the quaternion
     tf::Quaternion q(
         out_RC.last_track_pos.pose.orientation.x,
@@ -258,17 +254,18 @@ int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT)
     m.getRPY(roll, pitch, yaw);
 
     // Convert offset angle from degrees to radians
-    double offset_angle_rad = offset_angle * GLOB_PI / 180.0f;
+    double offset_angle_rad = out_RT.offset_angle * GLOB_PI / 180.0f;
 
     // Adjust the yaw by the offset angle
     double adjusted_yaw = yaw + offset_angle_rad;
 
     // Calculate the offset in global frame
-    double offset_x = offset_distance * cos(adjusted_yaw);
-    double offset_y = offset_distance * sin(adjusted_yaw);
+    double offset_x = out_RT.offset_distance * cos(adjusted_yaw);
+    double offset_y = out_RT.offset_distance * sin(adjusted_yaw);
 
-    offset_x = 0.0;
-    offset_y = 0.0;
+    // // TEMP
+    // offset_x = 0.0;
+    // offset_y = 0.0;
 
     // Apply the offset to the original position
     out_RT.marker_position.x = position_cm.x + offset_x;
@@ -644,7 +641,7 @@ void appInitVariables()
 
     // Specify the two shapes
     int shape_blank_ind = 0; // Blank
-    int shape1_ind = 2;      // Circle
+    int shape1_ind = 1;      // Square
     int shape2_ind = 3;      // Triangle
 
     std::vector<int> walls_ind_all = {0, 1, 2, 3, 4, 5, 6, 7};

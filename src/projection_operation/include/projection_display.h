@@ -66,9 +66,11 @@ static struct CountStruct
 static struct RatTracker
 {
     cv::Point2f marker_position = cv::Point2f(0.0f, 0.0f); // Marker center (cm)
-    const GLfloat marker_radius = 5.0f;                    // Marker default circle radius (cm)
-    cv::Scalar marker_rgb = cv::Scalar(1.0f, 0.0f, 0.0f);  // Marker color (black)
+    const GLfloat marker_radius = 7.5f;                   // Marker default circle radius (cm)
+    cv::Scalar marker_rgb = cv::Scalar(0.0f, 0.0f, 0.0f);  // Marker color (black)
     const int marker_segments = 36;                        // Number of segments used to approximate the circle geometry
+    double offset_distance = 5.0f;                         // Translational offset from harness (cm)
+    double offset_angle = 75.0f;                           // Rotational offset from harness (degree)
 } RT;
 
 /**
