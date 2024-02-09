@@ -111,9 +111,6 @@ void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSCom
     out_RC->last_track_pos = *msg;
     out_RC->is_track_message_received = true;
 
-    // TEMP
-    dbTraceCalls(true, __LINE__, __FILE__);
-
     // Log position data
     if (GLB_DO_VERBOSE_DEBUG)
         ROS_INFO("[callbackHarnessPosROS] Received tracking: position x[%f] y[%f] z[%f], orientation x[%f] y[%f] z[%f]",
@@ -245,8 +242,8 @@ int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT)
     position_cm.y = out_RC.last_track_pos.pose.position.y * 100.0f;
 
     // Specify offset distance and angle
-    double offset_distance = 5.0f; // offset from harness (cm)
-    double offset_angle = -125.0f; // rotation offset (degree)
+    double offset_distance = 10.0f; // offset from harness (cm)
+    double offset_angle = 0.0f;    // rotation offset (degree)
 
     // Extract the quaternion
     tf::Quaternion q(
@@ -270,8 +267,10 @@ int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT)
     double offset_x = offset_distance * cos(adjusted_yaw);
     double offset_y = offset_distance * sin(adjusted_yaw);
 
+    offset_x = 0.0;
+    offset_y = 0.0;
+
     // Apply the offset to the original position
-    geometry_msgs::Point new_position;
     out_RT.marker_position.x = position_cm.x + offset_x;
     out_RT.marker_position.y = position_cm.y + offset_y;
 
@@ -338,65 +337,6 @@ void simulateRatMovement(float move_step, float max_turn_angle, RatTracker &out_
 
     // Keep the rat within the enclosure and turn if hitting the wall
     keepWithinBoundsAndTurn(out_RT.marker_position);
-}
-
-void addImageConfiguration(const std::string &direction, int left_shape_ind, int right_shape_ind,
-                           std::vector<ProjWallImageCfg4D> &out_PROJ_WALL_IMAGE_CFG_4D_VEC)
-{
-    // Initialize a new 4D array with all zeros
-    ProjWallImageCfg4D new_array = {};
-
-    // If blank is true, skip setting specific values and just return the array of zeros
-    if (direction != "blank")
-    {
-        // Determine projectors involved relative to direction
-        int proj_primary_ind = -1;    // Projector projecting onto both walls
-        int proj_left_wall_ind = -1;  // Projector projecting onto the left wall
-        int proj_right_wall_ind = -1; // Projector projecting onto the right wall
-
-        if (direction == "east")
-        {
-            proj_primary_ind = 0;    // P0: East facing
-            proj_left_wall_ind = 3;  // P3: North facing
-            proj_right_wall_ind = 1; // P1: South facing
-        }
-        else if (direction == "south")
-        {
-            proj_primary_ind = 1;    // P1: South facing
-            proj_left_wall_ind = 0;  // P0: East facing
-            proj_right_wall_ind = 2; // P2: West facing
-        }
-        else if (direction == "west")
-        {
-            proj_primary_ind = 2;    // P2: West facing
-            proj_left_wall_ind = 1;  // P1: South facing
-            proj_right_wall_ind = 3; // P3: North facing
-        }
-        else if (direction == "north")
-        {
-            proj_primary_ind = 3;    // P3: North facing
-            proj_left_wall_ind = 2;  // P2: West facing
-            proj_right_wall_ind = 0; // P0: East facing
-        }
-
-        // Get the center index based on the maze grid size
-        int center_ind = (GLB_MAZE_SIZE - 1) / 2;
-
-        // Set the left and right values for the primary projectors left and right wall indices
-        new_array[proj_primary_ind][center_ind][center_ind][0] = left_shape_ind;  // Center/middle left
-        new_array[proj_primary_ind][center_ind][center_ind][2] = right_shape_ind; // Center/middle right
-
-        // Set the values for the left and right projector, 'left' corresponds to the right value and vice versa
-        new_array[proj_left_wall_ind][center_ind][center_ind][2] = left_shape_ind;   // Center/middle right
-        new_array[proj_right_wall_ind][center_ind][center_ind][0] = right_shape_ind; // Center/middle left
-
-        // if (GLB_DO_VERBOSE_DEBUG)
-        ROS_INFO("[addImageConfiguration] Added image configuration for direction %s: Projectors Primary[%d] Left:%d Right:%d]",
-                 direction.c_str(), proj_primary_ind, proj_left_wall_ind, proj_right_wall_ind);
-    }
-
-    // Add the new configuration to the vector
-    out_PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(new_array);
 }
 
 void configWallImages(int image_ind, int chamber_ind, int wall_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC)
@@ -953,12 +893,6 @@ void appMainLoop()
         // Process ROS projection messages
         if (procProjMsgROS(RC) < 0)
             throw std::runtime_error("[appMainLoop] Error returned from: procProjMsgROS");
-
-        // TEMP
-        static int64_t t_max = 0;
-        int64_t t = dbTraceCalls(true, __LINE__, __FILE__);
-        t_max = t > t_max ? t : t_max;
-        ROS_INFO("t_max: %ld", t_max);
 
         // Process ROS tracking position messages
         if (procTrackMsgROS(RC, RT) < 0)

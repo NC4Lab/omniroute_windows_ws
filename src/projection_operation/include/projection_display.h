@@ -261,25 +261,6 @@ void simulateRatMovement(
     RatTracker &out_RT);
 
 /**
- * @brief Add a new projector image configuration to the vector.
- *
- * @details
- * This function adds a new 4D array configuration to a vector of existing configurations based on the specified projector direction.
- * It initializes a new configuration with all elements set to zero, then sets specific 'left' and 'right' values in the center cell of the
- * middle row for the primary and secondary projectors. The primary and secondary projectors are determined by the direction parameter.
- * The new configuration is then added to the provided vector.
- *
- * @param direction The direction the rat is facing at the choice point ("east", "north", "west", or "south").
- * @param left_shape_ind The index of the image to use the 'left' wall of the center cell of the middle row.
- * @param right_shape_ind The index of the image to use the 'right' wall of the center cell of the middle row.
- * @param[out] out_PROJ_WALL_IMAGE_CFG_4D_VEC Vector of ProjWallImageCfg4D projector image configurations.
- */
-void addImageConfiguration(const std::string &direction,
-                           int left_shape_ind,
-                           int right_shape_ind,
-                           std::vector<ProjWallImageCfg4D> &out_PROJ_WALL_IMAGE_CFG_4D_VEC);
-
-/**
  * @brief Sets the wall image configuration for a projector array.
  *
  * This function updates the out_PROJ_WALL_IMAGE_CFG_4D_VEC array to set images on specified walls
