@@ -35,18 +35,19 @@ static struct FlagStateStruct
 static struct IndStruct
 {
     const int starting_monitor = 0; // Default starting monitor index for the windows (hardcoded)
-    const std::vector<int> proj_mon_vec = {
+
+    std::vector<int> proj_mon_vec = {1,2,3,4};  // Vector of indeces of the monitor associated with each projector
+    /*
+    MSM: 2024-03-20
+    Is not hardcoded anymore.
+    = {
         2, // Projector 0
         1, // Projector 1
         4, // Projector 2
         3, // Projector 3
-    };     // Vector of indeces of the monitor associeted to each projector (hardcoded)
-    // const std::vector<int> proj_mon_vec = {
-    //     0,                  // Projector 0
-    //     0,                  // Projector 1
-    //     0,                  // Projector 2
-    //     0,                  // Projector 3
-    // };                      // Vector of indeces of the monitor associeted to each projector (hardcoded)
+    };
+    */
+
     int wall_image_cfg = 0; // Index of the curren wall image configuration
 } I;
 

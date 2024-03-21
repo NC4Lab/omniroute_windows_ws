@@ -636,7 +636,8 @@ void appLoadAssets()
 void appInitOpenGL()
 {
     // Initialize GLFW and OpenGL settings
-    if (MazeRenderContext::SetupGraphicsLibraries(N.monitor) < 0)
+    std::vector<int> proj_mon_vec = {1,2,3,4};
+    if (MazeRenderContext::SetupGraphicsLibraries(N.monitor, proj_mon_vec) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
 
     // Initialze render context
