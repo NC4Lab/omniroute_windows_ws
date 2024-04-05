@@ -145,7 +145,7 @@ std::vector<std::string> fiImgPathWallVec = {
     runtime_wall_image_path + "/w_triangle.png", // [3] Triangle shape
     runtime_wall_image_path + "/w_star.png",     // [4] Star shape
     runtime_wall_image_path + "/w_pentagon.png", // [5] Pentagon shape
-    runtime_wall_image_path + "/w_solid_circle.png",   // [6] solid Circle shape
+    runtime_wall_image_path + "/w_circle.png",   // [6] Circle shape
 };
 /**
  * @brief List of floor image file paths
