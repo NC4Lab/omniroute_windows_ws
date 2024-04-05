@@ -1432,8 +1432,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
 
     ROS_INFO("                                       Warped Wall Coordinates                                               ");
     ROS_INFO("=============================================================================================================");
-    ROS_INFO("        ||   (0) Left    |   (0) Right   ||   (1) Left    |   (1) Right   ||   (2) Left    |   (2) Right   ||");
-    ROS_INFO("-------------------------------------------------------------------------------------------------------------");
+     ROS_INFO("-------------------------------------------------------------------------------------------------------------");
 
     // Loop through each row and column in the maze
     for (int row = 0; row < GLB_MAZE_SIZE; ++row)

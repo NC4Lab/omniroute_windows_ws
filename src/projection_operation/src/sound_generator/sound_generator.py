@@ -3,6 +3,8 @@ from std_msgs.msg import String
 import sounddevice as sd
 from scipy.io import wavfile
 import os
+import numpy as np
+
 
 
 class SoundGenerator:
@@ -24,11 +26,12 @@ class SoundGenerator:
         five_KHz_file = 'audiocheck.net_sin_5000Hz_-3dBFS_3s.wav'
         self.five_KHz_samplerate, self.five_KHz = wavfile.read(os.path.join(curDir, five_KHz_file))
 
-        error_sound_file = 'mixkit-game-show-wrong-answer-buzz-950.wav'
+        #error_sound_file = 'mixkit-game-show-wrong-answer-buzz-950.wav'
+        error_sound_file = 'mixkit-game-show-wrong-answer-buzz-950 (Joined by Happy Scribe.wav'
         self.error_sound_samplerate, self.error_sound = wavfile.read(os.path.join(curDir, error_sound_file))
 
         self.sound_duration = 5  # seconds
-        self.error_sound_duration = 0.1  # seconds
+        self.error_sound_duration = 8  # seconds
         self.white_noise = self.white_noise[:self.white_noise_samplerate*self.sound_duration]
         self.five_KHz = self.five_KHz[:self.five_KHz_samplerate*self.sound_duration]
         self.error_sound = self.error_sound[:int(self.error_sound_samplerate*self.error_sound_duration)]

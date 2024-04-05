@@ -643,7 +643,8 @@ void appInitVariables()
     int shape_blank_ind = 0; // Blank
     //int shape1_ind = 1;      // Square
     int shape2_ind = 3;      // Triangle
-    int shape1_ind = 2;      // circle
+    //int shape1_ind = 2;      // circle
+    int shape1_ind = 6;      // solid_circle
 
     std::vector<int> walls_ind_all = {0, 1, 2, 3, 4, 5, 6, 7};
 
