@@ -137,7 +137,7 @@ int MazeRenderContext::CheckErrorGLFW(int line, const char *file_str, const char
     return 0;
 }
 
-int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon)
+int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon, std::vector<int> &out_proj_mon_ind)
 {
     int status = 0;
 
@@ -167,6 +167,26 @@ int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon)
         ROS_ERROR("[MazeRenderContext::SetupGraphicsLibraries] No Monitors Found");
         return -1;
     }
+
+    // Sort the monitors by x
+    int monitor_x, monitor_y, monitor_width, monitor_height;
+    std::vector<std::pair<int, int>> monitor_x_ind;
+    for (int i = 0; i < _NumMonitors; i++)
+    {
+        glfwGetMonitorWorkarea(_PP_Monitor[i], &monitor_x, &monitor_y, &monitor_width, &monitor_height);
+        monitor_x_ind.push_back(std::make_pair(monitor_x, i));
+    }
+    std::sort(monitor_x_ind.begin(), monitor_x_ind.end());
+
+    // Store the monitor indices for projection
+    out_proj_mon_ind.clear();
+    for (auto &pair : monitor_x_ind)
+    {
+        out_proj_mon_ind.push_back(pair.second);
+    }
+    // Take out first monitor as the default projection monitor
+    out_proj_mon_ind.erase(out_proj_mon_ind.begin());
+    
     ROS_INFO("[MazeRenderContext::SetupGraphicsLibraries] Monitors Found: %d", _NumMonitors);
     out_n_mon = _NumMonitors;
 
@@ -1412,8 +1432,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
 
     ROS_INFO("                                       Warped Wall Coordinates                                               ");
     ROS_INFO("=============================================================================================================");
-    ROS_INFO("        ||   (0) Left    |   (0) Right   ||   (1) Left    |   (1) Right   ||   (2) Left    |   (2) Right   ||");
-    ROS_INFO("-------------------------------------------------------------------------------------------------------------");
+     ROS_INFO("-------------------------------------------------------------------------------------------------------------");
 
     // Loop through each row and column in the maze
     for (int row = 0; row < GLB_MAZE_SIZE; ++row)

@@ -641,8 +641,10 @@ void appInitVariables()
 
     // Specify the two shapes
     int shape_blank_ind = 0; // Blank
-    int shape1_ind = 1;      // Square
+    //int shape1_ind = 1;      // Square
     int shape2_ind = 3;      // Triangle
+    //int shape1_ind = 2;      // circle
+    int shape1_ind = 6;      // solid_circle
 
     std::vector<int> walls_ind_all = {0, 1, 2, 3, 4, 5, 6, 7};
 
@@ -737,12 +739,13 @@ void appInitOpenGL()
 {
 
     // Initialize GLFW and OpenGL settings and get number of monitors on the system
-    if (MazeRenderContext::SetupGraphicsLibraries(N.monitor) < 0)
+    if (MazeRenderContext::SetupGraphicsLibraries(N.monitor, I.proj_mon_vec) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
+    ROS_INFO("[appInitOpenGL] OpenGL initialized: Projector monitor indices: %d, %d, %d, %d", I.proj_mon_vec[0], I.proj_mon_vec[1], I.proj_mon_vec[2], I.proj_mon_vec[3]);
 
-    // Check if expected monitors exceed available monitors
-    if (I.proj_mon_vec.back() >= N.monitor) // compare last entry
-        throw std::runtime_error("[appInitOpenGL] Monitor index exceeds available monitors");
+    // // Check if expected monitors exceed available monitors
+    // if (I.proj_mon_vec.back() >= N.monitor) // compare last entry
+    //     throw std::runtime_error("[appInitOpenGL] Monitor index exceeds available monitors");
 
     // Initialize OpenGL for each projector
     for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind)

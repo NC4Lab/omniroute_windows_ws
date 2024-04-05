@@ -233,7 +233,7 @@ public:
      * @param[out] out_n_mon Reference to an integer to store the number of monitors found.
      * @return int Status of setup (0 for success, -1 for failure).
      */
-    int static SetupGraphicsLibraries(int &out_n_mon);
+    int static SetupGraphicsLibraries(int &out_n_mon, std::vector<int> &out_proj_mon_ind);
 
     /**
      * @brief Compiles and links shaders for a given class instance.
