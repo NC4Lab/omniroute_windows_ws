@@ -1,0 +1,30 @@
+# ROS build and devel folders
+build/
+devel/
+
+# Python Bytecode
+__pycache__/
+*.pyc
+*.pyo
+
+# C++ Object Files
+*.o
+*.obj
+
+# Temporary Files
+*.tmp
+*.swp
+*.swo
+
+# IDE and Editor Files
+.idea/
+.vscode/*
+# Synching VS Code json files for now
+!.vscode/settings.json
+!.vscode/c_cpp_properties.json
+
+# Other
+.ini/
+
+# Synching CMakeLists.txt files for now
+#src/CMakeLists.txt
