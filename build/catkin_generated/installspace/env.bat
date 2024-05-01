@@ -6,6 +6,6 @@ if "%1"=="" (
   echo "Calling env.bat without arguments is not supported anymore. Instead spawn a subshell and source a setup file manually."
   exit 1
 ) else (
-  call "C:/Users/NC4/nc4_code_base/omniroute_operation_windows_ws/install/setup.bat"
+  call "C:/Users/NC4/nc4_code_base/omniroute_windows_ws/install/setup.bat"
   %*
 )
