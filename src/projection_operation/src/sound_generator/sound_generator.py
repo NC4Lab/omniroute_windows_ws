@@ -71,6 +71,7 @@ import sounddevice as sd
 from scipy.io import wavfile
 import os
 import numpy as np
+import threading
 
 class SoundGenerator:
     def __init__(self):
@@ -84,6 +85,9 @@ class SoundGenerator:
         rospy.loginfo('Sound devices found:')
         for device in self.sound_devices:
             rospy.loginfo(device['name'])
+        
+        self.looping_sound = False
+        self.sound_thread = None
         
         white_noise_file_five = 'audiocheck.net_whitenoise.wav'
         self.white_noise_samplerate_five, self.white_noise_five = wavfile.read(os.path.join(curDir, white_noise_file_five))
@@ -105,8 +109,8 @@ class SoundGenerator:
         self.error_sound_duration = 8  # seconds
         self.white_noise_five = self.white_noise_five[:self.white_noise_samplerate_five*self.sound_duration_one]
         self.five_KHz_six = self.five_KHz_six[:self.five_KHz_samplerate_six*self.sound_duration_one]
-        self.white_noise_twenty = self.white_noise_twenty[:self.white_noise_samplerate_twenty*self.sound_duration_two]
-        self.five_KHz_twenty = self.five_KHz_twenty[:self.five_KHz_samplerate_twenty*self.sound_duration_two]
+        self.white_noise_twenty = self.white_noise_twenty[:self.white_noise_samplerate_twenty*(-1)]
+        self.five_KHz_twenty = self.five_KHz_twenty[:self.five_KHz_samplerate_twenty*(-1)]
         self.error_sound = self.error_sound[:int(self.error_sound_samplerate*self.error_sound_duration)]
 
         # Create a subscriber for the sound topic
@@ -127,10 +131,43 @@ class SoundGenerator:
             [sd.play(self.error_sound, self.error_sound_samplerate, device=device['name']) for device in self.sound_devices]
         elif msg.data == 'White_Noise_Training_Start':
             [sd.play(self.white_noise_twenty, self.white_noise_samplerate_twenty, device=device['name']) for device in self.sound_devices]
+            # if not self.looping_sound:
+            #     self.looping_sound = True
+            #     self.sound_thread = threading.Thread(target=self.play_sound)
+            #     self.sound_thread.start()
+        # elif msg.data == 'White_Noise_Training_Stop':
+            # self.looping_sound = False
+            # for device in self.sound_devices:
+            #     sd.stop(device=device['name'])
+            # if self.sound_thread:
+            #     self.sound_thread.join()
         elif msg.data == '5KHz_Training_Start':
+            # while self.looping_sound:
             [sd.play(self.five_KHz_twenty, self.five_KHz_samplerate_twenty, device=device['name']) for device in self.sound_devices]
+        # elif msg.data == '5KHz_Training_Stop':
+        #     self.looping_sound = False
         else:
             rospy.logwarn('Sound not recognized: ' + msg.data)
+
+    def play_sound_on_device(self, device):
+        while self.looping_sound:
+            sd.play(self.white_noise_twenty, self.white_noise_samplerate_twenty, device=device['name'])
+            sd.wait()  # Ensure the sound finishes playing
+            # Check if looping_sound is still True before starting next loop
+            if not self.looping_sound:
+                break  # Exit the loop if stopping signal received
+
+    def play_sound(self):
+        threads = []
+        for device in self.sound_devices:
+            thread = threading.Thread(target=self.play_sound_on_device, args=(device,))
+            threads.append(thread)
+            thread.start()
+
+        # Wait for all threads to complete (only when looping_sound becomes False)
+        for thread in threads:
+            thread.join()
+       
 
 # @brief Main code
 if __name__ == '__main__':
