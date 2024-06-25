@@ -130,37 +130,62 @@ class SoundGenerator:
         elif msg.data == 'Error':
             [sd.play(self.error_sound, self.error_sound_samplerate, device=device['name']) for device in self.sound_devices]
         elif msg.data == 'White_Noise_Training_Start':
-            [sd.play(self.white_noise_twenty, self.white_noise_samplerate_twenty, device=device['name']) for device in self.sound_devices]
-            # if not self.looping_sound:
-            #     self.looping_sound = True
-            #     self.sound_thread = threading.Thread(target=self.play_sound)
-            #     self.sound_thread.start()
-        # elif msg.data == 'White_Noise_Training_Stop':
-            # self.looping_sound = False
-            # for device in self.sound_devices:
-            #     sd.stop(device=device['name'])
-            # if self.sound_thread:
-            #     self.sound_thread.join()
+            #[sd.play(self.white_noise_twenty, self.white_noise_samplerate_twenty, device=device['name']) for device in self.sound_devices]
+            if not self.looping_sound:
+                self.looping_sound = True
+                self.sound_thread = threading.Thread(target=self.play_sound_white_noise)
+                self.sound_thread.start()
+        elif msg.data == 'White_Noise_Training_Stop':
+            self.looping_sound = False
+            sd.stop()
+            if self.sound_thread:
+                self.sound_thread.join()
         elif msg.data == '5KHz_Training_Start':
-            # while self.looping_sound:
-            [sd.play(self.five_KHz_twenty, self.five_KHz_samplerate_twenty, device=device['name']) for device in self.sound_devices]
-        # elif msg.data == '5KHz_Training_Stop':
-        #     self.looping_sound = False
+            #while self.looping_sound:
+            if not self.looping_sound:
+                self.looping_sound = True
+                self.sound_thread = threading.Thread(target=self.play_sound_5khz)
+                self.sound_thread.start()
+            #[sd.play(self.five_KHz_twenty, self.five_KHz_samplerate_twenty, device=device['name']) for device in self.sound_devices]
+        elif msg.data == '5KHz_Training_Stop':
+            self.looping_sound = False
+            sd.stop()
+            if self.sound_thread:
+                self.sound_thread.join()
         else:
             rospy.logwarn('Sound not recognized: ' + msg.data)
 
-    def play_sound_on_device(self, device):
+    def play_sound_on_device_white_noise(self, device):
         while self.looping_sound:
-            sd.play(self.white_noise_twenty, self.white_noise_samplerate_twenty, device=device['name'])
+            sd.play(self.white_noise_five, self.white_noise_samplerate_five, device=device['name'])
             sd.wait()  # Ensure the sound finishes playing
             # Check if looping_sound is still True before starting next loop
             if not self.looping_sound:
-                break  # Exit the loop if stopping signal received
+                break # Exit the loop if stopping signal received
 
-    def play_sound(self):
+    def play_sound_white_noise(self):
         threads = []
         for device in self.sound_devices:
-            thread = threading.Thread(target=self.play_sound_on_device, args=(device,))
+            thread = threading.Thread(target=self.play_sound_on_device_white_noise, args=(device,))
+            threads.append(thread)
+            thread.start()
+
+        # Wait for all threads to complete (only when looping_sound becomes False)
+        for thread in threads:
+            thread.join()
+
+    def play_sound_on_device_5khz(self, device):
+        while self.looping_sound:
+            sd.play(self.five_KHz_six, self.five_KHz_samplerate_six, device=device['name'])
+            sd.wait()  # Ensure the sound finishes playing
+            # Check if looping_sound is still True before starting next loop
+            if not self.looping_sound:
+                break # Exit the loop if stopping signal received
+
+    def play_sound_5khz(self):
+        threads = []
+        for device in self.sound_devices:
+            thread = threading.Thread(target=self.play_sound_on_device_5khz, args=(device,))
             threads.append(thread)
             thread.start()
 
