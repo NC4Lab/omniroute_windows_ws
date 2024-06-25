@@ -141,7 +141,6 @@ class SoundGenerator:
             if self.sound_thread:
                 self.sound_thread.join()
         elif msg.data == '5KHz_Training_Start':
-            #while self.looping_sound:
             if not self.looping_sound:
                 self.looping_sound = True
                 self.sound_thread = threading.Thread(target=self.play_sound_5khz)
