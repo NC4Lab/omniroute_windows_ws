@@ -42,54 +42,67 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         {
             F.force_window_focus = true;
         }
+    }
 
-        // ---------- Change wall configuration [0-8] ----------
-        int proj_cmd = RC.last_proj_cmd;
-        if (key == GLFW_KEY_0)
+    // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
+    else if (action == GLFW_PRESS || action == GLFW_REPEAT)
+    {
+
+        // ---------- Change wall configuration [SHIFT [0-8]] ----------
+        if (mods & GLFW_MOD_SHIFT)
         {
-            proj_cmd = 0;
+            int proj_cmd = RC.last_proj_cmd;
+            if (key == GLFW_KEY_0)
+            {
+                proj_cmd = 0;
+            }
+            else if (key == GLFW_KEY_1 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 1)
+            {
+                proj_cmd = 1;
+            }
+            else if (key == GLFW_KEY_2 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 2)
+            {
+                proj_cmd = 2;
+            }
+            else if (key == GLFW_KEY_3 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 3)
+            {
+                proj_cmd = 3;
+            }
+            else if (key == GLFW_KEY_4 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 4)
+            {
+                proj_cmd = 4;
+            }
+            else if (key == GLFW_KEY_5 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 5)
+            {
+                proj_cmd = 5;
+            }
+            else if (key == GLFW_KEY_6 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 6)
+            {
+                proj_cmd = 6;
+            }
+            else if (key == GLFW_KEY_7 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 7)
+            {
+                proj_cmd = 7;
+            }
+            else if (key == GLFW_KEY_8 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 8)
+            {
+                proj_cmd = 8;
+            }
+            // Check for configuration change
+            if (proj_cmd != RC.last_proj_cmd)
+            {
+                ROS_INFO("[callbackKeyBinding] Initiated change image configuration from %d to %d", RC.last_proj_cmd, proj_cmd);
+                RC.last_proj_cmd = proj_cmd;
+                // Update the image configuration index
+                I.wall_image_cfg = RC.last_proj_cmd;
+                // Set the flag to update the textures
+                F.update_textures = true;
+            }
         }
-        else if (key == GLFW_KEY_1 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 1)
+
+        // ---------- Change floor configuration [CTRL [0-5]] ----------
+        else if (mods & GLFW_MOD_CONTROL)
         {
-            proj_cmd = 1;
-        }
-        else if (key == GLFW_KEY_2 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 2)
-        {
-            proj_cmd = 2;
-        }
-        else if (key == GLFW_KEY_3 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 3)
-        {
-            proj_cmd = 3;
-        }
-        else if (key == GLFW_KEY_4 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 4)
-        {
-            proj_cmd = 4;
-        }
-        else if (key == GLFW_KEY_5 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 5)
-        {
-            proj_cmd = 5;
-        }
-        else if (key == GLFW_KEY_6 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 6)
-        {
-            proj_cmd = 6;
-        }
-        else if (key == GLFW_KEY_7 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 7)
-        {
-            proj_cmd = 7;
-        }
-        else if (key == GLFW_KEY_8 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 8)
-        {
-            proj_cmd = 8;
-        }
-        // Check for configuration change
-        if (proj_cmd != RC.last_proj_cmd)
-        {
-            ROS_INFO("[callbackKeyBinding] Initiated change image configuration from %d to %d", RC.last_proj_cmd, proj_cmd);
-            RC.last_proj_cmd = proj_cmd;
-            // Update the image configuration index
-            I.wall_image_cfg = RC.last_proj_cmd;
-            // Set the flag to update the textures
-            F.update_textures = true;
         }
     }
 }
@@ -193,9 +206,9 @@ int procProjMsgROS(ROSComm &out_RC)
         F.force_window_focus = true;
     }
 
-    // ---------- Change image configuraton ----------
+    // ---------- Change image configuraton [0-8] ----------
 
-    else if (out_RC.last_proj_cmd >= 0 && out_RC.last_proj_cmd <= 9)
+    else if (out_RC.last_proj_cmd >= 0 && out_RC.last_proj_cmd <= 8)
     {
         if (out_RC.last_proj_cmd >= PROJ_WALL_IMAGE_CFG_4D_VEC.size())
         {
@@ -641,10 +654,10 @@ void appInitVariables()
 
     // Specify the two shapes
     int shape_blank_ind = 0; // Blank
-    //int shape1_ind = 1;      // Square
-    int shape2_ind = 3;      // Triangle
-    //int shape1_ind = 2;      // circle
-    int shape1_ind = 0;      // blank
+    // int shape1_ind = 1;      // Square
+    int shape2_ind = 3; // Triangle
+    // int shape1_ind = 2;      // circle
+    int shape1_ind = 0; // blank
 
     std::vector<int> walls_ind_all = {0, 1, 2, 3, 4, 5, 6, 7};
 
