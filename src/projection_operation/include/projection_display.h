@@ -152,12 +152,12 @@ std::vector<std::string> fiImgPathWallVec = {
  */
 std::vector<std::string> fiImgPathFloorVec = {
     runtime_wall_image_path + "/f_black.png",   // [0] Black
-    runtime_wall_image_path + "/f_gray_0.png",  // [1] Gray (20%)
-    runtime_wall_image_path + "/f_gray_1.png",  // [2] Gray (40%)
-    runtime_wall_image_path + "/f_gray_2.png",  // [3] Gray (60%)
-    runtime_wall_image_path + "/f_gray_3.png",  // [4] Gray (80%)
-    runtime_wall_image_path + "/f_white.png",   // [5] White
-    runtime_wall_image_path + "/f_pattern.png", // [6] Pattern
+    runtime_wall_image_path + "/f_pattern.png", // [1] Pattern
+    runtime_wall_image_path + "/f_gray_0.png",  // [2] Gray (20%)
+    runtime_wall_image_path + "/f_gray_1.png",  // [3] Gray (40%)
+    runtime_wall_image_path + "/f_gray_2.png",  // [4] Gray (60%)
+    runtime_wall_image_path + "/f_gray_3.png",  // [5] Gray (80%)
+    runtime_wall_image_path + "/f_white.png",   // [6] White
 };
 
 // Vectors to store the loaded images in cv::Mat format
