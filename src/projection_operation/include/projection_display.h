@@ -36,7 +36,7 @@ static struct IndStruct
 {
     const int starting_monitor = 0; // Default starting monitor index for the windows (hardcoded)
 
-    std::vector<int> proj_mon_vec = {1,2,3,4};  // Vector of indeces of the monitor associated with each projector
+    std::vector<int> proj_mon_vec = {1, 2, 3, 4}; // Vector of indeces of the monitor associated with each projector
     /*
     MSM: 2024-03-20
     Is not hardcoded anymore.
@@ -67,7 +67,7 @@ static struct CountStruct
 static struct RatTracker
 {
     cv::Point2f marker_position = cv::Point2f(0.0f, 0.0f); // Marker center (cm)
-    const GLfloat marker_radius = 7.5f;                   // Marker default circle radius (cm)
+    const GLfloat marker_radius = 7.5f;                    // Marker default circle radius (cm)
     cv::Scalar marker_rgb = cv::Scalar(0.0f, 0.0f, 0.0f);  // Marker color (black)
     const int marker_segments = 36;                        // Number of segments used to approximate the circle geometry
     double offset_distance = 5.0f;                         // Translational offset from harness (cm)
@@ -151,13 +151,14 @@ std::vector<std::string> fiImgPathWallVec = {
  * @brief List of floor image file paths
  */
 std::vector<std::string> fiImgPathFloorVec = {
-    runtime_wall_image_path + "/f_black.png",   // [0] Black
-    runtime_wall_image_path + "/f_pattern.png", // [1] Pattern
-    runtime_wall_image_path + "/f_gray_0.png",  // [2] Gray (20%)
-    runtime_wall_image_path + "/f_gray_1.png",  // [3] Gray (40%)
-    runtime_wall_image_path + "/f_gray_2.png",  // [4] Gray (60%)
-    runtime_wall_image_path + "/f_gray_3.png",  // [5] Gray (80%)
-    runtime_wall_image_path + "/f_white.png",   // [6] White
+    runtime_wall_image_path + "/f_black.png",     // [0] Black
+    runtime_wall_image_path + "/f_pattern_0.png", // [1] Pattern 0
+    runtime_wall_image_path + "/f_pattern_1.png", // [2] Pattern 1
+    runtime_wall_image_path + "/f_gray_0.png",    // [3] Gray (20%)
+    runtime_wall_image_path + "/f_gray_1.png",    // [4] Gray (40%)
+    runtime_wall_image_path + "/f_gray_2.png",    // [5] Gray (60%)
+    runtime_wall_image_path + "/f_gray_3.png",    // [6] Gray (80%)
+    runtime_wall_image_path + "/f_white.png",     // [7] White
 };
 
 // Vectors to store the loaded images in cv::Mat format
