@@ -152,7 +152,7 @@ std::vector<std::string> fiImgPathWallVec = {
  */
 std::vector<std::string> fiImgPathFloorVec = {
     runtime_wall_image_path + "/f_black.png",     // [0] Black
-    runtime_wall_image_path + "/f_pattern_0.png", // [1] Pattern 0
+    runtime_wall_image_path + "/f_pattern_1.png", // [1] Pattern 0
     runtime_wall_image_path + "/f_pattern_1.png", // [2] Pattern 1
     runtime_wall_image_path + "/f_gray_0.png",    // [3] Gray (20%)
     runtime_wall_image_path + "/f_gray_1.png",    // [4] Gray (40%)
