@@ -276,7 +276,7 @@ static constexpr float GLOB_PI = 3.14159265358979323846f;
  *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
  *      }}}};
  */
-using ProjWallImageCfg4D = std::array<std::array<std::array<std::array<int, 3>, 3>, 3>, 4>;
+using ProjWallImageIndices4D = std::array<std::array<std::array<std::array<int, 3>, 3>, 3>, 4>;
 
 /**
  * @brief 1D array for hardcoded floor image indices to display
@@ -302,7 +302,7 @@ using ProjWallImageCfg4D = std::array<std::array<std::array<std::array<int, 3>, 
  *    0, // Projector 3: South
  * };
  */
-using ProjFloorImageCfg1D = std::array<int, 4>;
+using ProjFloorImageIndices1D = std::array<int, 4>;
 
 std::array<std::array<std::array<std::array<int, 3>, 3>, 3>, 4> out_PROJ_W0LL_IMAGE_CFG_4D_VEC =
     {{// Projector 0: West Projector (Facing East)

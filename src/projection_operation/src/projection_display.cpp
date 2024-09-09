@@ -349,13 +349,13 @@ void simulateRatMovement(float move_step, float max_turn_angle, RatTracker &out_
     keepWithinBoundsAndTurn(out_RT.marker_position);
 }
 
-void configWallImages(int image_ind, int chamber_ind, int wall_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC)
+void configWallImages(int image_ind, int chamber_ind, int wall_ind, ProjWallImageIndices4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC)
 {
     std::vector<int> walls_ind = {wall_ind};
     configWallImages(image_ind, chamber_ind, walls_ind, out_PROJ_WALL_IMAGE_CFG_4D_VEC);
 }
 
-void configWallImages(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC)
+void configWallImages(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallImageIndices4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC)
 {
     // Determine the row and column based on chamber index
     int row = chamber_ind / 3;
@@ -454,8 +454,8 @@ int updateTexture(
     int proj_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
     const std::vector<cv::Mat> &_floorImgMatVec,
-    const ProjWallImageCfg4D &_PROJ_WALL_IMAGE_CFG_3D,
-    const ProjFloorImageCfg1D &_PROJ_FLOOR_IMAGE_CFG_1D,
+    const ProjWallImageIndices4D &_PROJ_WALL_IMAGE_CFG_3D,
+    const ProjFloorImageIndices1D &_PROJ_FLOOR_IMAGE_CFG_1D,
     const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES>, 4> &_HMAT_ARR,
     cv::Mat &out_img_mat)
 {
@@ -662,11 +662,11 @@ void appInitVariables()
     std::vector<int> walls_ind_all = {0, 1, 2, 3, 4, 5, 6, 7};
 
     // Blank choice point;
-    ProjWallImageCfg4D proj_mat_blank = {}; // Initialize to all zeros
+    ProjWallImageIndices4D proj_mat_blank = {}; // Initialize to all zeros
     PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_blank);
 
     // East facing choice point condition 1;
-    ProjWallImageCfg4D proj_mat_east_1 = {};
+    ProjWallImageIndices4D proj_mat_east_1 = {};
     configWallImages(shape1_ind, 4, 3, proj_mat_east_1);             // Set the left wall image for the center chamber
     configWallImages(shape1_ind, 1, walls_ind_all, proj_mat_east_1); // Set all wall image for the left chamber
     configWallImages(shape_blank_ind, 1, 6, proj_mat_east_1);        // Set the left chamber open wall to blank
@@ -676,7 +676,7 @@ void appInitVariables()
     PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_east_1);           // Add to the vector
 
     // East facing choice point condition 2;
-    ProjWallImageCfg4D proj_mat_east_2 = {};
+    ProjWallImageIndices4D proj_mat_east_2 = {};
     configWallImages(shape2_ind, 4, 3, proj_mat_east_2);             // Set the left wall image for the center chamber
     configWallImages(shape2_ind, 1, walls_ind_all, proj_mat_east_2); // Set all wall image for the left chamber
     configWallImages(shape_blank_ind, 1, 6, proj_mat_east_2);        // Set the left chamber open wall to blank
@@ -686,7 +686,7 @@ void appInitVariables()
     PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_east_2);           // Add to the vector
 
     // South facing choice point condition 1;
-    ProjWallImageCfg4D proj_mat_south_1 = {};
+    ProjWallImageIndices4D proj_mat_south_1 = {};
     configWallImages(shape1_ind, 4, 5, proj_mat_south_1);             // Set the left wall image for the center chamber
     configWallImages(shape1_ind, 5, walls_ind_all, proj_mat_south_1); // Set all wall image for the left chamber
     configWallImages(shape_blank_ind, 5, 0, proj_mat_south_1);        // Set the left chamber open wall to blank
@@ -696,7 +696,7 @@ void appInitVariables()
     PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_south_1);           // Add to the vector
 
     // South facing choice point condition 2;
-    ProjWallImageCfg4D proj_mat_south_2 = {};
+    ProjWallImageIndices4D proj_mat_south_2 = {};
     configWallImages(shape2_ind, 4, 5, proj_mat_south_2);             // Set the left wall image for the center chamber
     configWallImages(shape2_ind, 5, walls_ind_all, proj_mat_south_2); // Set all wall image for the left chamber
     configWallImages(shape_blank_ind, 5, 0, proj_mat_south_2);        // Set the left chamber open wall to blank
@@ -706,7 +706,7 @@ void appInitVariables()
     PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_south_2);           // Add to the vector
 
     // West facing choice point condition 1;
-    ProjWallImageCfg4D proj_mat_west_1 = {};
+    ProjWallImageIndices4D proj_mat_west_1 = {};
     configWallImages(shape1_ind, 4, 7, proj_mat_west_1);             // Set the left wall image for the center chamber
     configWallImages(shape1_ind, 7, walls_ind_all, proj_mat_west_1); // Set all wall image for the left chamber
     configWallImages(shape_blank_ind, 7, 2, proj_mat_west_1);        // Set the left chamber open wall to blank
@@ -716,7 +716,7 @@ void appInitVariables()
     PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_west_1);           // Add to the vector
 
     // West facing choice point condition 2;
-    ProjWallImageCfg4D proj_mat_west_2 = {};
+    ProjWallImageIndices4D proj_mat_west_2 = {};
     configWallImages(shape2_ind, 4, 7, proj_mat_west_2);             // Set the left wall image for the center chamber
     configWallImages(shape2_ind, 7, walls_ind_all, proj_mat_west_2); // Set all wall image for the left chamber
     configWallImages(shape_blank_ind, 7, 2, proj_mat_west_2);        // Set the left chamber open wall to blank
@@ -726,7 +726,7 @@ void appInitVariables()
     PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_west_2);           // Add to the vector
 
     // North facing choice point condition 1;
-    ProjWallImageCfg4D proj_mat_north_1 = {};
+    ProjWallImageIndices4D proj_mat_north_1 = {};
     configWallImages(shape1_ind, 4, 1, proj_mat_north_1);             // Set the left wall image for the center chamber
     configWallImages(shape1_ind, 3, walls_ind_all, proj_mat_north_1); // Set all wall image for the left chamber
     configWallImages(shape_blank_ind, 3, 4, proj_mat_north_1);        // Set the left chamber open wall to blank
@@ -736,7 +736,7 @@ void appInitVariables()
     PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_north_1);           // Add to the vector
 
     // North facing choice point condition 2;
-    ProjWallImageCfg4D proj_mat_north_2 = {};
+    ProjWallImageIndices4D proj_mat_north_2 = {};
     configWallImages(shape2_ind, 4, 1, proj_mat_north_2);             // Set the left wall image for the center chamber
     configWallImages(shape2_ind, 3, walls_ind_all, proj_mat_north_2); // Set all wall image for the left chamber
     configWallImages(shape_blank_ind, 3, 4, proj_mat_north_2);        // Set the left chamber open wall to blank

@@ -93,12 +93,12 @@ struct ROSComm
 /**
  * @brief A n_projectors vector containing a 4x3x3x3 array contianer for storring different wall image configurations
  */
-std::vector<ProjWallImageCfg4D> PROJ_WALL_IMAGE_CFG_4D_VEC;
+std::vector<ProjWallImageIndices4D> PROJ_WALL_IMAGE_CFG_4D_VEC;
 
 /**
  * @brief A n_projectors array contianer for storring different floor image configurations
  */
-ProjFloorImageCfg1D PROJ_FLOOR_IMAGE_CFG_1D = {
+ProjFloorImageIndices1D PROJ_FLOOR_IMAGE_CFG_1D = {
     1, // Projector 0: West
     1, // Projector 1: North
     1, // Projector 2: East
@@ -151,14 +151,11 @@ std::vector<std::string> fiImgPathWallVec = {
  * @brief List of floor image file paths
  */
 std::vector<std::string> fiImgPathFloorVec = {
-    runtime_wall_image_path + "/f_black.png",     // [0] Black
-    runtime_wall_image_path + "/f_pattern_1.png", // [1] Pattern 0
+    runtime_wall_image_path + "/f_blank.png",     // [0] Blank shape
+    runtime_wall_image_path + "/f_pattern_0.png", // [1] Pattern 0
     runtime_wall_image_path + "/f_pattern_1.png", // [2] Pattern 1
-    runtime_wall_image_path + "/f_gray_0.png",    // [3] Gray (20%)
-    runtime_wall_image_path + "/f_gray_1.png",    // [4] Gray (40%)
-    runtime_wall_image_path + "/f_gray_2.png",    // [5] Gray (60%)
-    runtime_wall_image_path + "/f_gray_3.png",    // [6] Gray (80%)
-    runtime_wall_image_path + "/f_white.png",     // [7] White
+    runtime_wall_image_path + "/f_pattern_2.png", // [3] Pattern 2
+    runtime_wall_image_path + "/f_white.png",     // [4] White
 };
 
 // Vectors to store the loaded images in cv::Mat format
@@ -279,10 +276,10 @@ void simulateRatMovement(
  */
 
 // Overload for setting an image on a single wall
-void configWallImages(int image_ind, int chamber_ind, int wall_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC);
+void configWallImages(int image_ind, int chamber_ind, int wall_ind, ProjWallImageIndices4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC);
 
 // Overload for setting images on multiple walls
-void configWallImages(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC);
+void configWallImages(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallImageIndices4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC);
 
 /**
  * @brief Get the vertices cooresponding to the maze boundaries in centimeters.
@@ -314,8 +311,8 @@ int updateTexture(
     int proj_ind,
     const std::vector<cv::Mat> &_wallImgMatVec,
     const std::vector<cv::Mat> &_floorImgMatVec,
-    const ProjWallImageCfg4D &_PROJ_WALL_IMAGE_CFG_3D,
-    const ProjFloorImageCfg1D &_PROJ_FLOOR_IMAGE_CFG_1D,
+    const ProjWallImageIndices4D &_PROJ_WALL_IMAGE_CFG_3D,
+    const ProjFloorImageIndices1D &_PROJ_FLOOR_IMAGE_CFG_1D,
     const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES>, 4> &_HMAT_ARR,
     cv::Mat &out_img_mat);
 
