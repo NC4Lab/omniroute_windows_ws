@@ -241,6 +241,13 @@ add_custom_command(TARGET projection_display_node POST_BUILD
 catkin_install_python(PROGRAMS src/sound_generator/sound_generator.py
                       DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
+# ==================== SETUP PROJECTION_SENDER LIBRARY ====================
+
+# Create executable
+# Install Python script
+catkin_install_python(PROGRAMS src/projection_sender/projection_sender.py
+                      DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
+
 # ==================== INSTALL TARGETS ====================
 
 install(TARGETS projection_calibration_node projection_display_node projection_utils

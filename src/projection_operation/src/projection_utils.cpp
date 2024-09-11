@@ -1498,7 +1498,7 @@ void dbLogHomMat(const cv::Mat &r_HMAT)
     ROS_INFO("==================================");
 }
 
-void dbLogProjWallImageCfg4D(const ProjWallImageIndices4D &wallImageConfig)
+void dbLogProjWallImageCfg4D(const ProjWallConfigIndices4D &wallImageConfig)
 {
     if (!GLB_DO_VERBOSE_DEBUG)
         return;
@@ -1537,9 +1537,6 @@ void dbLogProjWallImageCfg4D(const ProjWallImageIndices4D &wallImageConfig)
 
 void dbDispImgMat(const cv::Mat &img_mat)
 {
-    if (!GLB_DO_VERBOSE_DEBUG)
-        return;
-
     cv::namedWindow("Debug display image", cv::WINDOW_AUTOSIZE);
     cv::imshow("Debug display image", img_mat);
     cv::waitKey(0);

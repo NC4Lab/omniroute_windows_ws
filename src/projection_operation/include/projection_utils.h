@@ -38,6 +38,7 @@
 #include <ros/console.h>
 #include <ros/package.h>
 #include <std_msgs/Int32.h>
+#include <std_msgs/Int32MultiArray.h> 
 #include <geometry_msgs/PoseStamped.h>
 #include <XmlRpcValue.h>
 #include <tf/tf.h>
@@ -953,9 +954,9 @@ void dbLogHomMat(const cv::Mat &_HMAT);
 /**
  * @brief Prints the wall image indecies of all entries in the wall image configuration array.
  *
- * @param _HMAT ProjWallImageIndices4D array to print.
+ * @param _HMAT ProjWallConfigIndices4D array to print.
  */
-void dbLogProjWallImageCfg4D(const ProjWallImageIndices4D &wallImageConfig);
+void dbLogProjWallImageCfg4D(const ProjWallConfigIndices4D &wallImageConfig);
 
 /**
  * @brief Displays a warped image in a window.
