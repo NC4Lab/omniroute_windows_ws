@@ -133,52 +133,46 @@ void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC)
 
 void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm *out_RC)
 {
-    // Check that the received data has the correct size for a 4x10x8 array (320 elements)
-    if (msg->data.size() != 320)
+    // Check that the received data has the correct size for a 10x8 array (80 elements)
+    if (msg->data.size() != 80)
     {
-        ROS_ERROR("[callbackProjImgROS] Received incorrect array size. Expected 320 elements, but got %zu", msg->data.size());
+        ROS_ERROR("[callbackProjImgROS] Received incorrect array size. Expected 80 elements, but got %zu", msg->data.size());
         return;
     }
 
-    // TEMP
+    // TEMP: Adding a small delay
     ros::Duration(0.5).sleep();
 
-    // Store the 4x10x8 data in proj_img_data
-    for (int proj_ind = 0; proj_ind < 4; ++proj_ind)
+    // Store the 10x8 data in proj_img_data
+    for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
     {
-        for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
+        for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
         {
-            for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
-            {
-                out_RC->proj_img_data[proj_ind][cham_ind][wall_ind] = msg->data[proj_ind * 80 + cham_ind * 8 + wall_ind];
-            }
+            out_RC->proj_img_data[cham_ind][wall_ind] = msg->data[cham_ind * 8 + wall_ind];
         }
     }
 
     // Flag that a projection image message has been received
     out_RC->is_proj_img_message_received = true;
 
-    // Log the entire 3D array
+    // Log the entire 2D array
     if (true)
     {
         ROS_INFO("[callbackProjImgROS] Stored ROS projection image data:");
-        for (int proj_ind = 0; proj_ind < 4; ++proj_ind)
+        for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
         {
-            for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
+            std::stringstream row_stream;
+            row_stream << "Walls[" << cham_ind << "] = [";
+            for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
             {
-                std::stringstream row_stream;
-                row_stream << "Proj[" << proj_ind << "] Walls[" << cham_ind << "] = [";
-                for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
+                row_stream << out_RC->proj_img_data[cham_ind][wall_ind];
+                if (wall_ind < 7) // Add a comma between elements, but not after the last one
                 {
-                    row_stream << out_RC->proj_img_data[proj_ind][cham_ind][wall_ind];
-                    if (wall_ind < 7) // Add a comma between elements, but not after the last one
-                    {
-                        row_stream << ", ";
-                    }
+                    row_stream << ", ";
                 }
-                row_stream << "]";
-                ROS_INFO("%s", row_stream.str().c_str());
             }
+            row_stream << "]";
+            ROS_INFO("%s", row_stream.str().c_str());
         }
     }
 }
@@ -290,7 +284,7 @@ int procProjImgROS(ROSComm &out_RC)
     // Check if node handle is initialized
     if (!ros::ok())
     {
-        ROS_ERROR("[procProjImgROS]ROS is no longer running!");
+        ROS_ERROR("[procProjImgROS] ROS is no longer running!");
         return -1;
     }
 
@@ -303,21 +297,22 @@ int procProjImgROS(ROSComm &out_RC)
 
     // ---------- Update image index data ----------
 
-    for (int proj_ind = 0; proj_ind < 4; ++proj_ind)
+    for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
     {
-        for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
+        for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
         {
-            for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
-            {
-                // Store image index
-                int img_ind = out_RC.proj_img_data[proj_ind][cham_ind][wall_ind];
-                // Update the 4D wall index array
-                if (cham_ind < 9)
-                    configWallImageIndex(img_ind, cham_ind, wall_ind, PROJ_WALL_CONFIG_INDICES_4D);
-                // Update the floor image index
-                else
-                    projFloorConfigIndex = img_ind;
-            }
+            // Store image index
+            int img_ind = out_RC.proj_img_data[cham_ind][wall_ind];
+
+            // Update the wall index array
+            if (cham_ind < 9)
+                configWallImageIndex(img_ind, cham_ind, wall_ind, PROJ_WALL_CONFIG_INDICES_4D);
+            // Update the floor image index
+            else if (wall_ind == 0) // Only store the first entry
+                projFloorConfigIndex = img_ind;
+            // Skip unused floor entries
+            else
+                continue;
         }
     }
 
@@ -714,10 +709,26 @@ void appInitROS(int argc, char **argv, ROSComm &out_RC)
 void appLoadAssets()
 {
     // ---------- Load Images with OpenCV ----------
-    if (loadImgMat(fiImgPathWallVec, wallRawImgMatVec) < 0)
+
+    // Get the wall images
+    std::vector<std::string> fi_img_path_wall_vec;                                        // declare the vector to store the paths
+    size_t n_wall_img = sizeof(WALL_IMAGE_FILE_NAMES) / sizeof(WALL_IMAGE_FILE_NAMES[0]); // calculate the number of images
+    for (size_t i = 0; i < n_wall_img; ++i)
+    {
+        fi_img_path_wall_vec.push_back(RUNTIME_IMAGE_PATH + "/" + WALL_IMAGE_FILE_NAMES[i] + ".png");
+    }
+    if (loadImgMat(fi_img_path_wall_vec, wallRawImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
-    if (loadImgMat(fiImgPathFloorVec, floorRawImgMatVec) < 0)
-        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
+
+    // Get the floor images
+    std::vector<std::string> fi_img_path_floor_vec;                                        // declare the vector to store the paths
+    size_t n_floor_img = sizeof(FLOOR_IMAGE_FILE_NAMES) / sizeof(FLOOR_IMAGE_FILE_NAMES[0]); // calculate the number of images
+    for (size_t i = 0; i < n_floor_img; ++i)
+    {
+        fi_img_path_floor_vec.push_back(RUNTIME_IMAGE_PATH + "/" + FLOOR_IMAGE_FILE_NAMES[i] + ".png");
+    }
+    if (loadImgMat(fi_img_path_floor_vec, floorRawImgMatVec) < 0)
+        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV floor images");
 
     // ---------- Load Wall and Floor Homography Matrices from XML ----------
     for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) // for each projector

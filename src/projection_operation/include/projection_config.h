@@ -226,7 +226,7 @@ static constexpr float GLOB_PI = 3.14159265358979323846f;
  * - Dimension 1: Projectors [0, 1, 2, 3]
  *
  * - Dimension 2: Calibration Mode [0: left walls, 1: middle walls, 2: right walls]
- * 
+ *
  * - Dimension 3: Grid Rows [0, 1, 2]
  *   - Index with respect to the grid rows in the chamber.
  *

@@ -82,20 +82,19 @@ struct ROSComm
     ros::Subscriber proj_cmd_sub;                 // ROS subscriber for projection commands
     int proj_cmd_data = -1;                       // Variable to store the last command received, initialized with an invalid value
     bool is_proj_cmd_message_received = false;    // Flag to indicate if a projection command message has been received
-    ros::Subscriber proj_img_sub;                 // ROS subscriber for projection commands
-    int proj_img_data[4][10][8];                  // Variable to store the last image configuration received
+    ros::Subscriber proj_img_sub;                 // ROS subscriber for projection image data
+    int proj_img_data[10][8];                     // Variable to store the last image configuration received (10x8)
     bool is_proj_img_message_received = false;    // Flag to indicate if a projection image message has been received
     ros::Subscriber track_pos_sub;                // ROS subscriber for tracking rat position
     geometry_msgs::PoseStamped track_pos_data;    // Variable to store the last tracking rat pose received
-    bool is_track_pos_message_received = false;       // Flag to indicate if a track position message has been received
+    bool is_track_pos_message_received = false;   // Flag to indicate if a track position message has been received
 
     // Constructor to initialize proj_img_data to -1
     ROSComm()
     {
-        for (int layer = 0; layer < 4; ++layer)
-            for (int i = 0; i < 10; ++i)
-                for (int j = 0; j < 8; ++j)
-                    proj_img_data[layer][i][j] = -1;
+        for (int i = 0; i < 10; ++i)
+            for (int j = 0; j < 8; ++j)
+                proj_img_data[i][j] = -1;
     }
 } RC;
 
@@ -107,7 +106,7 @@ ProjWallConfigIndices4D PROJ_WALL_CONFIG_INDICES_4D;
 /**
  * @brief Floor image configurations
  */
-int projFloorConfigIndex = 1;
+int projFloorConfigIndex = 0;
 
 /**
  * @brief A vector of size n_projectors, where each element contains a 3x3 homography matrices for
@@ -158,34 +157,6 @@ std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projector);
  * @brief Offset for the window position
  */
 std::vector<cv::Point> winOffsetVec;
-
-/**
- * @brief Image file sub-directory path
- */
-std::string runtime_wall_image_path = GLB_IMAGE_TOP_DIR_PATH + "/runtime";
-
-/**
- * @brief List of wall image file paths
- */
-std::vector<std::string> fiImgPathWallVec = {
-    runtime_wall_image_path + "/w_black.png",    // [0] Black fill
-    runtime_wall_image_path + "/w_square.png",   // [1] Square shape
-    runtime_wall_image_path + "/w_circle.png",   // [2] Circle shape
-    runtime_wall_image_path + "/w_triangle.png", // [3] Triangle shape
-    runtime_wall_image_path + "/w_star.png",     // [4] Star shape
-    runtime_wall_image_path + "/w_pentagon.png", // [5] Pentagon shape
-    runtime_wall_image_path + "/w_circle.png",   // [6] Circle shape
-};
-/**
- * @brief List of floor image file paths
- */
-std::vector<std::string> fiImgPathFloorVec = {
-    runtime_wall_image_path + "/f_black.png",     // [0] Black fill
-    runtime_wall_image_path + "/f_pattern_0.png", // [1] Pattern 0
-    runtime_wall_image_path + "/f_pattern_1.png", // [2] Pattern 1
-    runtime_wall_image_path + "/f_pattern_2.png", // [3] Pattern 2
-    runtime_wall_image_path + "/f_white.png",     // [4] White
-};
 
 // Vectors to store the raw loaded images in cv::Mat format
 std::vector<cv::Mat> wallRawImgMatVec;  // Vector of indevidual wall image texture matrices

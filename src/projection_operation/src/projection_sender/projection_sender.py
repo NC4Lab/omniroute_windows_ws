@@ -3,110 +3,127 @@ from std_msgs.msg import Int32MultiArray, MultiArrayDimension
 import csv
 import os
 
-class ProjectionSender:
+class ProjectionOperation:
     def __init__(self):
-        rospy.loginfo('[ProjectionSender:__init__] PROJECTION SENDER NODE STARTED')
+        rospy.loginfo('[ProjectionOperation:__init__] PROJECTION SENDER NODE STARTED')
 
         # Publisher for the 'projection_image' topic
         self.image_pub = rospy.Publisher('projection_image', Int32MultiArray, queue_size=10)
 
-        # Sleep for before sending the CSV-based message
-        rospy.loginfo("[ProjectionSender:__init__] Waiting for 10 seconds before sending the CSV-based message...")
+        # TEMP
         rospy.sleep(5)
 
-        # Read data from CSV
-        csv_path = os.path.join(os.path.dirname(__file__), 'data', 'wall_cofig', 'test2.csv')
-        self.csv_image_config = self.read_csv_and_structure(csv_path)
+        # Initialize image_config as a 10x8 array with default values
+        self.image_config = [[0 for _ in range(8)] for _ in range(10)]
+
+        # Read data from walls and floor CSV
+        walls_csv_path = os.path.join(os.path.dirname(__file__), 'data', 'image_config', 'walls_cfg_0.csv')
+        self.image_config = self.csv_read_and_store(self.image_config, walls_csv_path, "walls")
+
+        floors_csv_path = os.path.join(os.path.dirname(__file__), 'data', 'image_config', 'floor_cfg_0.csv')
+        self.image_config = self.csv_read_and_store(self.image_config, floors_csv_path, "floor")
 
         # Send the image configuration message
-        self.send_image_message(self.csv_image_config)
+        self.publish_image_message(self.image_config)
 
         # Rate to publish at 10 Hz
         r = rospy.Rate(10)
         while not rospy.is_shutdown():
             r.sleep()
 
-    def setup_layout(self, dim1, dim2, dim3):
-        """Helper function to set up the layout for a multi-dimensional array."""
+    def setup_layout(self, dim1, dim2):
+        """Helper function to set up the layout for a 2-dimensional array."""
         layout = []
 
-        # Define first dimension (depth)
+        # Define first dimension (rows)
         dim1_layout = MultiArrayDimension()
-        dim1_layout.label = "dim1"
+        dim1_layout.label = "rows"
         dim1_layout.size = dim1
-        dim1_layout.stride = dim1 * dim2 * dim3
+        dim1_layout.stride = dim1 * dim2
         layout.append(dim1_layout)
 
-        # Define second dimension (rows)
+        # Define second dimension (columns)
         dim2_layout = MultiArrayDimension()
-        dim2_layout.label = "dim2"
+        dim2_layout.label = "columns"
         dim2_layout.size = dim2
-        dim2_layout.stride = dim2 * dim3
+        dim2_layout.stride = dim2
         layout.append(dim2_layout)
-
-        # Define third dimension (columns)
-        dim3_layout = MultiArrayDimension()
-        dim3_layout.label = "dim3"
-        dim3_layout.size = dim3
-        dim3_layout.stride = dim3
-        layout.append(dim3_layout)
 
         return layout
 
-    def read_csv_and_structure(self, file_path):
-        """Read the CSV and structure the data into a 4x10x8 array."""
-        structured_data = []
+    def csv_read_and_store(self, image_config, file_path, data_type):
+        """
+        Read the CSV and structure the data into either a 10x8 array for 'walls'
+        or extract a single value for 'floor' and modify the given image_config.
+        
+        Args:
+            image_config (list): A 10x8 list that will be modified in place.
+            file_path (str): The path to the CSV file containing the data.
+            data_type (str): A string that specifies whether to process the data as
+                            'walls' or 'floor'. 
+                            - 'walls': Updates the 10x8 array for wall configuration.
+                            - 'floor': Updates a single value in the last entry of dim1 and first entry of dim2.
+
+        Returns:
+            list: 
+                - If data_type is 'walls', returns the modified 10x8 list.
+                - If data_type is 'floor', returns the updated list with floor value set.
+        """
+        
         with open(file_path, mode='r') as csvfile:
             csv_reader = csv.reader(csvfile)
-            next(csv_reader)  # Skip the header row
 
-            # Initialize empty layers to store 10 rows at a time
-            current_layer = []
-            row_count = 0
+            if data_type == "walls":
+                next(csv_reader)  # Skip the header row
+                # For walls, store data as a 10x8 array
+                for row_idx, row in enumerate(csv_reader):
+                    if row_idx < 10:
+                        # Ignore the first column and take columns 1-8 (which are index 1 to 8 in 0-based indexing)
+                        data_row = list(map(int, row[1:9]))
+                        image_config[row_idx] = data_row
 
-            for row in csv_reader:
-                # Ignore the first two columns and take columns 2-9 (which are index 2 to 9 in 0-based indexing)
-                data_row = list(map(int, row[2:10]))
+            elif data_type == "floor":
+                first_row = next(csv_reader)  # Get the first data row
+                floor_value = int(first_row[0])  # Read the value from the first column
+                image_config[-1][0] = floor_value  # Store the value in the last entry of dim1 and first entry of dim2
 
-                # Add the row to the current layer
-                current_layer.append(data_row)
-                row_count += 1
+            else:
+                rospy.logwarn(f"[csv_read_and_store] Invalid data_type: {data_type}. Expected 'walls' or 'floor'.")
+                return None
 
-                # Once we have 10 rows, add the layer to the structured data
-                if row_count == 10:
-                    structured_data.append(current_layer)
-                    current_layer = []  # Reset for the next layer
-                    row_count = 0
+        return image_config
 
-        return structured_data
-
-    def send_image_message(self, csv_image_config):
-        """Send the data from the CSV as an Int32MultiArray message."""
-        rospy.loginfo("[ProjectionSender:send_csv_image_message] Sending CSV-based data")
+    def publish_image_message(self, image_config):
+        """
+        Send the data from the CSV as an Int32MultiArray message.
+                
+        Args:
+            image_config (list): A 10x8 list that will be modified in place.
+        """
+        rospy.loginfo("[ProjectionOperation:publish_image_message] Sending CSV-based data")
 
         # Create the Int32MultiArray message
         projection_data = Int32MultiArray()
 
-        # Set up the layout using the helper function (4x10x8 array)
-        projection_data.layout.dim = self.setup_layout(4, 10, 8)
+        # Set up the layout using the helper function (10x8 array)
+        projection_data.layout.dim = self.setup_layout(10, 8)
 
-        # Flatten the 4x10x8 array into a single list
-        flat_data = [csv_image_config[layer][i][j] for layer in range(4) for i in range(10) for j in range(8)]
+        # Flatten the 10x8 array into a single list
+        flat_data = [image_config[i][j] for i in range(10) for j in range(8)]
         projection_data.data = flat_data
 
         # Publish the CSV data message
         self.image_pub.publish(projection_data)
 
         # Log the sent message data
-        rospy.loginfo("[ProjectionSender:send_csv_image_message] Sent the following CSV-based data:")
-        for layer in range(4):
-            for i in range(10):
-                rospy.loginfo("Layer[%d] Data[%d] = %s", layer, i, str(csv_image_config[layer][i]))
+        rospy.loginfo("[ProjectionOperation:publish_image_message] Sent the following CSV-based data:")
+        for i in range(10):
+            rospy.loginfo("Data[%d] = %s", i, str(image_config[i]))
 
 # Main function to start the node
 if __name__ == '__main__':
     rospy.init_node('projection_sender')
     try:
-        sender = ProjectionSender()
+        sender = ProjectionOperation()
     except rospy.ROSInterruptException:
         pass
