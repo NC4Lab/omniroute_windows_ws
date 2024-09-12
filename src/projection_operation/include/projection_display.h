@@ -47,8 +47,6 @@ static struct IndStruct
         3, // Projector 3
     };
     */
-
-    int wall_image_cfg = 0; // Index of the curren wall image configuration
 } I;
 
 /**
@@ -82,38 +80,34 @@ struct ROSComm
     std::unique_ptr<ros::NodeHandle> node_handle; // Smart pointer to ROS node handler
     std::unique_ptr<ros::Rate> loop_rate;         // Smart pointer to ros::Rate
     ros::Subscriber proj_cmd_sub;                 // ROS subscriber for projection commands
-    int last_proj_cmd = -1;                       // Variable to store the last command received, initialized with an invalid value
-    int last_proj_img[10][10];                  // Variable to store the last image configuration received
-    ros::Subscriber proj_img_sub;                 // ROS subscriber for projection commands
+    int proj_cmd_data = -1;                       // Variable to store the last command received, initialized with an invalid value
     bool is_proj_cmd_message_received = false;    // Flag to indicate if a projection command message has been received
-    bool is_proj_img_message_received = false;  // Flag to indicate if a projection image message has been received
+    ros::Subscriber proj_img_sub;                 // ROS subscriber for projection commands
+    int proj_img_data[4][10][8];                  // Variable to store the last image configuration received
+    bool is_proj_img_message_received = false;    // Flag to indicate if a projection image message has been received
     ros::Subscriber track_pos_sub;                // ROS subscriber for tracking rat position
-    geometry_msgs::PoseStamped last_track_pos;    // Variable to store the last tracking rat pose received
-    bool is_track_message_received = false;       // Flag to indicate if a track position message has been received
+    geometry_msgs::PoseStamped track_pos_data;    // Variable to store the last tracking rat pose received
+    bool is_track_pos_message_received = false;       // Flag to indicate if a track position message has been received
 
-    // Constructor to initialize last_proj_img to -1
+    // Constructor to initialize proj_img_data to -1
     ROSComm()
     {
-        for (int i = 0; i < 10; ++i)
-            for (int j = 0; j < 10; ++j)
-                last_proj_img[i][j] = -1;
+        for (int layer = 0; layer < 4; ++layer)
+            for (int i = 0; i < 10; ++i)
+                for (int j = 0; j < 8; ++j)
+                    proj_img_data[layer][i][j] = -1;
     }
 } RC;
 
 /**
- * @brief A n_projectors vector containing a 4x3x3x3 array contianer for storring different wall image configurations
+ * @brief A 4x3x3x3 array contianer for storring the wall image configuration indeces
  */
-std::vector<ProjWallConfigIndices4D> PROJ_WALL_CONFIG_INDICES_4D_VEC;
+ProjWallConfigIndices4D PROJ_WALL_CONFIG_INDICES_4D;
 
 /**
- * @brief A n_projectors array contianer for storring different floor image configurations
+ * @brief Floor image configurations
  */
-ProjFloorConfigIndices1D PROJ_FLOOR_CONFIG_INDICES_1D = {
-    1, // Projector 0: West
-    1, // Projector 1: North
-    1, // Projector 2: East
-    1, // Projector 3: South
-};
+int projFloorConfigIndex = 1;
 
 /**
  * @brief A vector of size n_projectors, where each element contains a 3x3 homography matrices for
@@ -263,7 +257,7 @@ void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC);
  * @param msg Const pointer to the received message.
  * @param out_RC Pointer to the ROSComm struct where the last command and message received flag are updated.
  */
-void callbackProjImageROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm *out_RC);
+void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm *out_RC);
 
 /**
  * @brief Callback function for the "track_pose" topic subscription.
@@ -282,7 +276,7 @@ void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSCom
  *
  * @details
  * This function sets up a subscriber to the "projection_cmd" topic, which receives Int32 messages.
- * The received command updates the last_proj_cmd field in the ROSComm struct and sets
+ * The received command updates the proj_cmd_data field in the ROSComm struct and sets
  * a flag indicating a message has been received.
  *
  * @param out_RC Reference to the ROSComm struct that holds the ROS node handle and subscriber.
@@ -295,13 +289,25 @@ int initSubscriberROS(ROSComm &out_RC);
  * @brief Processes commands received from the "projection_cmd" topic.
  *
  * @details
- * This function checks if a new projection message has been received and processes the message.
+ * This function checks for new projection command message and processes the message.
  *
  * @param[out] out_RC Reference to the ROSComm struct containing the ROS coms data.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int procProjMsgROS(ROSComm &out_RC);
+int procProjCmdROS(ROSComm &out_RC);
+
+/**
+ * @brief Processes commands received from the "projection_image" topic.
+ *
+ * @details
+ * This function checks for new projection imgage message and processes the message.
+ *
+ * @param[out] out_RC Reference to the ROSComm struct containing the ROS coms data.
+ *
+ * @return Integer status code [-1:error, 0:successful].
+ */
+int procProjImgROS(ROSComm &out_RC);
 
 /**
  * @brief Processes commands received from the "harness_pose_in_maze" topic.
@@ -331,21 +337,21 @@ void simulateRatMovement(
 /**
  * @brief Sets the wall image configuration for a projector array.
  *
- * This function updates the out_PROJ_WALL_CONFIG_INDICES_4D_VEC array to set images on specified walls
+ * This function updates the out_PROJ_WALL_CONFIG_INDICES_4D array to set images on specified walls
  * in a chamber, considering each projector's orientation. It supports setting images for multiple walls.
  *
  * @param image_ind Index of the image to be projected.
  * @param chamber_ind Index of the target chamber.
  * @param wall_ind Index of the wall for single-wall overload.
  * @param walls_ind Vector of wall indices for multiple-wall overload.
- * @param out_PROJ_WALL_CONFIG_INDICES_4D_VEC Reference to the 4D projector configuration array.
+ * @param out_PROJ_WALL_CONFIG_INDICES_4D Reference to the 4D projector configuration array.
  */
 
 // Overload for setting an image on a single wall
-void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D_VEC);
+void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D);
 
 // Overload for setting images on multiple walls
-void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D_VEC);
+void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D);
 
 /**
  * @brief Get the vertices cooresponding to the maze boundaries in centimeters.
@@ -376,9 +382,8 @@ void rotateFloorImage(
  * @brief Applies the homography matrices to warp floor image textures.
  *
  * @param proj_ind Index of the projector associated with the given image.
- * @param _floorRawImgMatVec Vectors containing the loaded floor images in cv::Mat format
+ * @param _floorImgMat Floor image in cv::Mat format
  * @param _wallBlankImgMat Blank walls image in cv::Mat format
- * @param _PROJ_FLOOR_CONFIG_INDICES_1D 1D array of floor image indices for each projector.
  * @param _FLOOR_HMAT_ARR Array of homography matrices for the floor image transformations.
  * @param[out] out_img_mat Reference to store the new cv::Mat image.
  *
@@ -386,9 +391,8 @@ void rotateFloorImage(
  */
 int updateFloorTexture(
     int proj_ind,
-    const std::vector<cv::Mat> &_floorRawImgMatVec,
+    cv::Mat &_floorImgMat,
     const cv::Mat _wallBlankImgMat,
-    const ProjFloorConfigIndices1D &_PROJ_FLOOR_CONFIG_INDICES_1D,
     std::array<cv::Mat, 4> &_FLOOR_HMAT_ARR,
     cv::Mat &out_img_mat);
 

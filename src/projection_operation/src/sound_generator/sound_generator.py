@@ -8,7 +8,7 @@ import threading
 
 class SoundGenerator:
     def __init__(self):
-        rospy.loginfo('Sound Generator node started')
+        rospy.loginfo('SOUND GENERATOR NODE STARTED')
 
         curDir = os.path.dirname(__file__)
 

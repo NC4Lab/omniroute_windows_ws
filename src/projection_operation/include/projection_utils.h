@@ -831,10 +831,10 @@ extern const char *GLB_QUAD_GL_FRAGMENT_SOURCE = R"glsl(
 extern const std::string package_path = ros::package::getPath("projection_operation");
 extern const std::string workspace_path = package_path.substr(0, package_path.rfind("/src"));
 
-// Directory paths for configuration files
+// Directory paths for calibration image files
 extern const std::string GLB_CONFIG_DIR_PATH = workspace_path + "/data/projection/params";
 
-// Directory paths for configuration images
+// Directory paths for runtime image files
 extern const std::string GLB_IMAGE_TOP_DIR_PATH = workspace_path + "/data/projection/images";
 
 // Number of rows and columns in the maze grid

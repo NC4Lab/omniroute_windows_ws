@@ -200,7 +200,7 @@ const int GLB_ROS_LOOP_RATE = 100;
 /**
  * @brief Global variable for verbose logging.
  */
-const bool GLB_DO_VERBOSE_DEBUG = true;
+const bool GLB_DO_VERBOSE_DEBUG = false;
 
 /**
  * @brief Global variable to set the OpenGL debug level.
@@ -281,31 +281,5 @@ static constexpr float GLOB_PI = 3.14159265358979323846f;
  *      }}}};
  */
 using ProjWallConfigIndices4D = std::array<std::array<std::array<std::array<int, 3>, 3>, 3>, 4>;
-
-/**
- * @brief 1D array for hardcoded floor image indices to display
- *
- * @details
- * This array is used to map specific floor image indices to a combination a
- * given projector.
- *
- * Image file mapping for grayscale:
- * [0] Black
- * [1] Gray (20%)
- * [2] Gray (40%)
- * [3] Gray (60%)
- * [4] Gray (80%)
- * [5] White
- * [6] Pattern
- *
- * Element mapping:
- * {
- *    0, // Projector 0: West
- *    0, // Projector 1: North
- *    0, // Projector 2: East
- *    0, // Projector 3: South
- * };
- */
-using ProjFloorConfigIndices1D = std::array<int, 4>;
 
 #endif
