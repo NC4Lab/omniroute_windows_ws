@@ -99,10 +99,10 @@ std::vector<ProjWallImageCfg4D> PROJ_WALL_IMAGE_CFG_4D_VEC;
  * @brief A n_projectors array contianer for storring different floor image configurations
  */
 ProjFloorImageCfg1D PROJ_FLOOR_IMAGE_CFG_1D = {
-    1, // Projector 0: West
-    1, // Projector 1: North
-    1, // Projector 2: East
-    1, // Projector 3: South
+    0, // Projector 0: West
+    0, // Projector 1: North
+    0, // Projector 2: East
+    0, // Projector 3: South
 };
 
 /**
@@ -152,7 +152,7 @@ std::vector<std::string> fiImgPathWallVec = {
  */
 std::vector<std::string> fiImgPathFloorVec = {
     runtime_wall_image_path + "/f_black.png",     // [0] Black
-    runtime_wall_image_path + "/f_pattern_1.png", // [1] Pattern 0
+    runtime_wall_image_path + "/f_pattern_0.png", // [1] Pattern 0
     runtime_wall_image_path + "/f_pattern_1.png", // [2] Pattern 1
     runtime_wall_image_path + "/f_gray_0.png",    // [3] Gray (20%)
     runtime_wall_image_path + "/f_gray_1.png",    // [4] Gray (40%)
