@@ -52,16 +52,16 @@ class ProjectionOperation:
         # Initialize image_config as a 10x8 array with default values
         self.image_config = [[0 for _ in range(8)] for _ in range(10)]
 
-        # TEMP
-        rospy.sleep(5)
-        # Read data from walls CSV
-        walls_csv_path = os.path.join(os.path.dirname(__file__), 'data', 'image_config', 'walls_cfg_0.csv')
-        self.image_config = self.set_config_from_csv(self.image_config, walls_csv_path, "walls")
-        # Read data from floor CSV
-        floors_csv_path = os.path.join(os.path.dirname(__file__), 'data', 'image_config', 'floor_cfg_0.csv')
-        self.image_config = self.set_config_from_csv(self.image_config, floors_csv_path, "floor")
-        # Send the image configuration message
-        self.publish_image_message(self.image_config)
+        # # TEMP
+        # rospy.sleep(5)
+        # # Read data from walls CSV
+        # walls_csv_path = os.path.join(os.path.dirname(__file__), 'data', 'image_config', 'walls_cfg_0.csv')
+        # self.image_config = self.set_config_from_csv(self.image_config, walls_csv_path, "walls")
+        # # Read data from floor CSV
+        # floors_csv_path = os.path.join(os.path.dirname(__file__), 'data', 'image_config', 'floor_cfg_0.csv')
+        # self.image_config = self.set_config_from_csv(self.image_config, floors_csv_path, "floor")
+        # # Send the image configuration message
+        # self.publish_image_message(self.image_config)
 
         # TEMP
         # rospy.sleep(5)
