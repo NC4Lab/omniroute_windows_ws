@@ -156,7 +156,7 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm 
     out_RC->is_proj_img_message_received = true;
 
     // Log the entire 2D array
-    if (true)
+    if (GLB_DO_VERBOSE_DEBUG)
     {
         ROS_INFO("[callbackProjImgROS] Stored ROS projection image data:");
         for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
