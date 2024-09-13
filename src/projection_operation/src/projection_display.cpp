@@ -47,52 +47,42 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
     else if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {
+        static int wall_img_ind_last = -1;
+        static int floor_img_ind_last = -1;
 
         // ---------- Change wall configuration [SHIFT [0-8]] ----------
         if (mods & GLFW_MOD_SHIFT)
         {
-            int proj_cmd = RC.proj_cmd_data;
+            int wall_img_ind = wall_img_ind_last;
             if (key == GLFW_KEY_0)
             {
-                proj_cmd = 0;
+                wall_img_ind = 0;
             }
             else if (key == GLFW_KEY_1 && wallRawImgMatVec.size() > 1)
             {
-                proj_cmd = 1;
+                wall_img_ind = 1;
             }
             else if (key == GLFW_KEY_2 && wallRawImgMatVec.size() > 2)
             {
-                proj_cmd = 2;
+                wall_img_ind = 2;
             }
             else if (key == GLFW_KEY_3 && wallRawImgMatVec.size() > 3)
             {
-                proj_cmd = 3;
+                wall_img_ind = 3;
             }
             else if (key == GLFW_KEY_4 && wallRawImgMatVec.size() > 4)
             {
-                proj_cmd = 4;
+                wall_img_ind = 4;
             }
             else if (key == GLFW_KEY_5 && wallRawImgMatVec.size() > 5)
             {
-                proj_cmd = 5;
-            }
-            else if (key == GLFW_KEY_6 && wallRawImgMatVec.size() > 6)
-            {
-                proj_cmd = 6;
-            }
-            else if (key == GLFW_KEY_7 && wallRawImgMatVec.size() > 7)
-            {
-                proj_cmd = 7;
-            }
-            else if (key == GLFW_KEY_8 && wallRawImgMatVec.size() > 8)
-            {
-                proj_cmd = 8;
+                wall_img_ind = 5;
             }
             // Check for configuration change
-            if (proj_cmd != RC.proj_cmd_data)
+            if (wall_img_ind != wall_img_ind_last)
             {
-                ROS_INFO("[callbackKeyBinding] Initiated change image configuration from %d to %d", RC.proj_cmd_data, proj_cmd);
-                RC.proj_cmd_data = proj_cmd;
+                ROS_INFO("[callbackKeyBinding] Initiated change wall image configuration from %d to %d", wall_img_ind_last, wall_img_ind);
+                
                 // Set the flag to update the textures
                 F.update_textures = true;
 
@@ -105,17 +95,54 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                         {
                             for (int l = 0; l < 3; ++l)
                             {
-                                PROJ_WALL_CONFIG_INDICES_4D[i][j][k][l] = proj_cmd; // Set each element to 1
+                                PROJ_WALL_CONFIG_INDICES_4D[i][j][k][l] = wall_img_ind; // Set each element to 1
                             }
                         }
                     }
                 }
+                wall_img_ind_last = wall_img_ind;
             }
         }
 
         // ---------- Change floor configuration [CTRL [0-5]] ----------
         else if (mods & GLFW_MOD_CONTROL)
         {
+            int floor_img_ind = floor_img_ind_last;
+            if (key == GLFW_KEY_0)
+            {
+                floor_img_ind = 0;
+            }
+            else if (key == GLFW_KEY_1 && floorRotatedImgMatVecArr.size() > 1)
+            {
+                floor_img_ind = 1;
+            }
+            else if (key == GLFW_KEY_2 && floorRotatedImgMatVecArr.size() > 2)
+            {
+                floor_img_ind = 2;
+            }
+            else if (key == GLFW_KEY_3 && floorRotatedImgMatVecArr.size() > 3)
+            {
+                floor_img_ind = 3;
+            }
+            else if (key == GLFW_KEY_4 && floorRotatedImgMatVecArr.size() > 4)
+            {
+                floor_img_ind = 4;
+            }
+            else if (key == GLFW_KEY_5 && floorRotatedImgMatVecArr.size() > 5)
+            {
+                floor_img_ind = 5;
+            }
+
+            // Check for configuration change
+            if (floor_img_ind != floor_img_ind_last)
+            {
+                ROS_INFO("[callbackKeyBinding] Initiated change floor image configuration from %d to %d", floor_img_ind_last, floor_img_ind);
+                // Set the flag to update the textures
+                F.update_textures = true;
+                // Update index
+                projFloorConfigIndex = floor_img_ind;
+                floor_img_ind_last = floor_img_ind;
+            }
         }
     }
 }
@@ -721,7 +748,7 @@ void appLoadAssets()
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
 
     // Get the floor images
-    std::vector<std::string> fi_img_path_floor_vec;                                        // declare the vector to store the paths
+    std::vector<std::string> fi_img_path_floor_vec;                                          // declare the vector to store the paths
     size_t n_floor_img = sizeof(FLOOR_IMAGE_FILE_NAMES) / sizeof(FLOOR_IMAGE_FILE_NAMES[0]); // calculate the number of images
     for (size_t i = 0; i < n_floor_img; ++i)
     {
