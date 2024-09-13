@@ -863,8 +863,9 @@ const char WALL_IMAGE_FILE_NAMES[6][30] = {
  * @note This list needs to match that used in:
  * omniroute_ubuntu_ws\src\omniroute_operation\src\shared_utils\projection_operation.py
  */
-const char FLOOR_IMAGE_FILE_NAMES[5][30] = {
+const char FLOOR_IMAGE_FILE_NAMES[6][30] = {
     "f_black",
+    "f_green",
     "f_pattern_0",
     "f_pattern_1",
     "f_pattern_2",
