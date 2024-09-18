@@ -38,6 +38,7 @@
 #include <ros/console.h>
 #include <ros/package.h>
 #include <std_msgs/Int32.h>
+#include <std_msgs/Int32MultiArray.h> 
 #include <geometry_msgs/PoseStamped.h>
 #include <XmlRpcValue.h>
 #include <tf/tf.h>
@@ -830,11 +831,46 @@ extern const char *GLB_QUAD_GL_FRAGMENT_SOURCE = R"glsl(
 extern const std::string package_path = ros::package::getPath("projection_operation");
 extern const std::string workspace_path = package_path.substr(0, package_path.rfind("/src"));
 
-// Directory paths for configuration files
+// Directory paths for calibration image files
 extern const std::string GLB_CONFIG_DIR_PATH = workspace_path + "/data/projection/params";
 
-// Directory paths for configuration images
+// Directory paths for runtime image files
 extern const std::string GLB_IMAGE_TOP_DIR_PATH = workspace_path + "/data/projection/images";
+
+/**
+ * @brief Image file sub-directory path
+ */
+std::string RUNTIME_IMAGE_PATH = GLB_IMAGE_TOP_DIR_PATH + "/runtime";
+
+/**
+ * @brief File names for available wall images
+ * 
+ * @note This list needs to match that used in:
+ * omniroute_ubuntu_ws\src\omniroute_operation\src\shared_utils\projection_operation.py
+ */
+const char WALL_IMAGE_FILE_NAMES[6][30] = {
+    "w_black",
+    "w_square",
+    "w_circle",
+    "w_triangle",
+    "w_star",
+    "w_pentagon",
+};
+
+/**
+ * @brief File names for available floor images
+ * 
+ * @note This list needs to match that used in:
+ * omniroute_ubuntu_ws\src\omniroute_operation\src\shared_utils\projection_operation.py
+ */
+const char FLOOR_IMAGE_FILE_NAMES[6][30] = {
+    "f_black",
+    "f_green",
+    "f_pattern_0",
+    "f_pattern_1",
+    "f_pattern_2",
+    "f_white",
+};
 
 // Number of rows and columns in the maze grid
 extern const int GLB_MAZE_SIZE = 3;
@@ -953,9 +989,9 @@ void dbLogHomMat(const cv::Mat &_HMAT);
 /**
  * @brief Prints the wall image indecies of all entries in the wall image configuration array.
  *
- * @param _HMAT ProjWallImageCfg4D array to print.
+ * @param _HMAT ProjWallConfigIndices4D array to print.
  */
-void dbLogProjWallImageCfg4D(const ProjWallImageCfg4D &wallImageConfig);
+void dbLogProjWallImageCfg4D(const ProjWallConfigIndices4D &wallImageConfig);
 
 /**
  * @brief Displays a warped image in a window.

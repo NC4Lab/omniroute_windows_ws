@@ -47,92 +47,178 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
     else if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {
+        static int wall_img_ind_last = -1;
+        static int floor_img_ind_last = -1;
 
         // ---------- Change wall configuration [SHIFT [0-8]] ----------
         if (mods & GLFW_MOD_SHIFT)
         {
-            int proj_cmd = RC.last_proj_cmd;
+            int wall_img_ind = wall_img_ind_last;
             if (key == GLFW_KEY_0)
             {
-                proj_cmd = 0;
+                wall_img_ind = 0;
             }
-            else if (key == GLFW_KEY_1 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 1)
+            else if (key == GLFW_KEY_1 && wallRawImgMatVec.size() > 1)
             {
-                proj_cmd = 1;
+                wall_img_ind = 1;
             }
-            else if (key == GLFW_KEY_2 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 2)
+            else if (key == GLFW_KEY_2 && wallRawImgMatVec.size() > 2)
             {
-                proj_cmd = 2;
+                wall_img_ind = 2;
             }
-            else if (key == GLFW_KEY_3 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 3)
+            else if (key == GLFW_KEY_3 && wallRawImgMatVec.size() > 3)
             {
-                proj_cmd = 3;
+                wall_img_ind = 3;
             }
-            else if (key == GLFW_KEY_4 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 4)
+            else if (key == GLFW_KEY_4 && wallRawImgMatVec.size() > 4)
             {
-                proj_cmd = 4;
+                wall_img_ind = 4;
             }
-            else if (key == GLFW_KEY_5 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 5)
+            else if (key == GLFW_KEY_5 && wallRawImgMatVec.size() > 5)
             {
-                proj_cmd = 5;
-            }
-            else if (key == GLFW_KEY_6 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 6)
-            {
-                proj_cmd = 6;
-            }
-            else if (key == GLFW_KEY_7 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 7)
-            {
-                proj_cmd = 7;
-            }
-            else if (key == GLFW_KEY_8 && PROJ_WALL_IMAGE_CFG_4D_VEC.size() > 8)
-            {
-                proj_cmd = 8;
+                wall_img_ind = 5;
             }
             // Check for configuration change
-            if (proj_cmd != RC.last_proj_cmd)
+            if (wall_img_ind != wall_img_ind_last)
             {
-                ROS_INFO("[callbackKeyBinding] Initiated change image configuration from %d to %d", RC.last_proj_cmd, proj_cmd);
-                RC.last_proj_cmd = proj_cmd;
-                // Update the image configuration index
-                I.wall_image_cfg = RC.last_proj_cmd;
+                ROS_INFO("[callbackKeyBinding] Initiated change wall image configuration from %d to %d", wall_img_ind_last, wall_img_ind);
+                
                 // Set the flag to update the textures
                 F.update_textures = true;
+
+                // Loop through the data and set all entries to a given wall ind
+                for (int i = 0; i < 4; ++i)
+                {
+                    for (int j = 0; j < 3; ++j)
+                    {
+                        for (int k = 0; k < 3; ++k)
+                        {
+                            for (int l = 0; l < 3; ++l)
+                            {
+                                PROJ_WALL_CONFIG_INDICES_4D[i][j][k][l] = wall_img_ind; // Set each element to 1
+                            }
+                        }
+                    }
+                }
+                wall_img_ind_last = wall_img_ind;
             }
         }
 
         // ---------- Change floor configuration [CTRL [0-5]] ----------
         else if (mods & GLFW_MOD_CONTROL)
         {
+            int floor_img_ind = floor_img_ind_last;
+            if (key == GLFW_KEY_0)
+            {
+                floor_img_ind = 0;
+            }
+            else if (key == GLFW_KEY_1 && floorRotatedImgMatVecArr.size() > 1)
+            {
+                floor_img_ind = 1;
+            }
+            else if (key == GLFW_KEY_2 && floorRotatedImgMatVecArr.size() > 2)
+            {
+                floor_img_ind = 2;
+            }
+            else if (key == GLFW_KEY_3 && floorRotatedImgMatVecArr.size() > 3)
+            {
+                floor_img_ind = 3;
+            }
+            else if (key == GLFW_KEY_4 && floorRotatedImgMatVecArr.size() > 4)
+            {
+                floor_img_ind = 4;
+            }
+            else if (key == GLFW_KEY_5 && floorRotatedImgMatVecArr.size() > 5)
+            {
+                floor_img_ind = 5;
+            }
+
+            // Check for configuration change
+            if (floor_img_ind != floor_img_ind_last)
+            {
+                ROS_INFO("[callbackKeyBinding] Initiated change floor image configuration from %d to %d", floor_img_ind_last, floor_img_ind);
+                // Set the flag to update the textures
+                F.update_textures = true;
+                // Update index
+                projFloorConfigIndex = floor_img_ind;
+                floor_img_ind_last = floor_img_ind;
+            }
         }
     }
 }
 
-void callbackProjMsgROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC)
+void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC)
 {
     // Update the last received command
-    out_RC->last_proj_cmd = msg->data;
-    out_RC->is_proj_message_received = true;
+    out_RC->proj_cmd_data = msg->data;
+    out_RC->is_proj_cmd_message_received = true;
 
     // Log projection command
     if (GLB_DO_VERBOSE_DEBUG)
-        ROS_INFO("[callbackProjMsgROS] Received projection command: %d", out_RC->last_proj_cmd);
+        ROS_INFO("[callbackProjCmdROS] Received projection command: %d", out_RC->proj_cmd_data);
+}
+
+void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm *out_RC)
+{
+    // Check that the received data has the correct size for a 10x8 array (80 elements)
+    if (msg->data.size() != 80)
+    {
+        ROS_ERROR("[callbackProjImgROS] Received incorrect array size. Expected 80 elements, but got %zu", msg->data.size());
+        return;
+    }
+
+    // TEMP: Adding a small delay
+    ros::Duration(0.5).sleep();
+
+    // Store the 10x8 data in proj_img_data
+    for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
+    {
+        for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
+        {
+            out_RC->proj_img_data[cham_ind][wall_ind] = msg->data[cham_ind * 8 + wall_ind];
+        }
+    }
+
+    // Flag that a projection image message has been received
+    out_RC->is_proj_img_message_received = true;
+
+    // Log the entire 2D array
+    if (GLB_DO_VERBOSE_DEBUG)
+    {
+        ROS_INFO("[callbackProjImgROS] Stored ROS projection image data:");
+        for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
+        {
+            std::stringstream row_stream;
+            row_stream << "Walls[" << cham_ind << "] = [";
+            for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
+            {
+                row_stream << out_RC->proj_img_data[cham_ind][wall_ind];
+                if (wall_ind < 7) // Add a comma between elements, but not after the last one
+                {
+                    row_stream << ", ";
+                }
+            }
+            row_stream << "]";
+            ROS_INFO("%s", row_stream.str().c_str());
+        }
+    }
 }
 
 void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSComm *out_RC)
 {
     // Update the last received command
-    out_RC->last_track_pos = *msg;
-    out_RC->is_track_message_received = true;
+    out_RC->track_pos_data = *msg;
+    out_RC->is_track_pos_message_received = true;
 
     // Log position data
     if (GLB_DO_VERBOSE_DEBUG)
         ROS_INFO("[callbackHarnessPosROS] Received tracking: position x[%f] y[%f] z[%f], orientation x[%f] y[%f] z[%f]",
-                 out_RC->last_track_pos.pose.position.x,
-                 out_RC->last_track_pos.pose.position.y,
-                 out_RC->last_track_pos.pose.position.z,
-                 out_RC->last_track_pos.pose.orientation.x,
-                 out_RC->last_track_pos.pose.orientation.y,
-                 out_RC->last_track_pos.pose.orientation.z);
+                 out_RC->track_pos_data.pose.position.x,
+                 out_RC->track_pos_data.pose.position.y,
+                 out_RC->track_pos_data.pose.position.z,
+                 out_RC->track_pos_data.pose.orientation.x,
+                 out_RC->track_pos_data.pose.orientation.y,
+                 out_RC->track_pos_data.pose.orientation.z);
 }
 
 int initSubscriberROS(ROSComm &out_RC)
@@ -146,13 +232,23 @@ int initSubscriberROS(ROSComm &out_RC)
 
     // Initialize the "projection_cmd" subscriber using boost::bind
     out_RC.proj_cmd_sub = out_RC.node_handle->subscribe<std_msgs::Int32>(
-        "projection_cmd", 10, boost::bind(&callbackProjMsgROS, _1, &out_RC));
+        "projection_cmd", 10, boost::bind(&callbackProjCmdROS, _1, &out_RC));
     if (!out_RC.proj_cmd_sub)
     {
         ROS_ERROR("[initSubscriberROS]Failed to subscribe to 'projection_cmd' topic!");
         return -1;
     }
 
+    // Initialize the "projection_image" subscriber
+    out_RC.proj_img_sub = out_RC.node_handle->subscribe<std_msgs::Int32MultiArray>(
+        "projection_image", 10, boost::bind(&callbackProjImgROS, _1, &out_RC));
+    if (!out_RC.proj_img_sub)
+    {
+        ROS_ERROR("[initSubscriberROS]Failed to subscribe to 'projection_image' topic!");
+        return -1;
+    }
+
+    // Initialize the "harness_pose_in_maze" subscriber
     out_RC.track_pos_sub = out_RC.node_handle->subscribe<geometry_msgs::PoseStamped>(
         "harness_pose_in_maze", 10, boost::bind(&callbackTrackPosROS, _1, &out_RC));
     if (!out_RC.track_pos_sub)
@@ -164,67 +260,91 @@ int initSubscriberROS(ROSComm &out_RC)
     return 0;
 }
 
-int procProjMsgROS(ROSComm &out_RC)
+int procProjCmdROS(ROSComm &out_RC)
 {
     // Check if node handle is initialized
     if (!ros::ok())
     {
-        ROS_ERROR("[procProjMsgROS]ROS is no longer running!");
+        ROS_ERROR("[procProjCmdROS]ROS is no longer running!");
         return -1;
     }
 
     // Bail if no message received
-    if (!out_RC.is_proj_message_received)
+    if (!out_RC.is_proj_cmd_message_received)
         return 0;
 
     // Reset the flag
-    out_RC.is_proj_message_received = false;
-
-    // Log the received command
-    if (GLB_DO_VERBOSE_DEBUG)
-        ROS_INFO("[procProjMsgROS] Processing received projection command: %d", out_RC.last_proj_cmd);
+    out_RC.is_proj_cmd_message_received = false;
 
     // ---------- Monitor Mode Change Commmands ----------
 
     // Move monitor command [-1]
-    if (out_RC.last_proj_cmd == -1)
+    if (out_RC.proj_cmd_data == -1)
     {
         F.windows_set_to_proj = !F.windows_set_to_proj;
         F.change_window_mode = true;
     }
 
     // Set/unset Fullscreen [-2] ----------
-    else if (out_RC.last_proj_cmd == -2)
+    else if (out_RC.proj_cmd_data == -2)
     {
         F.fullscreen_mode = !F.fullscreen_mode;
         F.change_window_mode = true;
     }
 
     // Force window to top [-3] ----------
-    else if (out_RC.last_proj_cmd == -3)
+    else if (out_RC.proj_cmd_data == -3)
     {
         F.force_window_focus = true;
     }
 
-    // ---------- Change image configuraton [0-8] ----------
-
-    else if (out_RC.last_proj_cmd >= 0 && out_RC.last_proj_cmd <= 8)
-    {
-        if (out_RC.last_proj_cmd >= PROJ_WALL_IMAGE_CFG_4D_VEC.size())
-        {
-            ROS_WARN("[procProjMsgROS] Received image configuration index exceeds image configurations vector");
-            return 0;
-        }
-        // Update the image configuration index
-        I.wall_image_cfg = out_RC.last_proj_cmd;
-        // Set the flag to update the textures
-        F.update_textures = true;
-    }
-
     else
     {
-        ROS_WARN("[procProjMsgROS] Received invalid projection command: %d", out_RC.last_proj_cmd);
+        ROS_WARN("[procProjCmdROS] Received invalid projection command: %d", out_RC.proj_cmd_data);
     }
+
+    return 0;
+}
+
+int procProjImgROS(ROSComm &out_RC)
+{
+    // Check if node handle is initialized
+    if (!ros::ok())
+    {
+        ROS_ERROR("[procProjImgROS] ROS is no longer running!");
+        return -1;
+    }
+
+    // Bail if no message received
+    if (!out_RC.is_proj_img_message_received)
+        return 0;
+
+    // Reset the flag
+    out_RC.is_proj_img_message_received = false;
+
+    // ---------- Update image index data ----------
+
+    for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
+    {
+        for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
+        {
+            // Store image index
+            int img_ind = out_RC.proj_img_data[cham_ind][wall_ind];
+
+            // Update the wall index array
+            if (cham_ind < 9)
+                configWallImageIndex(img_ind, cham_ind, wall_ind, PROJ_WALL_CONFIG_INDICES_4D);
+            // Update the floor image index
+            else if (wall_ind == 0) // Only store the first entry
+                projFloorConfigIndex = img_ind;
+            // Skip unused floor entries
+            else
+                continue;
+        }
+    }
+
+    // Set the flag to update the textures
+    F.update_textures = true;
 
     return 0;
 }
@@ -239,27 +359,23 @@ int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT)
     }
 
     // Bail if no message received
-    if (!out_RC.is_track_message_received)
+    if (!out_RC.is_track_pos_message_received)
         return 0;
 
     // Reset the flag
-    out_RC.is_track_message_received = false;
-
-    // Log the received command
-    if (GLB_DO_VERBOSE_DEBUG)
-        ROS_INFO("[procTrackMsgROS] Processing received projection command: %d", out_RC.last_proj_cmd);
+    out_RC.is_track_pos_message_received = false;
 
     // Convert the track pose to centimeters
     geometry_msgs::Point position_cm;
-    position_cm.x = out_RC.last_track_pos.pose.position.x * 100.0f;
-    position_cm.y = out_RC.last_track_pos.pose.position.y * 100.0f;
+    position_cm.x = out_RC.track_pos_data.pose.position.x * 100.0f;
+    position_cm.y = out_RC.track_pos_data.pose.position.y * 100.0f;
 
     // Extract the quaternion
     tf::Quaternion q(
-        out_RC.last_track_pos.pose.orientation.x,
-        out_RC.last_track_pos.pose.orientation.y,
-        out_RC.last_track_pos.pose.orientation.z,
-        out_RC.last_track_pos.pose.orientation.w);
+        out_RC.track_pos_data.pose.orientation.x,
+        out_RC.track_pos_data.pose.orientation.y,
+        out_RC.track_pos_data.pose.orientation.z,
+        out_RC.track_pos_data.pose.orientation.w);
 
     // Convert quaternion to RPY (roll, pitch, yaw)
     tf::Matrix3x3 m(q);
@@ -275,10 +391,6 @@ int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT)
     // Calculate the offset in global frame
     double offset_x = out_RT.offset_distance * cos(adjusted_yaw);
     double offset_y = out_RT.offset_distance * sin(adjusted_yaw);
-
-    // // TEMP
-    // offset_x = 0.0;
-    // offset_y = 0.0;
 
     // Apply the offset to the original position
     out_RT.marker_position.x = position_cm.x + offset_x;
@@ -349,13 +461,13 @@ void simulateRatMovement(float move_step, float max_turn_angle, RatTracker &out_
     keepWithinBoundsAndTurn(out_RT.marker_position);
 }
 
-void configWallImages(int image_ind, int chamber_ind, int wall_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC)
+void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D)
 {
     std::vector<int> walls_ind = {wall_ind};
-    configWallImages(image_ind, chamber_ind, walls_ind, out_PROJ_WALL_IMAGE_CFG_4D_VEC);
+    configWallImageIndex(image_ind, chamber_ind, walls_ind, out_PROJ_WALL_CONFIG_INDICES_4D);
 }
 
-void configWallImages(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallImageCfg4D &out_PROJ_WALL_IMAGE_CFG_4D_VEC)
+void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D)
 {
     // Determine the row and column based on chamber index
     int row = chamber_ind / 3;
@@ -403,13 +515,13 @@ void configWallImages(int image_ind, int chamber_ind, const std::vector<int> &wa
             if (wallMapping != wallToIndexMapping[proj].end())
             {
                 // Set the image index for the corresponding wall
-                out_PROJ_WALL_IMAGE_CFG_4D_VEC[proj][adjusted_row][adjusted_col][wallMapping->second] = image_ind;
+                out_PROJ_WALL_CONFIG_INDICES_4D[proj][adjusted_row][adjusted_col][wallMapping->second] = image_ind;
             }
         }
     }
 }
 
-void populateMazeVertNdcVec(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec)
+void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec)
 {
     // Lambda function for circular shift
     auto circShift = [](const std::vector<cv::Point2f> &vec, int shift) -> std::vector<cv::Point2f>
@@ -436,13 +548,13 @@ void populateMazeVertNdcVec(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm
     case 0: // Circular shift left by 1
         maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 1);
         break;
-    case 1: // No shift
+    case 1: // Circular shift left by 2
         maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 2);
         break;
     case 2: // Circular shift right by 1
         maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, -1);
         break;
-    case 3: // Circular shift right by 2
+    case 3: // No shift
         maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 0);
         break;
     default:
@@ -450,76 +562,114 @@ void populateMazeVertNdcVec(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm
     }
 }
 
-int updateTexture(
+void rotateFloorImage(int img_rot_deg, const cv::Mat &in_img_mat, std::vector<cv::Mat> &out_img_mat_vec)
+{
+    // Normalize rotation to be within 0-270 degrees using modulo
+    int normalized_rot_deg = (img_rot_deg % 360 + 360) % 360;
+
+    cv::Mat rotated_img;
+
+    // Rotate based on the normalized rotation angle
+    switch (normalized_rot_deg)
+    {
+    case 90:
+        cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_CLOCKWISE);
+        break;
+    case 180:
+        cv::rotate(in_img_mat, rotated_img, cv::ROTATE_180);
+        break;
+    case 270:
+        cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_COUNTERCLOCKWISE);
+        break;
+    case 0:
+    default:
+        // No rotation needed, just copy the input image
+        rotated_img = in_img_mat.clone();
+        break;
+    }
+
+    // Store the rotated image in the output vector
+    out_img_mat_vec.push_back(rotated_img);
+}
+
+int updateFloorTexture(
     int proj_ind,
-    const std::vector<cv::Mat> &_wallImgMatVec,
-    const std::vector<cv::Mat> &_floorImgMatVec,
-    const ProjWallImageCfg4D &_PROJ_WALL_IMAGE_CFG_3D,
-    const ProjFloorImageCfg1D &_PROJ_FLOOR_IMAGE_CFG_1D,
-    const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES>, 4> &_HMAT_ARR,
+    cv::Mat &_floorImgMat,
+    const cv::Mat _wallBlankImgMat,
+    std::array<cv::Mat, 4> &_FLOOR_HMAT_ARR,
     cv::Mat &out_img_mat)
 {
-    // Iterate through through calibration modes in descending order so floor is drawn first
-    for (int cal_i = N_CAL_MODES - 1; cal_i >= 0; --cal_i)
+
+    // Copy the floor image to be used
+    cv::Mat img_copy;
+    _floorImgMat.copyTo(img_copy);
+
+    // Get homography matrix for this wall
+    cv::Mat H = _FLOOR_HMAT_ARR[proj_ind];
+
+    // Warp Perspective
+    cv::Mat img_warp;
+    if (warpImgMat(img_copy, H, img_warp) < 0)
+    {
+        ROS_ERROR("[updateFloorTexture] Warp image error: Projector[%d]", proj_ind);
+        return -1;
+    }
+
+    // Merge the warped image with the final image
+    if (mergeImgMat(img_warp, out_img_mat) < 0)
+        return -1;
+
+    // Merge the blank wall image with the final image
+    if (mergeImgMat(_wallBlankImgMat, out_img_mat) < 0)
+        return -1;
+
+    return 0;
+}
+
+int updateWallTexture(
+    int proj_ind,
+    const std::vector<cv::Mat> &_wallRawImgMatVec,
+    const ProjWallConfigIndices4D &_PROJ_WALL_CONFIG_INDICES_4D,
+    const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES - 1>, 4> &_WALL_HMAT_ARR,
+    bool do_ignore_blank_img,
+    cv::Mat &out_img_mat)
+{
+    // Iterate through through calibration modes (left walls, middle walls, right walls)
+    for (int cal_i = 0; cal_i < N_CAL_MODES - 1; cal_i++)
     {
         CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
 
-        // Specify number of rows/cols to loop through
-        int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
-
         // Iterate through the maze grid rows
-        for (int gr_i = 0; gr_i < grid_size; gr_i++) // image bottom to top
+        for (int gr_i = 0; gr_i < GLB_MAZE_SIZE; gr_i++) // image bottom to top
         {
             // Iterate through each column in the maze row
-            for (int gc_i = 0; gc_i < grid_size; gc_i++) // image left to right
+            for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; gc_i++) // image left to right
             {
                 // Get the index of the wall image to be used
-                int img_ind;
-                if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT)
+                int img_ind = _PROJ_WALL_CONFIG_INDICES_4D[proj_ind][gr_i][gc_i][_CAL_MODE];
+                if (_wallRawImgMatVec[img_ind].empty())
                 {
-                    img_ind = _PROJ_WALL_IMAGE_CFG_3D[proj_ind][gr_i][gc_i][_CAL_MODE];
-
-                    if (_wallImgMatVec[img_ind].empty())
-                    {
-                        ROS_ERROR("[updateTexture] Stored OpenCV wall image is empty: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
-                                  proj_ind, gr_i, gc_i, _CAL_MODE, img_ind);
-                        return -1;
-                    }
-                }
-                else
-                {
-                    img_ind = _PROJ_FLOOR_IMAGE_CFG_1D[proj_ind];
-                    if (_floorImgMatVec[img_ind].empty())
-                    {
-                        ROS_ERROR("[updateTexture] Stored OpenCV floor image is empty: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
-                                  proj_ind, gr_i, gc_i, _CAL_MODE, img_ind);
-                        return -1;
-                    }
+                    ROS_ERROR("[updateWallTexture] Stored OpenCV wall image is empty: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
+                              proj_ind, gr_i, gc_i, _CAL_MODE, img_ind);
+                    return -1;
                 }
 
                 // Skip empty images
-                if (img_ind == 0)
+                if (img_ind == 0 && do_ignore_blank_img)
                     continue;
 
                 // Copy the wall image to be used
                 cv::Mat img_copy;
-                if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT)
-                {
-                    _wallImgMatVec[img_ind].copyTo(img_copy);
-                }
-                else
-                {
-                    _floorImgMatVec[img_ind].copyTo(img_copy);
-                }
+                _wallRawImgMatVec[img_ind].copyTo(img_copy);
 
                 // Get homography matrix for this wall
-                cv::Mat H = _HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i];
+                cv::Mat H = _WALL_HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i];
 
                 // Warp Perspective
                 cv::Mat img_warp;
                 if (warpImgMat(img_copy, H, img_warp) < 0)
                 {
-                    ROS_ERROR("[updateTexture] Warp image error: Projector[%d] Wall[%d][%d] Calibration[%d]",
+                    ROS_ERROR("[updateWallTexture] Warp image error: Projector[%d] Wall[%d][%d] Calibration[%d]",
                               proj_ind, gr_i, gc_i, _CAL_MODE);
                     return -1;
                 }
@@ -563,6 +713,8 @@ int drawRatMask(
 
 void appInitROS(int argc, char **argv, ROSComm &out_RC)
 {
+    ROS_INFO("[projection_display:appInitROS] STARTING PROJECTION DISPLAY NODE");
+
     // Initialize ROS
     ros::init(argc, argv, "projection_display", ros::init_options::AnonymousName);
     if (!ros::master::check())
@@ -578,16 +730,32 @@ void appInitROS(int argc, char **argv, ROSComm &out_RC)
     if (initSubscriberROS(out_RC) < 0)
         throw std::runtime_error("[appInitROS] Failed to initialize ROS subscriber");
 
-    ROS_INFO("[appInitROS] Finished initializing ROS successfully");
+    ROS_INFO("[projection_display:appInitROS] Finished initializing ROS successfully");
 }
 
 void appLoadAssets()
 {
     // ---------- Load Images with OpenCV ----------
-    if (loadImgMat(fiImgPathWallVec, wallImgMatVec) < 0)
+
+    // Get the wall images
+    std::vector<std::string> fi_img_path_wall_vec;                                        // declare the vector to store the paths
+    size_t n_wall_img = sizeof(WALL_IMAGE_FILE_NAMES) / sizeof(WALL_IMAGE_FILE_NAMES[0]); // calculate the number of images
+    for (size_t i = 0; i < n_wall_img; ++i)
+    {
+        fi_img_path_wall_vec.push_back(RUNTIME_IMAGE_PATH + "/" + WALL_IMAGE_FILE_NAMES[i] + ".png");
+    }
+    if (loadImgMat(fi_img_path_wall_vec, wallRawImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
-    if (loadImgMat(fiImgPathFloorVec, floorImgMatVec) < 0)
-        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
+
+    // Get the floor images
+    std::vector<std::string> fi_img_path_floor_vec;                                          // declare the vector to store the paths
+    size_t n_floor_img = sizeof(FLOOR_IMAGE_FILE_NAMES) / sizeof(FLOOR_IMAGE_FILE_NAMES[0]); // calculate the number of images
+    for (size_t i = 0; i < n_floor_img; ++i)
+    {
+        fi_img_path_floor_vec.push_back(RUNTIME_IMAGE_PATH + "/" + FLOOR_IMAGE_FILE_NAMES[i] + ".png");
+    }
+    if (loadImgMat(fi_img_path_floor_vec, floorRawImgMatVec) < 0)
+        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV floor images");
 
     // ---------- Load Wall and Floor Homography Matrices from XML ----------
     for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) // for each projector
@@ -596,18 +764,26 @@ void appLoadAssets()
         {
             CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
 
-            // Specify number of rows/cols to loop through based on active calibration mode
-            int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
-
-            // Iterate through the maze grid rows
-            for (int gr_i = 0; gr_i < grid_size; ++gr_i)
+            // Store wall homography matrices
+            if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT)
             {
-                for (int gc_i = 0; gc_i < grid_size; ++gc_i)
+                // Iterate through the maze grid rows
+                for (int gr_i = 0; gr_i < GLB_MAZE_SIZE; ++gr_i)
                 {
-                    // Load the homography matrix from XML
-                    if (xmlLoadHMAT(proj_ind, _CAL_MODE, gr_i, gc_i, HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i]) < 0)
-                        throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadHMAT");
+                    for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; ++gc_i)
+                    {
+                        // Load the homography matrix from XML
+                        if (xmlLoadHMAT(proj_ind, _CAL_MODE, gr_i, gc_i, WALL_HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i]) < 0)
+                            throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadHMAT");
+                    }
                 }
+            }
+            // Store floor homography matrices
+            else
+            {
+                // Load the homography matrix from XML
+                if (xmlLoadHMAT(proj_ind, _CAL_MODE, 0, 0, FLOOR_HMAT_ARR[proj_ind]) < 0)
+                    throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadHMAT");
             }
         }
     }
@@ -623,7 +799,7 @@ void appLoadAssets()
             throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadVertices");
 
         // Compute the rotated maze vertices in centimeter units
-        populateMazeVertNdcVec(proj_ind, maze_vert_cm_vec);
+        computeMazeVertCm(proj_ind, maze_vert_cm_vec);
 
         // Compute the homography matrix for warping the rat mask marker from maze cm to ndc space for each projector
         cv::Mat H;
@@ -634,7 +810,7 @@ void appLoadAssets()
         HMAT_CM_TO_NDC_ARR[proj_ind] = H;
     }
 
-    ROS_INFO("[appLoadAssets] Finished loading variables successfully");
+    ROS_INFO("[projection_display:appLoadAssets] Finished loading variables successfully");
 }
 
 void appInitVariables()
@@ -650,102 +826,18 @@ void appInitVariables()
         winOffsetVec.emplace_back(x_offset, y_offset);
     }
 
-    // ---------- Initialize Wall Image Configuration Data (Afsoon) ----------
+    // ---------- Convert and store rotated floor images ---------
 
-    // Specify the two shapes
-    int shape_blank_ind = 0; // Blank
-    // int shape1_ind = 1;      // Square
-    int shape2_ind = 3; // Triangle
-    // int shape1_ind = 2;      // circle
-    int shape1_ind = 0; // blank
+    // Loop through floorRawImgMatVec images and store a new entry for each projector in floorRotatedImgMatVecArr
+    for (size_t i = 0; i < floorRawImgMatVec.size(); ++i)
+    {
+        rotateFloorImage(270, floorRawImgMatVec[i], floorRotatedImgMatVecArr[0]); // Projector 0
+        rotateFloorImage(180, floorRawImgMatVec[i], floorRotatedImgMatVecArr[1]); // Projector 1
+        rotateFloorImage(90, floorRawImgMatVec[i], floorRotatedImgMatVecArr[2]);  // Projector 2
+        rotateFloorImage(0, floorRawImgMatVec[i], floorRotatedImgMatVecArr[3]);   // Projector 3
+    }
 
-    std::vector<int> walls_ind_all = {0, 1, 2, 3, 4, 5, 6, 7};
-
-    // Blank choice point;
-    ProjWallImageCfg4D proj_mat_blank = {}; // Initialize to all zeros
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_blank);
-
-    // East facing choice point condition 1;
-    ProjWallImageCfg4D proj_mat_east_1 = {};
-    configWallImages(shape1_ind, 4, 3, proj_mat_east_1);             // Set the left wall image for the center chamber
-    configWallImages(shape1_ind, 1, walls_ind_all, proj_mat_east_1); // Set all wall image for the left chamber
-    configWallImages(shape_blank_ind, 1, 6, proj_mat_east_1);        // Set the left chamber open wall to blank
-    configWallImages(shape2_ind, 4, 5, proj_mat_east_1);             // Set the right wall image for the center chamber
-    configWallImages(shape2_ind, 7, walls_ind_all, proj_mat_east_1); // Set all wall image for the right chamber
-    configWallImages(shape_blank_ind, 7, 2, proj_mat_east_1);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_east_1);           // Add to the vector
-
-    // East facing choice point condition 2;
-    ProjWallImageCfg4D proj_mat_east_2 = {};
-    configWallImages(shape2_ind, 4, 3, proj_mat_east_2);             // Set the left wall image for the center chamber
-    configWallImages(shape2_ind, 1, walls_ind_all, proj_mat_east_2); // Set all wall image for the left chamber
-    configWallImages(shape_blank_ind, 1, 6, proj_mat_east_2);        // Set the left chamber open wall to blank
-    configWallImages(shape1_ind, 4, 5, proj_mat_east_2);             // Set the right wall image for the center chamber
-    configWallImages(shape1_ind, 7, walls_ind_all, proj_mat_east_2); // Set all wall image for the right chamber
-    configWallImages(shape_blank_ind, 7, 2, proj_mat_east_2);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_east_2);           // Add to the vector
-
-    // South facing choice point condition 1;
-    ProjWallImageCfg4D proj_mat_south_1 = {};
-    configWallImages(shape1_ind, 4, 5, proj_mat_south_1);             // Set the left wall image for the center chamber
-    configWallImages(shape1_ind, 5, walls_ind_all, proj_mat_south_1); // Set all wall image for the left chamber
-    configWallImages(shape_blank_ind, 5, 0, proj_mat_south_1);        // Set the left chamber open wall to blank
-    configWallImages(shape2_ind, 4, 7, proj_mat_south_1);             // Set the right wall image for the center chamber
-    configWallImages(shape2_ind, 3, walls_ind_all, proj_mat_south_1); // Set all wall image for the right chamber
-    configWallImages(shape_blank_ind, 3, 4, proj_mat_south_1);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_south_1);           // Add to the vector
-
-    // South facing choice point condition 2;
-    ProjWallImageCfg4D proj_mat_south_2 = {};
-    configWallImages(shape2_ind, 4, 5, proj_mat_south_2);             // Set the left wall image for the center chamber
-    configWallImages(shape2_ind, 5, walls_ind_all, proj_mat_south_2); // Set all wall image for the left chamber
-    configWallImages(shape_blank_ind, 5, 0, proj_mat_south_2);        // Set the left chamber open wall to blank
-    configWallImages(shape1_ind, 4, 7, proj_mat_south_2);             // Set the right wall image for the center chamber
-    configWallImages(shape1_ind, 3, walls_ind_all, proj_mat_south_2); // Set all wall image for the right chamber
-    configWallImages(shape_blank_ind, 3, 4, proj_mat_south_2);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_south_2);           // Add to the vector
-
-    // West facing choice point condition 1;
-    ProjWallImageCfg4D proj_mat_west_1 = {};
-    configWallImages(shape1_ind, 4, 7, proj_mat_west_1);             // Set the left wall image for the center chamber
-    configWallImages(shape1_ind, 7, walls_ind_all, proj_mat_west_1); // Set all wall image for the left chamber
-    configWallImages(shape_blank_ind, 7, 2, proj_mat_west_1);        // Set the left chamber open wall to blank
-    configWallImages(shape2_ind, 4, 1, proj_mat_west_1);             // Set the right wall image for the center chamber
-    configWallImages(shape2_ind, 1, walls_ind_all, proj_mat_west_1); // Set all wall image for the right chamber
-    configWallImages(shape_blank_ind, 1, 6, proj_mat_west_1);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_west_1);           // Add to the vector
-
-    // West facing choice point condition 2;
-    ProjWallImageCfg4D proj_mat_west_2 = {};
-    configWallImages(shape2_ind, 4, 7, proj_mat_west_2);             // Set the left wall image for the center chamber
-    configWallImages(shape2_ind, 7, walls_ind_all, proj_mat_west_2); // Set all wall image for the left chamber
-    configWallImages(shape_blank_ind, 7, 2, proj_mat_west_2);        // Set the left chamber open wall to blank
-    configWallImages(shape1_ind, 4, 1, proj_mat_west_2);             // Set the right wall image for the center chamber
-    configWallImages(shape1_ind, 1, walls_ind_all, proj_mat_west_2); // Set all wall image for the right chamber
-    configWallImages(shape_blank_ind, 1, 6, proj_mat_west_2);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_west_2);           // Add to the vector
-
-    // North facing choice point condition 1;
-    ProjWallImageCfg4D proj_mat_north_1 = {};
-    configWallImages(shape1_ind, 4, 1, proj_mat_north_1);             // Set the left wall image for the center chamber
-    configWallImages(shape1_ind, 3, walls_ind_all, proj_mat_north_1); // Set all wall image for the left chamber
-    configWallImages(shape_blank_ind, 3, 4, proj_mat_north_1);        // Set the left chamber open wall to blank
-    configWallImages(shape2_ind, 4, 3, proj_mat_north_1);             // Set the right wall image for the center chamber
-    configWallImages(shape2_ind, 5, walls_ind_all, proj_mat_north_1); // Set all wall image for the right chamber
-    configWallImages(shape_blank_ind, 5, 0, proj_mat_north_1);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_north_1);           // Add to the vector
-
-    // North facing choice point condition 2;
-    ProjWallImageCfg4D proj_mat_north_2 = {};
-    configWallImages(shape2_ind, 4, 1, proj_mat_north_2);             // Set the left wall image for the center chamber
-    configWallImages(shape2_ind, 3, walls_ind_all, proj_mat_north_2); // Set all wall image for the left chamber
-    configWallImages(shape_blank_ind, 3, 4, proj_mat_north_2);        // Set the left chamber open wall to blank
-    configWallImages(shape1_ind, 4, 3, proj_mat_north_2);             // Set the right wall image for the center chamber
-    configWallImages(shape1_ind, 5, walls_ind_all, proj_mat_north_2); // Set all wall image for the right chamber
-    configWallImages(shape_blank_ind, 5, 0, proj_mat_north_2);        // Set the right chamber open wall to blank
-    PROJ_WALL_IMAGE_CFG_4D_VEC.push_back(proj_mat_north_2);           // Add to the vector
-
-    ROS_INFO("[appInitVariables] Finished initializing variables successfully");
+    ROS_INFO("[projection_display:appInitVariables] Finished initializing variables successfully");
 }
 
 void appInitOpenGL()
@@ -754,7 +846,7 @@ void appInitOpenGL()
     // Initialize GLFW and OpenGL settings and get number of monitors on the system
     if (MazeRenderContext::SetupGraphicsLibraries(N.monitor, I.proj_mon_vec) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
-    ROS_INFO("[appInitOpenGL] OpenGL initialized: Projector monitor indices: %d, %d, %d, %d", I.proj_mon_vec[0], I.proj_mon_vec[1], I.proj_mon_vec[2], I.proj_mon_vec[3]);
+    ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector monitor indices: %d, %d, %d, %d", I.proj_mon_vec[0], I.proj_mon_vec[1], I.proj_mon_vec[2], I.proj_mon_vec[3]);
 
     // // Check if expected monitors exceed available monitors
     // if (I.proj_mon_vec.back() >= N.monitor) // compare last entry
@@ -796,10 +888,21 @@ void appInitOpenGL()
                 ) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
 
-        ROS_INFO("[appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
+        // Initialize blank wall image mat
+        ProjWallConfigIndices4D proj_wall_cfg_indices_blank = {};                                              // Initialize to all zeros for blank images
+        wallBlankImgMatArr[proj_ind] = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4); // Initialize cv::Mat
+        if (updateWallTexture(proj_ind,
+                              wallRawImgMatVec,
+                              proj_wall_cfg_indices_blank,
+                              WALL_HMAT_ARR,
+                              false,
+                              wallBlankImgMatArr[proj_ind]))
+            throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(proj_ind) + "]: Failed to update wall texture");
+
+        ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
     }
 
-    ROS_INFO("[appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
+    ROS_INFO("[projection_display:appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
 }
 
 void printElapsedTime(double &lastTime, std::string msg)
@@ -849,8 +952,21 @@ void appMainLoop()
             {
                 cv::Mat img_mat = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
 
-                // Initialize wall image texture
-                if (updateTexture(projCtx.windowInd, wallImgMatVec, floorImgMatVec, PROJ_WALL_IMAGE_CFG_4D_VEC[I.wall_image_cfg], PROJ_FLOOR_IMAGE_CFG_1D, HMAT_ARR, img_mat))
+                // Update floor image texture
+                if (updateFloorTexture(projCtx.windowInd,
+                                       floorRotatedImgMatVecArr[projCtx.windowInd][projFloorConfigIndex],
+                                       wallBlankImgMatArr[projCtx.windowInd],
+                                       FLOOR_HMAT_ARR,
+                                       img_mat))
+                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
+
+                // Update wall image texture
+                if (updateWallTexture(projCtx.windowInd,
+                                      wallRawImgMatVec,
+                                      PROJ_WALL_CONFIG_INDICES_4D,
+                                      WALL_HMAT_ARR,
+                                      true,
+                                      img_mat))
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
 
                 // Load the new texture
@@ -903,9 +1019,13 @@ void appMainLoop()
         // Process a single round of callbacks for ROS messages
         ros::spinOnce();
 
-        // Process ROS projection messages
-        if (procProjMsgROS(RC) < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: procProjMsgROS");
+        // Process ROS projection command messages
+        if (procProjCmdROS(RC) < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from: procProjCmdROS");
+
+        // Process ROS projection image messages
+        if (procProjImgROS(RC) < 0)
+            throw std::runtime_error("[appMainLoop] Error returned from: procProjImgROS");
 
         // Process ROS tracking position messages
         if (procTrackMsgROS(RC, RT) < 0)
@@ -917,11 +1037,11 @@ void appMainLoop()
 
     // Check which condition caused the loop to exit
     if (status == 1)
-        ROS_INFO("[appMainLoop] Loop Terminated:  GLFW window should close");
+        ROS_INFO("[projection_display:appMainLoop] Loop Terminated:  GLFW window should close");
     else if (status == 2)
-        ROS_INFO("[appMainLoop] Loop Terminated:  Escape key was pressed");
+        ROS_INFO("[projection_display:appMainLoop] Loop Terminated:  Escape key was pressed");
     else
-        ROS_INFO("[appMainLoop] Loop Terminated:  Reason unknown");
+        ROS_INFO("[projection_display:appMainLoop] Loop Terminated:  Reason unknown");
 }
 
 void appCleanup()
@@ -935,7 +1055,7 @@ void appCleanup()
             ROS_WARN("[appCleanup] Error during cleanup of MazeRenderContext: Projector[%d] Window[%d] Monitor[%d]",
                      proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
         else
-            ROS_INFO("[appCleanup] MazeRenderContext instance cleaned up successfully: Projector[%d] Window[%d] Monitor[%d]",
+            ROS_INFO("[projection_display:appCleanup] MazeRenderContext instance cleaned up successfully: Projector[%d] Window[%d] Monitor[%d]",
                      proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
     }
 
@@ -943,7 +1063,7 @@ void appCleanup()
     if (MazeRenderContext::CleanupGraphicsLibraries() < 0)
         ROS_WARN("[appCleanup] Failed to terminate GLFW library");
     else
-        ROS_INFO("[appCleanup] GLFW library terminated successfully");
+        ROS_INFO("[projection_display:appCleanup] GLFW library terminated successfully");
 }
 
 int main(int argc, char **argv)

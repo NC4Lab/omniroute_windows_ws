@@ -43,7 +43,22 @@ std::array<std::array<cv::Point2f, 4>, 4> CP_GRID_ARR;
 std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> WALL_GRID_ARR_DEFAULT;
 
 /**
- * @brief 3x3xN data contianer for storing wall homography matrices for each wall image and each calibration mode.
+ * @brief 3x3x4 data contianer for storing wall homography matrices for each wall image (3x3)
+ * and floor image (1x1) and each calibration mode (4).
+ *
+ * @details
+ * [4][3][3] = [calibration modes][grid rows][grid columns]
+ *
+ * - Dimension 1: Calibration Mode [left walls, middle walls, right walls, floor]
+ *
+ * - Dimension 2: Grid Rows [0, 1, 2]
+ * - Index with respect to the overall the 3 chambers
+ *
+ * - Dimension 3: Grid Columns [0, 1, 2]
+ * - Index with respect to the overall the 3 chambers
+ *
+ * The overall structure stores homography matrices for all wall and floor images, across different calibration modes.
+ * The inner-most element is a cv::Mat (3x3 matrix), which contains the homography data for a given wall image or the floor image.
  */
 std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES> HMAT_ARR;
 

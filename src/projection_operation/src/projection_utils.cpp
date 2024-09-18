@@ -186,7 +186,7 @@ int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon, std::vector<int> &
     }
     // Take out first monitor as the default projection monitor
     out_proj_mon_ind.erase(out_proj_mon_ind.begin());
-    
+
     ROS_INFO("[MazeRenderContext::SetupGraphicsLibraries] Monitors Found: %d", _NumMonitors);
     out_n_mon = _NumMonitors;
 
@@ -1309,7 +1309,7 @@ int64_t dbTraceCalls(bool do_reset, int line, const char *file_path)
  *
  * @return True if the delay has elapsed, otherwise false.
  *
- * @example 
+ * @example
  * dbDelayRun(500); // Delay for 500 ms
  * while (!dbDelayRun()){}; // Loop till delay has elapsed
  */
@@ -1432,7 +1432,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
 
     ROS_INFO("                                       Warped Wall Coordinates                                               ");
     ROS_INFO("=============================================================================================================");
-     ROS_INFO("-------------------------------------------------------------------------------------------------------------");
+    ROS_INFO("-------------------------------------------------------------------------------------------------------------");
 
     // Loop through each row and column in the maze
     for (int row = 0; row < GLB_MAZE_SIZE; ++row)
@@ -1498,7 +1498,7 @@ void dbLogHomMat(const cv::Mat &r_HMAT)
     ROS_INFO("==================================");
 }
 
-void dbLogProjWallImageCfg4D(const ProjWallImageCfg4D &wallImageConfig)
+void dbLogProjWallImageCfg4D(const ProjWallConfigIndices4D &wallImageConfig)
 {
     if (!GLB_DO_VERBOSE_DEBUG)
         return;
@@ -1537,9 +1537,6 @@ void dbLogProjWallImageCfg4D(const ProjWallImageCfg4D &wallImageConfig)
 
 void dbDispImgMat(const cv::Mat &img_mat)
 {
-    if (!GLB_DO_VERBOSE_DEBUG)
-        return;
-
     cv::namedWindow("Debug display image", cv::WINDOW_AUTOSIZE);
     cv::imshow("Debug display image", img_mat);
     cv::waitKey(0);
@@ -2204,15 +2201,32 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
         // Check if image is loaded successfully
         if (img.empty())
         {
-            ROS_ERROR("[loadImgMat] Failed to load image from path: %s", img_path.c_str());
+            ROS_ERROR("[loadImgMat] Failed to load image: Path[%s]", img_path.c_str());
             return -1;
         }
 
-        // Check if image has an alpha channel
+        // If the image does not have an alpha channel (less than 4 channels), add one
         if (img.channels() != 4)
         {
-            ROS_ERROR("[loadImgMat] Image does not have an alpha channel: %s", img_path.c_str());
-            return -1;
+            // Create a new image with an alpha channel (4 channels)
+            cv::Mat img_with_alpha;
+            cv::Mat alpha = cv::Mat(img.size(), CV_8UC1, cv::Scalar(255)); // Fully opaque alpha channel
+
+            // Merge the original image with the alpha channel
+            if (img.channels() == 3)
+            {
+                std::vector<cv::Mat> channels;
+                cv::split(img, channels);            // Split the BGR channels
+                channels.push_back(alpha);           // Add the alpha channel
+                cv::merge(channels, img_with_alpha); // Merge channels into a 4-channel image
+            }
+            else
+            {
+                ROS_ERROR("[loadImgMat] Image must include at least 3 channels: Channels[%d] Path[%s]", img.channels(), img_path.c_str());
+                return -1;
+            }
+
+            img = img_with_alpha; // Use the new image with the alpha channel
         }
 
         // Determine depth
@@ -2251,7 +2265,8 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
         // Log the image information
         if (GLB_DO_VERBOSE_DEBUG)
             ROS_INFO("[loadImgMat] Image[%d of %d] loaded sucesfully: Size[%d,%d] Channels[%d] Depth[%s] Path[%s]",
-                     img_cnt++, img_paths_vec.size() - 1, img.cols, img.rows, img.channels(), depth_str.c_str(), img_path.c_str());
+                     img_cnt, img_paths_vec.size() - 1, img.cols, img.rows, img.channels(), depth_str.c_str(), img_path.c_str());
+        img_cnt++;
     }
 
     // Return success
