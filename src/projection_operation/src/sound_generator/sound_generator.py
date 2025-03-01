@@ -37,14 +37,24 @@ class SoundGenerator:
         error_sound_file = 'wrong-answer-buzz.wav'
         self.error_sound_samplerate, self.error_sound = wavfile.read(os.path.join(curDir, error_sound_file))
 
+        one_KHz_file_short = 'tone_1kHz.wav'
+        self.one_KHz_samplerate_short, self.one_KHz_short = wavfile.read(os.path.join(curDir, one_KHz_file_short))
+
+        eight_KHz_file_short = 'tone_8kHz.wav'
+        self.eight_KHz_samplerate_short, self.eight_KHz_short = wavfile.read(os.path.join(curDir, eight_KHz_file_short))
+
+
         self.sound_duration_one = 5  # seconds
         self.sound_duration_two = 20  # seconds
+        self.sound_duration_three = 0.5  # seconds
         self.error_sound_duration = 8  # seconds
         self.white_noise_short = self.white_noise_short[:self.white_noise_samplerate_short*self.sound_duration_one]
         self.five_KHz_short = self.five_KHz_short[:self.five_KHz_samplerate_short*self.sound_duration_one]
         self.white_noise_long = self.white_noise_long[:self.white_noise_samplerate_long*(-1)]
         self.five_KHz_long = self.five_KHz_long[:self.five_KHz_samplerate_long*(-1)]
         self.error_sound = self.error_sound[:int(self.error_sound_samplerate*self.error_sound_duration)]
+        self.one_KHz_short = self.one_KHz_short[:self.one_KHz_samplerate_short*self.sound_duration_three]
+        self.eight_KHz_short = self.eight_KHz_short[:self.eight_KHz_samplerate_short*self.sound_duration_three]
 
         # Create a subscriber for the sound topic
         self.sound_sub = rospy.Subscriber('/sound_cmd', String, self.sound_callback)
@@ -62,6 +72,10 @@ class SoundGenerator:
             [sd.play(self.five_KHz_short, self.five_KHz_samplerate_short, device=device['name']) for device in self.sound_devices]
         elif msg.data == 'Error':
             [sd.play(self.error_sound, self.error_sound_samplerate, device=device['name']) for device in self.sound_devices]
+        elif msg.data == '1KHz':
+            [sd.play(self.one_KHz_short, self.one_KHz_samplerate_short, device=device['name']) for device in self.sound_devices]
+        elif msg.data == '8KHz':
+            [sd.play(self.eight_KHz_short, self.eight_KHz_samplerate_short, device=device['name']) for device in self.sound_devices]
         elif msg.data == 'White_Noise_Training_Start':
             [sd.play(self.white_noise_long, self.white_noise_samplerate_long, device=device['name']) for device in self.sound_devices]
             # if not self.looping_sound:
