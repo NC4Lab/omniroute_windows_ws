@@ -12,6 +12,7 @@ class SoundClip:
         self.amplitude = amplitude
         self.samplerate = 0
         self.clip = []
+        self.loaded = False
 
     def load_clip(self):
         self.samplerate, self.clip = wavfile.read(self.file_path)
@@ -31,9 +32,10 @@ class SoundClip:
         self.clip = self.amplitude*self.clip/np.max(np.abs(self.clip))
 
     def play(self, device):
-        rospy.loginfo('Playing sound clip: ' + self.file_path)
-        if not self.clip:
+        rospy.loginfo('Playing sound clip: ' + self.file_path + ' on device: ' + device)
+        if not self.loaded:
             self.load_clip()    # Load the clip if it hasn't been loaded yet
+            self.loaded = True
         sd.play(self.clip, self.samplerate, device=device)
 
 class SoundGenerator:
