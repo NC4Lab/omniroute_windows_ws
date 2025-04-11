@@ -56,7 +56,8 @@ class SoundGenerator:
                         '1KHz': SoundClip('1kHz.wav', 0.5, 0.5),
                         '8KHz': SoundClip('8kHz.wav', 0.5, 0.5),
                         'White_Noise_Training': SoundClip('white-noise-2min.wav', 120.0),
-                        '5KHz_Training': SoundClip('5khz-2min.wav', 120.0)}
+                        '5KHz_Training': SoundClip('5khz-2min.wav', 120.0),
+                        'Starting_Sound': SoundClip('1kHz.wav', 0.5, 0.5)}
         
         # Create a subscriber for the sound topic
         self.sound_sub = rospy.Subscriber('/sound_cmd', String, self.sound_callback)
