@@ -7,6 +7,7 @@
 // ================================================== INCLUDE ==================================================
 
 #include "projection_display.h"
+// ros::Time start_time = ros::Time::now(); // Start time for performance measurement
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -160,15 +161,15 @@ void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC)
 
 void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm *out_RC)
 {
+    // ros::Duration elapsed_time = ros::Time::now() - start_time; // Elapsed time for performance measurement
+    // ROS_INFO("[callbackProjImgROS] Elapsed time: %f seconds", elapsed_time.toSec());
+
     // Check that the received data has the correct size for a 10x8 array (80 elements)
     if (msg->data.size() != 80)
     {
         ROS_ERROR("[callbackProjImgROS] Received incorrect array size. Expected 80 elements, but got %zu", msg->data.size());
         return;
     }
-
-    // TEMP: Adding a small delay
-    ros::Duration(0.5).sleep();
 
     // Store the 10x8 data in proj_img_data
     for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
