@@ -58,3 +58,4 @@ To export your design as a PNG with a transparent background:
 5. **Export Slices**:
    - Once all slices are selected, click **Export Slices** at the bottom of the panel. 
    - Choose the location to save the files, and each artboard will be saved as an individual PNG file.
+   - Confirm the outputted image is *300 x 540* pixels.
