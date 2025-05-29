@@ -167,9 +167,6 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm 
         return;
     }
 
-    // TEMP: Adding a small delay
-    ros::Duration(0.5).sleep();
-
     // Store the 10x8 data in proj_img_data
     for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
     {
