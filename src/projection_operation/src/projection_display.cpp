@@ -1017,7 +1017,7 @@ void appMainLoop()
         ros::spinOnce();
 
         // Process ROS projection command messages
-        if (projcProjCmdROS(RC) < 0)
+        if (procProjCmdROS(RC) < 0)
             throw std::runtime_error("[appMainLoop] Error returned from: procProjCmdROS");
 
         // Process ROS projection image messages
