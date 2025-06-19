@@ -28,3 +28,4 @@ __pycache__/
 
 # Synching CMakeLists.txt files for now
 #src/CMakeLists.txt
+build/
