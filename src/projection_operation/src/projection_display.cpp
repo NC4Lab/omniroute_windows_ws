@@ -190,8 +190,7 @@ int initSubscriberROS(ROSComm &out_RC)
     return 0;
 }
 
-void checkROSOk(string caller)
-{
+void checkROSOk(string caller) {
     // Check if ROS is still running
     if (!ros::ok()) {
         ROS_ERROR("[%s]ROS is no longer running!", caller.c_str());
@@ -199,8 +198,7 @@ void checkROSOk(string caller)
     }
 }
 
-int procProjCmdROS(ROSComm &out_RC)
-{
+int procProjCmdROS(ROSComm &out_RC) {
     checkROSOk("procProjCmdROS");
 
     // Bail if no message received
@@ -235,9 +233,8 @@ int procProjCmdROS(ROSComm &out_RC)
     return 0;
 }
 
-int procProjImgROS(ROSComm &out_RC)
-{
-    checkROSOk("[procProjImgROS]");
+int procProjImgROS(ROSComm &out_RC) {
+    checkROSOk("procProjImgROS");
 
     // Bail if no message received
     if (!out_RC.is_proj_img_message_received)
@@ -248,10 +245,8 @@ int procProjImgROS(ROSComm &out_RC)
 
     // ---------- Update image index data ----------
 
-    for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
-    {
-        for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
-        {
+    for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
+        for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
             // Store image index
             int img_ind = out_RC.proj_img_data[cham_ind][wall_ind];
 
@@ -273,14 +268,8 @@ int procProjImgROS(ROSComm &out_RC)
     return 0;
 }
 
-int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT)
-{
-    // Check if node handle is initialized
-    if (!ros::ok())
-    {
-        ROS_ERROR("[procTrackMsgROS]ROS is no longer running!");
-        return -1;
-    }
+int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT) {
+    checkROSOk("procTrackMsgROS");
 
     // Bail if no message received
     if (!out_RC.is_track_pos_message_received)
@@ -324,8 +313,7 @@ int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT)
 }
 
 // Function to convert quaternion to yaw
-double getYawFromQuaternion(const geometry_msgs::Quaternion &quat)
-{
+double getYawFromQuaternion(const geometry_msgs::Quaternion &quat) {
     tf::Quaternion q(quat.x, quat.y, quat.z, quat.w);
     tf::Matrix3x3 m(q);
     double roll, pitch, yaw;
@@ -334,8 +322,7 @@ double getYawFromQuaternion(const geometry_msgs::Quaternion &quat)
 }
 
 // Function to calculate the new position with offset
-geometry_msgs::Point getOffsetPosition(const geometry_msgs::Pose &pose, double offset_distance)
-{
+geometry_msgs::Point getOffsetPosition(const geometry_msgs::Pose &pose, double offset_distance) {
     double yaw = getYawFromQuaternion(pose.orientation);
 
     // Calculate the offset in global frame
@@ -351,30 +338,24 @@ geometry_msgs::Point getOffsetPosition(const geometry_msgs::Pose &pose, double o
     return new_position;
 }
 
-void simulateRatMovement(float move_step, float max_turn_angle, RatTracker &out_RT)
-{
+void simulateRatMovement(float move_step, float max_turn_angle, RatTracker &out_RT) {
     // Track marker angle
     static float marker_angle = 0.0f;
 
     // Lambda function to keep the rat within the enclosure and turn when hitting the wall
-    auto keepWithinBoundsAndTurn = [&](cv::Point2f &position)
-    {
+    auto keepWithinBoundsAndTurn = [&](cv::Point2f &position) {
         cv::Point2f original_position = position;
         position.x = std::min(std::max(position.x, 0.0f), GLB_MAZE_WIDTH_HEIGHT_CM);
         position.y = std::min(std::max(position.y, 0.0f), GLB_MAZE_WIDTH_HEIGHT_CM);
 
         // If position changed (rat hits the wall), rotate randomly up to 180 degrees
         if (position != original_position)
-        {
-            marker_angle += rand() % 181 - 90; // Random turn between -90 and +90 degrees
-        }
+            marker_angle += rand() % 181 - 90; // Random turn between -90 and +90 degrees //TODO: Why 181?
     };
 
     // Randomly decide to change direction
-    if (rand() % 10 == 0)
-    { // 10% chance to change direction
+    if (rand() % 10 == 0) // 10% chance to change direction
         marker_angle += (rand() % static_cast<int>(2 * max_turn_angle)) - max_turn_angle;
-    }
 
     // Calculate new position
     float radian_angle = marker_angle * M_PI / 180.0f;
@@ -385,14 +366,12 @@ void simulateRatMovement(float move_step, float max_turn_angle, RatTracker &out_
     keepWithinBoundsAndTurn(out_RT.marker_position);
 }
 
-void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D)
-{
+void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D) {
     std::vector<int> walls_ind = {wall_ind};
     configWallImageIndex(image_ind, chamber_ind, walls_ind, out_PROJ_WALL_CONFIG_INDICES_4D);
 }
 
-void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D)
-{
+void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D) {
     // Determine the row and column based on chamber index
     int row = chamber_ind / 3;
     int col = chamber_ind % 3;
@@ -406,15 +385,13 @@ void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int>
     };
 
     // Iterate through each projector
-    for (int proj = 0; proj < 4; ++proj)
-    {
+    for (int proj = 0; proj < 4; ++proj) {
         // Calculate adjusted row and column for each projector
         int adjusted_row = row;
         int adjusted_col = col;
 
         // Adjust the indices based on the projector orientation
-        switch (proj)
-        {
+        switch (proj) {
         case 0: // Adjustments for Projector 0 (West)
             adjusted_row = 2 - col;
             adjusted_col = row;
@@ -432,30 +409,23 @@ void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int>
         }
 
         // Iterate through each wall index
-        for (int wall : walls_ind)
-        {
+        for (int wall : walls_ind) {
             // Check if wall index is valid and has a mapping
             auto wallMapping = wallToIndexMapping[proj].find(wall);
-            if (wallMapping != wallToIndexMapping[proj].end())
-            {
-                // Set the image index for the corresponding wall
+            if (wallMapping != wallToIndexMapping[proj].end()) // Set the image index for the corresponding wall
                 out_PROJ_WALL_CONFIG_INDICES_4D[proj][adjusted_row][adjusted_col][wallMapping->second] = image_ind;
-            }
         }
     }
 }
 
-void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec)
-{
+void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec) {
     // Lambda function for circular shift
-    auto circShift = [](const std::vector<cv::Point2f> &vec, int shift) -> std::vector<cv::Point2f>
-    {
+    auto circShift = [](const std::vector<cv::Point2f> &vec, int shift) -> std::vector<cv::Point2f> {
         std::vector<cv::Point2f> shifted_vec(vec.size());
         int n = static_cast<int>(vec.size());
         for (int v_i = 0; v_i < n; ++v_i)
-        {
             shifted_vec[v_i] = vec[(v_i + shift + n) % n];
-        }
+
         return shifted_vec;
     };
 
@@ -467,8 +437,7 @@ void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec)
         cv::Point2f(0.0, 0.0)};
 
     // Apply circular shift based on the given projector
-    switch (proj_ind)
-    {
+    switch (proj_ind) {
     case 0: // Circular shift left by 1
         maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 1);
         break;
@@ -486,8 +455,7 @@ void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec)
     }
 }
 
-void rotateFloorImage(int img_rot_deg, const cv::Mat &in_img_mat, std::vector<cv::Mat> &out_img_mat_vec)
-{
+void rotateFloorImage(int img_rot_deg, const cv::Mat &in_img_mat, std::vector<cv::Mat> &out_img_mat_vec) {
     // Normalize rotation to be within 0-270 degrees using modulo
     int normalized_rot_deg = (img_rot_deg % 360 + 360) % 360;
 
@@ -516,13 +484,8 @@ void rotateFloorImage(int img_rot_deg, const cv::Mat &in_img_mat, std::vector<cv
     out_img_mat_vec.push_back(rotated_img);
 }
 
-int updateFloorTexture(
-    int proj_ind,
-    cv::Mat &_floorImgMat,
-    const cv::Mat _wallBlankImgMat,
-    std::array<cv::Mat, 4> &_FLOOR_HMAT_ARR,
-    cv::Mat &out_img_mat)
-{
+int updateFloorTexture(int proj_ind, cv::Mat &_floorImgMat, const cv::Mat _wallBlankImgMat,
+    std::array<cv::Mat, 4> &_FLOOR_HMAT_ARR, cv::Mat &out_img_mat) {
 
     // Copy the floor image to be used
     cv::Mat img_copy;
@@ -533,14 +496,13 @@ int updateFloorTexture(
 
     // Warp Perspective
     cv::Mat img_warp;
-    if (warpImgMat(img_copy, H, img_warp) < 0)
-    {
+    if (warpImgMat(img_copy, H, img_warp) < 0) {
         ROS_ERROR("[updateFloorTexture] Warp image error: Projector[%d]", proj_ind);
         return -1;
     }
 
     // Merge the warped image with the final image
-    if (mergeImgMat(img_warp, out_img_mat) < 0)
+    if (mergeImgMat(img_warp, out_img_mat) < 0) // TODO: Error messages here
         return -1;
 
     // Merge the blank wall image with the final image
@@ -550,29 +512,21 @@ int updateFloorTexture(
     return 0;
 }
 
-int updateWallTexture(
-    int proj_ind,
-    const std::vector<cv::Mat> &_wallRawImgMatVec,
+int updateWallTexture(int proj_ind, const std::vector<cv::Mat> &_wallRawImgMatVec,
     const ProjWallConfigIndices4D &_PROJ_WALL_CONFIG_INDICES_4D,
     const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES - 1>, 4> &_WALL_HMAT_ARR,
-    bool do_ignore_blank_img,
-    cv::Mat &out_img_mat)
-{
+    bool do_ignore_blank_img, cv::Mat &out_img_mat) {
     // Iterate through through calibration modes (left walls, middle walls, right walls)
-    for (int cal_i = 0; cal_i < N_CAL_MODES - 1; cal_i++)
-    {
+    for (int cal_i = 0; cal_i < N_CAL_MODES - 1; cal_i++) {
         CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
 
         // Iterate through the maze grid rows
-        for (int gr_i = 0; gr_i < GLB_MAZE_SIZE; gr_i++) // image bottom to top
-        {
+        for (int gr_i = 0; gr_i < GLB_MAZE_SIZE; gr_i++) { // image bottom to top
             // Iterate through each column in the maze row
-            for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; gc_i++) // image left to right
-            {
+            for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; gc_i++) { // image left to right
                 // Get the index of the wall image to be used
                 int img_ind = _PROJ_WALL_CONFIG_INDICES_4D[proj_ind][gr_i][gc_i][_CAL_MODE];
-                if (_wallRawImgMatVec[img_ind].empty())
-                {
+                if (_wallRawImgMatVec[img_ind].empty()) {
                     ROS_ERROR("[updateWallTexture] Stored OpenCV wall image is empty: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
                               proj_ind, gr_i, gc_i, _CAL_MODE, img_ind);
                     return -1;
@@ -591,8 +545,7 @@ int updateWallTexture(
 
                 // Warp Perspective
                 cv::Mat img_warp;
-                if (warpImgMat(img_copy, H, img_warp) < 0)
-                {
+                if (warpImgMat(img_copy, H, img_warp) < 0) {
                     ROS_ERROR("[updateWallTexture] Warp image error: Projector[%d] Wall[%d][%d] Calibration[%d]",
                               proj_ind, gr_i, gc_i, _CAL_MODE);
                     return -1;
@@ -608,28 +561,21 @@ int updateWallTexture(
     return 0;
 }
 
-int drawRatMask(
-    const RatTracker &_RT,
-    CircleRenderer &out_rmCircRend)
-{
+int drawRatMask(const RatTracker &_RT, CircleRenderer &out_rmCircRend) {
     // Setup the CircleRenderer class shaders
-    if (CircleRenderer::SetupShader() < 0)
-        return -1;
+    if (CircleRenderer::SetupShader() < 0) return -1;
 
     // Set the marker position
     out_rmCircRend.setPosition(_RT.marker_position);
 
     // Recompute the marker parameters
-    if (out_rmCircRend.updateCircleObject(true) < 0)
-        return -1;
+    if (out_rmCircRend.updateCircleObject(true) < 0) return -1;
 
     // Draw the marker
-    if (out_rmCircRend.draw() < 0)
-        return -1;
+    if (out_rmCircRend.draw() < 0) return -1;
 
     // Unset the shader program
-    if (CircleRenderer::UnsetShader() < 0)
-        return -1;
+    if (CircleRenderer::UnsetShader() < 0) return -1;
 
     // Return GL status
     return 0;
@@ -665,9 +611,8 @@ void appLoadAssets()
     std::vector<std::string> fi_img_path_wall_vec;                                        // declare the vector to store the paths
     size_t n_wall_img = sizeof(WALL_IMAGE_FILE_NAMES) / sizeof(WALL_IMAGE_FILE_NAMES[0]); // calculate the number of images
     for (size_t i = 0; i < n_wall_img; ++i)
-    {
         fi_img_path_wall_vec.push_back(RUNTIME_IMAGE_PATH + "/" + WALL_IMAGE_FILE_NAMES[i] + ".png");
-    }
+
     if (loadImgMat(fi_img_path_wall_vec, wallRawImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
 
@@ -675,27 +620,21 @@ void appLoadAssets()
     std::vector<std::string> fi_img_path_floor_vec;                                          // declare the vector to store the paths
     size_t n_floor_img = sizeof(FLOOR_IMAGE_FILE_NAMES) / sizeof(FLOOR_IMAGE_FILE_NAMES[0]); // calculate the number of images
     for (size_t i = 0; i < n_floor_img; ++i)
-    {
         fi_img_path_floor_vec.push_back(RUNTIME_IMAGE_PATH + "/" + FLOOR_IMAGE_FILE_NAMES[i] + ".png");
-    }
+
     if (loadImgMat(fi_img_path_floor_vec, floorRawImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV floor images");
 
     // ---------- Load Wall and Floor Homography Matrices from XML ----------
-    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) // for each projector
-    {
-        for (int cal_i = 0; cal_i < N_CAL_MODES; ++cal_i)
-        {
+    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) { // for each projector
+        for (int cal_i = 0; cal_i < N_CAL_MODES; ++cal_i) {
             CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
 
             // Store wall homography matrices
-            if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT)
-            {
+            if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) {
                 // Iterate through the maze grid rows
-                for (int gr_i = 0; gr_i < GLB_MAZE_SIZE; ++gr_i)
-                {
-                    for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; ++gc_i)
-                    {
+                for (int gr_i = 0; gr_i < GLB_MAZE_SIZE; ++gr_i) {
+                    for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; ++gc_i) {
                         // Load the homography matrix from XML
                         if (xmlLoadHMAT(proj_ind, _CAL_MODE, gr_i, gc_i, WALL_HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i]) < 0)
                             throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadHMAT");
@@ -703,18 +642,14 @@ void appLoadAssets()
                 }
             }
             // Store floor homography matrices
-            else
-            {
-                // Load the homography matrix from XML
-                if (xmlLoadHMAT(proj_ind, _CAL_MODE, 0, 0, FLOOR_HMAT_ARR[proj_ind]) < 0)
-                    throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadHMAT");
+            else if (xmlLoadHMAT(proj_ind, _CAL_MODE, 0, 0, FLOOR_HMAT_ARR[proj_ind]) < 0) // Load the homography matrix from XML
+                throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadHMAT");
             }
         }
     }
 
     // ---------- Load Maze Boundary Vertices ----------
-    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) // for each projector
-    {
+    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) { // for each projector
         std::vector<cv::Point2f> maze_vert_ndc_vec(4);
         std::vector<cv::Point2f> maze_vert_cm_vec(4);
 
@@ -742,8 +677,7 @@ void appInitVariables()
     // ---------- Intialize the Window Offset Vector ---------
     winOffsetVec.clear();              // Clear any existing elements
     winOffsetVec.reserve(N.projector); // Reserve memory for efficiency
-    for (int mon_ind = 0; mon_ind < N.projector; ++mon_ind)
-    {
+    for (int mon_ind = 0; mon_ind < N.projector; ++mon_ind) {
         // Calculate x and y offsets based on the monitor resolution
         int x_offset = mon_ind * (GLB_MONITOR_WIDTH_PXL / N.projector) * 0.9f;
         int y_offset = mon_ind * (GLB_MONITOR_HEIGHT_PXL / N.projector) * 0.9f;
@@ -753,8 +687,7 @@ void appInitVariables()
     // ---------- Convert and store rotated floor images ---------
 
     // Loop through floorRawImgMatVec images and store a new entry for each projector in floorRotatedImgMatVecArr
-    for (size_t i = 0; i < floorRawImgMatVec.size(); ++i)
-    {
+    for (size_t i = 0; i < floorRawImgMatVec.size(); ++i) {
         rotateFloorImage(270, floorRawImgMatVec[i], floorRotatedImgMatVecArr[0]); // Projector 0
         rotateFloorImage(180, floorRawImgMatVec[i], floorRotatedImgMatVecArr[1]); // Projector 1
         rotateFloorImage(90, floorRawImgMatVec[i], floorRotatedImgMatVecArr[2]);  // Projector 2
@@ -764,8 +697,7 @@ void appInitVariables()
     ROS_INFO("[projection_display:appInitVariables] Finished initializing variables successfully");
 }
 
-void appInitOpenGL()
-{
+void appInitOpenGL() {
 
     // Initialize GLFW and OpenGL settings and get number of monitors on the system
     if (MazeRenderContext::SetupGraphicsLibraries(N.monitor, I.proj_mon_vec) < 0)
@@ -777,8 +709,7 @@ void appInitOpenGL()
     //     throw std::runtime_error("[appInitOpenGL] Monitor index exceeds available monitors");
 
     // Initialize OpenGL for each projector
-    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind)
-    {
+    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) {
         // Start on the default screen
         int mon_ind = I.starting_monitor;
 
