@@ -10,43 +10,34 @@
 
 // ================================================== FUNCTIONS ==================================================
 
-void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods)
-{
+void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods) {
     // Set the current OpenGL context to the window
     glfwMakeContextCurrent(window);
 
     // _______________ ANY KEY RELEASE ACTION _______________
 
-    if (action == GLFW_RELEASE)
-    {
+    if (action == GLFW_RELEASE) {
 
         // ---------- Set/unset Fullscreen [F] ----------
-
-        if (key == GLFW_KEY_F)
-        {
+        if (key == GLFW_KEY_F) {
             F.fullscreen_mode = !F.fullscreen_mode;
             F.change_window_mode = true;
         }
 
         // ---------- Check for change window monitor command [M] ----------
-
-        if (key == GLFW_KEY_M)
-        {
+        if (key == GLFW_KEY_M) {
             F.windows_set_to_proj = !F.windows_set_to_proj;
             F.change_window_mode = true;
         }
 
         // ---------- Force Window to Top of UI Stack [T] ----------
-
-        if (key == GLFW_KEY_T)
-        {
+        if (key == GLFW_KEY_T) {
             F.force_window_focus = true;
         }
     }
 
     // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
-    else if (action == GLFW_PRESS || action == GLFW_REPEAT)
-    {
+    else if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         static int wall_img_ind_last = -1;
         static int floor_img_ind_last = -1;
 
@@ -54,47 +45,24 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         if (mods & GLFW_MOD_SHIFT)
         {
             int wall_img_ind = wall_img_ind_last;
-            if (key == GLFW_KEY_0)
-            {
-                wall_img_ind = 0;
-            }
-            else if (key == GLFW_KEY_1 && wallRawImgMatVec.size() > 1)
-            {
-                wall_img_ind = 1;
-            }
-            else if (key == GLFW_KEY_2 && wallRawImgMatVec.size() > 2)
-            {
-                wall_img_ind = 2;
-            }
-            else if (key == GLFW_KEY_3 && wallRawImgMatVec.size() > 3)
-            {
-                wall_img_ind = 3;
-            }
-            else if (key == GLFW_KEY_4 && wallRawImgMatVec.size() > 4)
-            {
-                wall_img_ind = 4;
-            }
-            else if (key == GLFW_KEY_5 && wallRawImgMatVec.size() > 5)
-            {
-                wall_img_ind = 5;
-            }
+            if (key == GLFW_KEY_0) wall_img_ind = 0;
+            else if (key == GLFW_KEY_1 && wallRawImgMatVec.size() > 1) wall_img_ind = 1;
+            else if (key == GLFW_KEY_2 && wallRawImgMatVec.size() > 2) wall_img_ind = 2;
+            else if (key == GLFW_KEY_3 && wallRawImgMatVec.size() > 3) wall_img_ind = 3;
+            else if (key == GLFW_KEY_4 && wallRawImgMatVec.size() > 4) wall_img_ind = 4;
+            else if (key == GLFW_KEY_5 && wallRawImgMatVec.size() > 5) wall_img_ind = 5;
             // Check for configuration change
-            if (wall_img_ind != wall_img_ind_last)
-            {
+            if (wall_img_ind != wall_img_ind_last) {
                 ROS_INFO("[callbackKeyBinding] Initiated change wall image configuration from %d to %d", wall_img_ind_last, wall_img_ind);
                 
                 // Set the flag to update the textures
                 F.update_textures = true;
 
                 // Loop through the data and set all entries to a given wall ind
-                for (int i = 0; i < 4; ++i)
-                {
-                    for (int j = 0; j < 3; ++j)
-                    {
-                        for (int k = 0; k < 3; ++k)
-                        {
-                            for (int l = 0; l < 3; ++l)
-                            {
+                for (int i = 0; i < 4; ++i) {
+                    for (int j = 0; j < 3; ++j) {
+                        for (int k = 0; k < 3; ++k) {
+                            for (int l = 0; l < 3; ++l) {
                                 PROJ_WALL_CONFIG_INDICES_4D[i][j][k][l] = wall_img_ind; // Set each element to 1
                             }
                         }
@@ -105,37 +73,17 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         }
 
         // ---------- Change floor configuration [CTRL [0-5]] ----------
-        else if (mods & GLFW_MOD_CONTROL)
-        {
+        else if (mods & GLFW_MOD_CONTROL) {
             int floor_img_ind = floor_img_ind_last;
-            if (key == GLFW_KEY_0)
-            {
-                floor_img_ind = 0;
-            }
-            else if (key == GLFW_KEY_1 && floorRotatedImgMatVecArr.size() > 1)
-            {
-                floor_img_ind = 1;
-            }
-            else if (key == GLFW_KEY_2 && floorRotatedImgMatVecArr.size() > 2)
-            {
-                floor_img_ind = 2;
-            }
-            else if (key == GLFW_KEY_3 && floorRotatedImgMatVecArr.size() > 3)
-            {
-                floor_img_ind = 3;
-            }
-            else if (key == GLFW_KEY_4 && floorRotatedImgMatVecArr.size() > 4)
-            {
-                floor_img_ind = 4;
-            }
-            else if (key == GLFW_KEY_5 && floorRotatedImgMatVecArr.size() > 5)
-            {
-                floor_img_ind = 5;
-            }
+            if (key == GLFW_KEY_0) floor_img_ind = 0;
+            else if (key == GLFW_KEY_1 && floorRotatedImgMatVecArr.size() > 1) floor_img_ind = 1;
+            else if (key == GLFW_KEY_2 && floorRotatedImgMatVecArr.size() > 2) floor_img_ind = 2;
+            else if (key == GLFW_KEY_3 && floorRotatedImgMatVecArr.size() > 3) floor_img_ind = 3;
+            else if (key == GLFW_KEY_4 && floorRotatedImgMatVecArr.size() > 4) floor_img_ind = 4;
+            else if (key == GLFW_KEY_5 && floorRotatedImgMatVecArr.size() > 5) floor_img_ind = 5;
 
             // Check for configuration change
-            if (floor_img_ind != floor_img_ind_last)
-            {
+            if (floor_img_ind != floor_img_ind_last) {
                 ROS_INFO("[callbackKeyBinding] Initiated change floor image configuration from %d to %d", floor_img_ind_last, floor_img_ind);
                 // Set the flag to update the textures
                 F.update_textures = true;
@@ -147,8 +95,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     }
 }
 
-void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC)
-{
+void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC) {
     // Update the last received command
     out_RC->proj_cmd_data = msg->data;
     out_RC->is_proj_cmd_message_received = true;
@@ -158,20 +105,16 @@ void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC)
         ROS_INFO("[callbackProjCmdROS] Received projection command: %d", out_RC->proj_cmd_data);
 }
 
-void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm *out_RC)
-{
+void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm *out_RC) {
     // Check that the received data has the correct size for a 10x8 array (80 elements)
-    if (msg->data.size() != 80)
-    {
+    if (msg->data.size() != 80) {
         ROS_ERROR("[callbackProjImgROS] Received incorrect array size. Expected 80 elements, but got %zu", msg->data.size());
         return;
     }
 
     // Store the 10x8 data in proj_img_data
-    for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
-    {
-        for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
-        {
+    for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
+        for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
             out_RC->proj_img_data[cham_ind][wall_ind] = msg->data[cham_ind * 8 + wall_ind];
         }
     }
@@ -180,20 +123,15 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm 
     out_RC->is_proj_img_message_received = true;
 
     // Log the entire 2D array
-    if (GLB_DO_VERBOSE_DEBUG)
-    {
+    if (GLB_DO_VERBOSE_DEBUG) {
         ROS_INFO("[callbackProjImgROS] Stored ROS projection image data:");
-        for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
-        {
+        for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
             std::stringstream row_stream;
             row_stream << "Walls[" << cham_ind << "] = [";
-            for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
-            {
+            for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
                 row_stream << out_RC->proj_img_data[cham_ind][wall_ind];
                 if (wall_ind < 7) // Add a comma between elements, but not after the last one
-                {
                     row_stream << ", ";
-                }
             }
             row_stream << "]";
             ROS_INFO("%s", row_stream.str().c_str());
@@ -201,8 +139,7 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm 
     }
 }
 
-void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSComm *out_RC)
-{
+void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSComm *out_RC) {
     // Update the last received command
     out_RC->track_pos_data = *msg;
     out_RC->is_track_pos_message_received = true;
@@ -221,8 +158,7 @@ void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSCom
 int initSubscriberROS(ROSComm &out_RC)
 {
     // Check if node handle is initialized
-    if (!out_RC.node_handle)
-    {
+    if (!out_RC.node_handle) {
         ROS_ERROR("[initSubscriberROS]Node handle is not initialized!");
         return -1;
     }
@@ -230,8 +166,7 @@ int initSubscriberROS(ROSComm &out_RC)
     // Initialize the "projection_cmd" subscriber using boost::bind
     out_RC.proj_cmd_sub = out_RC.node_handle->subscribe<std_msgs::Int32>(
         "projection_cmd", 10, boost::bind(&callbackProjCmdROS, _1, &out_RC));
-    if (!out_RC.proj_cmd_sub)
-    {
+    if (!out_RC.proj_cmd_sub) {
         ROS_ERROR("[initSubscriberROS]Failed to subscribe to 'projection_cmd' topic!");
         return -1;
     }
@@ -239,8 +174,7 @@ int initSubscriberROS(ROSComm &out_RC)
     // Initialize the "projection_image" subscriber
     out_RC.proj_img_sub = out_RC.node_handle->subscribe<std_msgs::Int32MultiArray>(
         "projection_image", 10, boost::bind(&callbackProjImgROS, _1, &out_RC));
-    if (!out_RC.proj_img_sub)
-    {
+    if (!out_RC.proj_img_sub) {
         ROS_ERROR("[initSubscriberROS]Failed to subscribe to 'projection_image' topic!");
         return -1;
     }
@@ -248,8 +182,7 @@ int initSubscriberROS(ROSComm &out_RC)
     // Initialize the "harness_pose_in_maze" subscriber
     out_RC.track_pos_sub = out_RC.node_handle->subscribe<geometry_msgs::PoseStamped>(
         "harness_pose_in_maze", 10, boost::bind(&callbackTrackPosROS, _1, &out_RC));
-    if (!out_RC.track_pos_sub)
-    {
+    if (!out_RC.track_pos_sub) {
         ROS_ERROR("[initSubscriberROS]Failed to subscribe to 'harness_pose_in_maze' topic!");
         return -1;
     }
@@ -257,14 +190,18 @@ int initSubscriberROS(ROSComm &out_RC)
     return 0;
 }
 
+void checkROSOk(string caller)
+{
+    // Check if ROS is still running
+    if (!ros::ok()) {
+        ROS_ERROR("[%s]ROS is no longer running!", caller.c_str());
+        throw std::runtime_error("[" + caller + "]ROS is no longer running!");
+    }
+}
+
 int procProjCmdROS(ROSComm &out_RC)
 {
-    // Check if node handle is initialized
-    if (!ros::ok())
-    {
-        ROS_ERROR("[procProjCmdROS]ROS is no longer running!");
-        return -1;
-    }
+    checkROSOk("procProjCmdROS");
 
     // Bail if no message received
     if (!out_RC.is_proj_cmd_message_received)
@@ -276,41 +213,31 @@ int procProjCmdROS(ROSComm &out_RC)
     // ---------- Monitor Mode Change Commmands ----------
 
     // Move monitor command [-1]
-    if (out_RC.proj_cmd_data == -1)
-    {
+    if (out_RC.proj_cmd_data == -1) {
         F.windows_set_to_proj = !F.windows_set_to_proj;
         F.change_window_mode = true;
     }
 
     // Set/unset Fullscreen [-2] ----------
-    else if (out_RC.proj_cmd_data == -2)
-    {
+    else if (out_RC.proj_cmd_data == -2) {
         F.fullscreen_mode = !F.fullscreen_mode;
         F.change_window_mode = true;
     }
 
     // Force window to top [-3] ----------
-    else if (out_RC.proj_cmd_data == -3)
-    {
+    else if (out_RC.proj_cmd_data == -3) {
         F.force_window_focus = true;
     }
 
     else
-    {
         ROS_WARN("[procProjCmdROS] Received invalid projection command: %d", out_RC.proj_cmd_data);
-    }
 
     return 0;
 }
 
 int procProjImgROS(ROSComm &out_RC)
 {
-    // Check if node handle is initialized
-    if (!ros::ok())
-    {
-        ROS_ERROR("[procProjImgROS] ROS is no longer running!");
-        return -1;
-    }
+    checkROSOk("[procProjImgROS]");
 
     // Bail if no message received
     if (!out_RC.is_proj_img_message_received)
