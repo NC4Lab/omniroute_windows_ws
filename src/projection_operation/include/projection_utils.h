@@ -70,8 +70,7 @@ using KeyCallbackFunc = void (*)(GLFWwindow *, int, int, int, int);
 #ifndef MAZE_RENDER_CONTEXT_H
 #define MAZE_RENDER_CONTEXT_H
 
-class MazeRenderContext
-{
+class MazeRenderContext {
 public:
     GLuint textureID;                   // Texture for the wall
     GLFWwindow *windowID;               // The window associated with this context

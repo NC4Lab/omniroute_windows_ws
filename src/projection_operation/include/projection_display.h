@@ -20,8 +20,7 @@
  * @details Flag update_textures is initialized as true to force the
  * initial update of the displayed texture.
  */
-static struct FlagStateStruct
-{
+static struct FlagStateStruct {
     bool update_textures = true;      // Flag to indicate if wall vertices, homography and texture need to be updated
     bool change_window_mode = false;  // Flag to indicate if all window modes needs to be updated
     bool windows_set_to_proj = false; // Flag to indicate if the windows are set to their respective projectors
@@ -32,8 +31,7 @@ static struct FlagStateStruct
 /**
  * @brief Struct for global indices.
  */
-static struct IndStruct
-{
+static struct IndStruct {
     const int starting_monitor = 0; // Default starting monitor index for the windows (hardcoded)
 
     std::vector<int> proj_mon_vec = {1, 2, 3, 4}; // Vector of indeces of the monitor associated with each projector
@@ -52,8 +50,7 @@ static struct IndStruct
 /**
  * @brief Struct for global counts
  */
-static struct CountStruct
-{
+static struct CountStruct {
     int monitor;                                                   // Number of monitors connected to the system
     const int projector = static_cast<int>(I.proj_mon_vec.size()); // Number of projectors
     const int wall_image = 6;                                      // Number of wall images
@@ -62,8 +59,7 @@ static struct CountStruct
 /**
  * @brief  Struct for rat mask tracking and graphics.
  */
-static struct RatTracker
-{
+static struct RatTracker {
     cv::Point2f marker_position = cv::Point2f(0.0f, 0.0f); // Marker center (cm)
     const GLfloat marker_radius = 7.5f;                    // Marker default circle radius (cm)
     cv::Scalar marker_rgb = cv::Scalar(0.0f, 0.0f, 0.0f);  // Marker color (black)
@@ -75,8 +71,7 @@ static struct RatTracker
 /**
  * @brief Struct for ROS communication.
  */
-struct ROSComm
-{
+struct ROSComm {
     std::unique_ptr<ros::NodeHandle> node_handle; // Smart pointer to ROS node handler
     std::unique_ptr<ros::Rate> loop_rate;         // Smart pointer to ros::Rate
     ros::Subscriber proj_cmd_sub;                 // ROS subscriber for projection commands
@@ -199,12 +194,8 @@ std::array<std::vector<cv::Mat>, 4> floorRotatedImgMatVecArr;
  * @param action GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT.
  * @param mods Bit field describing which modifier keys were held down.
  */
-void callbackKeyBinding(
-    GLFWwindow *window,
-    int key,
-    int scancode,
-    int action,
-    int mods);
+void callbackKeyBinding(GLFWwindow *window, int key,
+    int scancode, int action, int mods);
 
 /**
  * @brief Callback function for the "projection_cmd" topic subscription.

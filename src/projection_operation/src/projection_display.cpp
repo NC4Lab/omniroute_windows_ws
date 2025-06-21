@@ -59,15 +59,12 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 F.update_textures = true;
 
                 // Loop through the data and set all entries to a given wall ind
-                for (int i = 0; i < 4; ++i) {
-                    for (int j = 0; j < 3; ++j) {
-                        for (int k = 0; k < 3; ++k) {
-                            for (int l = 0; l < 3; ++l) {
+                for (int i = 0; i < 4; ++i)
+                    for (int j = 0; j < 3; ++j)
+                        for (int k = 0; k < 3; ++k)
+                            for (int l = 0; l < 3; ++l)
                                 PROJ_WALL_CONFIG_INDICES_4D[i][j][k][l] = wall_img_ind; // Set each element to 1
-                            }
-                        }
-                    }
-                }
+
                 wall_img_ind_last = wall_img_ind;
             }
         }
@@ -113,11 +110,9 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm 
     }
 
     // Store the 10x8 data in proj_img_data
-    for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
-        for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
+    for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
+        for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
             out_RC->proj_img_data[cham_ind][wall_ind] = msg->data[cham_ind * 8 + wall_ind];
-        }
-    }
 
     // Flag that a projection image message has been received
     out_RC->is_proj_img_message_received = true;
@@ -155,8 +150,7 @@ void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSCom
                  out_RC->track_pos_data.pose.orientation.z);
 }
 
-int initSubscriberROS(ROSComm &out_RC)
-{
+int initSubscriberROS(ROSComm &out_RC) {
     // Check if node handle is initialized
     if (!out_RC.node_handle) {
         ROS_ERROR("[initSubscriberROS]Node handle is not initialized!");
@@ -223,9 +217,8 @@ int procProjCmdROS(ROSComm &out_RC) {
     }
 
     // Force window to top [-3] ----------
-    else if (out_RC.proj_cmd_data == -3) {
+    else if (out_RC.proj_cmd_data == -3)
         F.force_window_focus = true;
-    }
 
     else
         ROS_WARN("[procProjCmdROS] Received invalid projection command: %d", out_RC.proj_cmd_data);
@@ -462,23 +455,10 @@ void rotateFloorImage(int img_rot_deg, const cv::Mat &in_img_mat, std::vector<cv
     cv::Mat rotated_img;
 
     // Rotate based on the normalized rotation angle
-    switch (normalized_rot_deg)
-    {
-    case 90:
-        cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_CLOCKWISE);
-        break;
-    case 180:
-        cv::rotate(in_img_mat, rotated_img, cv::ROTATE_180);
-        break;
-    case 270:
-        cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_COUNTERCLOCKWISE);
-        break;
-    case 0:
-    default:
-        // No rotation needed, just copy the input image
-        rotated_img = in_img_mat.clone();
-        break;
-    }
+    if (normalized_rot_deg ==  90) cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_CLOCKWISE);
+    else if (normalized_rot_deg == 180) cv::rotate(in_img_mat, rotated_img, cv::ROTATE_180);
+    else if (normalized_rot_deg == 270) cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_COUNTERCLOCKWISE);
+    else rotated_img = in_img_mat.clone(); // No rotation needed
 
     // Store the rotated image in the output vector
     out_img_mat_vec.push_back(rotated_img);
@@ -581,8 +561,7 @@ int drawRatMask(const RatTracker &_RT, CircleRenderer &out_rmCircRend) {
     return 0;
 }
 
-void appInitROS(int argc, char **argv, ROSComm &out_RC)
-{
+void appInitROS(int argc, char **argv, ROSComm &out_RC) {
     ROS_INFO("[projection_display:appInitROS] STARTING PROJECTION DISPLAY NODE");
 
     // Initialize ROS
@@ -603,8 +582,7 @@ void appInitROS(int argc, char **argv, ROSComm &out_RC)
     ROS_INFO("[projection_display:appInitROS] Finished initializing ROS successfully");
 }
 
-void appLoadAssets()
-{
+void appLoadAssets() {
     // ---------- Load Images with OpenCV ----------
 
     // Get the wall images
@@ -672,8 +650,7 @@ void appLoadAssets()
     ROS_INFO("[projection_display:appLoadAssets] Finished loading variables successfully");
 }
 
-void appInitVariables()
-{
+void appInitVariables() {
     // ---------- Intialize the Window Offset Vector ---------
     winOffsetVec.clear();              // Clear any existing elements
     winOffsetVec.reserve(N.projector); // Reserve memory for efficiency
@@ -698,7 +675,6 @@ void appInitVariables()
 }
 
 void appInitOpenGL() {
-
     // Initialize GLFW and OpenGL settings and get number of monitors on the system
     if (MazeRenderContext::SetupGraphicsLibraries(N.monitor, I.proj_mon_vec) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
@@ -760,27 +736,21 @@ void appInitOpenGL() {
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
 }
 
-void printElapsedTime(double &lastTime, std::string msg)
-{
+void printElapsedTime(double &lastTime, std::string msg) {
     double currentTime = glfwGetTime();
     double deltaTime = currentTime - lastTime;
     lastTime = currentTime;
     ROS_INFO("%s: %f ms", msg.c_str(), deltaTime * 1000.0);
 }
 
-void appMainLoop()
-{
+void appMainLoop() {
     int status = 0;
 
-    while (status == 0)
-    {
+    while (status == 0) {
 
         // --------------- Check State Flags ---------------
-
-        if (F.change_window_mode)
-        {
-            for (auto &projCtx : PROJ_CTX_VEC)
-            {
+        if (F.change_window_mode) {
+            for (auto &projCtx : PROJ_CTX_VEC) {
                 int mon_ind = F.windows_set_to_proj ? I.proj_mon_vec[projCtx.windowInd] : I.starting_monitor;
                 if (projCtx.changeWindowDisplayMode(mon_ind, F.fullscreen_mode, winOffsetVec[projCtx.windowInd]) < 0)
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::changeWindowDisplayMode");
@@ -788,10 +758,8 @@ void appMainLoop()
         }
 
         // Force to windows so thay are on top
-        if (F.force_window_focus)
-        {
-            for (auto &projCtx : PROJ_CTX_VEC)
-            {
+        if (F.force_window_focus) {
+            for (auto &projCtx : PROJ_CTX_VEC) {
                 if (projCtx.forceWindowFocus() < 0)
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::forceWindowFocus");
             }
@@ -801,10 +769,8 @@ void appMainLoop()
         // simulateRatMovement(0.5f, 45.0f, RT);
 
         // Recompute wall parameters and update wall image texture
-        if (F.update_textures)
-        {
-            for (auto &projCtx : PROJ_CTX_VEC)
-            {
+        if (F.update_textures) {
+            for (auto &projCtx : PROJ_CTX_VEC) {
                 cv::Mat img_mat = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
 
                 // Update floor image texture
@@ -836,8 +802,7 @@ void appMainLoop()
         F.force_window_focus = false;
 
         // --------------- Handle Image Processing for Next Frame ---------------
-        for (auto &projCtx : PROJ_CTX_VEC)
-        {
+        for (auto &projCtx : PROJ_CTX_VEC) {
 
             // Prepare the frame for rendering (clear the back buffer)
             if (projCtx.initWindowForDrawing() < 0)
@@ -866,8 +831,7 @@ void appMainLoop()
         }
 
         // Check for exit
-        if (status > 0)
-            break;
+        if (status > 0) break;
 
         // --------------- Handle ROS Messages and Operations ---------------
 
@@ -899,13 +863,11 @@ void appMainLoop()
         ROS_INFO("[projection_display:appMainLoop] Loop Terminated:  Reason unknown");
 }
 
-void appCleanup()
-{
+void appCleanup() {
     ROS_INFO("SHUTTING DOWN");
 
     // Clean up OpenGL wall image objects for each window
-    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind)
-    {
+    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) {
         if (PROJ_CTX_VEC[proj_ind].cleanupContext(true) != 0)
             ROS_WARN("[appCleanup] Error during cleanup of MazeRenderContext: Projector[%d] Window[%d] Monitor[%d]",
                      proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
@@ -921,18 +883,15 @@ void appCleanup()
         ROS_INFO("[projection_display:appCleanup] GLFW library terminated successfully");
 }
 
-int main(int argc, char **argv)
-{
-    try
-    {
+int main(int argc, char **argv) {
+    try {
         appInitROS(argc, argv, RC);
         appLoadAssets();
         appInitVariables();
         appInitOpenGL();
         appMainLoop();
     }
-    catch (const std::exception &e)
-    {
+    catch (const std::exception &e) {
         ROS_ERROR("!!EXCEPTION CAUGHT!!: %s", e.what());
         void appCleanup();
         return -1;

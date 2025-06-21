@@ -90,8 +90,7 @@ const int cpRenderSegments = 36;                                       // Number
  * @details Flags update_mode_img and update_textures are initialized as true
  * to force the initial update of the mode image and displayed texture.
  */
-static struct FlagStateStruct
-{
+static struct FlagStateStruct {
     bool xml_load_hmat = false;      // Flag to indicate if the XML file needs to be loaded
     bool xml_save_hmat = false;      // Flag to indicate if the XML file needs to be saved
     bool change_window_mode = false; // Flag to indicate if the window mode needs to be updated
@@ -105,8 +104,7 @@ static struct FlagStateStruct
 /**
  * @brief Struct for global counts.
  */
-static struct CountStruct
-{
+static struct CountStruct {
     int monitor;               // Number of monitors connected to the system
     const int wall_image = 4;  // Number of wall test images
     const int floor_image = 2; // Number of floor test images
@@ -123,8 +121,7 @@ static struct CountStruct
  *      - 3: OpenGL: Bottom-left    OpenCV: Top-left
  * - Also accounts for the y axis being flipped
  */
-static struct IndStruct
-{
+static struct IndStruct {
     int monitor = 0;     // Index of the active monitor to be loaded
     int projector = -1;  // Index of the projector associated with the active monitor to be loaded
     int wall_image = 0;  // Index of the test wall image to be loaded
