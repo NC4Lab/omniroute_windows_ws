@@ -56,7 +56,7 @@ class ProjectionOperation:
 
         # Initialize the node (if not already initialized)
         if not rospy.core.is_initialized():
-            rospy.init_node('projection_opperation_node', anonymous=True)
+            rospy.init_node('projection_operation_node', anonymous=True)
 
         # Initialize image_config as a 10x8 array with default values
         self.image_config = [[0 for _ in range(8)] for _ in range(10)]

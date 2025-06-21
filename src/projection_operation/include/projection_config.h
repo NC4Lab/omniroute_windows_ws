@@ -193,6 +193,11 @@
 // ================================================== VARIABLES ==================================================
 
 /**
+ * @brief Number of projectors used in the system. 
+ */
+const int GLB_NUM_PROJ = 4; // Number of projectors
+
+/**
  * @brief ROS loop rate in Hertz.
  */
 const int GLB_ROS_LOOP_RATE = 120;

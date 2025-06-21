@@ -59,7 +59,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 F.update_textures = true;
 
                 // Loop through the data and set all entries to a given wall ind
-                for (int i = 0; i < 4; ++i)
+                for (int i = 0; i < GLB_NUM_PROJ; ++i)
                     for (int j = 0; j < 3; ++j)
                         for (int k = 0; k < 3; ++k)
                             for (int l = 0; l < 3; ++l)
@@ -237,7 +237,6 @@ int procProjImgROS(ROSComm &out_RC) {
     out_RC.is_proj_img_message_received = false;
 
     // ---------- Update image index data ----------
-
     for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
         for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
             // Store image index
@@ -378,7 +377,7 @@ void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int>
     };
 
     // Iterate through each projector
-    for (int proj = 0; proj < 4; ++proj) {
+    for (int proj = 0; proj < GLB_NUM_PROJ; ++proj) {
         // Calculate adjusted row and column for each projector
         int adjusted_row = row;
         int adjusted_col = col;
@@ -465,7 +464,7 @@ void rotateFloorImage(int img_rot_deg, const cv::Mat &in_img_mat, std::vector<cv
 }
 
 int updateFloorTexture(int proj_ind, cv::Mat &_floorImgMat, const cv::Mat _wallBlankImgMat,
-    std::array<cv::Mat, 4> &_FLOOR_HMAT_ARR, cv::Mat &out_img_mat) {
+    std::array<cv::Mat, GLB_NUM_PROJ> &_FLOOR_HMAT_ARR, cv::Mat &out_img_mat) {
 
     // Copy the floor image to be used
     cv::Mat img_copy;
@@ -502,9 +501,7 @@ int updateWallTexture(int proj_ind, const std::vector<cv::Mat> &_wallRawImgMatVe
 
         // Iterate through the maze grid rows
         for (int gr_i = 0; gr_i < GLB_MAZE_SIZE; gr_i++) { // image bottom to top
-            // Iterate through each column in the maze row
             for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; gc_i++) { // image left to right
-                // Get the index of the wall image to be used
                 int img_ind = _PROJ_WALL_CONFIG_INDICES_4D[proj_ind][gr_i][gc_i][_CAL_MODE];
                 if (_wallRawImgMatVec[img_ind].empty()) {
                     ROS_ERROR("[updateWallTexture] Stored OpenCV wall image is empty: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
@@ -604,7 +601,7 @@ void appLoadAssets() {
         throw std::runtime_error("[appLoadAssets] Failed to load OpentCV floor images");
 
     // ---------- Load Wall and Floor Homography Matrices from XML ----------
-    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) { // for each projector
+    for (int proj_ind = 0; proj_ind < GLB_NUM_PROJ; ++proj_ind) { // for each projector
         for (int cal_i = 0; cal_i < N_CAL_MODES; ++cal_i) {
             CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
 
@@ -627,9 +624,9 @@ void appLoadAssets() {
     }
 
     // ---------- Load Maze Boundary Vertices ----------
-    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) { // for each projector
-        std::vector<cv::Point2f> maze_vert_ndc_vec(4);
-        std::vector<cv::Point2f> maze_vert_cm_vec(4);
+    for (int proj_ind = 0; proj_ind < GLB_NUM_PROJ; ++proj_ind) { // for each projector
+        std::vector<cv::Point2f> maze_vert_ndc_vec(GLB_NUM_PROJ);
+        std::vector<cv::Point2f> maze_vert_cm_vec(GLB_NUM_PROJ);
 
         // Load the maze vertices from XML
         if (xmlLoadVertices(proj_ind, maze_vert_ndc_vec) < 0)
@@ -653,11 +650,11 @@ void appLoadAssets() {
 void appInitVariables() {
     // ---------- Intialize the Window Offset Vector ---------
     winOffsetVec.clear();              // Clear any existing elements
-    winOffsetVec.reserve(N.projector); // Reserve memory for efficiency
-    for (int mon_ind = 0; mon_ind < N.projector; ++mon_ind) {
+    winOffsetVec.reserve(GLB_NUM_PROJ); // Reserve memory for efficiency
+    for (int mon_ind = 0; mon_ind < GLB_NUM_PROJ; ++mon_ind) {
         // Calculate x and y offsets based on the monitor resolution
-        int x_offset = mon_ind * (GLB_MONITOR_WIDTH_PXL / N.projector) * 0.9f;
-        int y_offset = mon_ind * (GLB_MONITOR_HEIGHT_PXL / N.projector) * 0.9f;
+        int x_offset = mon_ind * (GLB_MONITOR_WIDTH_PXL / GLB_NUM_PROJ) * 0.9f;
+        int y_offset = mon_ind * (GLB_MONITOR_HEIGHT_PXL / GLB_NUM_PROJ) * 0.9f;
         winOffsetVec.emplace_back(x_offset, y_offset);
     }
 
@@ -685,7 +682,7 @@ void appInitOpenGL() {
     //     throw std::runtime_error("[appInitOpenGL] Monitor index exceeds available monitors");
 
     // Initialize OpenGL for each projector
-    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) {
+    for (int proj_ind = 0; proj_ind < GLB_NUM_PROJ; ++proj_ind) {
         // Start on the default screen
         int mon_ind = I.starting_monitor;
 
@@ -867,7 +864,7 @@ void appCleanup() {
     ROS_INFO("SHUTTING DOWN");
 
     // Clean up OpenGL wall image objects for each window
-    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) {
+    for (int proj_ind = 0; proj_ind < GLB_NUM_PROJ; ++proj_ind) {
         if (PROJ_CTX_VEC[proj_ind].cleanupContext(true) != 0)
             ROS_WARN("[appCleanup] Error during cleanup of MazeRenderContext: Projector[%d] Window[%d] Monitor[%d]",
                      proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);

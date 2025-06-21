@@ -34,7 +34,7 @@ static struct FlagStateStruct {
 static struct IndStruct {
     const int starting_monitor = 0; // Default starting monitor index for the windows (hardcoded)
 
-    std::vector<int> proj_mon_vec = {1, 2, 3, 4}; // Vector of indeces of the monitor associated with each projector
+    std::vector<int> proj_mon_vec = {1, 2, 3, 4}; // Vector of indices of the monitor associated with each projector
     /*
     MSM: 2024-03-20
     Is not hardcoded anymore.
@@ -94,7 +94,7 @@ struct ROSComm {
 } RC;
 
 /**
- * @brief A 4x3x3x3 array contianer for storring the wall image configuration indeces
+ * @brief A 4x3x3x3 array contianer for storring the wall image configuration indices
  */
 ProjWallConfigIndices4D PROJ_WALL_CONFIG_INDICES_4D;
 
@@ -107,7 +107,7 @@ int projFloorConfigIndex = 0;
  * @brief A vector of size n_projectors, where each element contains a 3x3 homography matrices for
  * the floor image transformations.
  */
-std::array<cv::Mat, 4> FLOOR_HMAT_ARR;
+std::array<cv::Mat, GLB_NUM_PROJ> FLOOR_HMAT_ARR;
 
 /**
  * @brief A vector of size n_projectors, where each element contains a 3x3x3 data container for storing 3x3 homography matrices
@@ -136,17 +136,17 @@ std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SI
 /**
  * @brief Array of homography matrices for warping the rat mask marker from maze cm to ndc space for each projector.
  */
-std::array<cv::Mat, 4> HMAT_CM_TO_NDC_ARR;
+std::array<cv::Mat, GLB_NUM_PROJ> HMAT_CM_TO_NDC_ARR;
 
 /**
  * @brief  Array of marker for masking rat for each projector.
  */
-std::array<CircleRenderer, 4> RM_CIRCREND_ARR;
+std::array<CircleRenderer, GLB_NUM_PROJ> RM_CIRCREND_ARR;
 
 /**
  * @brief  Array of OpenGL context objects.
  */
-std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projector);
+std::vector<MazeRenderContext> PROJ_CTX_VEC(GLB_NUM_PROJ);
 
 /**
  * @brief Offset for the window position
@@ -161,7 +161,7 @@ std::vector<cv::Mat> floorRawImgMatVec; // Vector of indevidual floor image text
  * @brief Array to store the image of all blank walls to use as the
  * baseline image.
  */
-std::array<cv::Mat, 4> wallBlankImgMatArr;
+std::array<cv::Mat, GLB_NUM_PROJ> wallBlankImgMatArr;
 
 /**
  * @brief Array of vectors to store the rotated floor images in cv::Mat format
@@ -174,7 +174,7 @@ std::array<cv::Mat, 4> wallBlankImgMatArr;
  *
  * - Dimension 2: Image N
  */
-std::array<std::vector<cv::Mat>, 4> floorRotatedImgMatVecArr;
+std::array<std::vector<cv::Mat>, GLB_NUM_PROJ> floorRotatedImgMatVecArr;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -355,7 +355,7 @@ int updateFloorTexture(
     int proj_ind,
     cv::Mat &_floorImgMat,
     const cv::Mat _wallBlankImgMat,
-    std::array<cv::Mat, 4> &_FLOOR_HMAT_ARR,
+    std::array<cv::Mat, GLB_NUM_PROJ> &_FLOOR_HMAT_ARR,
     cv::Mat &out_img_mat);
 
 /**

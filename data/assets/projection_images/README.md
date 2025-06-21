@@ -1,6 +1,6 @@
 # Affinity Designer Setup for Projection Images
 
-This guide will walk you through the steps to ensure proper setup of Affinity Designer for creating images for the projection opperations.
+This guide will walk you through the steps to ensure proper setup of Affinity Designer for creating images for the projection operations.
 
 ## 1. Creating a new document
 
