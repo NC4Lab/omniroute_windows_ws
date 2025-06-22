@@ -31,9 +31,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         }
 
         // ---------- Force Window to Top of UI Stack [T] ----------
-        if (key == GLFW_KEY_T) {
+        if (key == GLFW_KEY_T) 
             F.force_window_focus = true;
-        }
     }
 
     // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
@@ -42,8 +41,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         static int floor_img_ind_last = -1;
 
         // ---------- Change wall configuration [SHIFT [0-8]] ----------
-        if (mods & GLFW_MOD_SHIFT)
-        {
+        if (mods & GLFW_MOD_SHIFT) {
             int wall_img_ind = wall_img_ind_last;
             if (key == GLFW_KEY_0) wall_img_ind = 0;
             else if (key == GLFW_KEY_1 && wallRawImgMatVec.size() > 1) wall_img_ind = 1;

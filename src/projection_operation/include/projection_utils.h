@@ -359,7 +359,7 @@ public:
      * @brief Changes the display mode and monitor of the application window.
      *
      * This function switches the application window between full-screen and windowed modes
-     * and moves it to the monitor specified by the global variable imgMonNumInd.
+     * and moves it to the specified monitor.
      *
      * @param mon_ind Index for the monitor to move the window to.
      * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
@@ -872,7 +872,7 @@ const char WALL_IMAGE_FILE_NAMES[][30] = {
  * @note This list needs to match that used in:
  * omniroute_ubuntu_ws\src\omniroute_operation\src\shared_utils\projection_operation.py
  */
-const char FLOOR_IMAGE_FILE_NAMES[6][30] = {
+const char FLOOR_IMAGE_FILE_NAMES[][30] = {
     "f_black",
     "f_green",
     "f_pattern_0",
@@ -884,7 +884,7 @@ const char FLOOR_IMAGE_FILE_NAMES[6][30] = {
 // Number of rows and columns in the maze grid
 extern const int GLB_MAZE_SIZE = 3;
 
-// Sprecify window resolution: 4K resolution (3840x2160)
+// Specify window resolution: 4K resolution (3840x2160)
 extern const int GLB_MONITOR_WIDTH_PXL = 3840;
 extern const int GLB_MONITOR_HEIGHT_PXL = 2160;
 

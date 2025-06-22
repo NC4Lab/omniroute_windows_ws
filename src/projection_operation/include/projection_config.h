@@ -22,16 +22,6 @@
  *           easy-to-use API for developers. It is written in C and aims to facilitate various image file operations, including loading,
  *          saving, conversion, and manipulation.
  *
- * @section introduction Introduction
- * Detailed library description.
- *
- * @section usage Usage
- * How to use this library.
- *
- * @section license License
- * Licensing information.
- *
- *
  * @details Omniroute Chamber and Wall Image Layout
  *
  * - The 3x3 verstion of the maze consitsts of 9 octogonal 'Chambers' arranged in a 3x3 grid.
@@ -90,8 +80,7 @@
  *      - Middle wall calibration (Mc)
  *      - Right wall calibration (Rc)
 
- * - For each calibration, 9 wall images are created.
- *
+ * - For each calibration, 9 wall images are created, one for each chamber.
  *
  *
  *                  ________          ___Mc___          ________
@@ -147,16 +136,16 @@
  *                 3-----2        3-----2        3-----2
  *
  *  - Calibration Procedure:
- *      - For the calibration opperatin, only one GLFWwindow window is used, but it can be moved between monitors.
- *      - A test pattern image with the same aspect ration as the walls is read in (currently using DevIL).
- *      - This image is tesselated  uniformly over a 3x3 grid in the in the graphics window
+ *      - For the calibration operation, only one GLFWwindow window is used, but it can be moved between monitors.
+ *      - A test pattern image with the same aspect ratio as the walls is read in (currently using DevIL).
+ *      - This image is tesselated uniformly over a 3x3 grid in the in the graphics window
  *      - The window is moved to the desired projector and set to fullscreen.
  *      - Corner wall vertices are visible in the projected image displayed during calibration.
- *      - Each corner wall vertex acts as a 'control points'.
- *      - These control point vertices are independently positioned to the physical corners using a keyboard.
- *      - This process continues until all four vertices from all four corrner wall have been positioned
+ *      - Each corner wall vertex acts as a 'control point'.
+ *      - These control point vertices are independently positioned to the physical corners using the keyboard.
+ *      - This process continues until all four vertices from all four corrner walls have been positioned
  *      - These values are then used to interpolate all other non-corner wall vertices.
- *      - All 3x3x4 warped wall vertices are tehn saved.
+ *      - All 3x3x4 warped wall vertices are then saved.
  *      - This continues until all 3 calibrations have been performed for all 4 projectors.
  *
  *  - Example of warping applied to the first row of walls:

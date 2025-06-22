@@ -4,8 +4,8 @@
 
 // ######################################################################################################
 
-#ifndef _PROJECTION_DISPLY_H
-#define _PROJECTION_DISPLY_H
+#ifndef _PROJECTION_DISPLAY_H
+#define _PROJECTION_DISPLAY_H
 
 // ================================================== INCLUDE ==================================================
 
@@ -320,7 +320,7 @@ void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int>
  *
  * @details
  * This function returns the vertices of the maze boundaries in centimeters for use
- * with the NCD to centimeter transform. Vertices are rotated based on the orientation
+ * with the NDC to centimeter transform. Vertices are rotated based on the orientation
  * of a given projector.
  *
  * @param proj_ind Index of the projector.
