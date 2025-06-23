@@ -148,10 +148,10 @@ void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSCom
                  out_RC->track_pos_data.pose.orientation.z);
 }
 
-int initSubscriberROS(ROSComm &out_RC) {
+int initSubscribersROS(ROSComm &out_RC) {
     // Check if node handle is initialized
     if (!out_RC.node_handle) {
-        ROS_ERROR("[initSubscriberROS]Node handle is not initialized!");
+        ROS_ERROR("[initSubscribersROS] Node handle is not initialized!");
         return -1;
     }
 
@@ -159,7 +159,7 @@ int initSubscriberROS(ROSComm &out_RC) {
     out_RC.proj_cmd_sub = out_RC.node_handle->subscribe<std_msgs::Int32>(
         "projection_cmd", 10, boost::bind(&callbackProjCmdROS, _1, &out_RC));
     if (!out_RC.proj_cmd_sub) {
-        ROS_ERROR("[initSubscriberROS]Failed to subscribe to 'projection_cmd' topic!");
+        ROS_ERROR("[initSubscribersROS] Failed to subscribe to 'projection_cmd' topic!");
         return -1;
     }
 
@@ -167,7 +167,7 @@ int initSubscriberROS(ROSComm &out_RC) {
     out_RC.proj_img_sub = out_RC.node_handle->subscribe<std_msgs::Int32MultiArray>(
         "projection_image", 10, boost::bind(&callbackProjImgROS, _1, &out_RC));
     if (!out_RC.proj_img_sub) {
-        ROS_ERROR("[initSubscriberROS]Failed to subscribe to 'projection_image' topic!");
+        ROS_ERROR("[initSubscribersROS] Failed to subscribe to 'projection_image' topic!");
         return -1;
     }
 
@@ -175,14 +175,14 @@ int initSubscriberROS(ROSComm &out_RC) {
     out_RC.track_pos_sub = out_RC.node_handle->subscribe<geometry_msgs::PoseStamped>(
         "harness_pose_in_maze", 10, boost::bind(&callbackTrackPosROS, _1, &out_RC));
     if (!out_RC.track_pos_sub) {
-        ROS_ERROR("[initSubscriberROS]Failed to subscribe to 'harness_pose_in_maze' topic!");
+        ROS_ERROR("[initSubscriberROS] Failed to subscribe to 'harness_pose_in_maze' topic!");
         return -1;
     }
 
     return 0;
 }
 
-void checkROSOk(string caller) {
+void checkROSOk(std::string caller) {
     // Check if ROS is still running
     if (!ros::ok()) {
         ROS_ERROR("[%s]ROS is no longer running!", caller.c_str());
@@ -194,8 +194,7 @@ int procProjCmdROS(ROSComm &out_RC) {
     checkROSOk("procProjCmdROS");
 
     // Bail if no message received
-    if (!out_RC.is_proj_cmd_message_received)
-        return 0;
+    if (!out_RC.is_proj_cmd_message_received) return 0;
 
     // Reset the flag
     out_RC.is_proj_cmd_message_received = false;
@@ -207,17 +206,14 @@ int procProjCmdROS(ROSComm &out_RC) {
         F.windows_set_to_proj = !F.windows_set_to_proj;
         F.change_window_mode = true;
     }
-
     // Set/unset Fullscreen [-2] ----------
     else if (out_RC.proj_cmd_data == -2) {
         F.fullscreen_mode = !F.fullscreen_mode;
         F.change_window_mode = true;
     }
-
     // Force window to top [-3] ----------
     else if (out_RC.proj_cmd_data == -3)
         F.force_window_focus = true;
-
     else
         ROS_WARN("[procProjCmdROS] Received invalid projection command: %d", out_RC.proj_cmd_data);
 
@@ -262,8 +258,7 @@ int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT) {
     checkROSOk("procTrackMsgROS");
 
     // Bail if no message received
-    if (!out_RC.is_track_pos_message_received)
-        return 0;
+    if (!out_RC.is_track_pos_message_received) return 0;
 
     // Reset the flag
     out_RC.is_track_pos_message_received = false;
@@ -562,7 +557,7 @@ void appInitROS(int argc, char **argv, ROSComm &out_RC) {
     // Initialize ROS
     ros::init(argc, argv, "projection_display", ros::init_options::AnonymousName);
     if (!ros::master::check())
-        throw std::runtime_error("[appInitROS] Failed initialzie ROS: ROS master is not running");
+        throw std::runtime_error("[appInitROS] Failed to initialize ROS: ROS master is not running");
 
     // Initialize NodeHandle inside RC
     RC.node_handle = std::make_unique<ros::NodeHandle>();
@@ -570,8 +565,8 @@ void appInitROS(int argc, char **argv, ROSComm &out_RC) {
     // Initialize the ros::Rate object with a specific rate
     out_RC.loop_rate = std::make_unique<ros::Rate>(GLB_ROS_LOOP_RATE);
 
-    // Initialize the subscriber
-    if (initSubscriberROS(out_RC) < 0)
+    // Initialize the subscribers
+    if (initSubscribersROS(out_RC) < 0)
         throw std::runtime_error("[appInitROS] Failed to initialize ROS subscriber");
 
     ROS_INFO("[projection_display:appInitROS] Finished initializing ROS successfully");
@@ -579,24 +574,21 @@ void appInitROS(int argc, char **argv, ROSComm &out_RC) {
 
 void appLoadAssets() {
     // ---------- Load Images with OpenCV ----------
-
     // Get the wall images
-    std::vector<std::string> fi_img_path_wall_vec;                                        // declare the vector to store the paths
-    size_t n_wall_img = sizeof(WALL_IMAGE_FILE_NAMES) / sizeof(WALL_IMAGE_FILE_NAMES[0]); // calculate the number of images
-    for (size_t i = 0; i < n_wall_img; ++i)
-        fi_img_path_wall_vec.push_back(RUNTIME_IMAGE_PATH + "/" + WALL_IMAGE_FILE_NAMES[i] + ".png");
+    std::vector<std::string> wallImgPathVec; // declare the vector to store the paths
+    for (auto &filename : WALL_IMAGE_FILE_NAMES)
+        wallImgPathVec.push_back(RUNTIME_IMAGE_PATH + "/" + filename + ".png");
 
-    if (loadImgMat(fi_img_path_wall_vec, wallRawImgMatVec) < 0)
-        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
+    if (loadImgMat(wallImgPathVec, wallRawImgMatVec) < 0)
+        throw std::runtime_error("[appLoadAssets] Failed to load OpenCV wall images");
 
     // Get the floor images
-    std::vector<std::string> fi_img_path_floor_vec;                                          // declare the vector to store the paths
-    size_t n_floor_img = sizeof(FLOOR_IMAGE_FILE_NAMES) / sizeof(FLOOR_IMAGE_FILE_NAMES[0]); // calculate the number of images
-    for (size_t i = 0; i < n_floor_img; ++i)
-        fi_img_path_floor_vec.push_back(RUNTIME_IMAGE_PATH + "/" + FLOOR_IMAGE_FILE_NAMES[i] + ".png");
+    std::vector<std::string> floorImgPathVec; // declare the vector to store the paths
+    for (auto &filename : FLOOR_IMAGE_FILE_NAMES) // iterate through the file names
+        floorImgPathVec.push_back(RUNTIME_IMAGE_PATH + "/" + filename + ".png");
 
-    if (loadImgMat(fi_img_path_floor_vec, floorRawImgMatVec) < 0)
-        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV floor images");
+    if (loadImgMat(floorImgPathVec, floorRawImgMatVec) < 0)
+        throw std::runtime_error("[appLoadAssets] Failed to load OpenCV floor images");
 
     // ---------- Load Wall and Floor Homography Matrices from XML ----------
     for (int proj_ind = 0; proj_ind < GLB_NUM_PROJ; ++proj_ind) { // for each projector
@@ -816,8 +808,7 @@ void appMainLoop() {
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::bufferSwapPoll");
 
             // Check if ROS shutdown
-            if (!ros::ok())
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Unexpected ROS shutdown");
+            checkROSOk("appMainLoop");
 
             // Get exit request status
             status = status == 0 ? projCtx.checkExitRequest() : status;
@@ -880,7 +871,7 @@ void appCleanup() {
 
 int main(int argc, char **argv) {
     try {
-        appInitROS(argc, argv, RC);
+        appInitROS(argc, argv, RC); // Initialize ROS node and subscribers
         appLoadAssets();
         appInitVariables();
         appInitOpenGL();

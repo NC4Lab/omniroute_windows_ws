@@ -18,6 +18,8 @@ class ProjectionOperation:
     # Wall image file names
     # NOTE: This list needs to match that used in:
     # omniroute_windows_ws\src\projection_operation\include\projection_utils.h
+    # TODO: Load these from a config file or parameter server
+    #       to allow for easier updates without code changes.
     WALL_IMAGE_FILE_NAMES = [
         "w_black",
         "w_square",

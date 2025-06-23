@@ -19,18 +19,14 @@ MazeRenderContext::MazeRenderContext()
     : _shaderProgram(0), _vao(0), _vbo(0), _ebo(0), textureID(0),
       windowID(nullptr), monitorID(nullptr),
       _windowWidthPxl(1024), _windowHeightPxl(576),
-      windowInd(-1), monitorInd(-1)
-{
+      windowInd(-1), monitorInd(-1) {
     // Members are initialized to default values, setup is deferred
 }
 
-MazeRenderContext::~MazeRenderContext()
-{
+MazeRenderContext::~MazeRenderContext() {
     // Clean up resources without logging
     if (isContextInitialized)
-    {
         cleanupContext(false);
-    }
 }
 
 MazeRenderContext::MazeRenderContext(MazeRenderContext &&other) noexcept
@@ -46,21 +42,16 @@ MazeRenderContext::MazeRenderContext(MazeRenderContext &&other) noexcept
       _shaderProgram(other._shaderProgram),
       _vao(other._vao),
       _vbo(other._vbo),
-      _ebo(other._ebo)
-{
+      _ebo(other._ebo) {
     // Reset the other's members to prevent double deletion
     other._resetMembers(); // Use a member function for resetting
 }
 
-MazeRenderContext &MazeRenderContext::operator=(MazeRenderContext &&other) noexcept
-{
-    if (this != &other)
-    {
+MazeRenderContext &MazeRenderContext::operator=(MazeRenderContext &&other) noexcept {
+    if (this != &other) {
         // Clean up existing resources if initialized
         if (isContextInitialized)
-        {
             cleanupContext(false);
-        }
 
         // Transfer ownership of resources from other to this
         textureID = other.textureID;
@@ -83,40 +74,33 @@ MazeRenderContext &MazeRenderContext::operator=(MazeRenderContext &&other) noexc
     return *this;
 }
 
-void MazeRenderContext::CallbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height)
-{
+void MazeRenderContext::CallbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height) {
     glViewport(0, 0, width, height);
     CheckErrorGLFW(__LINE__, __FILE__, "CallbackFrameBufferSizeGLFW");
 }
 
-void MazeRenderContext::CallbackDebugOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam)
-{
+void MazeRenderContext::CallbackDebugOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam) {
     // Get level of severity
     int s_level = (severity == GL_DEBUG_SEVERITY_NOTIFICATION) ? 1 : (severity == GL_DEBUG_SEVERITY_LOW)  ? 2
                                                                  : (severity == GL_DEBUG_SEVERITY_MEDIUM) ? 3
                                                                  : (severity == GL_DEBUG_SEVERITY_HIGH)   ? 4
                                                                                                           : 0;
     // Check if the message is below the specified debug level
-    if (s_level < GLB_DEBUG_LEVEL_GL)
-    {
-        return;
-    }
+    if (s_level < GLB_DEBUG_LEVEL_GL) return;
+
     if (s_level == 1)
         ROS_INFO("[callbackDebugOpenGL] Type[0x%x] ID[%d] Severity[%d:0x%x] Message[%s]", type, id, s_level, severity, message);
     else
         ROS_ERROR("[callbackDebugOpenGL] Type[0x%x] ID[%d] Severity[%d:0x%x] Message[%s]", type, id, s_level, severity, message);
 }
 
-void MazeRenderContext::CallbackErrorGLFW(int error, const char *description)
-{
+void MazeRenderContext::CallbackErrorGLFW(int error, const char *description) {
     ROS_ERROR("[CallbackErrorGLFW] Error[%d] Description[%s]", error, description);
 }
 
-int MazeRenderContext::CheckErrorOpenGL(int line, const char *file_str, const char *msg_str)
-{
+int MazeRenderContext::CheckErrorOpenGL(int line, const char *file_str, const char *msg_str) {
     GLenum gl_err;
-    while ((gl_err = glGetError()) != GL_NO_ERROR)
-    {
+    while ((gl_err = glGetError()) != GL_NO_ERROR) {
         ROS_ERROR("[CheckErrorOpenGL] Message[%s] Error Number[%u] File[%s] Line[%d]",
                   msg_str ? msg_str : "No additional info", gl_err, file_str, line);
         return -1;
@@ -124,12 +108,10 @@ int MazeRenderContext::CheckErrorOpenGL(int line, const char *file_str, const ch
     return 0;
 }
 
-int MazeRenderContext::CheckErrorGLFW(int line, const char *file_str, const char *msg_str)
-{
+int MazeRenderContext::CheckErrorGLFW(int line, const char *file_str, const char *msg_str) {
     const char *description;
     int glfw_err = glfwGetError(&description);
-    if (glfw_err != GLFW_NO_ERROR)
-    {
+    if (glfw_err != GLFW_NO_ERROR) {
         ROS_ERROR("[CheckErrorGLFW] Message[%s] Description[%s] File[%s] Line[%d]",
                   msg_str ? msg_str : "No additional info", description, file_str, line);
         return -1;
@@ -137,14 +119,12 @@ int MazeRenderContext::CheckErrorGLFW(int line, const char *file_str, const char
     return 0;
 }
 
-int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon, std::vector<int> &out_proj_mon_ind)
-{
+int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon, std::vector<int> &out_proj_mon_ind) {
     int status = 0;
 
     // Initialize GLFW and set error callback
     glfwSetErrorCallback(CallbackErrorGLFW);
-    if (!glfwInit())
-    {
+    if (!glfwInit()) {
         ROS_ERROR("[MazeRenderContext::SetupGraphicsLibraries] GLFW Initialization Failed");
         return -1;
     }
@@ -162,8 +142,7 @@ int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon, std::vector<int> &
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Check for errors in monitor discovery
-    if (!_PP_Monitor || _NumMonitors == 0)
-    {
+    if (!_PP_Monitor || _NumMonitors == 0) {
         ROS_ERROR("[MazeRenderContext::SetupGraphicsLibraries] No Monitors Found");
         return -1;
     }
@@ -171,8 +150,7 @@ int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon, std::vector<int> &
     // Sort the monitors by x
     int monitor_x, monitor_y, monitor_width, monitor_height;
     std::vector<std::pair<int, int>> monitor_x_ind;
-    for (int i = 0; i < _NumMonitors; i++)
-    {
+    for (int i = 0; i < _NumMonitors; i++) {
         glfwGetMonitorWorkarea(_PP_Monitor[i], &monitor_x, &monitor_y, &monitor_width, &monitor_height);
         monitor_x_ind.push_back(std::make_pair(monitor_x, i));
     }
@@ -181,9 +159,8 @@ int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon, std::vector<int> &
     // Store the monitor indices for projection
     out_proj_mon_ind.clear();
     for (auto &pair : monitor_x_ind)
-    {
         out_proj_mon_ind.push_back(pair.second);
-    }
+
     // Take out first monitor as the default projection monitor
     out_proj_mon_ind.erase(out_proj_mon_ind.begin());
 
@@ -193,19 +170,16 @@ int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon, std::vector<int> &
     return 0;
 }
 
-int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source)
-{
+int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source) {
     int status = 0;
 
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr)
-        return -1;
+    if (windowID == nullptr) return -1;
     glfwMakeContextCurrent(windowID);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Check that context is initialized
-    if (!isContextInitialized)
-    {
+    if (!isContextInitialized) {
         ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Context Not Initialized");
         return -1;
     }
@@ -214,8 +188,7 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
     GLuint temp_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(temp_vertex_shader, 1, &vertex_source, nullptr);
     glCompileShader(temp_vertex_shader);
-    if (_checkShaderCompilation(temp_vertex_shader, "VERTEX") < 0)
-    {
+    if (_checkShaderCompilation(temp_vertex_shader, "VERTEX") < 0) {
         glDeleteShader(temp_vertex_shader);
         ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Vertex shader compilation failed.");
         return -1;
@@ -226,8 +199,7 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
     GLuint temp_fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(temp_fragment_shader, 1, &fragment_source, nullptr);
     glCompileShader(temp_fragment_shader);
-    if (_checkShaderCompilation(temp_fragment_shader, "FRAGMENT") < 0)
-    {
+    if (_checkShaderCompilation(temp_fragment_shader, "FRAGMENT") < 0) {
         glDeleteShader(temp_vertex_shader);
         glDeleteShader(temp_fragment_shader);
         ROS_ERROR("[MazeRenderContext::compileAndLinkShaders] Fragment shader compilation failed.");
@@ -240,8 +212,7 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
     glAttachShader(_shaderProgram, temp_vertex_shader);
     glAttachShader(_shaderProgram, temp_fragment_shader);
     glLinkProgram(_shaderProgram);
-    if (_checkProgramLinking(_shaderProgram) < 0)
-    {
+    if (_checkProgramLinking(_shaderProgram) < 0) {
         glDeleteShader(temp_vertex_shader);
         glDeleteShader(temp_fragment_shader);
         glDeleteProgram(_shaderProgram);
@@ -260,10 +231,8 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
     return status;
 }
 
-int MazeRenderContext::checkShaderProgram()
-{
-    if (_shaderProgram == 0)
-    {
+int MazeRenderContext::checkShaderProgram() {
+    if (_shaderProgram == 0) {
         ROS_ERROR("[MazeRenderContext::checkShaderProgram] No shader program to validate.");
         return -1;
     }
@@ -272,8 +241,7 @@ int MazeRenderContext::checkShaderProgram()
     GLint validation_status;
     glGetProgramiv(_shaderProgram, GL_VALIDATE_STATUS, &validation_status);
 
-    if (validation_status == GL_FALSE)
-    {
+    if (validation_status == GL_FALSE) {
         GLint log_length;
         glGetProgramiv(_shaderProgram, GL_INFO_LOG_LENGTH, &log_length);
 
@@ -294,13 +262,11 @@ int MazeRenderContext::checkShaderProgram()
     return 0;
 }
 
-int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width, int win_height, KeyCallbackFunc key_callback)
-{
+int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width, int win_height, KeyCallbackFunc key_callback) {
     int status = 0;
 
     // Check/set the new monitor id
-    if (_setMonitor(mon_ind) < 0)
-    {
+    if (_setMonitor(mon_ind) < 0) {
         ROS_ERROR("[MazeRenderContext::initWindowContext] Context Setup Failed: Window[%d] Monitor[%d]", win_ind, mon_ind);
         return -1;
     }
@@ -311,8 +277,7 @@ int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width
 
     // Create a new GLFW window
     windowID = glfwCreateWindow(_windowWidthPxl, _windowHeightPxl, "", monitorID, NULL); // Use the monitor in window creation
-    if (!windowID)
-    {
+    if (!windowID) {
         glfwTerminate();
         ROS_ERROR("[MazeRenderContext::initWindowContext] GLFW Failed to Create Window");
         return -1;
@@ -328,8 +293,7 @@ int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width
     isContextInitialized = true;
 
     // Load OpenGL extensions using GLAD
-    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) || !gladLoadGL())
-    {
+    if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) || !gladLoadGL()) {
         glfwDestroyWindow(windowID);
         ROS_ERROR("[MazeRenderContext::initWindowContext] Failed to load GLAD");
         return -1;
@@ -350,8 +314,7 @@ int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width
     status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Print OpenGL version information once when the first window is created
-    if (windowInd == 0)
-    {
+    if (windowInd == 0) {
         // Log OpenGL versions
         const GLubyte *opengl_version = glGetString(GL_VERSION);
         ROS_INFO("[MazeRenderContext::initWindowContext] OpenGL initialized: Version[%s]", opengl_version);
@@ -367,13 +330,11 @@ int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width
 }
 
 int MazeRenderContext::initRenderObjects(float *vertices, size_t vertices_size,
-                                         unsigned int *indices, size_t indices_size)
-{
+                                         unsigned int *indices, size_t indices_size) {
     int status = 0;
 
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr)
-        return -1;
+    if (windowID == nullptr) return -1;
     glfwMakeContextCurrent(windowID);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
@@ -418,13 +379,12 @@ int MazeRenderContext::initRenderObjects(float *vertices, size_t vertices_size,
     return status;
 }
 
-int MazeRenderContext::initWindowForDrawing()
-{
+int MazeRenderContext::initWindowForDrawing() {
     int status = 0;
 
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr)
-        return -1;
+    if (windowID == nullptr) return -1;
+
     glfwMakeContextCurrent(windowID);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
@@ -435,13 +395,12 @@ int MazeRenderContext::initWindowForDrawing()
     return status;
 }
 
-int MazeRenderContext::loadMatTexture(cv::Mat img_mat)
-{
+int MazeRenderContext::loadMatTexture(cv::Mat img_mat) {
     int status = 0;
 
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr)
-        return -1;
+    if (windowID == nullptr) return -1;
+
     glfwMakeContextCurrent(windowID);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
@@ -472,19 +431,17 @@ int MazeRenderContext::loadMatTexture(cv::Mat img_mat)
     return status;
 }
 
-int MazeRenderContext::drawTexture()
-{
+int MazeRenderContext::drawTexture() {
     int status = 0;
 
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr)
-        return -1;
+    if (windowID == nullptr) return -1;
+
     glfwMakeContextCurrent(windowID);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Check the shader program for errors
-    if (checkShaderProgram())
-    {
+    if (checkShaderProgram()) {
         ROS_ERROR("[MazeRenderContext::drawTexture] Shader program validation failed");
         return -1;
     }
@@ -521,11 +478,9 @@ int MazeRenderContext::drawTexture()
     return status;
 }
 
-int MazeRenderContext::bufferSwapPoll()
-{
+int MazeRenderContext::bufferSwapPoll() {
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr)
-        return -1;
+    if (windowID == nullptr) return -1;
     glfwMakeContextCurrent(windowID);
 
     // Swap buffers and poll events
@@ -537,36 +492,31 @@ int MazeRenderContext::bufferSwapPoll()
     return CheckErrorGLFW(__LINE__, __FILE__);
 }
 
-int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscreen, cv::Point offset_xy)
-{
+int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscreen, cv::Point offset_xy) {
     int win_x, win_y;
     int win_width, win_height;
 
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr)
-        return -1;
+    if (windowID == nullptr) return -1;
     glfwMakeContextCurrent(windowID);
 
     // Update global
     isFullScreen = do_fullscreen;
 
     // Check/set the new monitor id
-    if (_setMonitor(mon_ind_new) < 0)
-    {
+    if (_setMonitor(mon_ind_new) < 0) {
         ROS_ERROR("[MazeRenderContext::changeWindowDisplayMode] Context Setup Failed: Window[%d] Monitor[%d]", windowInd, mon_ind_new);
         return -1;
     }
 
-    if (!monitorID)
-    { // Early return if monitor pointer is invalid
+    if (!monitorID) { // Early return if monitor pointer is invalid
         ROS_ERROR("[MazeRenderContext::changeWindowDisplayMode] Invalid Monitor Pointer: Monitor[%d]", mon_ind_new);
         return -1;
     }
 
     // Get the video mode of the selected monitor
     const GLFWvidmode *mode = glfwGetVideoMode(monitorID);
-    if (!mode)
-    { // Validate video mode retrieval
+    if (!mode) { // Validate video mode retrieval
         ROS_ERROR("[MazeRenderContext::changeWindowDisplayMode] Failed to Get Video Mode: Monitor[%d]", mon_ind_new);
         return -1;
     }
@@ -579,17 +529,13 @@ int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscre
 
     // Update window to full-screen or windowed mode based on 'isFullScreen'
     if (isFullScreen)
-    {
         glfwSetWindowMonitor(windowID, monitorID, win_x, win_x, win_width, win_height, mode->refreshRate);
-    }
-    else
-    {
+    else {
         // Get monitor position
         int monitor_x = 0, monitor_y = 0; // Initialize to default values
         glfwGetMonitorPos(monitorID, &monitor_x, &monitor_y);
 
-        if (monitor_x < 0 || monitor_y < 0)
-        { // Validate monitor position
+        if (monitor_x < 0 || monitor_y < 0) { // Validate monitor position
             ROS_WARN("[MazeRenderContext::changeWindowDisplayMode] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_ind_new, monitor_x, monitor_y);
             return 0;
         }
@@ -618,16 +564,13 @@ int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscre
     return CheckErrorGLFW(__LINE__, __FILE__, "changeWindowDisplayMode");
 }
 
-int MazeRenderContext::forceWindowFocus()
-{
+int MazeRenderContext::forceWindowFocus() {
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr)
-        return -1;
+    if (windowID == nullptr) return -1;
     glfwMakeContextCurrent(windowID);
 
     // Check if the window is minimized (iconified)
-    if (glfwGetWindowAttrib(windowID, GLFW_ICONIFIED))
-    {
+    if (glfwGetWindowAttrib(windowID, GLFW_ICONIFIED)) {
         // If the window is minimized and in fullscreen mode, restore the window
         glfwRestoreWindow(windowID);
     }
@@ -635,13 +578,11 @@ int MazeRenderContext::forceWindowFocus()
     return CheckErrorGLFW(__LINE__, __FILE__);
 }
 
-int MazeRenderContext::flashBackgroundColor(const cv::Scalar &color, int duration)
-{
+int MazeRenderContext::flashBackgroundColor(const cv::Scalar &color, int duration) {
     int status = 0;
 
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr)
-        return -1;
+    if (windowID == nullptr) return -1;
     glfwMakeContextCurrent(windowID);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
@@ -663,38 +604,32 @@ int MazeRenderContext::flashBackgroundColor(const cv::Scalar &color, int duratio
     return status;
 }
 
-int MazeRenderContext::checkExitRequest()
-{
+int MazeRenderContext::checkExitRequest() {
     int status = 0;
 
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr)
-        return -1;
+    if (windowID == nullptr) return -1;
     glfwMakeContextCurrent(windowID);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Check if the window should close
-    if (glfwWindowShouldClose(windowID))
-    {
+    if (glfwWindowShouldClose(windowID)) {
         ROS_INFO("[MazeRenderContext::checkExitRequest] Close Requested: Window[%d] Monitor[%d]", windowInd, monitorInd);
         return 1;
     }
 
     // Check if the escape key is pressed
-    if (glfwGetKey(windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-    {
+    if (glfwGetKey(windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         ROS_INFO("[MazeRenderContext::checkExitRequest] Escape Key Pressed: Window[%d] Monitor[%d]", windowInd, monitorInd);
         return 2;
     }
 
-    if (CheckErrorGLFW(__LINE__, __FILE__) < 0)
-        return -1;
+    if (CheckErrorGLFW(__LINE__, __FILE__) < 0) return -1;
 
     return 0;
 }
 
-int MazeRenderContext::CleanupGraphicsLibraries()
-{
+int MazeRenderContext::CleanupGraphicsLibraries() {
     int status = 0;
 
     // Terminate GLFW, which cleans up all GLFW resources.
@@ -712,20 +647,17 @@ int MazeRenderContext::CleanupGraphicsLibraries()
     return status;
 }
 
-int MazeRenderContext::cleanupContext(bool log_errors)
-{
+int MazeRenderContext::cleanupContext(bool log_errors) {
     int status = 0;
 
     // Set the GLFW window as the current OpenGL context
-    if (windowID != nullptr)
-    {
+    if (windowID != nullptr) {
         glfwMakeContextCurrent(windowID);
         status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
     }
 
     // Delete the shader program
-    if (_shaderProgram != 0)
-    {
+    if (_shaderProgram != 0) {
         glDeleteProgram(_shaderProgram);
         status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteProgram error") < 0 ? -1 : status;
         if (log_errors)
@@ -735,8 +667,7 @@ int MazeRenderContext::cleanupContext(bool log_errors)
     }
 
     // Delete the texture
-    if (textureID != 0)
-    {
+    if (textureID != 0) {
         glDeleteTextures(1, &textureID);
         status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteTextures error") < 0 ? -1 : status;
         if (log_errors)
@@ -746,8 +677,7 @@ int MazeRenderContext::cleanupContext(bool log_errors)
     }
 
     // Delete the VAO, VBO, and EBO
-    if (_vao != 0)
-    {
+    if (_vao != 0) {
         glDeleteVertexArrays(1, &_vao);
         status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteVertexArrays error") < 0 ? -1 : status;
         if (log_errors)
@@ -755,8 +685,7 @@ int MazeRenderContext::cleanupContext(bool log_errors)
         _vao = 0;
         status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
     }
-    if (_vbo != 0)
-    {
+    if (_vbo != 0) {
         glDeleteBuffers(1, &_vbo);
         status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteBuffers error") < 0 ? -1 : status;
         if (log_errors)
@@ -764,8 +693,7 @@ int MazeRenderContext::cleanupContext(bool log_errors)
         _vbo = 0;
         status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
     }
-    if (_ebo != 0)
-    {
+    if (_ebo != 0) {
         glDeleteBuffers(1, &_ebo);
         status = CheckErrorOpenGL(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glDeleteBuffers error") < 0 ? -1 : status;
         if (log_errors)
@@ -775,8 +703,7 @@ int MazeRenderContext::cleanupContext(bool log_errors)
     }
 
     // Destroy the GLFW window
-    if (windowID != nullptr)
-    {
+    if (windowID != nullptr) {
         glfwDestroyWindow(windowID);
         status = CheckErrorGLFW(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glfwDestroyWindow error") < 0 ? -1 : status;
         if (log_errors)
@@ -788,8 +715,7 @@ int MazeRenderContext::cleanupContext(bool log_errors)
     return status ? -1 : 0;
 }
 
-void MazeRenderContext::_resetMembers()
-{
+void MazeRenderContext::_resetMembers() {
     _shaderProgram = 0;
     _vao = 0;
     _vbo = 0;
@@ -805,12 +731,10 @@ void MazeRenderContext::_resetMembers()
     isFullScreen = false;
 }
 
-int MazeRenderContext::_checkShaderCompilation(GLuint __shaderProgram, const std::string &shader_type)
-{
+int MazeRenderContext::_checkShaderCompilation(GLuint __shaderProgram, const std::string &shader_type) {
     GLint success;
     glGetShaderiv(__shaderProgram, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
+    if (!success) {
         char info_log[1024];
         glGetShaderInfoLog(__shaderProgram, 1024, nullptr, info_log);
         ROS_ERROR("[MazeRenderContext::_checkShaderCompilation] %s shader compilation error: %s", shader_type.c_str(), info_log);
@@ -819,12 +743,10 @@ int MazeRenderContext::_checkShaderCompilation(GLuint __shaderProgram, const std
     return 0;
 }
 
-int MazeRenderContext::_checkProgramLinking(GLuint __shaderProgram)
-{
+int MazeRenderContext::_checkProgramLinking(GLuint __shaderProgram) {
     GLint success;
     glGetProgramiv(__shaderProgram, GL_LINK_STATUS, &success);
-    if (!success)
-    {
+    if (!success) {
         char info_log[1024];
         glGetProgramInfoLog(__shaderProgram, 1024, nullptr, info_log);
         ROS_ERROR("[MazeRenderContext::_checkProgramLinking] Program linking error: %s", info_log);
@@ -833,19 +755,16 @@ int MazeRenderContext::_checkProgramLinking(GLuint __shaderProgram)
     return 0;
 }
 
-int MazeRenderContext::_setMonitor(int mon_ind)
-{
+int MazeRenderContext::_setMonitor(int mon_ind) {
     // Validate the inputs
-    if (mon_ind >= _NumMonitors)
-    {
+    if (mon_ind >= _NumMonitors) {
         ROS_ERROR("[MazeRenderContext::_setMonitor] Monitor Index[%d] Exceeds Available Monitors[%d]", mon_ind, _NumMonitors);
         return -1;
     }
 
     // Check that the monitor pointer is valid
     GLFWmonitor *monitor_id = _PP_Monitor[mon_ind];
-    if (!monitor_id)
-    {
+    if (!monitor_id) {
         ROS_ERROR("[MazeRenderContext::_setMonitor] Invalid monitor pointer for index %d", mon_ind);
         return -1;
     }
@@ -857,13 +776,11 @@ int MazeRenderContext::_setMonitor(int mon_ind)
     return 0;
 }
 
-int MazeRenderContext::_testCallbacks()
-{
+int MazeRenderContext::_testCallbacks() {
     // Check that the window pointer is valid
-    if (windowID == nullptr)
-        return -1;
+    if (windowID == nullptr) return -1;
 
-    ROS_INFO("============== START: CALLBACK DEBUGGIN ==============");
+    ROS_INFO("============== START: CALLBACK DEBUGGING ==============");
     // Trigger buffer
     glfwSetWindowSize(windowID, 800, 600); // Change the size to something different
 
@@ -894,8 +811,7 @@ CircleRenderer::CircleRenderer()
       cirRadius(1.0f),
       circColor(cv::Scalar(1.0, 1.0, 1.0)),
       circSegments(32),
-      circHomMatNDC(cv::Mat::eye(3, 3, CV_64F))
-{
+      circHomMatNDC(cv::Mat::eye(3, 3, CV_64F)) {
     // Define instance count and itterate static _CircCnt
     circID = _CircCnt++;
 
@@ -903,8 +819,7 @@ CircleRenderer::CircleRenderer()
     _transformationMatrix = cv::Mat::eye(4, 4, CV_32F);
 }
 
-CircleRenderer::~CircleRenderer()
-{
+CircleRenderer::~CircleRenderer() {
     // Cleanup instance-level OpenGL resources
     if (_vao != 0)
     {
@@ -919,8 +834,7 @@ CircleRenderer::~CircleRenderer()
 }
 
 int CircleRenderer::initializeCircleObject(cv::Point2f _circPosition, float _cirRadius, cv::Scalar _circColor,
-                                           unsigned int _circSegments, cv::Mat _circHomMatNDC)
-{
+                                           unsigned int _circSegments, cv::Mat _circHomMatNDC) {
     int status = 0;
 
     // Set variables
@@ -970,8 +884,7 @@ int CircleRenderer::initializeCircleObject(cv::Point2f _circPosition, float _cir
     return status;
 }
 
-int CircleRenderer::CompileAndLinkCircleShaders(float __AspectRatioUniform)
-{
+int CircleRenderer::CompileAndLinkCircleShaders(float __AspectRatioUniform) {
     int status = 0;
 
     // Set the aspect ratio
@@ -981,8 +894,7 @@ int CircleRenderer::CompileAndLinkCircleShaders(float __AspectRatioUniform)
     GLuint temp_vertex_shader = glCreateShader(GL_VERTEX_SHADER);
     glShaderSource(temp_vertex_shader, 1, &_circVertexShaderSource, nullptr);
     glCompileShader(temp_vertex_shader);
-    if (_CheckShaderCompilation(temp_vertex_shader, "VERTEX") < 0)
-    {
+    if (_CheckShaderCompilation(temp_vertex_shader, "VERTEX") < 0) {
         glDeleteShader(temp_vertex_shader);
         ROS_ERROR("[CircleRenderer::CompileAndLinkCircleShaders] Vertex shader compilation failed.");
         return -1;
@@ -993,8 +905,7 @@ int CircleRenderer::CompileAndLinkCircleShaders(float __AspectRatioUniform)
     GLuint temp_fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
     glShaderSource(temp_fragment_shader, 1, &_circFragmentShaderSource, nullptr);
     glCompileShader(temp_fragment_shader);
-    if (_CheckShaderCompilation(temp_fragment_shader, "FRAGMENT") < 0)
-    {
+    if (_CheckShaderCompilation(temp_fragment_shader, "FRAGMENT") < 0) {
         glDeleteShader(temp_vertex_shader);
         glDeleteShader(temp_fragment_shader);
         ROS_ERROR("[CircleRenderer::CompileAndLinkCircleShaders] Fragment shader compilation failed.");
@@ -1007,8 +918,7 @@ int CircleRenderer::CompileAndLinkCircleShaders(float __AspectRatioUniform)
     glAttachShader(_ShaderProgram, temp_vertex_shader);
     glAttachShader(_ShaderProgram, temp_fragment_shader);
     glLinkProgram(_ShaderProgram);
-    if (_CheckProgramLinking(_ShaderProgram) < 0)
-    {
+    if (_CheckProgramLinking(_ShaderProgram) < 0) {
         glDeleteShader(temp_vertex_shader);
         glDeleteShader(temp_fragment_shader);
         glDeleteProgram(_ShaderProgram);
@@ -1031,8 +941,7 @@ int CircleRenderer::CompileAndLinkCircleShaders(float __AspectRatioUniform)
     status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Check for errors in getting uniforms
-    if (_ColorLocation == -1 || _TransformLocation == -1 || _AspectRatioLocation == -1)
-    {
+    if (_ColorLocation == -1 || _TransformLocation == -1 || _AspectRatioLocation == -1) {
         ROS_ERROR("[CircleRenderer::CompileAndLinkCircleShaders] Error getting uniform locations.");
         return -1;
     }
@@ -1040,8 +949,7 @@ int CircleRenderer::CompileAndLinkCircleShaders(float __AspectRatioUniform)
     return status;
 }
 
-int CircleRenderer::SetupShader()
-{
+int CircleRenderer::SetupShader() {
     int status = 0;
 
     // Use the shader program
@@ -1055,41 +963,35 @@ int CircleRenderer::SetupShader()
     return status;
 }
 
-int CircleRenderer::UnsetShader()
-{
+int CircleRenderer::UnsetShader() {
     // Unset the shader program
     glUseProgram(0);
 
     return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
 }
 
-void CircleRenderer::setPosition(cv::Point2f _circPosition)
-{
+void CircleRenderer::setPosition(cv::Point2f _circPosition) {
     // Modify the y position based on the aspect ratio
     _circPosition.y /= _AspectRatioUniform;
     circPosition = _circPosition;
 }
 
-void CircleRenderer::setRadius(float _cirRadius)
-{
+void CircleRenderer::setRadius(float _cirRadius) {
     cirRadius = _cirRadius;
 }
 
-void CircleRenderer::setColor(cv::Scalar col)
-{
+void CircleRenderer::setColor(cv::Scalar col) {
     circColor = col;
 }
 
-int CircleRenderer::updateCircleObject(bool do_coord_warp)
-{
+int CircleRenderer::updateCircleObject(bool do_coord_warp) {
     int status = 0;
 
     // Generate the new vertices based on the current position, radius, and circSegments
     _computeVertices(circVertices);
 
     // Convert the circle vertices to NDC space
-    if (do_coord_warp)
-        _convertToNDC(circVertices);
+    if (do_coord_warp) _convertToNDC(circVertices);
 
     // Bind the VBO to the GL_ARRAY_BUFFER target
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
@@ -1107,8 +1009,7 @@ int CircleRenderer::updateCircleObject(bool do_coord_warp)
     return status;
 }
 
-int CircleRenderer::draw()
-{
+int CircleRenderer::draw() {
     int status = 0;
 
     // Set color
@@ -1132,13 +1033,11 @@ int CircleRenderer::draw()
     return status;
 }
 
-int CircleRenderer::CleanupClassResources()
-{
+int CircleRenderer::CleanupClassResources() {
     int status = 0;
 
     // Delete the shader program
-    if (_ShaderProgram != 0)
-    {
+    if (_ShaderProgram != 0) {
         glDeleteProgram(_ShaderProgram);
         _ShaderProgram = 0;
         status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
@@ -1155,12 +1054,10 @@ int CircleRenderer::CleanupClassResources()
     return status;
 }
 
-int CircleRenderer::_CheckShaderCompilation(GLuint ___ShaderProgram, const std::string &shader_type)
-{
+int CircleRenderer::_CheckShaderCompilation(GLuint ___ShaderProgram, const std::string &shader_type) {
     GLint success;
     glGetShaderiv(___ShaderProgram, GL_COMPILE_STATUS, &success);
-    if (!success)
-    {
+    if (!success) {
         // Get and log the error message
         char info_log[512];
         glGetShaderInfoLog(___ShaderProgram, 512, nullptr, info_log);
@@ -1170,12 +1067,10 @@ int CircleRenderer::_CheckShaderCompilation(GLuint ___ShaderProgram, const std::
     return 0;
 }
 
-int CircleRenderer::_CheckProgramLinking(GLuint ___ShaderProgram)
-{
+int CircleRenderer::_CheckProgramLinking(GLuint ___ShaderProgram) {
     GLint success;
     glGetProgramiv(___ShaderProgram, GL_LINK_STATUS, &success);
-    if (!success)
-    {
+    if (!success) {
         // Get and log the error message
         char info_log[512];
         glGetProgramInfoLog(___ShaderProgram, 512, nullptr, info_log);
@@ -1185,22 +1080,19 @@ int CircleRenderer::_CheckProgramLinking(GLuint ___ShaderProgram)
     return 0;
 }
 
-std::array<float, 16> CircleRenderer::_cvMatToGlArray(const cv::Mat &out_transformationMatrix)
-{
+std::array<float, 16> CircleRenderer::_cvMatToGlArray(const cv::Mat &out_transformationMatrix) {
     assert(out_transformationMatrix.cols == 4 && out_transformationMatrix.rows == 4 && out_transformationMatrix.type() == CV_32F);
     std::array<float, 16> gl_array;
     std::copy(out_transformationMatrix.begin<float>(), out_transformationMatrix.end<float>(), gl_array.begin());
     return gl_array;
 }
 
-void CircleRenderer::_computeVertices(std::vector<float> &out_circVertices)
-{
+void CircleRenderer::_computeVertices(std::vector<float> &out_circVertices) {
     // Clear the vertex vector to prepare for new vertices
     out_circVertices.clear();
 
     // Loop to generate vertices for the circle
-    for (unsigned int i = 0; i <= circSegments; ++i)
-    {
+    for (unsigned int i = 0; i <= circSegments; ++i) {
         // Calculate the angle for the current segment
         float angle = 2.0f * std::acos(-1.0) * i / circSegments;
         // Determine the x circPosition of the vertex on the circle
@@ -1219,14 +1111,11 @@ void CircleRenderer::_computeVertices(std::vector<float> &out_circVertices)
     }
 }
 
-void CircleRenderer::_convertToNDC(std::vector<float> &out_circVertices)
-{
+void CircleRenderer::_convertToNDC(std::vector<float> &out_circVertices) {
     // Convert to vector of cv::Point2f
     std::vector<cv::Point2f> circPoints;
     for (size_t i = 0; i < out_circVertices.size(); i += 2)
-    {
         circPoints.push_back(cv::Point2f(out_circVertices[i], out_circVertices[i + 1]));
-    }
 
     // Apply the homography transformation
     std::vector<cv::Point2f> transformedPoints;
@@ -1234,8 +1123,7 @@ void CircleRenderer::_convertToNDC(std::vector<float> &out_circVertices)
 
     // Store the transformed points back into out_circVertices
     out_circVertices.clear();
-    for (const auto &pt : transformedPoints)
-    {
+    for (const auto &pt : transformedPoints) {
         out_circVertices.push_back(pt.x);
         out_circVertices.push_back(pt.y);
     }
@@ -1243,10 +1131,8 @@ void CircleRenderer::_convertToNDC(std::vector<float> &out_circVertices)
 
 // ================================================== FUNCTIONS ==================================================
 
-int64_t dbTraceCalls(bool do_reset, int line, const char *file_path)
-{
-    if (!GLB_DO_VERBOSE_DEBUG)
-        return 0;
+int64_t dbTraceCalls(bool do_reset, int line, const char *file_path) {
+    if (!GLB_DO_VERBOSE_DEBUG) return 0;
 
     static ros::Time start_time = ros::Time::now();
     static int cnt_calls = 0;
@@ -1254,19 +1140,13 @@ int64_t dbTraceCalls(bool do_reset, int line, const char *file_path)
     static std::string file_name_start = "";
 
     // Function to extract file name from file path
-    auto extractFileName = [](const char *path) -> std::string
-    {
-        if (path == nullptr)
-        {
-            return std::string("NULL");
-        }
+    auto extractFileName = [](const char *path) -> std::string {
+        if (path == nullptr) return std::string("NULL");
+
         const char *file_name = strrchr(path, '\\'); // Windows file path separator
-        if (!file_name)
-            file_name = strrchr(path, '/'); // In case of Unix-style paths
-        if (file_name)
-        {
-            return std::string(file_name + 1); // Skip past the last separator
-        }
+        if (file_name) return std::string(file_name + 1); // Skip past the last separator
+        else file_name = strrchr(path, '/'); // In case of Unix-style paths
+    
         return std::string(path); // No separator found, return the whole string
     };
 
@@ -1275,19 +1155,14 @@ int64_t dbTraceCalls(bool do_reset, int line, const char *file_path)
     ros::Duration elapsed_time = ros::Time::now() - start_time;
     std::string file_name_current = extractFileName(file_path);
     if (line_start == 0 || line == 0)
-    {
         ROS_INFO("[dbTraceCalls] Call[%d]: Elapsed Time: %f milliseconds", cnt_calls, elapsed_time.toNSec() / 1e6);
-    }
     else
-    {
         ROS_INFO("[dbTraceCalls] Call[%d]: Elapsed Time from %s[%d] to %s[%d] is %0.2f milliseconds",
                  cnt_calls, file_name_start.c_str(), line_start, file_name_current.c_str(), line,
                  elapsed_time.toNSec() / 1e6);
-    }
 
     // Reset start time
-    if (do_reset)
-    {
+    if (do_reset) {
         cnt_calls = 0;
         line_start = line;
         file_name_start = extractFileName(file_path);
@@ -1315,8 +1190,7 @@ int64_t dbTraceCalls(bool do_reset, int line, const char *file_path)
  */
 bool dbDelayRun(int dt_wait)
 {
-    if (!GLB_DO_VERBOSE_DEBUG)
-        return false;
+    if (!GLB_DO_VERBOSE_DEBUG) return false;
 
     // Initialize static variable
     static ros::Time ts_wait = ros::Time(0);
@@ -1325,33 +1199,23 @@ bool dbDelayRun(int dt_wait)
     ros::Time now = ros::Time::now();
 
     // Set the next wait timestamp
-    if (dt_wait > 0)
-    {
-        ts_wait = now + ros::Duration(0, dt_wait * 1000000); // Convert ms to ns
-    }
+    if (dt_wait > 0) ts_wait = now + ros::Duration(0, dt_wait * 1000000); // Convert ms to ns
 
     // Check if ts_wait is set to zero or the current time is past ts_wait
-    if (now > ts_wait)
-    {
-        return true;
-    }
+    if (now > ts_wait) return true;
 
     return false;
 }
 
-void dbWaitForInput()
-{
+void dbWaitForInput() {
     ROS_INFO("Paused for Debugging: Press Enter to Continue...");
     std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
 }
 
-void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
-{
-    if (!GLB_DO_VERBOSE_DEBUG)
-        return;
+void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices) {
+    if (!GLB_DO_VERBOSE_DEBUG) return;
 
-    if (quad_vertices.size() != 4)
-    {
+    if (quad_vertices.size() != 4) {
         ROS_ERROR("[dbLogQuadVertices] Invalid number of vertices. Expected 4.");
         return;
     }
@@ -1359,13 +1223,12 @@ void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
     ROS_INFO("         Quad Vertices             ");
     ROS_INFO("===================================");
     ROS_INFO("    |     Left     |     Right    |");
+    ROS_INFO("-----------------------------------");
+    ROS_INFO("    |V0  X , Y     |V1  X , Y     |");
+    ROS_INFO("-----------------------------------");
 
     if (std::any_of(quad_vertices.begin(), quad_vertices.end(), [](const cv::Point2f &point)
-                    { return point.x > 10.0f || point.y > 10.0f; }))
-    {
-        ROS_INFO("-----------------------------------");
-        ROS_INFO("    |V0  X , Y     |V1  X , Y     |");
-        ROS_INFO("-----------------------------------");
+                    { return point.x > 10.0f || point.y > 10.0f; })) {
         ROS_INFO("Top | %+5.0f, %+5.0f | %+5.0f, %+5.0f |",
                  quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
         ROS_INFO("-----------------------------------");
@@ -1374,11 +1237,7 @@ void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
         ROS_INFO("Btm | %+5.0f, %+5.0f | %+5.0f, %+5.0f |",
                  quad_vertices[3].x, quad_vertices[3].y, quad_vertices[2].x, quad_vertices[2].y);
     }
-    else
-    {
-        ROS_INFO("-----------------------------------");
-        ROS_INFO("    |V0  X , Y     |V1  X , Y     |");
-        ROS_INFO("-----------------------------------");
+    else {
         ROS_INFO("Top | %+5.2f, %+5.2f | %+5.2f, %+5.2f |",
                  quad_vertices[0].x, quad_vertices[0].y, quad_vertices[1].x, quad_vertices[1].y);
         ROS_INFO("-----------------------------------");
@@ -1393,16 +1252,14 @@ void dbLogQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
 
 void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &r_ctrl_pnt_coords)
 {
-    if (!GLB_DO_VERBOSE_DEBUG)
-        return;
+    if (!GLB_DO_VERBOSE_DEBUG) return;
 
     ROS_INFO("        Control Point Coordinates        ");
     ROS_INFO("=========================================");
     ROS_INFO("        |      Left     |     Right     |");
 
     // Loop through each control point
-    for (int cp = 0; cp < 4; ++cp)
-    {
+    for (int cp = 0; cp < 4; ++cp) {
         // Fetch the vertices for the current control point
         auto &quad_vertices = r_ctrl_pnt_coords[cp];
 
@@ -1427,16 +1284,14 @@ void dbLogCtrlPointCoordinates(const std::array<std::array<cv::Point2f, 4>, 4> &
 
 void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> &_WALL_WARP_COORDS)
 {
-    if (!GLB_DO_VERBOSE_DEBUG)
-        return;
+    if (!GLB_DO_VERBOSE_DEBUG) return;
 
     ROS_INFO("                                       Warped Wall Coordinates                                               ");
     ROS_INFO("=============================================================================================================");
     ROS_INFO("-------------------------------------------------------------------------------------------------------------");
 
     // Loop through each row and column in the maze
-    for (int row = 0; row < GLB_MAZE_SIZE; ++row)
-    {
+    for (int row = 0; row < GLB_MAZE_SIZE; ++row) {
         ROS_INFO("        ||   X   ,   Y   |   X   ,   Y   ||   X   ,   Y   |   X   ,   Y   ||   X   ,   Y   |   X   ,   Y   ||");
         ROS_INFO("-------------------------------------------------------------------------------------------------------------");
 
@@ -1445,8 +1300,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
 
         // Format and print the Top row coordinates
         snprintf(buffer, sizeof(buffer), "(%d) Top ||", row);
-        for (int col = 0; col < GLB_MAZE_SIZE; ++col)
-        {
+        for (int col = 0; col < GLB_MAZE_SIZE; ++col) {
             // Fetch the quad vertices for the current [row][col]
             auto &quad_vertices = _WALL_WARP_COORDS[row][col];
             snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
@@ -1456,8 +1310,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
 
         // Format and print the Bottom row coordinates
         snprintf(buffer, sizeof(buffer), "(%d) Btm ||", row);
-        for (int col = 0; col < GLB_MAZE_SIZE; ++col)
-        {
+        for (int col = 0; col < GLB_MAZE_SIZE; ++col) {
             // Fetch the quad vertices for the current [row][col]
             auto &quad = _WALL_WARP_COORDS[row][col];
             snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %+4.2f , %+4.2f | %+4.2f , %+4.2f ||",
@@ -1469,14 +1322,11 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
     }
 }
 
-void dbLogHomMat(const cv::Mat &r_HMAT)
-{
-    if (!GLB_DO_VERBOSE_DEBUG)
-        return;
+void dbLogHomMat(const cv::Mat &r_HMAT) {
+    if (!GLB_DO_VERBOSE_DEBUG) return;
 
     // Check if the input matrix is 3x3
-    if (r_HMAT.rows != 3 || r_HMAT.cols != 3)
-    {
+    if (r_HMAT.rows != 3 || r_HMAT.cols != 3) {
         ROS_WARN("The input matrix is not 3x3. Cannot print.");
         return;
     }
@@ -1486,8 +1336,7 @@ void dbLogHomMat(const cv::Mat &r_HMAT)
     ROS_INFO("          |  C0   |  C1   |  C2   |");
     ROS_INFO("----------------------------------");
 
-    for (int i = 0; i < 3; ++i)
-    {
+    for (int i = 0; i < 3; ++i) {
         ROS_INFO("R%d        | %+5.2f | %+5.2f | %+5.2f |", i,
                  r_HMAT.at<double>(i, 0),
                  r_HMAT.at<double>(i, 1),
@@ -1498,10 +1347,8 @@ void dbLogHomMat(const cv::Mat &r_HMAT)
     ROS_INFO("==================================");
 }
 
-void dbLogProjWallImageCfg4D(const ProjWallConfigIndices4D &wallImageConfig)
-{
-    if (!GLB_DO_VERBOSE_DEBUG)
-        return;
+void dbLogProjWallImageCfg4D(const ProjWallConfigIndices4D &wallImageConfig) {
+    if (!GLB_DO_VERBOSE_DEBUG) return;
 
     ROS_INFO("                                Projector Wall Image Configuration                                       ");
     ROS_INFO("=======================================================");
@@ -1509,19 +1356,16 @@ void dbLogProjWallImageCfg4D(const ProjWallConfigIndices4D &wallImageConfig)
     ROS_INFO("-------------------------------------------------------");
 
     // Loop through each projector, row, and column
-    for (int proj = 0; proj < 4; ++proj)
-    {
+    for (int proj = 0; proj < 4; ++proj) {
         ROS_INFO("Projector %d", proj);
         ROS_INFO("-------------------------------------------------------");
 
-        for (int row = 0; row < 3; ++row)
-        {
+        for (int row = 0; row < 3; ++row) {
             // Buffer to hold the formatted string for each row
             char buffer[512]; // Adjust size as necessary for your specific logging needs
             snprintf(buffer, sizeof(buffer), "(%d) Row ||", row);
 
-            for (int col = 0; col < 3; ++col)
-            {
+            for (int col = 0; col < 3; ++col) {
                 auto &cell = wallImageConfig[proj][row][col];
                 snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %3d,%3d,%3d |",
                          cell[0], cell[1], cell[2]);
@@ -1535,40 +1379,34 @@ void dbLogProjWallImageCfg4D(const ProjWallConfigIndices4D &wallImageConfig)
     }
 }
 
-void dbDispImgMat(const cv::Mat &img_mat)
-{
+void dbDispImgMat(const cv::Mat &img_mat) {
     cv::namedWindow("Debug display image", cv::WINDOW_AUTOSIZE);
     cv::imshow("Debug display image", img_mat);
     cv::waitKey(0);
     cv::destroyWindow("Debug display image");
 }
 
-int promptForProjectorNumber()
-{
+int promptForProjectorNumber() {
     std::string input;
     int proj_ind = -1;
 
     // Loop until a valid input is received
-    while (true)
-    {
+    while (true) {
         std::cout << "[promptForProjectorNumber] Enter the actual number/index of the projector being calibrated [0,1,2,3], or press 'q' to quit: ";
         std::cin >> input;
 
         // Check for quit command
-        if (input == "q" || input == "Q")
-        {
+        if (input == "q" || input == "Q") {
             std::cout << "[promptForProjectorNumber] Operation cancelled by the user." << std::endl;
             return -1;
         }
 
         // Check if the input is a single digit and is a number
-        if (input.length() == 1 && std::isdigit(input[0]))
-        {
+        if (input.length() == 1 && std::isdigit(input[0])) {
             proj_ind = std::stoi(input);
 
             // Check if the input is between 0 and 3
-            if (proj_ind < 4)
-            {
+            if (proj_ind < 4) {
                 std::cout << "[promptForProjectorNumber] Projector number/index set to " + std::to_string(proj_ind) + "." << std::endl;
                 return std::stoi(input);
             }
@@ -1576,9 +1414,7 @@ int promptForProjectorNumber()
                 std::cout << "[promptForProjectorNumber] Invalid input: Please enter a number between 0 and 3 or 'q' to quit." << std::endl;
         }
         else
-        {
             std::cout << "[promptForProjectorNumber] Invalid input: Please enter a single numeric digit or 'q' to quit." << std::endl;
-        }
 
         // Clear the input stream in case of invalid input (e.g., if more than one character was entered)
         std::cin.clear();
@@ -1586,8 +1422,7 @@ int promptForProjectorNumber()
     }
 }
 
-void xmlFrmtFileStringsControlPoints(int proj_ind, std::string &out_path)
-{
+void xmlFrmtFileStringsControlPoints(int proj_ind, std::string &out_path) {
     // Format the output tag
     out_path =
         GLB_CONFIG_DIR_PATH + "/" +
@@ -1596,8 +1431,7 @@ void xmlFrmtFileStringsControlPoints(int proj_ind, std::string &out_path)
         ".xml";
 }
 
-void xmlFrmtFileStringsHmat(int proj_ind, std::string &out_path)
-{
+void xmlFrmtFileStringsHmat(int proj_ind, std::string &out_path) {
     // Format the output tag
     out_path =
         GLB_CONFIG_DIR_PATH + "/" +
@@ -1606,8 +1440,7 @@ void xmlFrmtFileStringsHmat(int proj_ind, std::string &out_path)
         ".xml";
 }
 
-void xmlFrmtFileStringsVertices(std::string &out_path)
-{
+void xmlFrmtFileStringsVertices(std::string &out_path) {
     // Format the output tag
     out_path =
         GLB_CONFIG_DIR_PATH + "/" +
@@ -1615,8 +1448,7 @@ void xmlFrmtFileStringsVertices(std::string &out_path)
         ".xml";
 }
 
-int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind, CalibrationMode _CAL_MODE, int cp_ind)
-{
+int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind, CalibrationMode _CAL_MODE, int cp_ind) {
     // Define file path and calibration mode string
     std::string file_path;
     xmlFrmtFileStringsControlPoints(proj_ind, file_path); // Assume you have a similar function to set file path
@@ -1628,25 +1460,19 @@ int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind,
 
     // Check if the file exists and has a proper Root node
     pugi::xml_node root_node = doc.child("Root");
-    if (!result || !root_node)
-    {
-        root_node = doc.append_child("Root");
-    }
+    if (!result || !root_node) root_node = doc.append_child("Root");
 
     // Look for the calibration node with the matching mode attribute
     pugi::xml_node calibration_node;
     for (pugi::xml_node node = root_node.child("calibration");
-         node; node = node.next_sibling("calibration"))
-    {
-        if (node.attribute("mode").value() == cal_mode_str)
-        {
+         node; node = node.next_sibling("calibration")) {
+        if (node.attribute("mode").value() == cal_mode_str) {
             calibration_node = node;
             break;
         }
     }
 
-    if (!calibration_node)
-    {
+    if (!calibration_node) {
         calibration_node = root_node.append_child("calibration");
         calibration_node.append_attribute("mode") = cal_mode_str.c_str();
     }
@@ -1654,23 +1480,19 @@ int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind,
     // Search for an existing CP node with the same cp_ind
     pugi::xml_node cp_node;
     for (pugi::xml_node node = calibration_node.child("CP");
-         node; node = node.next_sibling("CP"))
-    {
-        if (node.attribute("cp_index").as_int() == cp_ind)
-        {
+         node; node = node.next_sibling("CP")) {
+        if (node.attribute("cp_index").as_int() == cp_ind) {
             cp_node = node;
             break;
         }
     }
 
     // If a CP node with the index is not found, add it
-    if (!cp_node)
-    {
+    if (!cp_node) {
         cp_node = calibration_node.append_child("CP");
         cp_node.append_attribute("cp_index") = cp_ind;
     }
-    else
-    {
+    else {
         // Clear existing data to replace with new points
         calibration_node.remove_child(cp_node);
         cp_node = calibration_node.append_child("CP");
@@ -1678,8 +1500,7 @@ int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind,
     }
 
     // Add control points data to the CP node
-    for (int i = 0; i < CP_ARR.size(); ++i)
-    {
+    for (int i = 0; i < CP_ARR.size(); ++i) {
         const auto &point = CP_ARR[i];
         pugi::xml_node point_node = cp_node.append_child("Point");
         point_node.append_attribute("id") = i; // Unique ID for each point
@@ -1688,8 +1509,7 @@ int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind,
     }
 
     // Save the document
-    if (!doc.save_file(file_path.c_str()))
-    {
+    if (!doc.save_file(file_path.c_str())) {
         ROS_ERROR("[xmlSaveControlPoints] Failed to save control points to XML File[%s]", file_path.c_str());
         return -1;
     }
@@ -1697,8 +1517,7 @@ int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind,
     return 0;
 }
 
-int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, std::array<cv::Point2f, 4> &out_CP_ARR)
-{
+int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, std::array<cv::Point2f, 4> &out_CP_ARR) {
     // Define file path and calibration mode string
     std::string file_path;
     xmlFrmtFileStringsControlPoints(proj_ind, file_path); // Assume you have a similar function to set file path
@@ -1709,8 +1528,7 @@ int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, st
     pugi::xml_parse_result result = doc.load_file(file_path.c_str());
 
     // Check if the file was loaded successfully
-    if (!result)
-    {
+    if (!result) {
         ROS_ERROR("[xmlLoadControlPoints] Failed to load control points from XML File[%s]", file_path.c_str());
         return -1;
     }
@@ -1718,17 +1536,14 @@ int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, st
     // Look for the calibration node with the matching mode attribute
     pugi::xml_node calibration_node;
     for (pugi::xml_node node = doc.child("Root").child("calibration");
-         node; node = node.next_sibling("calibration"))
-    {
-        if (node.attribute("mode").value() == cal_mode_str)
-        {
+         node; node = node.next_sibling("calibration")) {
+        if (node.attribute("mode").value() == cal_mode_str) {
             calibration_node = node;
             break;
         }
     }
 
-    if (!calibration_node)
-    {
+    if (!calibration_node) {
         ROS_ERROR("[xmlLoadControlPoints] No calibration node[%s] found in XML File[%s]", cal_mode_str.c_str(), file_path.c_str());
         return -1;
     }
@@ -1736,17 +1551,14 @@ int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, st
     // Search for a CP node with the same cp_ind
     pugi::xml_node cp_node;
     for (pugi::xml_node node = calibration_node.child("CP");
-         node; node = node.next_sibling("CP"))
-    {
-        if (node.attribute("cp_index").as_int() == cp_ind)
-        {
+         node; node = node.next_sibling("CP")) {
+        if (node.attribute("cp_index").as_int() == cp_ind) {
             cp_node = node;
             break;
         }
     }
 
-    if (!cp_node)
-    {
+    if (!cp_node) {
         ROS_ERROR("[xmlLoadControlPoints] No CP node with cp_index[%d] found in calibration mode[%s] for XML File[%s]",
                   cp_ind, cal_mode_str.c_str(), file_path.c_str());
         return -1;
@@ -1754,14 +1566,12 @@ int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, st
 
     // Load the control points data
     int i = 0;
-    for (pugi::xml_node point_node = cp_node.child("Point"); point_node && i < 4; point_node = point_node.next_sibling("Point"), ++i)
-    {
+    for (pugi::xml_node point_node = cp_node.child("Point"); point_node && i < 4; point_node = point_node.next_sibling("Point"), ++i) {
         out_CP_ARR[i].x = point_node.attribute("x").as_float();
         out_CP_ARR[i].y = point_node.attribute("y").as_float();
     }
 
-    if (i != 4) // Ensure that exactly 4 control points are loaded
-    {
+    if (i != 4) { // Ensure that exactly 4 control points are loaded
         ROS_ERROR("[xmlLoadControlPoints] Incorrect number of control points in CP. Expected 4, got %d", i);
         return -1;
     }
@@ -1769,8 +1579,7 @@ int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, st
     return 0;
 }
 
-int xmlSaveHMAT(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col)
-{
+int xmlSaveHMAT(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col) {
     // Get the full file path and attribute string for the given calibration mode
     std::string file_path;
     xmlFrmtFileStringsHmat(proj_ind, file_path);
@@ -1782,38 +1591,30 @@ int xmlSaveHMAT(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int 
 
     // Check if the file exists and has a proper Root node
     pugi::xml_node root_node = doc.child("Root");
-    if (!result || !root_node)
-    {
-        // If not, create a new Root node
-        root_node = doc.append_child("Root");
-    }
+    // If not, create a new Root node
+    if (!result || !root_node) root_node = doc.append_child("Root"); 
 
     // Look for the calibration node with the matching mode attribute
     pugi::xml_node calibration_node;
     for (pugi::xml_node node = root_node.child("calibration");
-         node; node = node.next_sibling("calibration"))
-    {
-        if (node.attribute("mode").value() == cal_mode_str)
-        {
+         node; node = node.next_sibling("calibration")) {
+        if (node.attribute("mode").value() == cal_mode_str) {
             calibration_node = node;
             break;
         }
     }
 
     // If a calibration node with the mode is not found, add it
-    if (!calibration_node)
-    {
+    if (!calibration_node) {
         calibration_node = root_node.append_child("calibration");
         calibration_node.append_attribute("mode") = cal_mode_str.c_str();
     }
 
     // Search for an existing HMAT with the same grid_row and grid_col
     for (pugi::xml_node hmat_node = calibration_node.child("HMAT");
-         hmat_node; hmat_node = hmat_node.next_sibling("HMAT"))
-    {
+         hmat_node; hmat_node = hmat_node.next_sibling("HMAT")) {
         if (hmat_node.attribute("grid_row").as_int() == grid_row &&
-            hmat_node.attribute("grid_col").as_int() == grid_col)
-        {
+            hmat_node.attribute("grid_col").as_int() == grid_col) {
             // If found, remove it to replace with updated matrix
             calibration_node.remove_child(hmat_node);
             break;
@@ -1826,19 +1627,16 @@ int xmlSaveHMAT(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int 
     new_hmat_node.append_attribute("grid_col") = grid_col;
 
     // Add the matrix data to the HMAT node
-    for (int r = 0; r < _H.rows; ++r)
-    {
+    for (int r = 0; r < _H.rows; ++r) {
         pugi::xml_node row_node = new_hmat_node.append_child("row");
-        for (int c = 0; c < _H.cols; ++c)
-        {
+        for (int c = 0; c < _H.cols; ++c) {
             pugi::xml_node cell_node = row_node.append_child("cell");
             cell_node.append_child(pugi::node_pcdata).set_value(std::to_string(_H.at<double>(r, c)).c_str());
         }
     }
 
     // Save the document to the specified file path
-    if (!doc.save_file(file_path.c_str()))
-    {
+    if (!doc.save_file(file_path.c_str())) {
         ROS_ERROR("[xmlSaveHMAT] Failed to save homography matrix to XML File[%s]", file_path.c_str());
         return -1;
     }
@@ -1846,8 +1644,7 @@ int xmlSaveHMAT(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int 
     return 0;
 }
 
-int xmlLoadHMAT(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col, cv::Mat &out_H)
-{
+int xmlLoadHMAT(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col, cv::Mat &out_H) {
     // Get the full file path and attribute string for the given calibration mode
     std::string file_path;
     xmlFrmtFileStringsHmat(proj_ind, file_path);
@@ -1858,8 +1655,7 @@ int xmlLoadHMAT(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_
     pugi::xml_parse_result result = doc.load_file(file_path.c_str());
 
     // Check if the file was loaded successfully
-    if (!result)
-    {
+    if (!result) {
         ROS_ERROR("[xmlLoadHMAT] Failed to load homography matrix from XML File[%s]", file_path.c_str());
         return -1;
     }
@@ -1867,17 +1663,14 @@ int xmlLoadHMAT(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_
     // Look for the calibration node with the matching mode attribute
     pugi::xml_node calibration_node;
     for (pugi::xml_node node = doc.child("Root").child("calibration");
-         node; node = node.next_sibling("calibration"))
-    {
-        if (node.attribute("mode").value() == cal_mode_str)
-        {
+         node; node = node.next_sibling("calibration")) {
+        if (node.attribute("mode").value() == cal_mode_str) {
             calibration_node = node;
             break;
         }
     }
 
-    if (!calibration_node)
-    {
+    if (!calibration_node) {
         ROS_ERROR("[xmlLoadHMAT] No calibration node[%s] found in XML File[%s]", cal_mode_str.c_str(), file_path.c_str());
         return -1;
     }
@@ -1885,18 +1678,15 @@ int xmlLoadHMAT(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_
     // Search for an HMAT node with the same grid_row and grid_col
     pugi::xml_node hmat_node;
     for (pugi::xml_node node = calibration_node.child("HMAT");
-         node; node = node.next_sibling("HMAT"))
-    {
+         node; node = node.next_sibling("HMAT")) {
         if (node.attribute("grid_row").as_int() == grid_row &&
-            node.attribute("grid_col").as_int() == grid_col)
-        {
+            node.attribute("grid_col").as_int() == grid_col) {
             hmat_node = node;
             break;
         }
     }
 
-    if (!hmat_node)
-    {
+    if (!hmat_node) {
         ROS_ERROR("[xmlLoadHMAT] No HMAT with grid_row[%d] and grid_col[%d] found in calibration mode[%s] for XML File[%s]",
                   grid_row, grid_col, cal_mode_str.c_str(), file_path.c_str());
         return -1;
@@ -1904,17 +1694,12 @@ int xmlLoadHMAT(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_
 
     // Load the matrix data
     std::vector<double> matrix_data;
-    for (pugi::xml_node row_node = hmat_node.child("row"); row_node; row_node = row_node.next_sibling("row"))
-    {
+    for (pugi::xml_node row_node = hmat_node.child("row"); row_node; row_node = row_node.next_sibling("row")) {
         for (pugi::xml_node cell_node = row_node.child("cell"); cell_node; cell_node = cell_node.next_sibling("cell"))
-        {
             matrix_data.push_back(std::stod(cell_node.child_value()));
-        }
-    }
 
     // Ensure the matrix data is the right size for a homography matrix
-    if (matrix_data.size() != 9)
-    {
+    if (matrix_data.size() != 9) {
         ROS_ERROR("[xmlLoadHMAT] Incorrect number of elements in HMAT. Expected 9, got %zu", matrix_data.size());
         return -1;
     }
@@ -1925,8 +1710,7 @@ int xmlLoadHMAT(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_
     return 0;
 }
 
-int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int proj_ind)
-{
+int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int proj_ind) {
     // Define file path
     std::string file_path;
     xmlFrmtFileStringsVertices(file_path);
@@ -1936,48 +1720,37 @@ int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int proj_
     pugi::xml_parse_result result = doc.load_file(file_path.c_str());
     pugi::xml_node root_node = doc.child("Root");
 
-    if (!result || !root_node)
-    {
-        root_node = doc.append_child("Root");
-    }
+    if (!result || !root_node) root_node = doc.append_child("Root");
 
     // Search for an existing monitor node with the same index
     pugi::xml_node monitor_node;
-    for (pugi::xml_node node = root_node.child("projector"); node; node = node.next_sibling("projector"))
-    {
-        if (node.attribute("index").as_int() == proj_ind)
-        {
+    for (pugi::xml_node node = root_node.child("projector"); node; node = node.next_sibling("projector")) {
+        if (node.attribute("index").as_int() == proj_ind) {
             monitor_node = node;
             break;
         }
     }
 
     // If a monitor node with the index is not found, add it
-    if (!monitor_node)
-    {
+    if (!monitor_node) {
         monitor_node = root_node.append_child("projector");
         monitor_node.append_attribute("index") = proj_ind;
     }
-    else
-    {
+    else {
         // Clear existing vertices if the monitor node is already present
         while (monitor_node.first_child())
-        {
             monitor_node.remove_child(monitor_node.first_child());
-        }
     }
 
     // Add vertices to the monitor node
-    for (const auto &vertex : quad_vertices_ndc)
-    {
+    for (const auto &vertex : quad_vertices_ndc) {
         pugi::xml_node vertex_node = monitor_node.append_child("vertex");
         vertex_node.append_child("coord").text().set(vertex.x);
         vertex_node.append_child("coord").text().set(vertex.y);
     }
 
     // Save the document to the specified file path
-    if (!doc.save_file(file_path.c_str()))
-    {
+    if (!doc.save_file(file_path.c_str())) {
         ROS_ERROR("[xmlSaveVertices] Failed to save vertices to XML File[%s]", file_path.c_str());
         return -1;
     }
@@ -1995,25 +1768,21 @@ int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_nd
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_file(file_path.c_str());
 
-    if (!result)
-    {
+    if (!result) {
         ROS_ERROR("[xmlLoadHMAT] Failed to load vertices from XML File[%s]", file_path.c_str());
         return -1;
     }
 
     // Search for the monitor node with the same index
     pugi::xml_node monitor_node;
-    for (pugi::xml_node node = doc.child("Root").child("projector"); node; node = node.next_sibling("projector"))
-    {
-        if (node.attribute("index").as_int() == proj_ind)
-        {
+    for (pugi::xml_node node = doc.child("Root").child("projector"); node; node = node.next_sibling("projector")) {
+        if (node.attribute("index").as_int() == proj_ind) {
             monitor_node = node;
             break;
         }
     }
 
-    if (!monitor_node)
-    {
+    if (!monitor_node) {
         ROS_ERROR("[xmlLoadHMAT] No monitor node[%d] found in XML File[%s]", proj_ind, file_path.c_str());
         return -1;
     }
@@ -2022,22 +1791,17 @@ int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_nd
     out_quad_vertices_ndc.clear();
 
     // Load the vertices from the monitor node
-    for (pugi::xml_node vertex_node = monitor_node.child("vertex"); vertex_node; vertex_node = vertex_node.next_sibling("vertex"))
-    {
+    for (pugi::xml_node vertex_node = monitor_node.child("vertex"); vertex_node; vertex_node = vertex_node.next_sibling("vertex")) {
         cv::Point2f vertex;
         pugi::xml_node coord_node = vertex_node.child("coord");
-        if (coord_node)
-        {
+        if (coord_node) {
             vertex.x = coord_node.text().as_float();
             coord_node = coord_node.next_sibling("coord");
         }
 
         if (coord_node)
-        {
             vertex.y = coord_node.text().as_float();
-        }
-        else
-        {
+        else {
             ROS_ERROR("[xmlLoadHMAT] Incomplete vertex data in XML File[%s]", file_path.c_str());
             return -1; // Handle error: incomplete vertex data
         }
@@ -2046,8 +1810,7 @@ int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_nd
     }
 
     // Check if the vector has exactly four vertices
-    if (out_quad_vertices_ndc.size() != 4)
-    {
+    if (out_quad_vertices_ndc.size() != 4) {
         ROS_ERROR("[xmlLoadHMAT] Loaded vector is wrong size for XML: Expected[4] Actual[%d] Projector[%d] File[%s]",
                   out_quad_vertices_ndc.size(), proj_ind, file_path.c_str());
         return -1;
@@ -2056,19 +1819,16 @@ int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_nd
     return 0;
 }
 
-int checkHMAT(const cv::Mat &_H)
-{
+int checkHMAT(const cv::Mat &_H) {
     // Check if the input matrix is 3x3
-    if (_H.empty() || _H.rows != 3 || _H.cols != 3)
-    {
+    if (_H.empty() || _H.rows != 3 || _H.cols != 3) {
         ROS_ERROR("[updateTexture] Homography matrix size error: Size[%d][%d]", _H.rows, _H.cols);
         return -1;
     }
 
     // Check for a non-singular matrix
     double det = cv::determinant(_H);
-    if (fabs(det) < std::numeric_limits<double>::epsilon())
-    {
+    if (fabs(det) < std::numeric_limits<double>::epsilon()) {
         ROS_ERROR("Homography matrix is singular or near-singular with determinant %.6f", det);
         return -1;
     }
@@ -2076,45 +1836,35 @@ int checkHMAT(const cv::Mat &_H)
     return 0;
 }
 
-int checkQuadVertices(const std::vector<cv::Point2f> &quad_vertices)
-{
+int checkQuadVertices(const std::vector<cv::Point2f> &quad_vertices) {
 
     // Check if the input vector has exactly 4 vertices
-    if (quad_vertices.size() != 4)
-        return -1;
+    if (quad_vertices.size() != 4) return -1;
 
     // Check if any three points are collinear; for a valid quadrilateral, no three points should be collinear
-    for (int i = 0; i < 4; ++i)
-    {
+    for (int i = 0; i < 4; ++i) {
         cv::Point2f p1 = quad_vertices[i];
         cv::Point2f p2 = quad_vertices[(i + 1) % 4];
         cv::Point2f p3 = quad_vertices[(i + 2) % 4];
         float area = p1.x * (p2.y - p3.y) + p2.x * (p3.y - p1.y) + p3.x * (p1.y - p2.y);
-        if (std::abs(area) < 1e-5)
-            return -2; // The points are collinear
+        if (std::abs(area) < 1e-5) return -2; // The points are collinear
     }
     return 0;
 }
 
-std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &quad_vertices_ndc, int window_width_pxl, int window_height_pxl, bool do_y_invert)
-{
-
+std::vector<cv::Point2f> quadVertNdc2Pxl(const std::vector<cv::Point2f> &quad_vertices_ndc, int window_width_pxl, int window_height_pxl, bool do_y_invert) {
     std::vector<cv::Point2f> quad_vertices_pxl;
     quad_vertices_pxl.reserve(quad_vertices_ndc.size());
 
-    for (const auto &vertex : quad_vertices_ndc)
-    {
+    for (const auto &vertex : quad_vertices_ndc) {
         // Convert x point values from NDC to pixel coordinates
         float x_pixel = (vertex.x + 1.0f) * (window_width_pxl / 2.0f);
 
-        // Convet y points
         float y_pixel;
-        if (!do_y_invert)
-            // Convet y points but keep y-axis direction the same
-            y_pixel = (vertex.y + 1.0f) * (window_height_pxl / 2.0f);
-        else
-            // Invert the y-axis direction
-            y_pixel = (1.0f - vertex.y) * ((float)window_height_pxl / 2.0f);
+        if (!do_y_invert) y_pixel = (vertex.y + 1.0f) * (window_height_pxl / 2.0f);
+        // Convert y points but keep y-axis direction the same
+        else y_pixel = (1.0f - vertex.y) * ((float)window_height_pxl / 2.0f);
+        // Invert the y-axis direction
 
         // Store values
         quad_vertices_pxl.emplace_back(x_pixel, y_pixel);
@@ -2128,18 +1878,14 @@ std::vector<cv::Point2f> quadVertPxl2Ndc(const std::vector<cv::Point2f> &quad_ve
     std::vector<cv::Point2f> quad_vertices_ndc;
     quad_vertices_ndc.reserve(quad_vertices_pxl.size());
 
-    for (const auto &vertex : quad_vertices_pxl)
-    {
+    for (const auto &vertex : quad_vertices_pxl) {
         // Convert x point values from pixel to NDC coordinates
         float x_ndc = (vertex.x / (window_width_pxl / 2.0f)) - 1.0f;
 
         // Convert y point values from pixel to NDC coordinates
-        // Convet y points
         float y_ndc;
-        if (!do_y_invert)
-            y_ndc = (vertex.y / (window_height_pxl / 2.0f)) - 1.0f;
-        else
-            y_ndc = 1.0f - (vertex.y / (window_height_pxl / 2.0f));
+        if (!do_y_invert) y_ndc = (vertex.y / (window_height_pxl / 2.0f)) - 1.0f;
+        else y_ndc = 1.0f - (vertex.y / (window_height_pxl / 2.0f));
 
         // Store values
         quad_vertices_ndc.emplace_back(x_ndc, y_ndc);
@@ -2150,14 +1896,12 @@ std::vector<cv::Point2f> quadVertPxl2Ndc(const std::vector<cv::Point2f> &quad_ve
 
 int computeHomographyMatrix(const std::vector<cv::Point2f> &source_vertices,
                             const std::vector<cv::Point2f> &target_vertices,
-                            cv::Mat &out_H)
-{
+                            cv::Mat &out_H) {
     int status;
 
     // Check that the source plane vertices are valid
     status = checkQuadVertices(source_vertices);
-    if (status < 0)
-    {
+    if (status < 0) {
         ROS_ERROR("[computeHomographyMatrix] Source Plane Vertices[%d] Invalid: %s",
                   source_vertices.size(), status == -1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
         return -1;
@@ -2165,8 +1909,7 @@ int computeHomographyMatrix(const std::vector<cv::Point2f> &source_vertices,
 
     // Check that the target plane vertices are valid
     status = checkQuadVertices(target_vertices);
-    if (status < 0)
-    {
+    if (status < 0) {
         ROS_ERROR("[computeHomographyMatrix] Target Plane Vertices[%d] Invalid: %s",
                   target_vertices.size(), status == -1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
         return -1;
@@ -2176,8 +1919,7 @@ int computeHomographyMatrix(const std::vector<cv::Point2f> &source_vertices,
     cv::Mat H = cv::findHomography(source_vertices, target_vertices);
 
     // Check for valid homography matrix
-    if (H.empty())
-    {
+    if (H.empty()) {
         ROS_ERROR("[computeHomographyMatrix] Failed to Compute Homography Matrix");
         return -1;
     }
@@ -2193,35 +1935,30 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
 {
     out_img_mat_vec.clear(); // Ensure the output vector is empty before starting
     int img_cnt = 0;
-    for (const std::string &img_path : img_paths_vec)
-    {
+    for (const std::string &img_path : img_paths_vec) {
         // Load image using OpenCV
         cv::Mat img = cv::imread(img_path, cv::IMREAD_UNCHANGED);
 
         // Check if image is loaded successfully
-        if (img.empty())
-        {
+        if (img.empty()) {
             ROS_ERROR("[loadImgMat] Failed to load image: Path[%s]", img_path.c_str());
             return -1;
         }
 
         // If the image does not have an alpha channel (less than 4 channels), add one
-        if (img.channels() != 4)
-        {
+        if (img.channels() != 4) {
             // Create a new image with an alpha channel (4 channels)
             cv::Mat img_with_alpha;
             cv::Mat alpha = cv::Mat(img.size(), CV_8UC1, cv::Scalar(255)); // Fully opaque alpha channel
 
             // Merge the original image with the alpha channel
-            if (img.channels() == 3)
-            {
+            if (img.channels() == 3) {
                 std::vector<cv::Mat> channels;
                 cv::split(img, channels);            // Split the BGR channels
                 channels.push_back(alpha);           // Add the alpha channel
                 cv::merge(channels, img_with_alpha); // Merge channels into a 4-channel image
             }
-            else
-            {
+            else {
                 ROS_ERROR("[loadImgMat] Image must include at least 3 channels: Channels[%d] Path[%s]", img.channels(), img_path.c_str());
                 return -1;
             }
@@ -2231,8 +1968,7 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
 
         // Determine depth
         std::string depth_str;
-        switch (img.depth())
-        {
+        switch (img.depth()) {
         case CV_8U:
             depth_str = "CV_8U";
             break;
@@ -2276,15 +2012,13 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
 int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img)
 {
     // Check if images are loaded successfully
-    if (out_base_img.empty() || mask_img.empty())
-    {
+    if (out_base_img.empty() || mask_img.empty()) {
         ROS_ERROR("[mergeImgMat] Error: Could not read one or both images.");
         return -1;
     }
 
     // Check dimensions
-    if (out_base_img.size() != mask_img.size())
-    {
+    if (out_base_img.size() != mask_img.size()) {
         ROS_ERROR("[mergeImgMat] Error: Image dimensions do not match. "
                   "Base image(%d, %d), Mask image(%d, %d)",
                   out_base_img.cols, out_base_img.rows,
@@ -2293,36 +2027,29 @@ int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img)
     }
 
     // Loop through each pixel
-    for (int y = 0; y < out_base_img.rows; ++y)
-    {
-        for (int x = 0; x < out_base_img.cols; ++x)
-        {
+    for (int y = 0; y < out_base_img.rows; ++y) {
+        for (int x = 0; x < out_base_img.cols; ++x) {
             const cv::Vec4b &base_pixel = out_base_img.at<cv::Vec4b>(y, x);
             const cv::Vec4b &mask_pixel = mask_img.at<cv::Vec4b>(y, x);
 
             // If the alpha channel of the mask pixel is not fully transparent, overlay it
             if (mask_pixel[3] != 0)
-            {
                 out_base_img.at<cv::Vec4b>(y, x) = mask_pixel;
-            }
         }
     }
 
     return 0;
 }
 
-int warpImgMat(cv::Mat img_mat, cv::Mat _H, cv::Mat &out_img_mat)
-{
+int warpImgMat(cv::Mat img_mat, cv::Mat _H, cv::Mat &out_img_mat) {
     // Check that the input image is valid
-    if (img_mat.empty())
-    {
+    if (img_mat.empty()) {
         ROS_ERROR("[warpImgMat] Input image is empty");
         return -1;
     }
 
     // Get homography matrix for this wall
-    if (checkHMAT(_H) < 0)
-    {
+    if (checkHMAT(_H) < 0) {
         ROS_ERROR("[warpImgMat] Homography matrix error");
         return -1;
     }

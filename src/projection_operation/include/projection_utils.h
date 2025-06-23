@@ -847,8 +847,7 @@ std::string RUNTIME_IMAGE_PATH = GLB_IMAGE_TOP_DIR_PATH + "/runtime";
  * @note This list needs to match that used in:
  * omniroute_ubuntu_ws\src\omniroute_operation\src\shared_utils\projection_operation.py
  */
-//leave the first bracket empty. Let the compiler infer the size. This way it's safer — no risk of mismatch between declared size and number of initializers.
-const char WALL_IMAGE_FILE_NAMES[][30] = {
+std::vector<std::string> WALL_IMAGE_FILE_NAMES = {
     "w_black",
     "w_square",
     "w_circle",
@@ -872,13 +871,13 @@ const char WALL_IMAGE_FILE_NAMES[][30] = {
  * @note This list needs to match that used in:
  * omniroute_ubuntu_ws\src\omniroute_operation\src\shared_utils\projection_operation.py
  */
-const char FLOOR_IMAGE_FILE_NAMES[][30] = {
+std::vector<std::string> FLOOR_IMAGE_FILE_NAMES = {
     "f_black",
     "f_green",
     "f_pattern_0",
     "f_pattern_1",
     "f_pattern_2",
-    "f_white",
+    "f_white"
 };
 
 // Number of rows and columns in the maze grid

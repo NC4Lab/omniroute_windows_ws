@@ -154,8 +154,8 @@ std::vector<MazeRenderContext> PROJ_CTX_VEC(GLB_NUM_PROJ);
 std::vector<cv::Point> winOffsetVec;
 
 // Vectors to store the raw loaded images in cv::Mat format
-std::vector<cv::Mat> wallRawImgMatVec;  // Vector of indevidual wall image texture matrices
-std::vector<cv::Mat> floorRawImgMatVec; // Vector of indevidual floor image texture matrices
+std::vector<cv::Mat> wallRawImgMatVec;  // Vector of individual wall image texture matrices
+std::vector<cv::Mat> floorRawImgMatVec; // Vector of individual floor image texture matrices
 
 /**
  * @brief Array to store the image of all blank walls to use as the
@@ -234,6 +234,16 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm 
 void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSComm *out_RC);
 
 /**
+ * @brief Checks if the ROS node is still running.
+ * 
+ * @details
+ * This function checks if the ROS node is still running and throws an error if it is not
+ * 
+ * @param caller The name of the function that is calling this check, used for logging.
+ */
+void checkROSOk(std::string caller);
+
+/**
  * @brief Initializes the ROS subscriber for the "projection_cmd" topic within the given ROSComm structure.
  *
  * @details
@@ -245,7 +255,7 @@ void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSCom
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int initSubscriberROS(ROSComm &out_RC);
+int initSubscribersROS(ROSComm &out_RC);
 
 /**
  * @brief Processes commands received from the "projection_cmd" topic.
