@@ -1040,9 +1040,10 @@ int promptForProjectorNumber();
  * - `cp_p0.xml`
  *
  * @param proj_ind Index/number of the projector to load data for.
- * @param[out] out_path Reference to string that will store the path to the XML file.
+ * 
+ * @return A string containing the formatted file name for the XML file.
  */
-void xmlFrmtFileStringsControlPoints(int proj_ind, std::string &out_path);
+std::string xmlFileNameControlPoints(int proj_ind);
 
 /**
  * @brief Formats the file name for the XML file for homography matrices.
@@ -1053,11 +1054,10 @@ void xmlFrmtFileStringsControlPoints(int proj_ind, std::string &out_path);
  * - `hmats_p0.xml`
  *
  * @param proj_ind Index/number of the projector to load data for.
- * @param[out] out_path Reference to string that will store the path to the XML file.
+ * 
+ * @return A string containing the formatted file name for the XML file.
  */
-void xmlFrmtFileStringsHmat(
-    int proj_ind,
-    std::string &out_path);
+std::string xmlFileNameHmat(int proj_ind);
 
 /**
  * @brief Formats the file name for the XML file for maze vertices matrices.
@@ -1066,9 +1066,9 @@ void xmlFrmtFileStringsHmat(
  * Format:
  * - `maze_vertices.xml`
  *
- * @param[out] out_path Reference to string that will store the path to the XML file.
+ * @return A string containing the formatted file name for the XML file.
  */
-void xmlFrmtFileStringsVertices(std::string &out_path);
+std::string xmlFileNameVertices();
 
 /**
  * @brief Save an array of control points to an XML file.
@@ -1299,5 +1299,13 @@ int warpImgMat(
     cv::Mat img_mat,
     cv::Mat _H,
     cv::Mat &out_img_mat);
+
+/** * @brief Converts an OpenCV Mat depth to a string representation.
+ * 
+ * @param depth The depth of the OpenCV Mat (e.g., CV_8U, CV_32F).
+ *
+ * @return A string representation of the Mat depth.
+ */ 
+std::string getMatDepthString(int depth);
 
 #endif

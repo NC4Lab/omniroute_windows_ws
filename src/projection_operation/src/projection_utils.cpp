@@ -1422,36 +1422,21 @@ int promptForProjectorNumber() {
     }
 }
 
-void xmlFrmtFileStringsControlPoints(int proj_ind, std::string &out_path) {
-    // Format the output tag
-    out_path =
-        GLB_CONFIG_DIR_PATH + "/" +
-        "cp" +
-        "_p" + std::to_string(proj_ind) +
-        ".xml";
+std::string xmlFileNameControlPoints(int proj_ind) {
+    return GLB_CONFIG_DIR_PATH + "/cp_p" + std::to_string(proj_ind) + ".xml";
 }
 
-void xmlFrmtFileStringsHmat(int proj_ind, std::string &out_path) {
-    // Format the output tag
-    out_path =
-        GLB_CONFIG_DIR_PATH + "/" +
-        "hmats" +
-        "_p" + std::to_string(proj_ind) +
-        ".xml";
+std::string xmlFileNameHmat(int proj_ind) {
+    return GLB_CONFIG_DIR_PATH + "/hmats_p" + std::to_string(proj_ind) + ".xml";
 }
 
-void xmlFrmtFileStringsVertices(std::string &out_path) {
-    // Format the output tag
-    out_path =
-        GLB_CONFIG_DIR_PATH + "/" +
-        "maze_vertices" +
-        ".xml";
+std::string xmlFileNameVertices() {
+    return GLB_CONFIG_DIR_PATH + "/maze_vertices.xml";
 }
 
 int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind, CalibrationMode _CAL_MODE, int cp_ind) {
     // Define file path and calibration mode string
-    std::string file_path;
-    xmlFrmtFileStringsControlPoints(proj_ind, file_path); // Assume you have a similar function to set file path
+    std::string file_path = xmlFileNameControlPoints(proj_ind);
     std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
 
     // Attempt to load the XML file
@@ -1519,8 +1504,7 @@ int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind,
 
 int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, std::array<cv::Point2f, 4> &out_CP_ARR) {
     // Define file path and calibration mode string
-    std::string file_path;
-    xmlFrmtFileStringsControlPoints(proj_ind, file_path); // Assume you have a similar function to set file path
+    std::string file_path = xmlFileNameControlPoints(proj_ind);
     std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
 
     // Attempt to load the XML file
@@ -1581,8 +1565,7 @@ int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, st
 
 int xmlSaveHMAT(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col) {
     // Get the full file path and attribute string for the given calibration mode
-    std::string file_path;
-    xmlFrmtFileStringsHmat(proj_ind, file_path);
+    std::string file_path = xmlFileNameHmat(proj_ind);
     std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
 
     // Attempt to load the XML file
@@ -1646,8 +1629,7 @@ int xmlSaveHMAT(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int 
 
 int xmlLoadHMAT(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col, cv::Mat &out_H) {
     // Get the full file path and attribute string for the given calibration mode
-    std::string file_path;
-    xmlFrmtFileStringsHmat(proj_ind, file_path);
+    std::string file_path = xmlFileNameHmat(proj_ind);
     std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
 
     // Attempt to load the XML file
@@ -1694,7 +1676,7 @@ int xmlLoadHMAT(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_
 
     // Load the matrix data
     std::vector<double> matrix_data;
-    for (pugi::xml_node row_node = hmat_node.child("row"); row_node; row_node = row_node.next_sibling("row")) {
+    for (pugi::xml_node row_node = hmat_node.child("row"); row_node; row_node = row_node.next_sibling("row")) 
         for (pugi::xml_node cell_node = row_node.child("cell"); cell_node; cell_node = cell_node.next_sibling("cell"))
             matrix_data.push_back(std::stod(cell_node.child_value()));
 
@@ -1712,8 +1694,7 @@ int xmlLoadHMAT(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_
 
 int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int proj_ind) {
     // Define file path
-    std::string file_path;
-    xmlFrmtFileStringsVertices(file_path);
+    std::string file_path = xmlFileNameVertices();
 
     // Load or create an XML document
     pugi::xml_document doc;
@@ -1761,8 +1742,7 @@ int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int proj_
 int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc)
 {
     // Define file path
-    std::string file_path;
-    xmlFrmtFileStringsVertices(file_path);
+    std::string file_path = xmlFileNameVertices();
 
     // Load the XML document
     pugi::xml_document doc;
@@ -1931,13 +1911,27 @@ int computeHomographyMatrix(const std::vector<cv::Point2f> &source_vertices,
     return 0;
 }
 
+std::string getMatDepthString(int depth) {
+    switch (depth) {
+    case CV_8U: return "CV_8U";
+    case CV_8S: return "CV_8S";
+    case CV_16U: return "CV_16U";
+    case CV_16S: return "CV_16S";
+    case CV_32S: return "CV_32S";
+    case CV_32F: return "CV_32F";
+    case CV_64F: return "CV_64F";
+    default: return "Unknown Depth";
+    }
+}
+
 int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Mat> &out_img_mat_vec)
 {
     out_img_mat_vec.clear(); // Ensure the output vector is empty before starting
     int img_cnt = 0;
+    cv::Mat img;
     for (const std::string &img_path : img_paths_vec) {
         // Load image using OpenCV
-        cv::Mat img = cv::imread(img_path, cv::IMREAD_UNCHANGED);
+        img = cv::imread(img_path, cv::IMREAD_UNCHANGED);
 
         // Check if image is loaded successfully
         if (img.empty()) {
@@ -1948,7 +1942,6 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
         // If the image does not have an alpha channel (less than 4 channels), add one
         if (img.channels() != 4) {
             // Create a new image with an alpha channel (4 channels)
-            cv::Mat img_with_alpha;
             cv::Mat alpha = cv::Mat(img.size(), CV_8UC1, cv::Scalar(255)); // Fully opaque alpha channel
 
             // Merge the original image with the alpha channel
@@ -1956,44 +1949,16 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
                 std::vector<cv::Mat> channels;
                 cv::split(img, channels);            // Split the BGR channels
                 channels.push_back(alpha);           // Add the alpha channel
-                cv::merge(channels, img_with_alpha); // Merge channels into a 4-channel image
+                cv::merge(channels, img); // Merge channels into a 4-channel image
             }
             else {
                 ROS_ERROR("[loadImgMat] Image must include at least 3 channels: Channels[%d] Path[%s]", img.channels(), img_path.c_str());
                 return -1;
             }
-
-            img = img_with_alpha; // Use the new image with the alpha channel
         }
 
         // Determine depth
-        std::string depth_str;
-        switch (img.depth()) {
-        case CV_8U:
-            depth_str = "CV_8U";
-            break;
-        case CV_8S:
-            depth_str = "CV_8S";
-            break;
-        case CV_16U:
-            depth_str = "CV_16U";
-            break;
-        case CV_16S:
-            depth_str = "CV_16S";
-            break;
-        case CV_32S:
-            depth_str = "CV_32S";
-            break;
-        case CV_32F:
-            depth_str = "CV_32F";
-            break;
-        case CV_64F:
-            depth_str = "CV_64F";
-            break;
-        default:
-            depth_str = "Unknown";
-            break;
-        }
+        std::string depth_str = getMatDepthString(img.depth());
 
         // Store the loaded image in the output vector
         out_img_mat_vec.push_back(img);

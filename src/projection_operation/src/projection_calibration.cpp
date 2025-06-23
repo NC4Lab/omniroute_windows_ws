@@ -533,7 +533,7 @@ void appInitFileXML() {
             for (int gr_i = 0; gr_i < grid_size && !isMonMissing; ++gr_i) {
                 for (int gc_i = 0; gc_i < grid_size && !isMonMissing; ++gc_i) {
                     // Check if the file exists
-                    xmlFrmtFileStringsHmat(proj_i, file_path);
+                    file_path = xmlFileNameHmat(proj_i);
                     if (!fileExists(file_path)) {
                         // Check if mon_i is already in mon_missing_vec
                         if (std::find(mon_missing_vec.begin(), mon_missing_vec.end(), proj_i) == mon_missing_vec.end()) {
