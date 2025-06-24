@@ -609,7 +609,6 @@ void appLoadAssets() {
             // Store floor homography matrices
             else if (xmlLoadHMAT(proj_ind, _CAL_MODE, 0, 0, FLOOR_HMAT_ARR[proj_ind]) < 0) // Load the homography matrix from XML
                 throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadHMAT");
-            }
         }
     }
 
