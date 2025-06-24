@@ -718,130 +718,112 @@ void appInitOpenGL() {
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
 }
 
-void printElapsedTime(double &lastTime, std::string msg) {
+double printElapsedTime(double &lastTime, std::string msg) {
     double currentTime = glfwGetTime();
     double deltaTime = currentTime - lastTime;
     lastTime = currentTime;
     ROS_INFO("%s: %f ms", msg.c_str(), deltaTime * 1000.0);
+    return currentTime;
 }
 
 void appMainLoop() {
-    int status = 0;
-    while (status == 0) {
+    // Initialize the last time for measuring elapsed time
+    double lastTime = glfwGetTime();
 
-        // --------------- Check State Flags ---------------
-        // Check if the window mode needs to be changed
-        if (F.change_window_mode) {
-            for (auto &projCtx : PROJ_CTX_VEC) {
-                int mon_ind = F.windows_set_to_proj ? I.proj_mon_vec[projCtx.windowInd] : I.starting_monitor;
-                if (projCtx.changeWindowDisplayMode(mon_ind, F.fullscreen_mode, winOffsetVec[projCtx.windowInd]) < 0)
-                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::changeWindowDisplayMode");
-            }
-        }
-
-        // Force to windows so thay are on top
-        if (F.force_window_focus) {
-            for (auto &projCtx : PROJ_CTX_VEC) {
-                if (projCtx.forceWindowFocus() < 0)
-                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::forceWindowFocus");
-            }
-        }
-
-        // TEST Simulate rat movement for testing
-        // simulateRatMovement(0.5f, 45.0f, RT);
-
-        // Recompute wall parameters and update wall image texture
-        if (F.update_textures) {
-            for (auto &projCtx : PROJ_CTX_VEC) {
-                cv::Mat img_mat = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
-
-                // Update floor image texture
-                if (updateFloorTexture(projCtx.windowInd,
-                                       floorRotatedImgMatVecArr[projCtx.windowInd][projFloorConfigIndex],
-                                       wallBlankImgMatArr[projCtx.windowInd],
-                                       FLOOR_HMAT_ARR,
-                                       img_mat))
-                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
-
-                // Update wall image texture
-                if (updateWallTexture(projCtx.windowInd,
-                                      wallRawImgMatVec,
-                                      PROJ_WALL_CONFIG_INDICES_4D,
-                                      WALL_HMAT_ARR,
-                                      true,
-                                      img_mat))
-                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
-
-                // Load the new texture
-                if (projCtx.loadMatTexture(img_mat) < 0)
-                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to load wall texture");
-            }
-        }
-
-        // Reset keybinding flags
-        F.change_window_mode = false;
-        F.update_textures = false;
-        F.force_window_focus = false;
-
-        // --------------- Handle Image Processing for Next Frame ---------------
+    // --------------- Check State Flags ---------------
+    // Check if the window mode needs to be changed
+    if (F.change_window_mode) {
         for (auto &projCtx : PROJ_CTX_VEC) {
-
-            // Prepare the frame for rendering (clear the back buffer)
-            if (projCtx.initWindowForDrawing() < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::initWindowForDrawing");
-
-            // Draw/update wall images
-            if (projCtx.drawTexture() < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawTexture");
-
-            // Draw/update rat mask marker
-            if (drawRatMask(RT, RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawRatMask");
-
-            // Swap buffers and poll events
-            if (projCtx.bufferSwapPoll() < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::bufferSwapPoll");
-
-            // Check if ROS shutdown
-            checkROSOk("appMainLoop");
-
-            // Get exit request status
-            status = status == 0 ? projCtx.checkExitRequest() : status;
-            if (status < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::checkExitRequest");
+            int mon_ind = F.windows_set_to_proj ? I.proj_mon_vec[projCtx.windowInd] : I.starting_monitor;
+            if (projCtx.changeWindowDisplayMode(mon_ind, F.fullscreen_mode, winOffsetVec[projCtx.windowInd]) < 0)
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::changeWindowDisplayMode");
         }
-
-        // Check for exit
-        if (status > 0) break;
-
-        // --------------- Handle ROS Messages and Operations ---------------
-
-        // Process a single round of callbacks for ROS messages
-        ros::spinOnce();
-
-        // Process ROS projection command messages
-        if (procProjCmdROS(RC) < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: procProjCmdROS");
-
-        // Process ROS projection image messages
-        if (procProjImgROS(RC) < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: procProjImgROS");
-
-        // Process ROS tracking position messages
-        if (procTrackMsgROS(RC, RT) < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: procTrackMsgROS");
-
-        // Sleep to maintain the loop rate
-        RC.loop_rate->sleep();
     }
 
-    // Check which condition caused the loop to exit
-    if (status == 1)
-        ROS_INFO("[projection_display:appMainLoop] Loop Terminated:  GLFW window should close");
-    else if (status == 2)
-        ROS_INFO("[projection_display:appMainLoop] Loop Terminated:  Escape key was pressed");
-    else
-        ROS_INFO("[projection_display:appMainLoop] Loop Terminated:  Reason unknown");
+    // Force to windows so thay are on top
+    if (F.force_window_focus) {
+        for (auto &projCtx : PROJ_CTX_VEC) {
+            if (projCtx.forceWindowFocus() < 0)
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::forceWindowFocus");
+        }
+    }
+
+    // TEST Simulate rat movement for testing
+    // simulateRatMovement(0.5f, 45.0f, RT);
+
+    // Recompute wall parameters and update wall image texture
+    if (F.update_textures) {
+        for (auto &projCtx : PROJ_CTX_VEC) {
+            cv::Mat img_mat = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
+
+            // Update floor image texture
+            if (updateFloorTexture(projCtx.windowInd,
+                                    floorRotatedImgMatVecArr[projCtx.windowInd][projFloorConfigIndex],
+                                    wallBlankImgMatArr[projCtx.windowInd],
+                                    FLOOR_HMAT_ARR,
+                                    img_mat))
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
+
+            // Update wall image texture
+            if (updateWallTexture(projCtx.windowInd,
+                                    wallRawImgMatVec,
+                                    PROJ_WALL_CONFIG_INDICES_4D,
+                                    WALL_HMAT_ARR,
+                                    true,
+                                    img_mat))
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
+
+            // Load the new texture
+            if (projCtx.loadMatTexture(img_mat) < 0)
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to load wall texture");
+        }
+    }
+
+    // Reset keybinding flags
+    F.change_window_mode = false;
+    F.update_textures = false;
+    F.force_window_focus = false;
+
+    // --------------- Handle image processing for each projector ---------------
+    for (auto &projCtx : PROJ_CTX_VEC) {
+        // Prepare the frame for rendering (clear the back buffer)
+        if (projCtx.initWindowForDrawing() < 0)
+            throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::initWindowForDrawing");
+
+        // Draw/update wall images
+        if (projCtx.drawTexture() < 0)
+            throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawTexture");
+
+        // Draw/update rat mask marker
+        if (drawRatMask(RT, RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
+            throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawRatMask");
+
+        // Swap buffers and poll events
+        if (projCtx.bufferSwapPoll() < 0)
+            throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::bufferSwapPoll");
+
+        // Check if ROS shutdown
+        checkROSOk("appMainLoop");
+
+        // Get exit request status
+        if (!projCtx.checkExitRequest()) continue;
+    }
+
+    // --------------- Handle ROS Messages and Operations ---------------
+    // Process a single round of callbacks for ROS messages
+    ros::spinOnce();
+
+    // Process ROS projection command messages
+    if (procProjCmdROS(RC) < 0) throw std::runtime_error("[appMainLoop] Error returned from: procProjCmdROS");
+
+    // Process ROS projection image messages
+    if (procProjImgROS(RC) < 0) throw std::runtime_error("[appMainLoop] Error returned from: procProjImgROS");
+
+    // Process ROS tracking position messages
+    if (procTrackMsgROS(RC, RT) < 0) throw std::runtime_error("[appMainLoop] Error returned from: procTrackMsgROS");
+
+    // Sleep to maintain the loop rate
+    RC.loop_rate->sleep();
 }
 
 void appCleanup() {
