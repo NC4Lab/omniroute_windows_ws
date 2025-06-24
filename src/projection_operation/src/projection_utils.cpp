@@ -1422,30 +1422,219 @@ int promptForProjectorNumber() {
     }
 }
 
-std::string xmlFileNameControlPoints(int proj_ind) {
-    return GLB_CONFIG_DIR_PATH + "/cp_p" + std::to_string(proj_ind) + ".xml";
+bool fileExists(const std::string &_file_path) {
+    std::ifstream file(_file_path);
+    return file.good();
 }
 
-std::string xmlFileNameHmat(int proj_ind) {
-    return GLB_CONFIG_DIR_PATH + "/hmats_p" + std::to_string(proj_ind) + ".xml";
+CalibrationXML::CalibrationXML() {
+    // Load the vertices XML file
+    fileNameVertices = GLB_CONFIG_DIR_PATH + "/maze_vertices.xml";
+    if (fileExists(fileNameVertices)) {
+        resultVertices = loadXMLDoc(fileNameVertices, docVertices);
+        if (!resultVertices) ROS_WARNING("[CalibrationXML::CalibrationXML] Failed to load vertices XML file: %s", fileNameVertices.c_str());
+    } 
+    else ROS_WARNING("[CalibrationXML] Vertices XML file does not exist at path: %s", fileNameVertices.c_str());
+
+    for (int i = 0; i < GLB_NUM_PROJ; ++i) {
+        // Load the homography matrix XML file for each projector
+        fileNameHMat[i] = GLB_CONFIG_DIR_PATH + "/hmats_p" + std::to_string(proj_ind) + ".xml";
+        if (fileExists(fileNameHMat[i])) {
+            resultHMat[i] = loadXMLDoc(fileNameHMat[i], docHMat[i]);
+            if (!resultHMat[i]) ROS_WARNING("[CalibrationXML::CalibrationXML] Failed to load homography matrix XML file: %s", fileNameHMat[i].c_str());
+        }
+        else ROS_WARNING("[CalibrationXML] Homography matrix XML file does not exist at path: %s", fileNameHMat[i].c_str());
+
+        // Load the control points XML file for each projector
+        fileNameControlPoints[i] = GLB_CONFIG_DIR_PATH + "/cp_p" + std::to_string(proj_ind) + ".xml";
+        if fileExists(fileNameControlPoints[i]) {
+            resultControlPoints[i] = loadXMLDoc(fileNameControlPoints[i], docControlPoints[i]);
+            if (!resultControlPoints[i]) ROS_WARNING("[CalibrationXML::CalibrationXML] Failed to load control points XML file: %s", fileNameControlPoints[i].c_str());
+        }
+        else ROS_WARNING("[CalibrationXML] Control points XML file does not exist at path: %s", fileNameControlPoints[i].c_str());
+    }
 }
 
-std::string xmlFileNameVertices() {
-    return GLB_CONFIG_DIR_PATH + "/maze_vertices.xml";
+CalibrationXML::~CalibrationXML() {
+    // Destructor can be used for cleanup if needed
 }
 
-int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind, CalibrationMode _CAL_MODE, int cp_ind) {
-    // Define file path and calibration mode string
-    std::string file_path = xmlFileNameControlPoints(proj_ind);
-    std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
-
-    // Attempt to load the XML file
+int CalibrationXML::loadXMLDoc(std::string &file_path, pugi::xml_document &doc) {
     pugi::xml_document doc;
     pugi::xml_parse_result result = doc.load_file(file_path.c_str());
+    if (!result) ROS_ERROR("[CalibrationXML::loadXMLDoc] Failed to load XML File[%s]", file_path.c_str());
+    return result ? 0 : -1;
+}
+
+int CalibrationXML::loadHMat(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col, cv::Mat &out_H) {
+    // Check if the projector index is valid
+    if (proj_ind < 0 || proj_ind >= GLB_NUM_PROJ) {
+        ROS_ERROR("[CalibrationXML::loadHMat] Invalid projector index: %d", proj_ind);
+        return -1;
+    }
+
+    // Check if the file was loaded successfully
+    if (!resultHMat[proj_ind]) {
+        ROS_ERROR("[CalibrationXML::loadHMat] Homography matrix XML file for projector %d not loaded successfully.", proj_ind);
+        return -1;
+    }
+
+    // Look for the calibration node with the matching mode attribute
+    std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
+    pugi::xml_node calibration_node;
+    for (pugi::xml_node node = docHMat[proj_ind].child("Root").child("calibration");
+         node; node = node.next_sibling("calibration")) {
+        if (node.attribute("mode").value() == cal_mode_str) {
+            calibration_node = node;
+            break;
+        }
+    }
+
+    if (!calibration_node) {
+        ROS_ERROR("[CalibrationXML::loadHMat] No calibration node[%s] found in XML File[%s]", 
+            cal_mode_str.c_str(), fileNameHMat[proj_ind].c_str());
+        return -1;
+    }
+
+    // Search for an HMAT node with the same grid_row and grid_col
+    pugi::xml_node hmat_node;
+    for (pugi::xml_node node = calibration_node.child("HMAT");
+         node; node = node.next_sibling("HMAT")) {
+        if (node.attribute("grid_row").as_int() == grid_row &&
+            node.attribute("grid_col").as_int() == grid_col) {
+            hmat_node = node;
+            break;
+        }
+    }
+
+    if (!hmat_node) {
+        ROS_ERROR("[CalibrationXML::loadHMat] No HMAT with grid_row[%d] and grid_col[%d] found in calibration mode[%s] for XML File[%s]",
+                  grid_row, grid_col, cal_mode_str.c_str(), fileNameHMat[proj_ind].c_str());
+        return -1;
+    }
+
+    // Load the matrix data
+    std::vector<double> matrix_data;
+    for (pugi::xml_node row_node = hmat_node.child("row"); row_node; row_node = row_node.next_sibling("row")) 
+        for (pugi::xml_node cell_node = row_node.child("cell"); cell_node; cell_node = cell_node.next_sibling("cell"))
+            matrix_data.push_back(std::stod(cell_node.child_value()));
+
+    // Ensure the matrix data is the right size for a homography matrix
+    if (matrix_data.size() != 9) {
+        ROS_ERROR("[xmlLoadHmat] Incorrect number of elements in HMAT. Expected 9, got %zu", matrix_data.size());
+        return -1;
+    }
+
+    // Assign the matrix data to the output matrix
+    out_H = cv::Mat(3, 3, CV_64F, &matrix_data[0]).clone(); // Clone to ensure continuous memory
+
+    return 0;
+}
+
+int CalibrationXML::saveVertices(int proj_ind, const std::vector<cv::Point2f> &quad_vertices_ndc) {
+    // Check if the projector index is valid
+    if (proj_ind < 0 || proj_ind >= GLB_NUM_PROJ) {
+        ROS_ERROR("[CalibrationXML::saveVertices] Invalid projector index: %d", proj_ind);
+        return -1;
+    }
+
+    pugi::xml_node root_node = docVertices.child("Root");
+    if (!resultVertices || !root_node) root_node = docVertices.append_child("Root");
+
+    // Search for an existing monitor node with the same index
+    pugi::xml_node monitor_node;
+    for (pugi::xml_node node = root_node.child("projector"); node; node = node.next_sibling("projector")) {
+        if (node.attribute("index").as_int() == proj_ind) {
+            monitor_node = node;
+            break;
+        }
+    }
+
+    // If a monitor node with the index is not found, add it
+    if (!monitor_node) {
+        monitor_node = root_node.append_child("projector");
+        monitor_node.append_attribute("index") = proj_ind;
+    }
+    else {
+        // Clear existing vertices if the monitor node is already present
+        while (monitor_node.first_child()) monitor_node.remove_child(monitor_node.first_child());
+    }
+
+    // Add vertices to the monitor node
+    for (const auto &vertex : quad_vertices_ndc) {
+        pugi::xml_node vertex_node = monitor_node.append_child("vertex");
+        vertex_node.append_child("coord").text().set(vertex.x);
+        vertex_node.append_child("coord").text().set(vertex.y);
+    }
+
+    // Save the document to the specified file path
+    if (!docVertices.save_file(fileNameVertices.c_str())) {
+        ROS_ERROR("[CalibrationXML::saveVertices] Failed to save vertices to XML File[%s]", fileNameVertices.c_str());
+        return -1;
+    }
+
+    return 0;
+}
+
+int CalibrationXML::loadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc)
+{
+    if (!resultVertices) {
+        ROS_ERROR("[loadVertices] Failed to load vertices from XML File[%s]", fileNameVertices.c_str());
+        return -1;
+    }
+
+    // Search for the monitor node with the same index
+    pugi::xml_node monitor_node;
+    for (pugi::xml_node node = docVertices.child("Root").child("projector"); node; node = node.next_sibling("projector")) {
+        if (node.attribute("index").as_int() == proj_ind) {
+            monitor_node = node;
+            break;
+        }
+    }
+
+    if (!monitor_node) {
+        ROS_ERROR("[loadVertices] No monitor node[%d] found in XML File[%s]", proj_ind, fileNameVertices.c_str());
+        return -1;
+    }
+
+    // Clear existing data in the output vector
+    out_quad_vertices_ndc.clear();
+
+    // Load the vertices from the monitor node
+    for (pugi::xml_node vertex_node = monitor_node.child("vertex"); vertex_node; vertex_node = vertex_node.next_sibling("vertex")) {
+        cv::Point2f vertex;
+        pugi::xml_node coord_node = vertex_node.child("coord");
+        if (coord_node) {
+            vertex.x = coord_node.text().as_float();
+            coord_node = coord_node.next_sibling("coord");
+        }
+
+        if (coord_node)
+            vertex.y = coord_node.text().as_float();
+        else {
+            ROS_ERROR("[loadVertices] Incomplete vertex data in XML File[%s]", fileNameVertices.c_str());
+            return -1; // Handle error: incomplete vertex data
+        }
+
+        out_quad_vertices_ndc.push_back(vertex);
+    }
+
+    // Check if the vector has exactly four vertices
+    if (out_quad_vertices_ndc.size() != 4) {
+        ROS_ERROR("[loadVertices] Loaded vector is wrong size for XML: Expected[4] Actual[%d] Projector[%d] File[%s]",
+                  out_quad_vertices_ndc.size(), proj_ind, fileNameVertices.c_str());
+        return -1;
+    }
+
+    return 0;
+}
+
+int CalibrationXML::saveControlPoints(int proj_ind, const std::array<cv::Point2f, 4> &CP_ARR, CalibrationMode _CAL_MODE, int cp_ind) {
+    std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
 
     // Check if the file exists and has a proper Root node
-    pugi::xml_node root_node = doc.child("Root");
-    if (!result || !root_node) root_node = doc.append_child("Root");
+    pugi::xml_node root_node = docControlPoints[proj_ind].child("Root");
+    if (!resultControlPoints[proj_ind] || !root_node) root_node = docControlPoints[proj_ind].append_child("Root");
 
     // Look for the calibration node with the matching mode attribute
     pugi::xml_node calibration_node;
@@ -1494,32 +1683,26 @@ int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind,
     }
 
     // Save the document
-    if (!doc.save_file(file_path.c_str())) {
-        ROS_ERROR("[xmlSaveControlPoints] Failed to save control points to XML File[%s]", file_path.c_str());
+    if (!docControlPoints[proj_ind].save_file(fileNameControlPoints[proj_ind].c_str())) {
+        ROS_ERROR("[CalibrationXML::saveControlPoints] Failed to save control points to XML File[%s]", fileNameControlPoints[proj_ind].c_str());
         return -1;
     }
 
     return 0;
 }
 
-int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, std::array<cv::Point2f, 4> &out_CP_ARR) {
-    // Define file path and calibration mode string
-    std::string file_path = xmlFileNameControlPoints(proj_ind);
+int CalibrationXML::loadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, std::array<cv::Point2f, 4> &out_CP_ARR) {
     std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
 
-    // Attempt to load the XML file
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(file_path.c_str());
-
     // Check if the file was loaded successfully
-    if (!result) {
-        ROS_ERROR("[xmlLoadControlPoints] Failed to load control points from XML File[%s]", file_path.c_str());
+    if (!resultControlPoints[proj_ind]) {
+        ROS_ERROR("[CalibrationXML::loadControlPoints] Failed to load control points from XML File[%s]", fileNameControlPoints[proj_ind].c_str());
         return -1;
     }
 
     // Look for the calibration node with the matching mode attribute
     pugi::xml_node calibration_node;
-    for (pugi::xml_node node = doc.child("Root").child("calibration");
+    for (pugi::xml_node node = docControlPoints[proj_ind].child("Root").child("calibration");
          node; node = node.next_sibling("calibration")) {
         if (node.attribute("mode").value() == cal_mode_str) {
             calibration_node = node;
@@ -1528,7 +1711,8 @@ int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, st
     }
 
     if (!calibration_node) {
-        ROS_ERROR("[xmlLoadControlPoints] No calibration node[%s] found in XML File[%s]", cal_mode_str.c_str(), file_path.c_str());
+        ROS_ERROR("[CalibrationXML::loadControlPoints] No calibration node[%s] found in XML File[%s]", 
+            cal_mode_str.c_str(), fileNameControlPoints[proj_ind].c_str());
         return -1;
     }
 
@@ -1543,8 +1727,8 @@ int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, st
     }
 
     if (!cp_node) {
-        ROS_ERROR("[xmlLoadControlPoints] No CP node with cp_index[%d] found in calibration mode[%s] for XML File[%s]",
-                  cp_ind, cal_mode_str.c_str(), file_path.c_str());
+        ROS_ERROR("[CalibrationXML::loadControlPoints] No CP node with cp_index[%d] found in calibration mode[%s] for XML File[%s]",
+                  cp_ind, cal_mode_str.c_str(), fileNameControlPoints[proj_ind].c_str());
         return -1;
     }
 
@@ -1556,26 +1740,22 @@ int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, st
     }
 
     if (i != 4) { // Ensure that exactly 4 control points are loaded
-        ROS_ERROR("[xmlLoadControlPoints] Incorrect number of control points in CP. Expected 4, got %d", i);
+        ROS_ERROR("[CalibrationXML::loadControlPoints] Incorrect number of control points in CP. Expected 4, got %d", i);
         return -1;
     }
 
     return 0;
 }
 
-int xmlSaveHMAT(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col) {
+int CalibrationXML::saveHmat(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col) {
     // Get the full file path and attribute string for the given calibration mode
-    std::string file_path = xmlFileNameHmat(proj_ind);
     std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
 
-    // Attempt to load the XML file
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(file_path.c_str());
-
     // Check if the file exists and has a proper Root node
-    pugi::xml_node root_node = doc.child("Root");
+    pugi::xml_node root_node = docHMat[proj_ind].child("Root");
     // If not, create a new Root node
-    if (!result || !root_node) root_node = doc.append_child("Root"); 
+    if (!resultHMat[proj_ind] || !root_node)
+        root_node = docHMat[proj_ind].append_child("Root"); 
 
     // Look for the calibration node with the matching mode attribute
     pugi::xml_node calibration_node;
@@ -1619,180 +1799,8 @@ int xmlSaveHMAT(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int 
     }
 
     // Save the document to the specified file path
-    if (!doc.save_file(file_path.c_str())) {
-        ROS_ERROR("[xmlSaveHMAT] Failed to save homography matrix to XML File[%s]", file_path.c_str());
-        return -1;
-    }
-
-    return 0;
-}
-
-int xmlLoadHMAT(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col, cv::Mat &out_H) {
-    // Get the full file path and attribute string for the given calibration mode
-    std::string file_path = xmlFileNameHmat(proj_ind);
-    std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
-
-    // Attempt to load the XML file
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(file_path.c_str());
-
-    // Check if the file was loaded successfully
-    if (!result) {
-        ROS_ERROR("[xmlLoadHMAT] Failed to load homography matrix from XML File[%s]", file_path.c_str());
-        return -1;
-    }
-
-    // Look for the calibration node with the matching mode attribute
-    pugi::xml_node calibration_node;
-    for (pugi::xml_node node = doc.child("Root").child("calibration");
-         node; node = node.next_sibling("calibration")) {
-        if (node.attribute("mode").value() == cal_mode_str) {
-            calibration_node = node;
-            break;
-        }
-    }
-
-    if (!calibration_node) {
-        ROS_ERROR("[xmlLoadHMAT] No calibration node[%s] found in XML File[%s]", cal_mode_str.c_str(), file_path.c_str());
-        return -1;
-    }
-
-    // Search for an HMAT node with the same grid_row and grid_col
-    pugi::xml_node hmat_node;
-    for (pugi::xml_node node = calibration_node.child("HMAT");
-         node; node = node.next_sibling("HMAT")) {
-        if (node.attribute("grid_row").as_int() == grid_row &&
-            node.attribute("grid_col").as_int() == grid_col) {
-            hmat_node = node;
-            break;
-        }
-    }
-
-    if (!hmat_node) {
-        ROS_ERROR("[xmlLoadHMAT] No HMAT with grid_row[%d] and grid_col[%d] found in calibration mode[%s] for XML File[%s]",
-                  grid_row, grid_col, cal_mode_str.c_str(), file_path.c_str());
-        return -1;
-    }
-
-    // Load the matrix data
-    std::vector<double> matrix_data;
-    for (pugi::xml_node row_node = hmat_node.child("row"); row_node; row_node = row_node.next_sibling("row")) 
-        for (pugi::xml_node cell_node = row_node.child("cell"); cell_node; cell_node = cell_node.next_sibling("cell"))
-            matrix_data.push_back(std::stod(cell_node.child_value()));
-
-    // Ensure the matrix data is the right size for a homography matrix
-    if (matrix_data.size() != 9) {
-        ROS_ERROR("[xmlLoadHMAT] Incorrect number of elements in HMAT. Expected 9, got %zu", matrix_data.size());
-        return -1;
-    }
-
-    // Assign the matrix data to the output matrix
-    out_H = cv::Mat(3, 3, CV_64F, &matrix_data[0]).clone(); // Clone to ensure continuous memory
-
-    return 0;
-}
-
-int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int proj_ind) {
-    // Define file path
-    std::string file_path = xmlFileNameVertices();
-
-    // Load or create an XML document
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(file_path.c_str());
-    pugi::xml_node root_node = doc.child("Root");
-
-    if (!result || !root_node) root_node = doc.append_child("Root");
-
-    // Search for an existing monitor node with the same index
-    pugi::xml_node monitor_node;
-    for (pugi::xml_node node = root_node.child("projector"); node; node = node.next_sibling("projector")) {
-        if (node.attribute("index").as_int() == proj_ind) {
-            monitor_node = node;
-            break;
-        }
-    }
-
-    // If a monitor node with the index is not found, add it
-    if (!monitor_node) {
-        monitor_node = root_node.append_child("projector");
-        monitor_node.append_attribute("index") = proj_ind;
-    }
-    else {
-        // Clear existing vertices if the monitor node is already present
-        while (monitor_node.first_child())
-            monitor_node.remove_child(monitor_node.first_child());
-    }
-
-    // Add vertices to the monitor node
-    for (const auto &vertex : quad_vertices_ndc) {
-        pugi::xml_node vertex_node = monitor_node.append_child("vertex");
-        vertex_node.append_child("coord").text().set(vertex.x);
-        vertex_node.append_child("coord").text().set(vertex.y);
-    }
-
-    // Save the document to the specified file path
-    if (!doc.save_file(file_path.c_str())) {
-        ROS_ERROR("[xmlSaveVertices] Failed to save vertices to XML File[%s]", file_path.c_str());
-        return -1;
-    }
-
-    return 0;
-}
-
-int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc)
-{
-    // Define file path
-    std::string file_path = xmlFileNameVertices();
-
-    // Load the XML document
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(file_path.c_str());
-
-    if (!result) {
-        ROS_ERROR("[xmlLoadHMAT] Failed to load vertices from XML File[%s]", file_path.c_str());
-        return -1;
-    }
-
-    // Search for the monitor node with the same index
-    pugi::xml_node monitor_node;
-    for (pugi::xml_node node = doc.child("Root").child("projector"); node; node = node.next_sibling("projector")) {
-        if (node.attribute("index").as_int() == proj_ind) {
-            monitor_node = node;
-            break;
-        }
-    }
-
-    if (!monitor_node) {
-        ROS_ERROR("[xmlLoadHMAT] No monitor node[%d] found in XML File[%s]", proj_ind, file_path.c_str());
-        return -1;
-    }
-
-    // Clear existing data in the output vector
-    out_quad_vertices_ndc.clear();
-
-    // Load the vertices from the monitor node
-    for (pugi::xml_node vertex_node = monitor_node.child("vertex"); vertex_node; vertex_node = vertex_node.next_sibling("vertex")) {
-        cv::Point2f vertex;
-        pugi::xml_node coord_node = vertex_node.child("coord");
-        if (coord_node) {
-            vertex.x = coord_node.text().as_float();
-            coord_node = coord_node.next_sibling("coord");
-        }
-
-        if (coord_node)
-            vertex.y = coord_node.text().as_float();
-        else {
-            ROS_ERROR("[xmlLoadHMAT] Incomplete vertex data in XML File[%s]", file_path.c_str());
-            return -1; // Handle error: incomplete vertex data
-        }
-
-        out_quad_vertices_ndc.push_back(vertex);
-    }
-
-    // Check if the vector has exactly four vertices
-    if (out_quad_vertices_ndc.size() != 4) {
-        ROS_ERROR("[xmlLoadHMAT] Loaded vector is wrong size for XML: Expected[4] Actual[%d] Projector[%d] File[%s]",
-                  out_quad_vertices_ndc.size(), proj_ind, file_path.c_str());
+    if (!doc.save_file(fileNameHMat[proj_ind].c_str())) {
+        ROS_ERROR("[CalibrationXML::saveHMat] Failed to save homography matrix to XML File[%s]", fileNameHMat[proj_ind].c_str());
         return -1;
     }
 
@@ -1817,7 +1825,6 @@ int checkHMAT(const cv::Mat &_H) {
 }
 
 int checkQuadVertices(const std::vector<cv::Point2f> &quad_vertices) {
-
     // Check if the input vector has exactly 4 vertices
     if (quad_vertices.size() != 4) return -1;
 

@@ -200,7 +200,6 @@ int procProjCmdROS(ROSComm &out_RC) {
     out_RC.is_proj_cmd_message_received = false;
 
     // ---------- Monitor Mode Change Commmands ----------
-
     // Move monitor command [-1]
     if (out_RC.proj_cmd_data == -1) {
         F.windows_set_to_proj = !F.windows_set_to_proj;
@@ -576,21 +575,23 @@ void appLoadAssets() {
     // ---------- Load Images with OpenCV ----------
     // Get the wall images
     std::vector<std::string> wallImgPathVec; // declare the vector to store the paths
-    for (auto &filename : WALL_IMAGE_FILE_NAMES)
-        wallImgPathVec.push_back(RUNTIME_IMAGE_PATH + "/" + filename + ".png");
+    for (auto &fileName : WALL_IMAGE_FILE_NAMES)
+        wallImgPathVec.push_back(RUNTIME_IMAGE_PATH + "/" + fileName + ".png");
 
+    // TODO: Move to dynamic loading - this is a static list that is memory inefficient
     if (loadImgMat(wallImgPathVec, wallRawImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpenCV wall images");
 
     // Get the floor images
     std::vector<std::string> floorImgPathVec; // declare the vector to store the paths
-    for (auto &filename : FLOOR_IMAGE_FILE_NAMES) // iterate through the file names
-        floorImgPathVec.push_back(RUNTIME_IMAGE_PATH + "/" + filename + ".png");
+    for (auto &fileName : FLOOR_IMAGE_FILE_NAMES) // iterate through the file names
+        floorImgPathVec.push_back(RUNTIME_IMAGE_PATH + "/" + fileName + ".png");
 
     if (loadImgMat(floorImgPathVec, floorRawImgMatVec) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpenCV floor images");
 
     // ---------- Load Wall and Floor Homography Matrices from XML ----------
+    CalibrationXML calXML;
     for (int proj_ind = 0; proj_ind < GLB_NUM_PROJ; ++proj_ind) { // for each projector
         for (int cal_i = 0; cal_i < N_CAL_MODES; ++cal_i) {
             CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
@@ -601,14 +602,14 @@ void appLoadAssets() {
                 for (int gr_i = 0; gr_i < GLB_MAZE_SIZE; ++gr_i) {
                     for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; ++gc_i) {
                         // Load the homography matrix from XML
-                        if (xmlLoadHMAT(proj_ind, _CAL_MODE, gr_i, gc_i, WALL_HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i]) < 0)
-                            throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadHMAT");
+                        if (calXML.loadHMat(proj_ind, _CAL_MODE, gr_i, gc_i, WALL_HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i]) < 0)
+                            throw std::runtime_error("[appLoadAssets] Error returned from: oadHmat");
                     }
                 }
             }
             // Store floor homography matrices
-            else if (xmlLoadHMAT(proj_ind, _CAL_MODE, 0, 0, FLOOR_HMAT_ARR[proj_ind]) < 0) // Load the homography matrix from XML
-                throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadHMAT");
+            else if (calXML.loadHMat(proj_ind, _CAL_MODE, 0, 0, FLOOR_HMAT_ARR[proj_ind]) < 0) // Load the homography matrix from XML
+                throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadHmat");
             }
         }
     }
@@ -619,7 +620,7 @@ void appLoadAssets() {
         std::vector<cv::Point2f> maze_vert_cm_vec(GLB_NUM_PROJ);
 
         // Load the maze vertices from XML
-        if (xmlLoadVertices(proj_ind, maze_vert_ndc_vec) < 0)
+        if (calXML.loadVertices(proj_ind, maze_vert_ndc_vec) < 0)
             throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadVertices");
 
         // Compute the rotated maze vertices in centimeter units
@@ -649,13 +650,12 @@ void appInitVariables() {
     }
 
     // ---------- Convert and store rotated floor images ---------
-
     // Loop through floorRawImgMatVec images and store a new entry for each projector in floorRotatedImgMatVecArr
-    for (size_t i = 0; i < floorRawImgMatVec.size(); ++i) {
-        rotateFloorImage(270, floorRawImgMatVec[i], floorRotatedImgMatVecArr[0]); // Projector 0
-        rotateFloorImage(180, floorRawImgMatVec[i], floorRotatedImgMatVecArr[1]); // Projector 1
-        rotateFloorImage(90, floorRawImgMatVec[i], floorRotatedImgMatVecArr[2]);  // Projector 2
-        rotateFloorImage(0, floorRawImgMatVec[i], floorRotatedImgMatVecArr[3]);   // Projector 3
+    for (auto &img : floorRawImgMatVec) {
+        rotateFloorImage(270, img, floorRotatedImgMatVecArr[0]); // Projector 0
+        rotateFloorImage(180, img, floorRotatedImgMatVecArr[1]); // Projector 1
+        rotateFloorImage(90, img, floorRotatedImgMatVecArr[2]);  // Projector 2
+        rotateFloorImage(0, img, floorRotatedImgMatVecArr[3]);   // Projector 3
     }
 
     ROS_INFO("[projection_display:appInitVariables] Finished initializing variables successfully");
@@ -666,10 +666,6 @@ void appInitOpenGL() {
     if (MazeRenderContext::SetupGraphicsLibraries(N.monitor, I.proj_mon_vec) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector monitor indices: %d, %d, %d, %d", I.proj_mon_vec[0], I.proj_mon_vec[1], I.proj_mon_vec[2], I.proj_mon_vec[3]);
-
-    // // Check if expected monitors exceed available monitors
-    // if (I.proj_mon_vec.back() >= N.monitor) // compare last entry
-    //     throw std::runtime_error("[appInitOpenGL] Monitor index exceeds available monitors");
 
     // Initialize OpenGL for each projector
     for (int proj_ind = 0; proj_ind < GLB_NUM_PROJ; ++proj_ind) {
@@ -719,7 +715,6 @@ void appInitOpenGL() {
 
         ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
     }
-
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
 }
 
@@ -732,10 +727,10 @@ void printElapsedTime(double &lastTime, std::string msg) {
 
 void appMainLoop() {
     int status = 0;
-
     while (status == 0) {
 
         // --------------- Check State Flags ---------------
+        // Check if the window mode needs to be changed
         if (F.change_window_mode) {
             for (auto &projCtx : PROJ_CTX_VEC) {
                 int mon_ind = F.windows_set_to_proj ? I.proj_mon_vec[projCtx.windowInd] : I.starting_monitor;
@@ -752,7 +747,7 @@ void appMainLoop() {
             }
         }
 
-        // TEMP Simulate rat movement for testing
+        // TEST Simulate rat movement for testing
         // simulateRatMovement(0.5f, 45.0f, RT);
 
         // Recompute wall parameters and update wall image texture

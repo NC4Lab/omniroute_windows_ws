@@ -1031,146 +1031,117 @@ void dbDispImgMat(const cv::Mat &img_mat);
  */
 int promptForProjectorNumber();
 
-/**
- * @brief Formats the file name for the XML file for control point arrays.
- *
- * @details
- * Format:
- * - `cp_p<number>.xml`
- * - `cp_p0.xml`
- *
- * @param proj_ind Index/number of the projector to load data for.
- * 
- * @return A string containing the formatted file name for the XML file.
- */
-std::string xmlFileNameControlPoints(int proj_ind);
+class CalibrationXML {
+private:
+    std::string fileNameVertices;                       /// @brief File name for the maze vertices XML file.
+    bool resultVertices;                                /// @brief To check if the XML file was loaded successfully.
+    pugi::xml_document docVertices;                     /// @brief XML document for the maze vertices.
 
-/**
- * @brief Formats the file name for the XML file for homography matrices.
- *
- * @details
- * Format:
- * - `hmats_p<number>.xml`
- * - `hmats_p0.xml`
- *
- * @param proj_ind Index/number of the projector to load data for.
- * 
- * @return A string containing the formatted file name for the XML file.
- */
-std::string xmlFileNameHmat(int proj_ind);
+    std::string fileNameHMat[GLB_NUM_PROJ];             /// @brief File names for the homography matrices XML files for each projector.
+    bool resultHMat[GLB_NUM_PROJ];                      /// @brief To check if the XML files were loaded successfully.
+    pugi::xml_document docHMat[GLB_NUM_PROJ];           /// @brief XML documents for the homography matrices for each projector.
 
-/**
- * @brief Formats the file name for the XML file for maze vertices matrices.
- *
- * @details
- * Format:
- * - `maze_vertices.xml`
- *
- * @return A string containing the formatted file name for the XML file.
- */
-std::string xmlFileNameVertices();
+    std::string fileNameControlPoints[GLB_NUM_PROJ];    /// @brief File names for the control points XML files for each projector.
+    bool resultControlPoints[GLB_NUM_PROJ];             /// @brief To check if the XML files were loaded successfully.
+    pugi::xml_document docControlPoints[GLB_NUM_PROJ];  /// @brief XML documents for the control points for each projector.
 
-/**
- * @brief Save an array of control points to an XML file.
- *
- * @details
- * This function uses the pugixml library to create or modify an XML document and populate it with
- * the control points for the specified calibration mode and control point index. It allows for updating
- * or adding new sets of control points to the calibration configuration.
- *
- * @param CP_ARR The array of 4 control points to save.
- * @param proj_ind Index/number of the projector to load data for.
- * @param _CAL_MODE Enum of type CalibrationMode for the active or desired calibration mode.
- * @param cp_ind Index for the set of control points to save or update.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int xmlSaveControlPoints(
-    const std::array<cv::Point2f, 4> &CP_ARR,
-    int proj_ind,
-    CalibrationMode _CAL_MODE,
-    int cp_ind);
+    /**
+     * @brief Loads an XML document from a file.
+     *
+     * @param file_path The path to the XML file to load.
+     * @param[out] doc The pugi::xml_document object to load the XML data into.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     *
+     * @details
+     * This function attempts to load an XML document from the specified file path.
+     * If successful, it returns 0; otherwise, it returns -1 and logs an error message.
+     */
+    int loadXMLDoc(std::string &file_path, pugi::xml_document &doc);
 
-/**
- * @brief Load an array of control points from an XML file.
- *
- * @details
- * This function uses the pugixml library to read an XML document and populate the array with
- * control points for the specified calibration mode and control point index. It is designed to work
- * with the XML structure created by xmlSaveControlPoints.
- *
- * @param proj_ind Index/number of the projector to load data for.
- * @param _CAL_MODE Enum of type CalibrationMode for the active or desired calibration mode.
- * @param cp_ind Index for the set of control points to load.
- * @param[out] out_CP_ARR The output array of 4 control points.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int xmlLoadControlPoints(int proj_ind,
-                         CalibrationMode _CAL_MODE,
-                         int cp_ind,
-                         std::array<cv::Point2f, 4> &out_CP_ARR);
+public:
+    /**
+     * @brief Construct a new CalibrationXML object
+     * 
+     */
+    CalibrationXML();
 
-/**
- * @brief Save a single cv::Mat homography matrix to an XML file.
- *
- * @details
- * This function uses the pugixml library to create an XML document and populate it with
- * the homography matrix for each wall in a 3x3 grid.
- *
- * @param _H The homography matrix to save.
- * @param proj_ind Index/number of the projector to load data for.
- * @param _CAL_MODE Enum of type CalibrationMode for the active or desired calibration mode.
- * @param grid_row Row index for the array of homography matrices to save.
- * @param grid_col Column index for the array of homography matrices save.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int xmlSaveHMAT(const cv::Mat &_H,
-                int proj_ind,
-                CalibrationMode _CAL_MODE,
-                int grid_row,
-                int grid_col);
+    /**
+     * @brief Destroy the CalibrationXML object. 
+     * 
+     */
+    ~CalibrationXML();
 
-/**
- * @brief Load a single cv::Mat homography matrix from an XML file.
- *
- * @note Input proj_ind should be -1 if projector index needs to be inputed manually.
- *
- * @param proj_ind Index/number of the projector to load data for.
- * @param _CAL_MODE Enum of type CalibrationMode for the active or desired calibration mode.
- * @param grid_row Row index for the array of homography matrices to load.
- * @param grid_col Column index for the array of homography matrices to load.
- * @param[out] out_H The output homography matrix.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int xmlLoadHMAT(
-    int proj_ind,
-    CalibrationMode _CAL_MODE,
-    int grid_row,
-    int grid_col,
-    cv::Mat &out_H);
+    /**
+     * @brief Loads the maze vertices from an XML file.
+     *
+     * @param proj_ind Index/number of the projector to load data for.
+     * @param[out] out_quad_vertices_ndc The output vector of vertices in normalized device coordinates (NDC).
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int loadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc);
 
-/**
- * @brief Save a vector of four vertices (cv::Point2f) to an XML file.
- *
- * @param quad_vertices_ndc Vector of cv::Point2f representing the vertices.
- * @param proj_ind Index/number of the projector to load data for.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int xmlSaveVertices(const std::vector<cv::Point2f> &quad_vertices_ndc, int proj_ind);
+    /**
+     * @brief Saves the maze vertices to an XML file.
+     *
+     * @param proj_ind Index/number of the projector to save data for.
+     * @param vertices The vector of vertices in normalized device coordinates (NDC) to save.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int saveVertices(int proj_ind, const std::vector<cv::Point2f> &vertices);
 
-/**
- * @brief Load a vector of four vertices (cv::Point2f) from an XML file.
- *
- * @param proj_ind Index/number of the projector to load data for.
- * @param[out] out_quad_vertices_ndc Output vector of cv::Point2f for the vertices.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_ndc);
+    /**
+     * @brief Loads a homography matrix from an XML file.
+     *
+     * @param proj_ind Index/number of the projector to load data for.
+     * @param _CAL_MODE Enum of type CalibrationMode for the active or desired calibration mode.
+     * @param grid_row Row index for the array of homography matrices to load.
+     * @param grid_col Column index for the array of homography matrices to load.
+     * @param[out] out_H The output homography matrix.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int loadHMat(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col, cv::Mat &out_H);
+
+    /**
+     * @brief Saves a homography matrix to an XML file.
+     *
+     * @param proj_ind Index/number of the projector to save data for.
+     * @param _CAL_MODE Enum of type CalibrationMode for the active or desired calibration mode.
+     * @param grid_row Row index for the array of homography matrices to save.
+     * @param grid_col Column index for the array of homography matrices to save.
+     * @param _H The homography matrix to save.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int saveHmat(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col, const cv::Mat &_H);
+
+    /**
+     * @brief Loads control points from an XML file.
+     *
+     * @param proj_ind Index/number of the projector to load data for.
+     * @param _CAL_MODE Enum of type CalibrationMode for the active or desired calibration mode.
+     * @param cp_ind Index for the set of control points to load.
+     * @param[out] out_CP_ARR The output array of 4 control points.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int loadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, std::array<cv::Point2f, 4> &out_CP_ARR);
+
+    /**
+     * @brief Saves control points to an XML file.
+     *
+     * @param proj_ind Index/number of the projector to save data for.
+     * @param CP_ARR The array of 4 control points to save.
+     * @param _CAL_MODE Enum of type CalibrationMode for the active or desired calibration mode.
+     * @param cp_ind Index for the set of control points to save or update.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int saveControlPoints(int proj_ind, const std::array<cv::Point2f, 4> &CP_ARR, CalibrationMode _CAL_MODE, int cp_ind);
+};
 
 /**
  * @brief Checks for size and signulararity issues in a homography matrix.
