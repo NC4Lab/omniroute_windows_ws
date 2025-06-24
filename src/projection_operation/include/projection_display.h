@@ -75,22 +75,8 @@ struct ROSComm {
     std::unique_ptr<ros::NodeHandle> node_handle; // Smart pointer to ROS node handler
     std::unique_ptr<ros::Rate> loop_rate;         // Smart pointer to ros::Rate
     ros::Subscriber proj_cmd_sub;                 // ROS subscriber for projection commands
-    int proj_cmd_data = -1;                       // Variable to store the last command received, initialized with an invalid value
-    bool is_proj_cmd_message_received = false;    // Flag to indicate if a projection command message has been received
     ros::Subscriber proj_img_sub;                 // ROS subscriber for projection image data
-    int proj_img_data[10][8];                     // Variable to store the last image configuration received (10x8)
-    bool is_proj_img_message_received = false;    // Flag to indicate if a projection image message has been received
     ros::Subscriber track_pos_sub;                // ROS subscriber for tracking rat position
-    geometry_msgs::PoseStamped track_pos_data;    // Variable to store the last tracking rat pose received
-    bool is_track_pos_message_received = false;   // Flag to indicate if a track position message has been received
-
-    // Constructor to initialize proj_img_data to -1
-    ROSComm()
-    {
-        for (int i = 0; i < 10; ++i)
-            for (int j = 0; j < 8; ++j)
-                proj_img_data[i][j] = -1;
-    }
 } RC;
 
 /**
@@ -256,18 +242,6 @@ void checkROSOk(std::string caller);
  * @return Integer status code [-1:error, 0:successful].
  */
 int initSubscribersROS(ROSComm &out_RC);
-
-/**
- * @brief Processes commands received from the "projection_cmd" topic.
- *
- * @details
- * This function checks for new projection command message and processes the message.
- *
- * @param[out] out_RC Reference to the ROSComm struct containing the ROS coms data.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int procProjCmdROS(ROSComm &out_RC);
 
 /**
  * @brief Processes commands received from the "projection_image" topic.

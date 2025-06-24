@@ -90,63 +90,6 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     }
 }
 
-void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC) {
-    // Update the last received command
-    out_RC->proj_cmd_data = msg->data;
-    out_RC->is_proj_cmd_message_received = true;
-
-    // Log projection command
-    if (GLB_DO_VERBOSE_DEBUG)
-        ROS_INFO("[callbackProjCmdROS] Received projection command: %d", out_RC->proj_cmd_data);
-}
-
-void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm *out_RC) {
-    // Check that the received data has the correct size for a 10x8 array (80 elements)
-    if (msg->data.size() != 80) {
-        ROS_ERROR("[callbackProjImgROS] Received incorrect array size. Expected 80 elements, but got %zu", msg->data.size());
-        return;
-    }
-
-    // Store the 10x8 data in proj_img_data
-    for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
-        for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
-            out_RC->proj_img_data[cham_ind][wall_ind] = msg->data[cham_ind * 8 + wall_ind];
-
-    // Flag that a projection image message has been received
-    out_RC->is_proj_img_message_received = true;
-
-    // Log the entire 2D array
-    if (GLB_DO_VERBOSE_DEBUG) {
-        ROS_INFO("[callbackProjImgROS] Stored ROS projection image data:");
-        for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
-            std::stringstream row_stream;
-            row_stream << "Walls[" << cham_ind << "] = [";
-            for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
-                row_stream << out_RC->proj_img_data[cham_ind][wall_ind];
-                if (wall_ind < 7) // Add a comma between elements, but not after the last one
-                    row_stream << ", ";
-            }
-            row_stream << "]";
-            ROS_INFO("%s", row_stream.str().c_str());
-        }
-    }
-}
-
-void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSComm *out_RC) {
-    // Update the last received command
-    out_RC->track_pos_data = *msg;
-    out_RC->is_track_pos_message_received = true;
-
-    // Log position data
-    if (GLB_DO_VERBOSE_DEBUG)
-        ROS_INFO("[callbackHarnessPosROS] Received tracking: position x[%f] y[%f] z[%f], orientation x[%f] y[%f] z[%f]",
-                 out_RC->track_pos_data.pose.position.x,
-                 out_RC->track_pos_data.pose.position.y,
-                 out_RC->track_pos_data.pose.position.z,
-                 out_RC->track_pos_data.pose.orientation.x,
-                 out_RC->track_pos_data.pose.orientation.y,
-                 out_RC->track_pos_data.pose.orientation.z);
-}
 
 int initSubscribersROS(ROSComm &out_RC) {
     // Check if node handle is initialized
@@ -173,7 +116,7 @@ int initSubscribersROS(ROSComm &out_RC) {
 
     // Initialize the "harness_pose_in_maze" subscriber
     out_RC.track_pos_sub = out_RC.node_handle->subscribe<geometry_msgs::PoseStamped>(
-        "harness_pose_in_maze", 10, boost::bind(&callbackTrackPosROS, _1, &out_RC));
+        "harness_pose_in_maze", 10, boost::bind(&callbackTrackPosROS, _1, &out_RT));
     if (!out_RC.track_pos_sub) {
         ROS_ERROR("[initSubscriberROS] Failed to subscribe to 'harness_pose_in_maze' topic!");
         return -1;
@@ -190,50 +133,69 @@ void checkROSOk(std::string caller) {
     }
 }
 
-int procProjCmdROS(ROSComm &out_RC) {
-    checkROSOk("procProjCmdROS");
+void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC) {
+    // Update the last received command
+    proj_cmd_data = msg->data;
 
-    // Bail if no message received
-    if (!out_RC.is_proj_cmd_message_received) return 0;
-
-    // Reset the flag
-    out_RC.is_proj_cmd_message_received = false;
+    // Log projection command
+    if (GLB_DO_VERBOSE_DEBUG)
+        ROS_INFO("[callbackProjCmdROS] Received projection command: %d", out_RC->proj_cmd_data);
 
     // ---------- Monitor Mode Change Commmands ----------
     // Move monitor command [-1]
-    if (out_RC.proj_cmd_data == -1) {
+    if (proj_cmd_data == -1) {
         F.windows_set_to_proj = !F.windows_set_to_proj;
         F.change_window_mode = true;
     }
     // Set/unset Fullscreen [-2] ----------
-    else if (out_RC.proj_cmd_data == -2) {
+    else if (proj_cmd_data == -2) {
         F.fullscreen_mode = !F.fullscreen_mode;
         F.change_window_mode = true;
     }
     // Force window to top [-3] ----------
-    else if (out_RC.proj_cmd_data == -3)
+    else if (proj_cmd_data == -3)
         F.force_window_focus = true;
     else
-        ROS_WARN("[procProjCmdROS] Received invalid projection command: %d", out_RC.proj_cmd_data);
+        ROS_WARN("[callbackProjCmdROS] Received invalid projection command: %d", out_RC.proj_cmd_data);
 
     return 0;
 }
 
-int procProjImgROS(ROSComm &out_RC) {
-    checkROSOk("procProjImgROS");
+// TODO: Remove ROSComm
+void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm *out_RC) {
+    // Check that the received data has the correct size for a 10x8 array (80 elements)
+    if (msg->data.size() != 80) {
+        ROS_ERROR("[callbackProjImgROS] Received incorrect array size. Expected 80 elements, but got %zu", msg->data.size());
+        return;
+    }
 
-    // Bail if no message received
-    if (!out_RC.is_proj_img_message_received)
-        return 0;
+    int proj_img_data[10][8]; // Temporary 2D array to store the projection image data
+    // Store the 10x8 data in proj_img_data
+    for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
+        for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
+            proj_img_data[cham_ind][wall_ind] = msg->data[cham_ind * 8 + wall_ind];
 
-    // Reset the flag
-    out_RC.is_proj_img_message_received = false;
+    // Log the entire 2D array
+    if (GLB_DO_VERBOSE_DEBUG) {
+        ROS_INFO("[callbackProjImgROS] Stored ROS projection image data:");
+        for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
+            std::stringstream row_stream;
+            row_stream << "Walls[" << cham_ind << "] = [";
+            for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
+                row_stream << proj_img_data[cham_ind][wall_ind];
+                if (wall_ind < 7) // Add a comma between elements, but not after the last one
+                    row_stream << ", ";
+            }
+            row_stream << "]";
+            ROS_INFO("%s", row_stream.str().c_str());
+        }
+    }
 
     // ---------- Update image index data ----------
     for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
         for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
             // Store image index
-            int img_ind = out_RC.proj_img_data[cham_ind][wall_ind];
+            int img_ind = proj_img_data[cham_ind][wall_ind];
 
             // Update the wall index array
             if (cham_ind < 9)
@@ -253,27 +215,21 @@ int procProjImgROS(ROSComm &out_RC) {
     return 0;
 }
 
-int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT) {
-    checkROSOk("procTrackMsgROS");
-
-    // Bail if no message received
-    if (!out_RC.is_track_pos_message_received) return 0;
-
-    // Reset the flag
-    out_RC.is_track_pos_message_received = false;
+void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, RatTracker &out_RT) {
+    // Log position data
+    if (GLB_DO_VERBOSE_DEBUG)
+        ROS_INFO("[callbackHarnessPosROS] Received tracking: position x[%f] y[%f] z[%f], orientation x[%f] y[%f] z[%f] w[%f]",
+                 msg.pose.position.x, msg.pose.position.y,  msg.pose.position.z,
+                 msg.pose.orientation.x, msg.pose.orientation.y, msg.pose.orientation.z, msg.pose.orientation.w);
 
     // Convert the track pose to centimeters
     geometry_msgs::Point position_cm;
-    position_cm.x = out_RC.track_pos_data.pose.position.x * 100.0f;
-    position_cm.y = out_RC.track_pos_data.pose.position.y * 100.0f;
+    position_cm.x = msg.pose.position.x * 100.0f;
+    position_cm.y = msg.pose.position.y * 100.0f;
 
     // Extract the quaternion
-    tf::Quaternion q(
-        out_RC.track_pos_data.pose.orientation.x,
-        out_RC.track_pos_data.pose.orientation.y,
-        out_RC.track_pos_data.pose.orientation.z,
-        out_RC.track_pos_data.pose.orientation.w);
-
+    tf::Quaternion q(msg.pose.orientation.x, msg.pose.orientation.y,
+        msg.pose.orientation.z, msg.pose.orientation.w);
     // Convert quaternion to RPY (roll, pitch, yaw)
     tf::Matrix3x3 m(q);
     double roll, pitch, yaw;
@@ -812,16 +768,6 @@ void appMainLoop() {
     // --------------- Handle ROS Messages and Operations ---------------
     // Process a single round of callbacks for ROS messages
     ros::spinOnce();
-
-    // Process ROS projection command messages
-    if (procProjCmdROS(RC) < 0) throw std::runtime_error("[appMainLoop] Error returned from: procProjCmdROS");
-
-    // Process ROS projection image messages
-    if (procProjImgROS(RC) < 0) throw std::runtime_error("[appMainLoop] Error returned from: procProjImgROS");
-
-    // Process ROS tracking position messages
-    if (procTrackMsgROS(RC, RT) < 0) throw std::runtime_error("[appMainLoop] Error returned from: procTrackMsgROS");
-
     // Sleep to maintain the loop rate
     RC.loop_rate->sleep();
 }
