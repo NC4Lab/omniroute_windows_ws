@@ -676,6 +676,16 @@ void appInitOpenGL() {
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
 }
 
+
+void appMainLoop()
+{
+    // Initialize the timing data
+    mainLoopTD.reset();
+
+    int status = 0;
+    ROS_INFO("i[appMainLoop] Starting");
+
+    while (status == 0) {
 double printElapsedTime(double &lastTime, std::string msg) {
     double currentTime = glfwGetTime();
     double deltaTime = currentTime - lastTime;
