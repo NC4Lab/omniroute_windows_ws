@@ -835,7 +835,7 @@ void appMainLoop()
             throw std::runtime_error("[appMainLoop] Error returned from: procTrackMsgROS");
 
         // Measure the time taken for the loop iteration
-        // mainLoopTD.addDeltaTime(true); // Add delta time and print timing data
+        mainLoopTD.addDeltaTime(true); // Add delta time and print timing data
 
         // Sleep to maintain the loop rate
         RC.loop_rate->sleep();

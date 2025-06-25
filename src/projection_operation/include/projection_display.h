@@ -404,6 +404,9 @@ class TimingData{
     public:
         ros::Time currentTime, lastTime;
         ros::Duration deltaTime, minDeltaTime, maxDeltaTime;
+        std::string name;
+
+        TimingData(std::string _name = "") : name(_name) {}
 
         void reset() {
             currentTime = ros::Time::now();
@@ -429,13 +432,13 @@ class TimingData{
         }
 
         void printTimingData() {
-            ROS_INFO("[TimingData] Delta Time: %f, Min Delta Time: %f, Max Delta Time: %f",
-                     deltaTime.toSec(), minDeltaTime.toSec(), maxDeltaTime.toSec());
+            ROS_INFO("[Timing:%s] Delta Time: %f, Min Delta Time: %f, Max Delta Time: %f",
+                     name, deltaTime.toSec(), minDeltaTime.toSec(), maxDeltaTime.toSec());
         }
 
 };
 
-TimingData mainLoopTD; // Timing data for the main loop
+TimingData mainLoopTD("MainLoop"); // Timing data for the main loop
 
 /**
  * @brief Initializes the ROS node and sets up the subscriber for the "projection_cmd" topic.
