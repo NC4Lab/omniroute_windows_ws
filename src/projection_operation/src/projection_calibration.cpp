@@ -28,12 +28,12 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         // Check number keys and update the monitor index
         int mon_ind = I.monitor;
-        if (key == GLFW_KEY_0) mon_ind = 0;
-        else if (key == GLFW_KEY_1 && N.monitor > 1) mon_ind = 1;
-        else if (key == GLFW_KEY_2 && N.monitor > 2) mon_ind = 2;
-        else if (key == GLFW_KEY_3 && N.monitor > 3) mon_ind = 3;
-        else if (key == GLFW_KEY_4 && N.monitor > 4) mon_ind = 4;
-        else if (key == GLFW_KEY_5 && N.monitor > 5) mon_ind = 5;
+        if (key == GLFW_KEY_0)                          mon_ind = 0;
+        else if (key == GLFW_KEY_1 && N.monitor > 1)    mon_ind = 1;
+        else if (key == GLFW_KEY_2 && N.monitor > 2)    mon_ind = 2;
+        else if (key == GLFW_KEY_3 && N.monitor > 3)    mon_ind = 3;
+        else if (key == GLFW_KEY_4 && N.monitor > 4)    mon_ind = 4;
+        else if (key == GLFW_KEY_5 && N.monitor > 5)    mon_ind = 5;
 
         // Check for monitor change
         if (mon_ind != I.monitor) {
@@ -56,7 +56,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         // Check for image change
         if ((CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) &&
-            (img_ind != I.wall_image) && (img_ind < N.wall_image)) {
+            (img_ind != I.wall_image) &&
+            (img_ind < N.wall_image)) {
             ROS_INFO("[callbackKeyBinding] Initiated change image from %d to %d", I.wall_image, img_ind);
             I.wall_image = img_ind;         // Update the image index
             F.update_homographys = true;    // Set the update texture flag
@@ -98,28 +99,26 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // ---------- Calibration mode [CTRL + SHIFT [LEFT, RIGHT]] ----------
         if ((mods & GLFW_MOD_CONTROL) && (mods & GLFW_MOD_SHIFT)) {
             // Listen for arrow key input to switch through calibration modes
-            bool is_cal_mode_changed = true;
-            if (key == GLFW_KEY_LEFT) 
-                CAL_MODE = (CAL_MODE > 0) ? static_cast<CalibrationMode>(CAL_MODE - 1) : static_cast<CalibrationMode>(0);
-            else if (key == GLFW_KEY_RIGHT)
-                CAL_MODE = (CAL_MODE < N_CAL_MODES - 1) ? static_cast<CalibrationMode>(CAL_MODE + 1) : static_cast<CalibrationMode>(N_CAL_MODES - 1);
-            else is_cal_mode_changed = false; // No change in calibration mode
+            if (key == GLFW_KEY_LEFT)       CAL_MODE = (CAL_MODE > 0) ? static_cast<CalibrationMode>(CAL_MODE - 1) : static_cast<CalibrationMode>(0);
+            else if (key == GLFW_KEY_RIGHT) CAL_MODE = (CAL_MODE < N_CAL_MODES - 1) ? static_cast<CalibrationMode>(CAL_MODE + 1) : static_cast<CalibrationMode>(N_CAL_MODES - 1);
+            else                            is_cal_mode_changed = false;           // No valid key pressed, do not update calibration mode
 
             // Set flags
             if (is_cal_mode_changed) {
-                F.init_control_points = true; // Set flag to update the control points
-                F.update_mode_img = true; // Set flag to update mode image
+                F.init_control_points = true;   // Set flag to update the control points
+                F.update_mode_img = true;       // Set flag to update mode image
             }
         }
 
         // ---------- Contol point maze vertex selector keys [CTRL [LEFT, RIGHT, UP, DOWN]] ----------
+
         else if (mods & GLFW_MOD_CONTROL && CAL_MODE < 3) {
             bool is_vert_changed = true;
-            if (key == GLFW_KEY_UP) I.cp_maze_vert_selected[0] = 0; // Set row index to top row
-            else if (key == GLFW_KEY_DOWN) I.cp_maze_vert_selected[0] = 1; // Set row index to bottom row
-            else if (key == GLFW_KEY_LEFT) I.cp_maze_vert_selected[1] = 0; // Set column index to first column
+            if (key == GLFW_KEY_UP)         I.cp_maze_vert_selected[0] = 0; // Set row index to top row
+            else if (key == GLFW_KEY_DOWN)  I.cp_maze_vert_selected[0] = 1; // Set row index to bottom row
+            else if (key == GLFW_KEY_LEFT)  I.cp_maze_vert_selected[1] = 0; // Set column index to first column
             else if (key == GLFW_KEY_RIGHT) I.cp_maze_vert_selected[1] = 1; // Set column index to second column
-            else is_vert_changed = false; // No change in maze vertex
+            else                            is_vert_changed = false;        // No valid key pressed, do not update vertex
 
             if (is_vert_changed) {
                 // Set flag to update the wall homography matrix when the vertex is changed
@@ -140,10 +139,10 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         // ---------- Control point wall vertex selector keys [ALT [LEFT, RIGHT, UP, DOWN]] ----------
         else if (mods & GLFW_MOD_ALT) {
-            if (key == GLFW_KEY_UP)  I.cp_wall_vert_selected[0] = 0; // Set row index to top row
-            else if (key == GLFW_KEY_DOWN) I.cp_wall_vert_selected[0] = 1; // Set row index to bottom row
-            else if (key == GLFW_KEY_LEFT) I.cp_wall_vert_selected[1] = 0; // Set column index to first column
-            else if (key == GLFW_KEY_RIGHT) I.cp_wall_vert_selected[1] = 1; // Set column index to second column
+            if (key == GLFW_KEY_UP)             I.cp_wall_vert_selected[0] = 0; // Set row index to top row
+            else if (key == GLFW_KEY_DOWN)      I.cp_wall_vert_selected[0] = 1; // Set row index to bottom row
+            else if (key == GLFW_KEY_LEFT)      I.cp_wall_vert_selected[1] = 0; // Set column index to first column
+            else if (key == GLFW_KEY_RIGHT)     I.cp_wall_vert_selected[1] = 1; // Set column index to second column
         }
 
         // ---------- Control point translate [SHIFT or no modifier] ----------
@@ -159,14 +158,13 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             cv::Point2f cp_origin_save = CP_GRID_ARR[mv_ind][I.cp_wall_origin_vertex];
 
             // Listen for arrow key input to move selected control point
-            bool update_homographys = true; // Flag to update homographys
-            if (key == GLFW_KEY_LEFT) CP_GRID_ARR[mv_ind][wv_ind].x -= pos_inc; // Move left
+            bool update_homographys = true;
+            if (key == GLFW_KEY_LEFT)       CP_GRID_ARR[mv_ind][wv_ind].x -= pos_inc; // Move left
             else if (key == GLFW_KEY_RIGHT) CP_GRID_ARR[mv_ind][wv_ind].x += pos_inc; // Move right
-            else if (key == GLFW_KEY_UP) CP_GRID_ARR[mv_ind][wv_ind].y -= pos_inc; // Move up
-            else if (key == GLFW_KEY_DOWN) CP_GRID_ARR[mv_ind][wv_ind].y += pos_inc; // Move down
-            else update_homographys = false; // No movement, no need to update homographys
-            
-            if (update_homographys) F.update_homographys = true;
+            else if (key == GLFW_KEY_UP)    CP_GRID_ARR[mv_ind][wv_ind].y -= pos_inc; // Move up
+            else if (key == GLFW_KEY_DOWN)  CP_GRID_ARR[mv_ind][wv_ind].y += pos_inc; // Move down
+            else update_homographys = false; // No valid key pressed, do not update homography
+            F.update_homographys = update_homographys;
 
             // Shift all control points if origin moved
             cv::Point2f cp_origin_new = CP_GRID_ARR[mv_ind][I.cp_wall_origin_vertex];
@@ -275,8 +273,9 @@ int drawControlPoints(CalibrationMode _CAL_MODE,
             int wv_ind = I.CP_MAP[I.cp_wall_vert_selected[0]][I.cp_wall_vert_selected[1]];
 
             // Define the marker color
-            cv::Scalar col = (cp_i == mv_ind && cp_j == wv_ind) ? cpWallVertSelectedRGB : 
-            (cp_i == mv_ind) ? cpMazeVertSelectedRGB : cpDefaultRGB;
+            cv::Scalar col = (cp_i == mv_ind && cp_j == wv_ind) ? 
+            cpWallVertSelectedRGB : (cp_i == mv_ind) ? 
+            cpMazeVertSelectedRGB : cpDefaultRGB;
 
             // Set the marker parameters
             out_CP_RENDERERS[cp_i][cp_j].setPosition(_CP_GRID_ARR[cp_i][cp_j]);
@@ -423,7 +422,7 @@ int updateTexture(
             if ((mv_ind == 0 && gr_i == 0 && gc_i == 0) ||
                 (mv_ind == 1 && gr_i == 0 && gc_i == grid_size - 1) ||
                 (mv_ind == 3 && gr_i == grid_size - 1 && gc_i == 0) ||
-                (mv_ind == 2 && gr_i == grid_size - 1 && gc_i == grid_size - 1)) 
+                (mv_ind == 2 && gr_i == grid_size - 1 && gc_i == grid_size - 1))
                 img_mode_mat.copyTo(img_copy); // Use mode image
             else
                 img_base_mat.copyTo(img_copy); // Use standard image
@@ -464,21 +463,11 @@ void appLoadAssets() {
     ROS_INFO("[appLoadAssets] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL);
 
     std::vector<std::string> calibTestWallImages, calibTestFloorImages, calibMonWallImages, calibMonFloorImages, calibModeImages;
-    for (auto &fileName: CALIB_TEST_WALL_IMAGES)
-        calibTestWallImages.push_back(CALIB_IMAGE_PATH + "/" + fileName);
-    
-    for (auto &fileName: CALIB_TEST_FLOOR_IMAGES)
-        calibTestFloorImages.push_back(CALIB_IMAGE_PATH + "/" + fileName);
-    
-    for (auto &fileName: CALIB_MON_WALL_IMAGES)
-        calibMonWallImages.push_back(CALIB_IMAGE_PATH + "/" + fileName);
-    
-    for (auto &fileName: CALIB_MON_FLOOR_IMAGES)
-        calibMonFloorImages.push_back(CALIB_IMAGE_PATH + "/" + fileName);
-
-    for (auto &fileName: CALIB_MODE_IMAGES)
-        calibModeImages.push_back(CALIB_IMAGE_PATH + "/" + fileName);
-
+    for (auto &filename : CALIB_TEST_WALL_IMAGES)   calibTestWallImages.push_back(CALIB_IMAGE_PATH + "/" + filename);
+    for (auto &filename : CALIB_TEST_FLOOR_IMAGES)  calibTestFloorImages.push_back(CALIB_IMAGE_PATH + "/" + filename);
+    for (auto &filename : CALIB_MON_WALL_IMAGES)    calibMonWallImages.push_back(CALIB_IMAGE_PATH + "/" + filename);
+    for (auto &filename : CALIB_MON_FLOOR_IMAGES)   calibMonFloorImages.push_back(CALIB_IMAGE_PATH + "/" + filename);
+    for (auto &filename : CALIB_MODE_IMAGES)        calibModeImages.push_back(CALIB_IMAGE_PATH + "/" + filename);
 
     // Load images using OpenCV
     if (loadImgMat(calibTestWallImages, calibTestWallMats) < 0)
@@ -492,7 +481,7 @@ void appLoadAssets() {
     if (loadImgMat(calibModeImages, calibModeMats) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpenCV calibration mode images");
 
-    ROS_INFO("[appLoadAssets] OpentCV mat images loaded succesfully");
+    ROS_INFO("[appLoadAssets] OpenCV mat images loaded succesfully");
 }
 
 void appInitOpenGL() {
@@ -571,7 +560,7 @@ void appInitFileXML() {
 
             // Initalize temp control points and homography matrices
             initVertexCoordinates(_CAL_MODE, _CP_GRID_ARR, _WALL_GRID_ARR_DEFAULT);
-            if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) 
+            if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT)
                 if (updateWallHomographys(_CAL_MODE, _CP_GRID_ARR, _WALL_GRID_ARR_DEFAULT, _HMAT_ARR) < 0)
                     throw std::runtime_error("[appInitFileXML] Failed to initialize wall parameters");
             else if (_CAL_MODE == FLOOR)
@@ -614,8 +603,7 @@ void appMainLoop() {
         // Load/save XML file
         if (F.xml_load_hmat || F.xml_save_hmat) {
             // Prompt for projector number if not specified
-            if (I.projector < 0)
-                I.projector = promptForProjectorNumber();
+            if (I.projector < 0) I.projector = promptForProjectorNumber();
 
             // Specify number of rows/cols to loop through based on active calibration mode
             int grid_size = (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
@@ -639,7 +627,7 @@ void appMainLoop() {
                     // Load XML file
                     if (F.xml_load_hmat) {
                         // Load the homography matrix from XML
-                        if (xmlLoadHmat(I.projector, CAL_MODE, gr_i, gc_i, HMAT_ARR[CAL_MODE][gr_i][gc_i]) < 0)
+                        if (calXML.loadHmat(I.projector, CAL_MODE, gr_i, gc_i, HMAT_ARR[CAL_MODE][gr_i][gc_i]) < 0)
                             throw std::runtime_error("[appMainLoop] Error returned from: xmlLoadHmat");
                     }
                 }
@@ -665,10 +653,9 @@ void appMainLoop() {
         }
 
         // Update the window monitor and mode
-        if (F.change_window_mode) {
+        if (F.change_window_mode)
             if (projCtx.changeWindowDisplayMode(I.monitor, F.fullscreen_mode) < 0)
                 throw std::runtime_error("[appMainLoop] Error returned from: changeWindowDisplayMode");
-        }
 
         // Initialize/reinitialize control point coordinate dataset
         if (F.init_control_points)

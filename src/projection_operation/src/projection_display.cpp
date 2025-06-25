@@ -530,15 +530,12 @@ void appInitROS(int argc, char **argv, ROSComm &out_RC) {
 
 void appLoadAssets() {
     // ---------- Load Images with OpenCV ----------
-    // Get the wall images
-    std::vector<std::string> runtimeWallImages; // declare the vector to store the paths
+    // Get the configured image paths
+    std::vector<std::string> runtimeWallImages, runtimeFloorImages; // declare the vector to store the paths
     for (auto &fileName : RUNTIME_WALL_IMAGES)
         runtimeWallImages.push_back(RUNTIME_IMAGE_PATH + "/" + fileName);
-
-    // Get the floor images
-    std::vector<std::string> runtimeFloorImages; // declare the vector to store the paths
-    for (auto &fileName : RUNTIME_FLOOR_IMAGES) // iterate through the file names
-        runtimeFloorImages.push_back(RUNTIME_IMAGE_PATH + "/" + fileName + ".png");
+    for (auto &filename : RUNTIME_FLOOR_IMAGES) // iterate through the file names
+        runtimefloorimages.push_back(RUNTIME_IMAGE_PATH + "/" + filename);
 
     // TODO: Move to dynamic loading - this is a static list that is memory inefficient
     if (loadImgMat(runtimeWallImages, runtimeWallMats) < 0)
