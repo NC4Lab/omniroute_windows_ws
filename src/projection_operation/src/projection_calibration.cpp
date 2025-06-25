@@ -99,6 +99,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // ---------- Calibration mode [CTRL + SHIFT [LEFT, RIGHT]] ----------
         if ((mods & GLFW_MOD_CONTROL) && (mods & GLFW_MOD_SHIFT)) {
             // Listen for arrow key input to switch through calibration modes
+            bool is_cal_mode_changed = true; // Assume a valid key was pressed
             if (key == GLFW_KEY_LEFT)       CAL_MODE = (CAL_MODE > 0) ? static_cast<CalibrationMode>(CAL_MODE - 1) : static_cast<CalibrationMode>(0);
             else if (key == GLFW_KEY_RIGHT) CAL_MODE = (CAL_MODE < N_CAL_MODES - 1) ? static_cast<CalibrationMode>(CAL_MODE + 1) : static_cast<CalibrationMode>(N_CAL_MODES - 1);
             else                            is_cal_mode_changed = false;           // No valid key pressed, do not update calibration mode
@@ -519,7 +520,6 @@ void appInitOpenGL() {
 
 void appInitFileXML() {
     std::vector<int> mon_missing_vec;
-    CalibrationXML calXML; // XML file handler
 
     // Check for non-initialized XML files and initialize them
     for (int proj_i = 0; proj_i < 4; ++proj_i) {
@@ -573,11 +573,11 @@ void appInitFileXML() {
             // Save each homography matrix to XML
             for (int gr_i = 0; gr_i < grid_size; ++gr_i) {
                 for (int gc_i = 0; gc_i < grid_size; ++gc_i) {
-                    if (calXML.saveHmat(_HMAT_ARR[_CAL_MODE][gr_i][gc_i], proj_i, _CAL_MODE, gr_i, gc_i) < 0)
-                        throw std::runtime_error("[appInitFileXML] Error returned from: calXML.saveHmat");
+                    if (calXML.saveHMat(proj_i, _CAL_MODE, gr_i, gc_i, _HMAT_ARR[_CAL_MODE][gr_i][gc_i]) < 0)
+                        throw std::runtime_error("[appInitFileXML] Error returned from: calXML.saveHMat");
                     if (_CAL_MODE == FLOOR) {
                         std::vector<cv::Point2f> vert_vec(_CP_GRID_ARR[0].begin(), _CP_GRID_ARR[0].end());
-                        if (calXML.saveVertices(vert_vec, proj_i) < 0)
+                        if (calXML.saveVertices(proj_i, vert_vec) < 0)
                             throw std::runtime_error("[appInitFileXML] Error returned from: calXML.saveVertices");
                     }
                 }
@@ -588,7 +588,7 @@ void appInitFileXML() {
 
             // Save the control points to XML
             for (int cp_i = 0; cp_i < cp_group_size; ++cp_i) {
-                if (calXML.saveControlPoints(_CP_GRID_ARR[cp_i], proj_i, _CAL_MODE, cp_i) < 0)
+                if (calXML.saveControlPoints(proj_i, _CAL_MODE, cp_i, _CP_GRID_ARR[cp_i]) < 0)
                     throw std::runtime_error("[appInitFileXML] Error returned from: calXML.saveControlPoints");
             }
         }
@@ -614,21 +614,21 @@ void appMainLoop() {
                     // Save XML file
                     if (F.xml_save_hmat) {
                         // Save the homography matrix to XML
-                        if (calXML.saveHmat(HMAT_ARR[CAL_MODE][gr_i][gc_i], I.projector, CAL_MODE, gr_i, gc_i) < 0)
-                            throw std::runtime_error("[appMainLoop] Error returned from: calXML.saveHmat");
+                        if (calXML.saveHMat(I.projector, CAL_MODE, gr_i, gc_i, HMAT_ARR[CAL_MODE][gr_i][gc_i]) < 0)
+                            throw std::runtime_error("[appMainLoop] Error returned from: calXML.saveHMat");
 
                         // Save the maze vertices to XML
                         if (CAL_MODE == FLOOR) {
                             std::vector<cv::Point2f> vert_vec(CP_GRID_ARR[0].begin(), CP_GRID_ARR[0].end());
-                            if (calXML.saveVertices(vert_vec, I.projector) < 0)
+                            if (calXML.saveVertices(I.projector, vert_vec) < 0)
                                 throw std::runtime_error("[appMainLoop] Error returned from: calXML.saveVertices");
                         }
                     }
                     // Load XML file
                     if (F.xml_load_hmat) {
                         // Load the homography matrix from XML
-                        if (calXML.loadHmat(I.projector, CAL_MODE, gr_i, gc_i, HMAT_ARR[CAL_MODE][gr_i][gc_i]) < 0)
-                            throw std::runtime_error("[appMainLoop] Error returned from: xmlLoadHmat");
+                        if (calXML.loadHMat(I.projector, CAL_MODE, gr_i, gc_i, HMAT_ARR[CAL_MODE][gr_i][gc_i]) < 0)
+                            throw std::runtime_error("[appMainLoop] Error returned from: loadHMat");
                     }
                 }
             }
@@ -639,11 +639,11 @@ void appMainLoop() {
             // Save/load the control points to XML
             for (int cp_i = 0; cp_i < cp_group_size; ++cp_i) {
                 if (F.xml_save_hmat) {
-                    if (calXML.saveControlPoints(CP_GRID_ARR[cp_i], I.projector, CAL_MODE, cp_i) < 0)
+                    if (calXML.saveControlPoints(I.projector, CAL_MODE, cp_i, CP_GRID_ARR[cp_i]) < 0)
                         throw std::runtime_error("[appMainLoop] Error returned from: calXML.saveControlPoints");
                 }
                 if (F.xml_load_hmat) {
-                    if (xmlLoadControlPoints(I.projector, CAL_MODE, cp_i, CP_GRID_ARR[cp_i]) < 0)
+                    if (calXML.loadControlPoints(I.projector, CAL_MODE, cp_i, CP_GRID_ARR[cp_i]) < 0)
                         throw std::runtime_error("[appMainLoop] Error returned from: calXML.saveControlPoints");
                 }
             }

@@ -826,8 +826,6 @@ extern const char *GLB_QUAD_GL_FRAGMENT_SOURCE = R"glsl(
     }
 )glsl";
 
-bool fileExists(const std::string &_file_path);
-
 // Get top-level package path
 extern const std::string PACKAGE_PATH = ros::package::getPath("projection_operation");
 extern const std::string WORKSPACE_PATH = PACKAGE_PATH.substr(0, PACKAGE_PATH.rfind("/src"));
@@ -1091,22 +1089,17 @@ void dbDispImgMat(const cv::Mat &img_mat);
  */
 int promptForProjectorNumber();
 
-class CalibrationXML {
-private:
-    /**
-     * @brief Loads an XML document from a file.
-     *
-     * @param file_path The path to the XML file to load.
-     * @param[out] doc The pugi::xml_document object to load the XML data into.
-     *
-     * @return Integer status code [-1:error, 0:successful].
-     *
-     * @details
-     * This function attempts to load an XML document from the specified file path.
-     * If successful, it returns 0; otherwise, it returns -1 and logs an error message.
-     */
-    int loadXMLDoc(std::string &file_path, pugi::xml_document &doc);
+/**
+ * @brief Checks if a file exists at the given path.
+ * 
+ * @param _file_path The path to the file to check.
+ * 
+ * @return True if the file exists, false otherwise.
+ */
+bool fileExists(const std::string &_file_path);
 
+
+class CalibrationXML {
 public:
     std::string fileNameVertices;                       /// @brief File name for the maze vertices XML file.
     bool resultVertices;                                /// @brief To check if the XML file was loaded successfully.
@@ -1176,7 +1169,7 @@ public:
      *
      * @return Integer status code [-1:error, 0:successful].
      */
-    int saveHmat(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col, const cv::Mat &_H);
+    int saveHMat(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col, const cv::Mat &_H);
 
     /**
      * @brief Loads control points from an XML file.
@@ -1200,7 +1193,7 @@ public:
      *
      * @return Integer status code [-1:error, 0:successful].
      */
-    int saveControlPoints(int proj_ind, const std::array<cv::Point2f, 4> &CP_ARR, CalibrationMode _CAL_MODE, int cp_ind);
+    int saveControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, const std::array<cv::Point2f, 4> &CP_ARR);
 };
 
 /**

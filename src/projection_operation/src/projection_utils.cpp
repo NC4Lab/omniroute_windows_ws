@@ -1423,6 +1423,7 @@ int promptForProjectorNumber() {
 }
 
 bool fileExists(const std::string &_file_path) {
+    // Check if the file exists at the given path
     std::ifstream file(_file_path);
     return file.good();
 }
@@ -1431,7 +1432,7 @@ CalibrationXML::CalibrationXML() {
     // Load the vertices XML file
     fileNameVertices = CONFIG_DIR_PATH + "/maze_vertices.xml";
     if (fileExists(fileNameVertices)) {
-        resultVertices = loadXMLDoc(fileNameVertices, docVertices);
+        resultVertices = docVertices.load_file(fileNameVertices.c_str());
         if (!resultVertices) ROS_WARN("[CalibrationXML::CalibrationXML] Failed to load vertices XML file: %s", fileNameVertices.c_str());
     } 
     else ROS_WARN("[CalibrationXML] Vertices XML file does not exist at path: %s", fileNameVertices.c_str());
@@ -1440,15 +1441,15 @@ CalibrationXML::CalibrationXML() {
         // Load the homography matrix XML file for each projector
         fileNameHMat[proj_ind] = CONFIG_DIR_PATH + "/hmats_p" + std::to_string(proj_ind) + ".xml";
         if (fileExists(fileNameHMat[proj_ind])) {
-            resultHMat[proj_ind] = loadXMLDoc(fileNameHMat[proj_ind], docHMat[proj_ind]);
+            resultHMat[proj_ind] = docHMat[proj_ind].load_file(fileNameHMat[proj_ind].c_str());
             if (!resultHMat[proj_ind]) ROS_WARN("[CalibrationXML::CalibrationXML] Failed to load homography matrix XML file: %s", fileNameHMat[proj_ind].c_str());
         }
         else ROS_WARN("[CalibrationXML] Homography matrix XML file does not exist at path: %s", fileNameHMat[proj_ind].c_str());
 
         // Load the control points XML file for each projector
         fileNameControlPoints[proj_ind] = CONFIG_DIR_PATH + "/cp_p" + std::to_string(proj_ind) + ".xml";
-        if fileExists(fileNameControlPoints[proj_ind]) {
-            resultControlPoints[proj_ind] = loadXMLDoc(fileNameControlPoints[proj_ind], docControlPoints[proj_ind]);
+        if (fileExists(fileNameControlPoints[proj_ind])) {
+            resultControlPoints[proj_ind] = docControlPoints[proj_ind].load_file(fileNameControlPoints[proj_ind].c_str());
             if (!resultControlPoints[proj_ind]) ROS_WARN("[CalibrationXML::CalibrationXML] Failed to load control points XML file: %s", fileNameControlPoints[proj_ind].c_str());
         }
         else ROS_WARN("[CalibrationXML] Control points XML file does not exist at path: %s", fileNameControlPoints[proj_ind].c_str());
@@ -1457,13 +1458,6 @@ CalibrationXML::CalibrationXML() {
 
 CalibrationXML::~CalibrationXML() {
     // Destructor can be used for cleanup if needed
-}
-
-int CalibrationXML::loadXMLDoc(std::string &file_path, pugi::xml_document &doc) {
-    pugi::xml_document doc;
-    pugi::xml_parse_result result = doc.load_file(file_path.c_str());
-    if (!result) ROS_ERROR("[CalibrationXML::loadXMLDoc] Failed to load XML File[%s]", file_path.c_str());
-    return result ? 0 : -1;
 }
 
 int CalibrationXML::loadHMat(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col, cv::Mat &out_H) {
@@ -1521,7 +1515,7 @@ int CalibrationXML::loadHMat(int proj_ind, CalibrationMode _CAL_MODE, int grid_r
 
     // Ensure the matrix data is the right size for a homography matrix
     if (matrix_data.size() != 9) {
-        ROS_ERROR("[xmlLoadHmat] Incorrect number of elements in HMAT. Expected 9, got %zu", matrix_data.size());
+        ROS_ERROR("[CalibrationXML::loadHMat] Incorrect number of elements in HMAT. Expected 9, got %zu", matrix_data.size());
         return -1;
     }
 
@@ -1629,7 +1623,7 @@ int CalibrationXML::loadVertices(int proj_ind, std::vector<cv::Point2f> &out_qua
     return 0;
 }
 
-int CalibrationXML::saveControlPoints(int proj_ind, const std::array<cv::Point2f, 4> &CP_ARR, CalibrationMode _CAL_MODE, int cp_ind) {
+int CalibrationXML::saveControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, const std::array<cv::Point2f, 4> &CP_ARR) {
     std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
 
     // Check if the file exists and has a proper Root node
@@ -1747,7 +1741,7 @@ int CalibrationXML::loadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, i
     return 0;
 }
 
-int CalibrationXML::saveHmat(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col) {
+int CalibrationXML::saveHMat(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col, const cv::Mat &_H) {
     // Get the full file path and attribute string for the given calibration mode
     std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
 
@@ -1799,7 +1793,7 @@ int CalibrationXML::saveHmat(const cv::Mat &_H, int proj_ind, CalibrationMode _C
     }
 
     // Save the document to the specified file path
-    if (!doc.save_file(fileNameHMat[proj_ind].c_str())) {
+    if (!docHMat[proj_ind].save_file(fileNameHMat[proj_ind].c_str())) {
         ROS_ERROR("[CalibrationXML::saveHMat] Failed to save homography matrix to XML File[%s]", fileNameHMat[proj_ind].c_str());
         return -1;
     }

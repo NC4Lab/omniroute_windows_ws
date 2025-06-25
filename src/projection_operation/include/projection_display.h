@@ -191,9 +191,8 @@ void callbackKeyBinding(GLFWwindow *window, int key,
  * It stores the received data and flags the new message.
  *
  * @param msg Const pointer to the received message.
- * @param out_RC Pointer to the ROSComm struct where the last command and message received flag are updated.
  */
-void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC);
+void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg);
 
 /**
  * @brief Callback function for the "projection_image" topic subscription.
@@ -203,9 +202,8 @@ void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC);
  * It stores the received data and flags the new message.
  *
  * @param msg Const pointer to the received message.
- * @param out_RC Pointer to the ROSComm struct where the last command and message received flag are updated.
  */
-void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm *out_RC);
+void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg);
 
 /**
  * @brief Callback function for the "track_pose" topic subscription.
@@ -215,70 +213,18 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm 
  * It stores the received data and flags the new message.
  *
  * @param msg Const pointer to the received message.
- * @param out_RC Pointer to the ROSComm struct where the last command and message received flag are updated.
  */
-void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSComm *out_RC);
-
-/**
- * @brief Checks if the ROS node is still running.
- * 
- * @details
- * This function checks if the ROS node is still running and throws an error if it is not
- * 
- * @param caller The name of the function that is calling this check, used for logging.
- */
-void checkROSOk(std::string caller);
-
-/**
- * @brief Initializes the ROS subscriber for the "projection_cmd" topic within the given ROSComm structure.
- *
- * @details
- * This function sets up a subscriber to the "projection_cmd" topic, which receives Int32 messages.
- * The received command updates the proj_cmd_data field in the ROSComm struct and sets
- * a flag indicating a message has been received.
- *
- * @param out_RC Reference to the ROSComm struct that holds the ROS node handle and subscriber.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int initSubscribersROS(ROSComm &out_RC);
-
-/**
- * @brief Processes commands received from the "projection_image" topic.
- *
- * @details
- * This function checks for new projection imgage message and processes the message.
- *
- * @param[out] out_RC Reference to the ROSComm struct containing the ROS coms data.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int procProjImgROS(ROSComm &out_RC);
-
-/**
- * @brief Processes commands received from the "harness_pose_in_maze" topic.
- *
- * @details
- * This function checks if a new position tracking message has been received and processes the message.
- *
- * @param[out] out_RC Reference to the ROSComm struct containing the ROS coms data.
- * @param[out] out_RT Rat tracker struct object to be updated.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT);
+void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg);
 
 /**
  * @brief Simulates rat movement.
  *
  * @param move_step Distance to move in cm.
  * @param max_turn_angle Maximum angle to turn in degrees.
- * @param[out] out_RT RatTracker struct object to be updated.
  */
 void simulateRatMovement(
     float move_step,
-    float max_turn_angle,
-    RatTracker &out_RT);
+    float max_turn_angle);
 
 /**
  * @brief Sets the wall image configuration for a projector array.
@@ -390,7 +336,7 @@ class TimingData{
             maxDeltaTime = ros::Duration(0.0);
         }
         
-        void addDeltaTime(bool print = false) {
+        void update(bool print = false) {
             currentTime = ros::Time::now();
             deltaTime = currentTime - lastTime;
             lastTime = currentTime;
@@ -418,16 +364,14 @@ TimingData mainLoopTD("MainLoop"); // Timing data for the main loop
  * @brief Initializes the ROS node and sets up the subscriber for the "projection_cmd" topic.
  *
  * @details
- * This function initializes the ROS node, creates a node handle and private node handle, then calls
- * initSubscriberROS to set up the subscriber.
+ * This function initializes the ROS node, creates a node handle and private node handle, then sets up subscribers
  *
  * @param argc The argc argument from the main function (number of command-line arguments).
  * @param argv The argv argument from the main function (array of command-line argument strings).
- * @param out_RC Reference to the ROSComm struct to be used for storing the node handle and subscriber.
  *
  * @throws std::runtime_error.
  */
-void appInitROS(int argc, char **argv, ROSComm &out_RC);
+void appInitROS(int argc, char **argv);
 
 /**
  * @brief Loads the necessary images and data for the application.

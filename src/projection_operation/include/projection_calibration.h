@@ -141,6 +141,8 @@ std::vector<cv::Mat> calibMonWallMats;  // Vector of monitor mode image texture 
 std::vector<cv::Mat> calibMonFloorMats; // Vector of monitor mode image texture matrices for floor calibration
 std::vector<cv::Mat> calibModeMats;      // Vector of calibration mode image texture matrices
 
+CalibrationXML calXML; // XML file handler
+
 /**
  * @brief Matrix to store the mode image displaying the current calibration mode and monitor
  */
