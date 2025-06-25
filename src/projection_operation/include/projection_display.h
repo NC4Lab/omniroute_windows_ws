@@ -160,7 +160,7 @@ std::array<cv::Mat, GLB_NUM_PROJ> wallBlankMats;
  *
  * - Dimension 2: Image N
  */
-std::array<std::vector<cv::Mat>, GLB_NUM_PROJ> floorRotatedImgMatVecArr;
+std::array<std::vector<cv::Mat>, GLB_NUM_PROJ> rotatedRuntimeFloorMats;
 
 // ================================================== FUNCTIONS ==================================================
 

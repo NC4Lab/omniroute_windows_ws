@@ -826,6 +826,8 @@ extern const char *GLB_QUAD_GL_FRAGMENT_SOURCE = R"glsl(
     }
 )glsl";
 
+bool fileExists(const std::string &_file_path);
+
 // Get top-level package path
 extern const std::string PACKAGE_PATH = ros::package::getPath("projection_operation");
 extern const std::string WORKSPACE_PATH = PACKAGE_PATH.substr(0, PACKAGE_PATH.rfind("/src"));
@@ -1091,18 +1093,6 @@ int promptForProjectorNumber();
 
 class CalibrationXML {
 private:
-    std::string fileNameVertices;                       /// @brief File name for the maze vertices XML file.
-    bool resultVertices;                                /// @brief To check if the XML file was loaded successfully.
-    pugi::xml_document docVertices;                     /// @brief XML document for the maze vertices.
-
-    std::string fileNameHMat[GLB_NUM_PROJ];             /// @brief File names for the homography matrices XML files for each projector.
-    bool resultHMat[GLB_NUM_PROJ];                      /// @brief To check if the XML files were loaded successfully.
-    pugi::xml_document docHMat[GLB_NUM_PROJ];           /// @brief XML documents for the homography matrices for each projector.
-
-    std::string fileNameControlPoints[GLB_NUM_PROJ];    /// @brief File names for the control points XML files for each projector.
-    bool resultControlPoints[GLB_NUM_PROJ];             /// @brief To check if the XML files were loaded successfully.
-    pugi::xml_document docControlPoints[GLB_NUM_PROJ];  /// @brief XML documents for the control points for each projector.
-
     /**
      * @brief Loads an XML document from a file.
      *
@@ -1118,6 +1108,18 @@ private:
     int loadXMLDoc(std::string &file_path, pugi::xml_document &doc);
 
 public:
+    std::string fileNameVertices;                       /// @brief File name for the maze vertices XML file.
+    bool resultVertices;                                /// @brief To check if the XML file was loaded successfully.
+    pugi::xml_document docVertices;                     /// @brief XML document for the maze vertices.
+
+    std::string fileNameHMat[GLB_NUM_PROJ];             /// @brief File names for the homography matrices XML files for each projector.
+    bool resultHMat[GLB_NUM_PROJ];                      /// @brief To check if the XML files were loaded successfully.
+    pugi::xml_document docHMat[GLB_NUM_PROJ];           /// @brief XML documents for the homography matrices for each projector.
+
+    std::string fileNameControlPoints[GLB_NUM_PROJ];    /// @brief File names for the control points XML files for each projector.
+    bool resultControlPoints[GLB_NUM_PROJ];             /// @brief To check if the XML files were loaded successfully.
+    pugi::xml_document docControlPoints[GLB_NUM_PROJ];  /// @brief XML documents for the control points for each projector.
+
     /**
      * @brief Construct a new CalibrationXML object
      * 

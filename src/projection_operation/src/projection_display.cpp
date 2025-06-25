@@ -116,7 +116,7 @@ int initSubscribersROS(ROSComm &out_RC) {
 
     // Initialize the "harness_pose_in_maze" subscriber
     out_RC.track_pos_sub = out_RC.node_handle->subscribe<geometry_msgs::PoseStamped>(
-        "harness_pose_in_maze", 10, boost::bind(&callbackTrackPosROS, _1, &out_RT));
+        "harness_pose_in_maze", 10, boost::bind(&callbackTrackPosROS, _1, &RT));
     if (!out_RC.track_pos_sub) {
         ROS_ERROR("[initSubscriberROS] Failed to subscribe to 'harness_pose_in_maze' topic!");
         return -1;

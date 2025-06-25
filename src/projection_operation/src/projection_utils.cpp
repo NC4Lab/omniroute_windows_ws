@@ -1432,26 +1432,26 @@ CalibrationXML::CalibrationXML() {
     fileNameVertices = CONFIG_DIR_PATH + "/maze_vertices.xml";
     if (fileExists(fileNameVertices)) {
         resultVertices = loadXMLDoc(fileNameVertices, docVertices);
-        if (!resultVertices) ROS_WARNING("[CalibrationXML::CalibrationXML] Failed to load vertices XML file: %s", fileNameVertices.c_str());
+        if (!resultVertices) ROS_WARN("[CalibrationXML::CalibrationXML] Failed to load vertices XML file: %s", fileNameVertices.c_str());
     } 
-    else ROS_WARNING("[CalibrationXML] Vertices XML file does not exist at path: %s", fileNameVertices.c_str());
+    else ROS_WARN("[CalibrationXML] Vertices XML file does not exist at path: %s", fileNameVertices.c_str());
 
-    for (int i = 0; i < GLB_NUM_PROJ; ++i) {
+    for (int proj_ind = 0; proj_ind < GLB_NUM_PROJ; ++proj_ind) {
         // Load the homography matrix XML file for each projector
-        fileNameHMat[i] = CONFIG_DIR_PATH + "/hmats_p" + std::to_string(proj_ind) + ".xml";
-        if (fileExists(fileNameHMat[i])) {
-            resultHMat[i] = loadXMLDoc(fileNameHMat[i], docHMat[i]);
-            if (!resultHMat[i]) ROS_WARNING("[CalibrationXML::CalibrationXML] Failed to load homography matrix XML file: %s", fileNameHMat[i].c_str());
+        fileNameHMat[proj_ind] = CONFIG_DIR_PATH + "/hmats_p" + std::to_string(proj_ind) + ".xml";
+        if (fileExists(fileNameHMat[proj_ind])) {
+            resultHMat[proj_ind] = loadXMLDoc(fileNameHMat[proj_ind], docHMat[proj_ind]);
+            if (!resultHMat[proj_ind]) ROS_WARN("[CalibrationXML::CalibrationXML] Failed to load homography matrix XML file: %s", fileNameHMat[proj_ind].c_str());
         }
-        else ROS_WARNING("[CalibrationXML] Homography matrix XML file does not exist at path: %s", fileNameHMat[i].c_str());
+        else ROS_WARN("[CalibrationXML] Homography matrix XML file does not exist at path: %s", fileNameHMat[proj_ind].c_str());
 
         // Load the control points XML file for each projector
-        fileNameControlPoints[i] = CONFIG_DIR_PATH + "/cp_p" + std::to_string(proj_ind) + ".xml";
-        if fileExists(fileNameControlPoints[i]) {
-            resultControlPoints[i] = loadXMLDoc(fileNameControlPoints[i], docControlPoints[i]);
-            if (!resultControlPoints[i]) ROS_WARNING("[CalibrationXML::CalibrationXML] Failed to load control points XML file: %s", fileNameControlPoints[i].c_str());
+        fileNameControlPoints[proj_ind] = CONFIG_DIR_PATH + "/cp_p" + std::to_string(proj_ind) + ".xml";
+        if fileExists(fileNameControlPoints[proj_ind]) {
+            resultControlPoints[proj_ind] = loadXMLDoc(fileNameControlPoints[proj_ind], docControlPoints[proj_ind]);
+            if (!resultControlPoints[proj_ind]) ROS_WARN("[CalibrationXML::CalibrationXML] Failed to load control points XML file: %s", fileNameControlPoints[proj_ind].c_str());
         }
-        else ROS_WARNING("[CalibrationXML] Control points XML file does not exist at path: %s", fileNameControlPoints[i].c_str());
+        else ROS_WARN("[CalibrationXML] Control points XML file does not exist at path: %s", fileNameControlPoints[proj_ind].c_str());
     }
 }
 
