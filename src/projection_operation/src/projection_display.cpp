@@ -633,6 +633,8 @@ void appInitOpenGL() {
 
 void appMainLoop()
 {
+    displayTimer[0].start();
+
     // --------------- Check State Flags ---------------
     // Check if the window mode needs to be changed
     if (F.change_window_mode) {
@@ -650,6 +652,9 @@ void appMainLoop()
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::forceWindowFocus");
         }
     }
+
+    displayTimer[0].update(true); // Update the timing data for the first displayTimer
+    displayTimer[1].start(); // Start the second displayTimer for updating textures
 
     // TEST Simulate rat movement for testing
     // simulateRatMovement(0.5f, 45.0f, RT);
@@ -687,6 +692,9 @@ void appMainLoop()
     F.update_textures = false;
     F.force_window_focus = false;
 
+    displayTimer[1].update(true); // Update the timing data for the second displayTimer
+    displayTimer[2].start(); // Start the third displayTimer for image processing
+
     // --------------- Handle image processing for each projector ---------------
     for (auto &projCtx : PROJ_CTX_VEC) {
         // Prepare the frame for rendering (clear the back buffer)
@@ -713,15 +721,15 @@ void appMainLoop()
         if (!projCtx.checkExitRequest()) continue;
     }
 
+    displayTimer[2].update(true); // Update the timing data for the third displayTimer
+    displayTimer[3].start(); // Start the fourth displayTimer for ROS operations
+
+
     // --------------- Handle ROS Messages and Operations ---------------
     // Process a single round of callbacks for ROS messages
     ros::spinOnce();
 
-    mainLoopTD.update(true); // Update the timing data
-    if (GLB_DO_VERBOSE_DEBUG) {
-        // Log the current rat position
-        ROS_INFO("[appMainLoop] Current rat position: x[%f] y[%f]", RT.marker_position.x, RT.marker_position.y);
-    }
+    displayTimer[3].update(true); // Update the timing data for the fourth timer
 
     // Sleep to maintain the loop rate
     RC.loop_rate->sleep();
@@ -754,8 +762,16 @@ int main(int argc, char **argv) {
         appInitVariables();
         appInitOpenGL();
 
-        // Initialize the timing data
-        mainLoopTD.reset();
+        // Initialize timers
+        for (auto &t: displayTimer) {
+            t.reset();
+            t.setName("Foo");
+        }
+
+        displayTimer[0].setName("Window_operations");
+        displayTimer[1].setName("Update_textures");
+        displayTimer[2].setName("Image_processing");
+        displayTimer[3].setName("ROS_operations");
 
         while(ros::ok()) appMainLoop(); // Main loop for rendering and processing
     }
