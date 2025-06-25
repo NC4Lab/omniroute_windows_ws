@@ -362,16 +362,16 @@ int updateFloorTexture(int proj_ind, cv::Mat &_floorMats, const cv::Mat _wallBla
     std::array<cv::Mat, GLB_NUM_PROJ> &_FLOOR_HMAT_ARR, cv::Mat &out_img_mat) {
 
     // Copy the floor image to be used
-    // TODO: Is this necessary? Can we use the original image?
-    cv::Mat img_copy;
-    _floorMats.copyTo(img_copy);
+    //TODO: Is this necessary? Can we use the original image?
+    // cv::Mat img_copy;
+    // _floorMats.copyTo(img_copy);
 
     // Get homography matrix for this wall
     cv::Mat H = _FLOOR_HMAT_ARR[proj_ind];
 
     // Warp Perspective
     cv::Mat img_warp;
-    if (warpImgMat(img_copy, H, img_warp) < 0) {
+    if (warpImgMat(_floorMats, H, img_warp) < 0) {
         ROS_ERROR("[updateFloorTexture] Warp image error: Projector[%d]", proj_ind);
         return -1;
     }
@@ -495,7 +495,7 @@ void appLoadAssets() {
     for (auto &filename : RUNTIME_FLOOR_IMAGES) // iterate through the file names
         runtimeFloorImages.push_back(RUNTIME_IMAGE_PATH + "/" + filename);
 
-    // TODO: Move to dynamic loading - this is a static list that is memory inefficient
+    //TODO: Move to dynamic loading - this is a static list that is memory inefficient
     if (loadImgMat(runtimeWallImages, runtimeWallMats) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpenCV wall images");
 
@@ -562,7 +562,7 @@ void appInitVariables() {
 
     // ---------- Convert and store rotated floor images ---------
     // Loop through runtimeFloorMats images and store a new entry for each projector in rotatedRuntimeFloorMats
-    // TODO: Can we add the rotation into the homography matrix?
+    //TODO: Can we add the rotation into the homography matrix?
     for (auto &img : runtimeFloorMats) {
         rotateFloorImage(270, img, rotatedRuntimeFloorMats[0]); // Projector 0
         rotateFloorImage(180, img, rotatedRuntimeFloorMats[1]); // Projector 1
