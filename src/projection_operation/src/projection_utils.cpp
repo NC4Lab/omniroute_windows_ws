@@ -1429,7 +1429,7 @@ bool fileExists(const std::string &_file_path) {
 
 CalibrationXML::CalibrationXML() {
     // Load the vertices XML file
-    fileNameVertices = GLB_CONFIG_DIR_PATH + "/maze_vertices.xml";
+    fileNameVertices = CONFIG_DIR_PATH + "/maze_vertices.xml";
     if (fileExists(fileNameVertices)) {
         resultVertices = loadXMLDoc(fileNameVertices, docVertices);
         if (!resultVertices) ROS_WARNING("[CalibrationXML::CalibrationXML] Failed to load vertices XML file: %s", fileNameVertices.c_str());
@@ -1438,7 +1438,7 @@ CalibrationXML::CalibrationXML() {
 
     for (int i = 0; i < GLB_NUM_PROJ; ++i) {
         // Load the homography matrix XML file for each projector
-        fileNameHMat[i] = GLB_CONFIG_DIR_PATH + "/hmats_p" + std::to_string(proj_ind) + ".xml";
+        fileNameHMat[i] = CONFIG_DIR_PATH + "/hmats_p" + std::to_string(proj_ind) + ".xml";
         if (fileExists(fileNameHMat[i])) {
             resultHMat[i] = loadXMLDoc(fileNameHMat[i], docHMat[i]);
             if (!resultHMat[i]) ROS_WARNING("[CalibrationXML::CalibrationXML] Failed to load homography matrix XML file: %s", fileNameHMat[i].c_str());
@@ -1446,7 +1446,7 @@ CalibrationXML::CalibrationXML() {
         else ROS_WARNING("[CalibrationXML] Homography matrix XML file does not exist at path: %s", fileNameHMat[i].c_str());
 
         // Load the control points XML file for each projector
-        fileNameControlPoints[i] = GLB_CONFIG_DIR_PATH + "/cp_p" + std::to_string(proj_ind) + ".xml";
+        fileNameControlPoints[i] = CONFIG_DIR_PATH + "/cp_p" + std::to_string(proj_ind) + ".xml";
         if fileExists(fileNameControlPoints[i]) {
             resultControlPoints[i] = loadXMLDoc(fileNameControlPoints[i], docControlPoints[i]);
             if (!resultControlPoints[i]) ROS_WARNING("[CalibrationXML::CalibrationXML] Failed to load control points XML file: %s", fileNameControlPoints[i].c_str());

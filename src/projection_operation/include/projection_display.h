@@ -140,14 +140,14 @@ std::vector<MazeRenderContext> PROJ_CTX_VEC(GLB_NUM_PROJ);
 std::vector<cv::Point> winOffsetVec;
 
 // Vectors to store the raw loaded images in cv::Mat format
-std::vector<cv::Mat> wallRawImgMatVec;  // Vector of individual wall image texture matrices
-std::vector<cv::Mat> floorRawImgMatVec; // Vector of individual floor image texture matrices
+std::vector<cv::Mat> runtimeWallMats;  // Vector of individual wall image texture matrices
+std::vector<cv::Mat> runtimeFloorMats; // Vector of individual floor image texture matrices
 
 /**
  * @brief Array to store the image of all blank walls to use as the
  * baseline image.
  */
-std::array<cv::Mat, GLB_NUM_PROJ> wallBlankImgMatArr;
+std::array<cv::Mat, GLB_NUM_PROJ> wallBlankMats;
 
 /**
  * @brief Array of vectors to store the rotated floor images in cv::Mat format
@@ -328,8 +328,8 @@ void rotateFloorImage(
  * @brief Applies the homography matrices to warp floor image textures.
  *
  * @param proj_ind Index of the projector associated with the given image.
- * @param _floorImgMat Floor image in cv::Mat format
- * @param _wallBlankImgMat Blank walls image in cv::Mat format
+ * @param _floorMats Floor image in cv::Mat format
+ * @param _wallBlankMats Blank walls image in cv::Mat format
  * @param _FLOOR_HMAT_ARR Array of homography matrices for the floor image transformations.
  * @param[out] out_img_mat Reference to store the new cv::Mat image.
  *
@@ -337,8 +337,8 @@ void rotateFloorImage(
  */
 int updateFloorTexture(
     int proj_ind,
-    cv::Mat &_floorImgMat,
-    const cv::Mat _wallBlankImgMat,
+    cv::Mat &_floorMats,
+    const cv::Mat _wallBlankMats,
     std::array<cv::Mat, GLB_NUM_PROJ> &_FLOOR_HMAT_ARR,
     cv::Mat &out_img_mat);
 
@@ -346,7 +346,7 @@ int updateFloorTexture(
  * @brief Applies the homography matrices to warp wall image textures and combine them into a new image.
  *
  * @param proj_ind Index of the projector associated with the given image.
- * @param _wallRawImgMatVec Vectors containing the loaded wall images in cv::Mat format
+ * @param runtimeWallMats Vector containing the loaded runtime wall images in cv::Mat format
  * @param _PROJ_WALL_CONFIG_INDICES_4D Multidimensional array of walll image indices.
  * @param _WALL_HMAT_ARR Big ass ugly array of arrays of arrays of matrices!
  * @param do_ignore_blank_img Bool to handle blank/black imgages [true: skip; false: include]
@@ -356,7 +356,7 @@ int updateFloorTexture(
  */
 int updateWallTexture(
     int proj_ind,
-    const std::vector<cv::Mat> &_wallRawImgMatVec,
+    const std::vector<cv::Mat> &_runtimeWallMats,
     const ProjWallConfigIndices4D &_PROJ_WALL_CONFIG_INDICES_4D,
     const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES - 1>, 4> &_WALL_HMAT_ARR,
     bool do_ignore_blank_img,

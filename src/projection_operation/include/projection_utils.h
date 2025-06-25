@@ -827,57 +827,116 @@ extern const char *GLB_QUAD_GL_FRAGMENT_SOURCE = R"glsl(
 )glsl";
 
 // Get top-level package path
-extern const std::string package_path = ros::package::getPath("projection_operation");
-extern const std::string workspace_path = package_path.substr(0, package_path.rfind("/src"));
+extern const std::string PACKAGE_PATH = ros::package::getPath("projection_operation");
+extern const std::string WORKSPACE_PATH = PACKAGE_PATH.substr(0, PACKAGE_PATH.rfind("/src"));
 
 // Directory paths for calibration image files
-extern const std::string GLB_CONFIG_DIR_PATH = workspace_path + "/data/projection/params";
+extern const std::string CONFIG_DIR_PATH = WORKSPACE_PATH + "/data/projection/params";
 
 // Directory paths for runtime image files
-extern const std::string GLB_IMAGE_TOP_DIR_PATH = workspace_path + "/data/projection/images";
+extern const std::string IMAGE_DIR_PATH = WORKSPACE_PATH + "/data/projection/images";
 
 /**
- * @brief Image file sub-directory path
+ * @brief Image file sub-directory paths
  */
-std::string RUNTIME_IMAGE_PATH = GLB_IMAGE_TOP_DIR_PATH + "/runtime";
+std::string RUNTIME_IMAGE_PATH = IMAGE_DIR_PATH + "/runtime";
+std::string CALIB_IMAGE_PATH = IMAGE_DIR_PATH + "/calibration";
 
+//TODO: All of these paths should be moved to a config file.
 /**
- * @brief File names for available wall images
+ * @brief File names for available calibration test wall images
  * 
- * @note This list needs to match that used in:
- * omniroute_ubuntu_ws\src\omniroute_operation\src\shared_utils\projection_operation.py
  */
-std::vector<std::string> WALL_IMAGE_FILE_NAMES = {
-    "w_black",
-    "w_square",
-    "w_circle",
-    "w_triangle",
-    "w_star",
-    "w_pentagon",
-    "w_rm_blue_left",
-    "w_rm_blue_middle",
-    "w_rm_blue_right",
-    "w_rm_green_left",
-    "w_rm_green_middle",
-    "w_rm_green_right",
-    "w_rm_teal_left",
-    "w_rm_teal_middle",
-    "w_rm_teal_right"
+std::vector<std::string> CALIB_TEST_WALL_IMAGES = {
+    "0_test_wall.png",
+    "1_test_wall.png",
+    "2_test_wall.png",
+    "3_test_wall.png",
 };
 
 /**
- * @brief File names for available floor images
+ * @brief File names for available calibration floor images
+ * 
+ */
+std::vector<std::string> CALIB_TEST_FLOOR_IMAGES = {
+    "0_test_floor.png",
+    "1_test_floor.png"
+};
+
+/**
+ * @brief File names for available calibration monitor wall images
+ * 
+ */
+std::vector<std::string> CALIB_MON_WALL_IMAGES = {
+    "w_m0.png",
+    "w_m1.png",
+    "w_m2.png",
+    "w_m3.png",
+    "w_m4.png",
+    "w_m5.png"
+};
+
+/**
+ * @brief File names for available calibration monitor floor images 
+ * 
+ */
+std::vector<std::string> CALIB_MON_FLOOR_IMAGES = {
+    "f_m0.png",
+    "f_m1.png",
+    "f_m2.png",
+    "f_m3.png",
+    "f_m4.png",
+    "f_m5.png"
+};
+
+/**
+ * @brief List of avilable calibration mode images
+ * 
+ */
+std::vector<std::string> CALIB_MODE_IMAGES = {
+    "w_c0.png", // left walls
+    "w_c1.png", // middle walls
+    "w_c2.png", // right walls
+    "f_c0.png", // maze floor
+};
+
+/**
+ * @brief File names for available runtime wall images
  * 
  * @note This list needs to match that used in:
  * omniroute_ubuntu_ws\src\omniroute_operation\src\shared_utils\projection_operation.py
  */
-std::vector<std::string> FLOOR_IMAGE_FILE_NAMES = {
-    "f_black",
-    "f_green",
-    "f_pattern_0",
-    "f_pattern_1",
-    "f_pattern_2",
-    "f_white"
+std::vector<std::string> RUNTIME_WALL_IMAGES = {
+    "w_black.png",
+    "w_square.png",
+    "w_square.png",
+    "w_triangle.png",
+    "w_star.png",
+    "w_pentagon.png",
+    "w_rm_blue_left.png",
+    "w_rm_blue_middle.png",
+    "w_rm_blue_right.png",
+    "w_rm_green_left.png",
+    "w_rm_green_middle.png",
+    "w_rm_green_right.png",
+    "w_rm_teal_left.png",
+    "w_rm_teal_middle.png",
+    "w_rm_teal_right.png"
+};
+
+/**
+ * @brief File names for available runtime floor images
+ * 
+ * @note This list needs to match that used in:
+ * omniroute_ubuntu_ws\src\omniroute_operation\src\shared_utils\projection_operation.py
+ */
+std::vector<std::string> RUNTIME_FLOOR_IMAGES = {
+    "f_black.png",
+    "f_green.png",
+    "f_pattern_0.png",
+    "f_pattern_1.png",
+    "f_pattern_2.png",
+    "f_white.png"
 };
 
 // Number of rows and columns in the maze grid
@@ -913,8 +972,7 @@ extern const float GLB_WALL_IMAGE_HEIGHT_NDC = (GLB_MAZE_HEIGHT_NDC / (float(GLB
 extern const std::vector<std::string> CAL_MODE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};
 
 // Enum for tracking the current calibration mode
-enum CalibrationMode
-{
+enum CalibrationMode {
     WALLS_LEFT = 0,
     WALLS_MIDDLE = 1,
     WALLS_RIGHT = 2,

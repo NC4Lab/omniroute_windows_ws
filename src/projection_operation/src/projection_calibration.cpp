@@ -455,7 +455,7 @@ int updateTexture(
 
 void appLoadAssets() {
     // Log setup parameters
-    ROS_INFO("[appLoadAssets] Config XML Path: %s", GLB_CONFIG_DIR_PATH.c_str());
+    ROS_INFO("[appLoadAssets] Config XML Path: %s", CONFIG_DIR_PATH.c_str());
     ROS_INFO("[appLoadAssets] Display: Width[%d] Height[%d]", GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL);
     ROS_INFO("[appLoadAssets] Floor (Pxl): Width[%d] Height[%d]", GLB_MAZE_IMAGE_WIDTH_PXL, GLB_MAZE_IMAGE_HEIGHT_PXL);
     ROS_INFO("[appLoadAssets] Floor (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", GLB_MAZE_WIDTH_NDC, GLB_MAZE_HEIGHT_NDC);
@@ -463,17 +463,34 @@ void appLoadAssets() {
     ROS_INFO("[appLoadAssets] Wall (NDC): Width[%0.2f] Height[%0.2f] Space Horz[%0.2f] Space Vert[%0.2f]", GLB_WALL_IMAGE_WIDTH_NDC, GLB_WALL_IMAGE_HEIGHT_NDC);
     ROS_INFO("[appLoadAssets] Origin Plane (NDC): Width[%0.2f] Height[%0.2f]", GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL);
 
+    std::vector<std::string> calibTestWallImages, calibTestFloorImages, calibMonWallImages, calibMonFloorImages, calibModeImages;
+    for (auto &fileName: CALIB_TEST_WALL_IMAGES)
+        calibTestWallImages.push_back(CALIB_IMAGE_PATH + "/" + fileName);
+    
+    for (auto &fileName: CALIB_TEST_FLOOR_IMAGES)
+        calibTestFloorImages.push_back(CALIB_IMAGE_PATH + "/" + fileName);
+    
+    for (auto &fileName: CALIB_MON_WALL_IMAGES)
+        calibMonWallImages.push_back(CALIB_IMAGE_PATH + "/" + fileName);
+    
+    for (auto &fileName: CALIB_MON_FLOOR_IMAGES)
+        calibMonFloorImages.push_back(CALIB_IMAGE_PATH + "/" + fileName);
+
+    for (auto &fileName: CALIB_MODE_IMAGES)
+        calibModeImages.push_back(CALIB_IMAGE_PATH + "/" + fileName);
+
+
     // Load images using OpenCV
-    if (loadImgMat(fiImgPathWallVec, wallImgMatVec) < 0)
-        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall test images");
-    if (loadImgMat(fiImgPathFloorVec, floorImgMatVec) < 0)
-        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV floor test images");
-    if (loadImgMat(fiImgPathCalVec, calImgMatVec) < 0)
-        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV calibration mode images");
-    if (loadImgMat(fiImgPathMonWallVec, monWallImgMatVec) < 0)
-        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV monitor number wall images");
-    if (loadImgMat(fiImgPathMonFloorVec, monFloorImgMatVec) < 0)
-        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV onitor number floor images");
+    if (loadImgMat(calibTestWallImages, calibTestWallMats) < 0)
+        throw std::runtime_error("[appLoadAssets] Failed to load OpenCV wall test images");
+    if (loadImgMat(calibTestFloorImages, calibTestFloorMats) < 0)
+        throw std::runtime_error("[appLoadAssets] Failed to load OpenCV floor test images");
+    if (loadImgMat(calibMonWallImages, calibMonWallMats) < 0)
+        throw std::runtime_error("[appLoadAssets] Failed to load OpenCV monitor number wall images");
+    if (loadImgMat(calibMonFloorImages, calibMonFloorMats) < 0)
+        throw std::runtime_error("[appLoadAssets] Failed to load OpenCV monitor number floor images");
+    if (loadImgMat(calibModeImages, calibModeMats) < 0)
+        throw std::runtime_error("[appLoadAssets] Failed to load OpenCV calibration mode images");
 
     ROS_INFO("[appLoadAssets] OpentCV mat images loaded succesfully");
 }
@@ -673,11 +690,11 @@ void appMainLoop() {
         if (F.update_mode_img) {
             // Update wall textures
             if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
-                if (updateModeImage(wallImgMatVec[I.wall_image], monWallImgMatVec[I.monitor], calImgMatVec[CAL_MODE], modeImgMat) < 0)
+                if (updateModeImage(calibTestWallMats[I.wall_image], calibMonWallMats[I.monitor], calibModeMats[CAL_MODE], modeMat) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from: updateModeImage for wall image");
             // Update floor texture
             else if (CAL_MODE == FLOOR)
-                if (updateModeImage(floorImgMatVec[I.floor_image], monFloorImgMatVec[I.monitor], calImgMatVec[CAL_MODE], modeImgMat) < 0)
+                if (updateModeImage(calibTestFloorMats[I.floor_image], calibMonFloorMats[I.monitor], calibModeMats[CAL_MODE], modeMat) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from: updateModeImage for floor image");
         }
 
@@ -685,11 +702,11 @@ void appMainLoop() {
         if (F.update_textures || F.update_homographys || F.init_control_points) {
             // Update wall textures
             if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
-                if (updateTexture(wallImgMatVec[I.wall_image], modeImgMat, CAL_MODE, HMAT_ARR, projCtx) < 0)
+                if (updateTexture(calibTestWallMats[I.wall_image], modeMat, CAL_MODE, HMAT_ARR, projCtx) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from: updateTexture for wall images");
             // Update floor texture
             else if (CAL_MODE == FLOOR)
-                if (updateTexture(floorImgMatVec[I.floor_image], modeImgMat, CAL_MODE, HMAT_ARR, projCtx) < 0)
+                if (updateTexture(calibTestFloorMats[I.floor_image], modeMat, CAL_MODE, HMAT_ARR, projCtx) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from: updateTexture for floor images");
         }
 

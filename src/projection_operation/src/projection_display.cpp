@@ -44,11 +44,11 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         if (mods & GLFW_MOD_SHIFT) {
             int wall_img_ind = wall_img_ind_last;
             if (key == GLFW_KEY_0) wall_img_ind = 0;
-            else if (key == GLFW_KEY_1 && wallRawImgMatVec.size() > 1) wall_img_ind = 1;
-            else if (key == GLFW_KEY_2 && wallRawImgMatVec.size() > 2) wall_img_ind = 2;
-            else if (key == GLFW_KEY_3 && wallRawImgMatVec.size() > 3) wall_img_ind = 3;
-            else if (key == GLFW_KEY_4 && wallRawImgMatVec.size() > 4) wall_img_ind = 4;
-            else if (key == GLFW_KEY_5 && wallRawImgMatVec.size() > 5) wall_img_ind = 5;
+            else if (key == GLFW_KEY_1 && runtimeWallMats.size() > 1) wall_img_ind = 1;
+            else if (key == GLFW_KEY_2 && runtimeWallMats.size() > 2) wall_img_ind = 2;
+            else if (key == GLFW_KEY_3 && runtimeWallMats.size() > 3) wall_img_ind = 3;
+            else if (key == GLFW_KEY_4 && runtimeWallMats.size() > 4) wall_img_ind = 4;
+            else if (key == GLFW_KEY_5 && runtimeWallMats.size() > 5) wall_img_ind = 5;
             // Check for configuration change
             if (wall_img_ind != wall_img_ind_last) {
                 ROS_INFO("[callbackKeyBinding] Initiated change wall image configuration from %d to %d", wall_img_ind_last, wall_img_ind);
@@ -71,11 +71,11 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         else if (mods & GLFW_MOD_CONTROL) {
             int floor_img_ind = floor_img_ind_last;
             if (key == GLFW_KEY_0) floor_img_ind = 0;
-            else if (key == GLFW_KEY_1 && floorRotatedImgMatVecArr.size() > 1) floor_img_ind = 1;
-            else if (key == GLFW_KEY_2 && floorRotatedImgMatVecArr.size() > 2) floor_img_ind = 2;
-            else if (key == GLFW_KEY_3 && floorRotatedImgMatVecArr.size() > 3) floor_img_ind = 3;
-            else if (key == GLFW_KEY_4 && floorRotatedImgMatVecArr.size() > 4) floor_img_ind = 4;
-            else if (key == GLFW_KEY_5 && floorRotatedImgMatVecArr.size() > 5) floor_img_ind = 5;
+            else if (key == GLFW_KEY_1 && rotatedRuntimeFloorMats.size() > 1) floor_img_ind = 1;
+            else if (key == GLFW_KEY_2 && rotatedRuntimeFloorMats.size() > 2) floor_img_ind = 2;
+            else if (key == GLFW_KEY_3 && rotatedRuntimeFloorMats.size() > 3) floor_img_ind = 3;
+            else if (key == GLFW_KEY_4 && rotatedRuntimeFloorMats.size() > 4) floor_img_ind = 4;
+            else if (key == GLFW_KEY_5 && rotatedRuntimeFloorMats.size() > 5) floor_img_ind = 5;
 
             // Check for configuration change
             if (floor_img_ind != floor_img_ind_last) {
@@ -411,12 +411,13 @@ void rotateFloorImage(int img_rot_deg, const cv::Mat &in_img_mat, std::vector<cv
     out_img_mat_vec.push_back(rotated_img);
 }
 
-int updateFloorTexture(int proj_ind, cv::Mat &_floorImgMat, const cv::Mat _wallBlankImgMat,
+int updateFloorTexture(int proj_ind, cv::Mat &_floorMats, const cv::Mat _wallBlankMats,
     std::array<cv::Mat, GLB_NUM_PROJ> &_FLOOR_HMAT_ARR, cv::Mat &out_img_mat) {
 
     // Copy the floor image to be used
+    // TODO: Is this necessary? Can we use the original image?
     cv::Mat img_copy;
-    _floorImgMat.copyTo(img_copy);
+    _floorMats.copyTo(img_copy);
 
     // Get homography matrix for this wall
     cv::Mat H = _FLOOR_HMAT_ARR[proj_ind];
@@ -433,13 +434,13 @@ int updateFloorTexture(int proj_ind, cv::Mat &_floorImgMat, const cv::Mat _wallB
         return -1;
 
     // Merge the blank wall image with the final image
-    if (mergeImgMat(_wallBlankImgMat, out_img_mat) < 0)
+    if (mergeImgMat(_wallBlankMats, out_img_mat) < 0)
         return -1;
 
     return 0;
 }
 
-int updateWallTexture(int proj_ind, const std::vector<cv::Mat> &_wallRawImgMatVec,
+int updateWallTexture(int proj_ind, const std::vector<cv::Mat> &_runtimeWallMats,
     const ProjWallConfigIndices4D &_PROJ_WALL_CONFIG_INDICES_4D,
     const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES - 1>, 4> &_WALL_HMAT_ARR,
     bool do_ignore_blank_img, cv::Mat &out_img_mat) {
@@ -451,7 +452,7 @@ int updateWallTexture(int proj_ind, const std::vector<cv::Mat> &_wallRawImgMatVe
         for (int gr_i = 0; gr_i < GLB_MAZE_SIZE; gr_i++) { // image bottom to top
             for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; gc_i++) { // image left to right
                 int img_ind = _PROJ_WALL_CONFIG_INDICES_4D[proj_ind][gr_i][gc_i][_CAL_MODE];
-                if (_wallRawImgMatVec[img_ind].empty()) {
+                if (_runtimeWallMats[img_ind].empty()) {
                     ROS_ERROR("[updateWallTexture] Stored OpenCV wall image is empty: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
                               proj_ind, gr_i, gc_i, _CAL_MODE, img_ind);
                     return -1;
@@ -463,7 +464,7 @@ int updateWallTexture(int proj_ind, const std::vector<cv::Mat> &_wallRawImgMatVe
 
                 // Copy the wall image to be used
                 cv::Mat img_copy;
-                _wallRawImgMatVec[img_ind].copyTo(img_copy);
+                _runtimeWallMats[img_ind].copyTo(img_copy);
 
                 // Get homography matrix for this wall
                 cv::Mat H = _WALL_HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i];
@@ -530,20 +531,20 @@ void appInitROS(int argc, char **argv, ROSComm &out_RC) {
 void appLoadAssets() {
     // ---------- Load Images with OpenCV ----------
     // Get the wall images
-    std::vector<std::string> wallImgPathVec; // declare the vector to store the paths
-    for (auto &fileName : WALL_IMAGE_FILE_NAMES)
-        wallImgPathVec.push_back(RUNTIME_IMAGE_PATH + "/" + fileName + ".png");
-
-    // TODO: Move to dynamic loading - this is a static list that is memory inefficient
-    if (loadImgMat(wallImgPathVec, wallRawImgMatVec) < 0)
-        throw std::runtime_error("[appLoadAssets] Failed to load OpenCV wall images");
+    std::vector<std::string> runtimeWallImages; // declare the vector to store the paths
+    for (auto &fileName : RUNTIME_WALL_IMAGES)
+        runtimeWallImages.push_back(RUNTIME_IMAGE_PATH + "/" + fileName);
 
     // Get the floor images
-    std::vector<std::string> floorImgPathVec; // declare the vector to store the paths
-    for (auto &fileName : FLOOR_IMAGE_FILE_NAMES) // iterate through the file names
-        floorImgPathVec.push_back(RUNTIME_IMAGE_PATH + "/" + fileName + ".png");
+    std::vector<std::string> runtimeFloorImages; // declare the vector to store the paths
+    for (auto &fileName : RUNTIME_FLOOR_IMAGES) // iterate through the file names
+        runtimeFloorImages.push_back(RUNTIME_IMAGE_PATH + "/" + fileName + ".png");
 
-    if (loadImgMat(floorImgPathVec, floorRawImgMatVec) < 0)
+    // TODO: Move to dynamic loading - this is a static list that is memory inefficient
+    if (loadImgMat(runtimeWallImages, runtimeWallMats) < 0)
+        throw std::runtime_error("[appLoadAssets] Failed to load OpenCV wall images");
+
+    if (loadImgMat(runtimeFloorImages, runtimeFloorMats) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpenCV floor images");
 
     // ---------- Load Wall and Floor Homography Matrices from XML ----------
@@ -606,12 +607,13 @@ void appInitVariables() {
     }
 
     // ---------- Convert and store rotated floor images ---------
-    // Loop through floorRawImgMatVec images and store a new entry for each projector in floorRotatedImgMatVecArr
-    for (auto &img : floorRawImgMatVec) {
-        rotateFloorImage(270, img, floorRotatedImgMatVecArr[0]); // Projector 0
-        rotateFloorImage(180, img, floorRotatedImgMatVecArr[1]); // Projector 1
-        rotateFloorImage(90, img, floorRotatedImgMatVecArr[2]);  // Projector 2
-        rotateFloorImage(0, img, floorRotatedImgMatVecArr[3]);   // Projector 3
+    // Loop through runtimeFloorMats images and store a new entry for each projector in rotatedRuntimeFloorMats
+    // TODO: Can we add the rotation into the homography matrix?
+    for (auto &img : runtimeFloorMats) {
+        rotateFloorImage(270, img, rotatedRuntimeFloorMats[0]); // Projector 0
+        rotateFloorImage(180, img, rotatedRuntimeFloorMats[1]); // Projector 1
+        rotateFloorImage(90, img, rotatedRuntimeFloorMats[2]);  // Projector 2
+        rotateFloorImage(0, img, rotatedRuntimeFloorMats[3]);   // Projector 3
     }
 
     ROS_INFO("[projection_display:appInitVariables] Finished initializing variables successfully");
@@ -660,13 +662,13 @@ void appInitOpenGL() {
 
         // Initialize blank wall image mat
         ProjWallConfigIndices4D proj_wall_cfg_indices_blank = {};                                              // Initialize to all zeros for blank images
-        wallBlankImgMatArr[proj_ind] = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4); // Initialize cv::Mat
+        wallBlankMats[proj_ind] = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4); // Initialize cv::Mat
         if (updateWallTexture(proj_ind,
-                              wallRawImgMatVec,
+                              runtimeWallMats,
                               proj_wall_cfg_indices_blank,
                               WALL_HMAT_ARR,
                               false,
-                              wallBlankImgMatArr[proj_ind]))
+                              wallBlankMats[proj_ind]))
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(proj_ind) + "]: Failed to update wall texture");
 
         ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
@@ -714,15 +716,15 @@ void appMainLoop() {
 
             // Update floor image texture
             if (updateFloorTexture(projCtx.windowInd,
-                                    floorRotatedImgMatVecArr[projCtx.windowInd][projFloorConfigIndex],
-                                    wallBlankImgMatArr[projCtx.windowInd],
+                                    rotatedRuntimeFloorMats[projCtx.windowInd][projFloorConfigIndex],
+                                    wallBlankMats[projCtx.windowInd],
                                     FLOOR_HMAT_ARR,
                                     img_mat))
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
 
             // Update wall image texture
             if (updateWallTexture(projCtx.windowInd,
-                                    wallRawImgMatVec,
+                                    runtimeWallMats,
                                     PROJ_WALL_CONFIG_INDICES_4D,
                                     WALL_HMAT_ARR,
                                     true,
