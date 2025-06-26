@@ -29,11 +29,11 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // Check number keys and update the monitor index
         int mon_ind = I.monitor;
         if (key == GLFW_KEY_0)                          mon_ind = 0;
-        else if (key == GLFW_KEY_1 && N.monitor > 1)    mon_ind = 1;
-        else if (key == GLFW_KEY_2 && N.monitor > 2)    mon_ind = 2;
-        else if (key == GLFW_KEY_3 && N.monitor > 3)    mon_ind = 3;
-        else if (key == GLFW_KEY_4 && N.monitor > 4)    mon_ind = 4;
-        else if (key == GLFW_KEY_5 && N.monitor > 5)    mon_ind = 5;
+        else if (key == GLFW_KEY_1 && NUM_MONITORS > 1)    mon_ind = 1;
+        else if (key == GLFW_KEY_2 && NUM_MONITORS > 2)    mon_ind = 2;
+        else if (key == GLFW_KEY_3 && NUM_MONITORS > 3)    mon_ind = 3;
+        else if (key == GLFW_KEY_4 && NUM_MONITORS > 4)    mon_ind = 4;
+        else if (key == GLFW_KEY_5 && NUM_MONITORS > 5)    mon_ind = 5;
 
         // Check for monitor change
         if (mon_ind != I.monitor) {
@@ -57,14 +57,16 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // Check for image change
         if ((CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) &&
             (img_ind != I.wall_image) &&
-            (img_ind < N.wall_image)) {
+            (img_ind < CALIB_TEST_WALL_IMAGES.size())) {
             ROS_INFO("[callbackKeyBinding] Initiated change image from %d to %d", I.wall_image, img_ind);
             I.wall_image = img_ind;         // Update the image index
             F.update_homographys = true;    // Set the update texture flag
             F.update_mode_img = true;       // Set the update mode image flag
         }
 
-        if ((CAL_MODE == FLOOR) && (img_ind != I.floor_image) && (img_ind < N.floor_image)) {
+        if ((CAL_MODE == FLOOR) && 
+        (img_ind != I.floor_image) && 
+        (img_ind < CALIB_TEST_FLOOR_IMAGES.size())) {
             ROS_INFO("[callbackKeyBinding] Initiated change image from %d to %d", I.floor_image, img_ind);
             I.floor_image = img_ind;         // Update the image index
             F.update_homographys = true;     // Set the update texture flag
@@ -100,9 +102,9 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         if ((mods & GLFW_MOD_CONTROL) && (mods & GLFW_MOD_SHIFT)) {
             // Listen for arrow key input to switch through calibration modes
             bool is_cal_mode_changed = true; // Assume a valid key was pressed
-            if (key == GLFW_KEY_LEFT)       CAL_MODE = (CAL_MODE > 0) ? static_cast<CalibrationMode>(CAL_MODE - 1) : static_cast<CalibrationMode>(0);
-            else if (key == GLFW_KEY_RIGHT) CAL_MODE = (CAL_MODE < N_CAL_MODES - 1) ? static_cast<CalibrationMode>(CAL_MODE + 1) : static_cast<CalibrationMode>(N_CAL_MODES - 1);
-            else                            is_cal_mode_changed = false;           // No valid key pressed, do not update calibration mode
+            if (key == GLFW_KEY_LEFT)       CAL_MODE = (CAL_MODE - 1) % N_CAL_MODES; // Wrap around if below 0
+            else if (key == GLFW_KEY_RIGHT) CAL_MODE = (CAL_MODE + 1) % N_CAL_MODES; // Wrap around if above max
+            else                            is_cal_mode_changed = false;           // No valid key pressed, do not update calibration mode 
 
             // Set flags
             if (is_cal_mode_changed) {
@@ -488,7 +490,7 @@ void appLoadAssets() {
 void appInitOpenGL() {
     // Initialize GLFW and OpenGL settings
     std::vector<int> proj_mon_vec = {1,2,3,4};
-    if (MazeRenderContext::SetupGraphicsLibraries(N.monitor, proj_mon_vec) < 0)
+    if (MazeRenderContext::SetupGraphicsLibraries(NUM_MONITORS, proj_mon_vec) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
 
     // Initialze render context

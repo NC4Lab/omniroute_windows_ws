@@ -14,6 +14,20 @@
 
 // ================================================== VARIABLES ==================================================
 
+// Data structure to hold stuff for each projector, row, column, and calibration mode
+template <typename T>
+using ProjectionMap = std::map<Projector, 
+    std::map<Row, 
+    std::map<Column,
+    std::map<CalibrationMode,
+    T>>>>;
+
+// Map to store the indices of wall images
+ProjectionMap<int> indexMap;
+
+// Map to store all the homography matrices
+ProjectionMap<cv::Mat> hMatMap;
+
 /**
  * @brief  4x4 data container for tracking the vertex coordinates for the corner wall images which are used as control point.
  *
@@ -21,7 +35,7 @@
  * with the origin at the center of the screen.
  *
  * @details
- *[4][4] = [conrol point][vertex]
+ *[4][4] = [control point][vertex]
  *
  * - Dimension 1: Control Point [0, 1, 2, 3]
  * - Index with respect to the overall maze verteces
@@ -100,15 +114,6 @@ static struct FlagStateStruct {
     bool update_textures = true;     // Flag to indicate if image vertices, homography and texture need to be updated
     bool update_homographys = true;  // Flag to indicate if image vertices, homography and texture need to be updated
 } F;
-
-/**
- * @brief Struct for global counts.
- */
-static struct CountStruct {
-    int monitor;               // Number of monitors connected to the system
-    const int wall_image = 4;  // Number of wall test images
-    const int floor_image = 2; // Number of floor test images
-} N;
 
 /**
  * @brief Struct for global indices.
@@ -275,7 +280,7 @@ int updateTexture(
     cv::Mat img_base_mat,
     cv::Mat img_mode_mat,
     CalibrationMode _CAL_MODE,
-    const std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES> &_HMAT_ARR,
+    const std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, > &_HMAT_ARR,
     MazeRenderContext &out_projCtx);
 
 /**

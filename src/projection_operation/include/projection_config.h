@@ -172,6 +172,7 @@
 #include <limits>
 #include <array>
 #include <vector>
+#include <map>
 #include <string>
 #include <cstring>
 #include <cmath>
@@ -181,10 +182,36 @@
 
 // ================================================== VARIABLES ==================================================
 
-/**
- * @brief Number of projectors used in the system. 
- */
-const int GLB_NUM_PROJ = 4; // Number of projectors
+enum Projector {
+    PROJ_0 = 0, // Projector 0 (East)
+    PROJ_1,     // Projector 1 (North)
+    PROJ_2,     // Projector 2 (West)
+    PROJ_3      // Projector 3 (South)
+};
+const int N_PROJ = 4; // Number of projectors
+
+enum Row {
+    ROW_0 = 0, // Top row
+    ROW_1,     // Middle row
+    ROW_2      // Bottom row
+};
+const int N_ROWS = 3; // Number of rows in the chamber grid
+
+enum Column {
+    COL_0 = 0, // Left column
+    COL_1,     // Center column
+    COL_2      // Right column
+};
+const int N_COLS = 3; // Number of columns in the chamber grid
+
+// Enum for tracking the current calibration mode
+enum CalibrationMode {
+    WALLS_LEFT = 0,
+    WALLS_MIDDLE = 1,
+    WALLS_RIGHT = 2,
+    FLOOR = 3
+};
+const int N_CAL_MODES = 4; // Number of calibration modes
 
 /**
  * @brief ROS loop rate in Hertz.
@@ -204,7 +231,7 @@ const bool GLB_DO_VERBOSE_DEBUG = false;
 const int GLB_DEBUG_LEVEL_GL = 2;
 
 /**
- * @brief 4D array of hardcoded image indices to display.
+ * @brief 4D array of hardcoded image indices for display.
  *
  * @details
  * This array is used to map specific wall image indices to a combination of
@@ -221,14 +248,6 @@ const int GLB_DEBUG_LEVEL_GL = 2;
  *
  * - Dimension 4: Grid Columns [0, 1, 2]
  *   - Index with respect to the grid columns in the chamber.
- *
- * Image file mapping for shapes:
- * [0] Black
- * [1] Square
- * [2] Circle
- * [3] Triangle
- * [4] Star
- * [5] Pentagon
  *
  * Element mapping:
  *
@@ -270,5 +289,6 @@ const int GLB_DEBUG_LEVEL_GL = 2;
  *      }}}};
  */
 using ProjWallConfigIndices4D = std::array<std::array<std::array<std::array<int, 3>, 3>, 3>, 4>;
+
 
 #endif

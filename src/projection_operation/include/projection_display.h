@@ -28,33 +28,6 @@ static struct FlagStateStruct {
     bool force_window_focus = false;  // Flag to indicate if the window should be forced into focus
 } F;
 
-/**
- * @brief Struct for global indices.
- */
-static struct IndStruct {
-    const int starting_monitor = 0; // Default starting monitor index for the windows (hardcoded)
-
-    std::vector<int> proj_mon_vec = {1, 2, 3, 4}; // Vector of indices of the monitor associated with each projector
-    /*
-    MSM: 2024-03-20
-    Is not hardcoded anymore.
-    = {
-        2, // Projector 0
-        1, // Projector 1
-        4, // Projector 2
-        3, // Projector 3
-    };
-    */
-} I;
-
-/**
- * @brief Struct for global counts
- */
-static struct CountStruct {
-    int monitor;                                                   // Number of monitors connected to the system
-    const int projector = static_cast<int>(I.proj_mon_vec.size()); // Number of projectors
-    const int wall_image = 6;                                      // Number of wall images
-} N;
 
 /**
  * @brief  Struct for rat mask tracking and graphics.
@@ -71,7 +44,7 @@ static struct RatTracker {
 /**
  * @brief Struct for ROS communication.
  */
-struct ROSComm {
+static struct ROSComm {
     std::unique_ptr<ros::NodeHandle> node_handle; // Smart pointer to ROS node handler
     std::unique_ptr<ros::Rate> loop_rate;         // Smart pointer to ros::Rate
     ros::Subscriber proj_cmd_sub;                 // ROS subscriber for projection commands
@@ -80,7 +53,7 @@ struct ROSComm {
 } RC;
 
 /**
- * @brief A 4x3x3x3 array contianer for storring the wall image configuration indices
+ * @brief A 4x3x3x3 array container for storing the wall image configuration indices
  */
 ProjWallConfigIndices4D PROJ_WALL_CONFIG_INDICES_4D;
 
@@ -93,7 +66,8 @@ int projFloorConfigIndex = 0;
  * @brief A vector of size n_projectors, where each element contains a 3x3 homography matrices for
  * the floor image transformations.
  */
-std::array<cv::Mat, GLB_NUM_PROJ> FLOOR_HMAT_ARR;
+std::array<cv::Mat, N_PROJ> FLOOR_HMAT_ARR;
+std::map<Projector, std::vector<cv::Mat>> FLOOR_HMAT;
 
 /**
  * @brief A vector of size n_projectors, where each element contains a 3x3x3 data container for storing 3x3 homography matrices
@@ -122,17 +96,17 @@ std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SI
 /**
  * @brief Array of homography matrices for warping the rat mask marker from maze cm to ndc space for each projector.
  */
-std::array<cv::Mat, GLB_NUM_PROJ> HMAT_CM_TO_NDC_ARR;
+std::array<cv::Mat, N_PROJ> HMAT_CM_TO_NDC_ARR;
 
 /**
  * @brief  Array of marker for masking rat for each projector.
  */
-std::array<CircleRenderer, GLB_NUM_PROJ> RM_CIRCREND_ARR;
+std::array<CircleRenderer, N_PROJ> RM_CIRCREND_ARR;
 
 /**
  * @brief  Array of OpenGL context objects.
  */
-std::vector<MazeRenderContext> PROJ_CTX_VEC(GLB_NUM_PROJ);
+std::vector<MazeRenderContext> PROJ_CTX_VEC(N_PROJ);
 
 /**
  * @brief Offset for the window position
@@ -147,7 +121,7 @@ std::vector<cv::Mat> runtimeFloorMats; // Vector of individual floor image textu
  * @brief Array to store the image of all blank walls to use as the
  * baseline image.
  */
-std::array<cv::Mat, GLB_NUM_PROJ> wallBlankMats;
+std::array<cv::Mat, N_PROJ> wallBlankMats;
 
 /**
  * @brief Array of vectors to store the rotated floor images in cv::Mat format
@@ -160,7 +134,7 @@ std::array<cv::Mat, GLB_NUM_PROJ> wallBlankMats;
  *
  * - Dimension 2: Image N
  */
-std::array<std::vector<cv::Mat>, GLB_NUM_PROJ> rotatedRuntimeFloorMats;
+std::array<std::vector<cv::Mat>, N_PROJ> rotatedRuntimeFloorMats;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -285,7 +259,7 @@ int updateFloorTexture(
     int proj_ind,
     cv::Mat &_floorMats,
     const cv::Mat _wallBlankMats,
-    std::array<cv::Mat, GLB_NUM_PROJ> &_FLOOR_HMAT_ARR,
+    std::array<cv::Mat, N_PROJ> &_FLOOR_HMAT_ARR,
     cv::Mat &out_img_mat);
 
 /**
@@ -304,7 +278,7 @@ int updateWallTexture(
     int proj_ind,
     const std::vector<cv::Mat> &_runtimeWallMats,
     const ProjWallConfigIndices4D &_PROJ_WALL_CONFIG_INDICES_4D,
-    const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES - 1>, 4> &_WALL_HMAT_ARR,
+    const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>,  - 1>, 4> &_WALL_HMAT_ARR,
     bool do_ignore_blank_img,
     cv::Mat &out_img_mat);
 

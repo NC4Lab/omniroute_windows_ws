@@ -57,6 +57,10 @@
 // Configuration parameters
 #include <projection_config.h>
 
+const int STARTING_MONITOR = 0;
+const std::vector<int> PROJ_MON_VEC = {1, 2, 3, 4}; // Vector of indices of the monitor associated with each projector
+int NUM_MONITORS;   // Number of monitors detected by GLFW
+
 // ================================================== CLASS: MazeRenderContext ==================================================
 
 #ifndef MAZE_RENDER_CONTEXT_CALLBACKS_H
@@ -971,15 +975,6 @@ extern const float GLB_WALL_IMAGE_HEIGHT_NDC = (GLB_MAZE_HEIGHT_NDC / (float(GLB
 // Calibration mode strings
 extern const std::vector<std::string> CAL_MODE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};
 
-// Enum for tracking the current calibration mode
-enum CalibrationMode {
-    WALLS_LEFT = 0,
-    WALLS_MIDDLE = 1,
-    WALLS_RIGHT = 2,
-    FLOOR = 3,
-    N_CAL_MODES
-};
-
 // ================================================== FUNCTIONS ==================================================
 
 /**
@@ -1105,13 +1100,13 @@ public:
     bool resultVertices;                                /// @brief To check if the XML file was loaded successfully.
     pugi::xml_document docVertices;                     /// @brief XML document for the maze vertices.
 
-    std::string fileNameHMat[GLB_NUM_PROJ];             /// @brief File names for the homography matrices XML files for each projector.
-    bool resultHMat[GLB_NUM_PROJ];                      /// @brief To check if the XML files were loaded successfully.
-    pugi::xml_document docHMat[GLB_NUM_PROJ];           /// @brief XML documents for the homography matrices for each projector.
+    std::string fileNameHMat[N_PROJ];             /// @brief File names for the homography matrices XML files for each projector.
+    bool resultHMat[N_PROJ];                      /// @brief To check if the XML files were loaded successfully.
+    pugi::xml_document docHMat[N_PROJ];           /// @brief XML documents for the homography matrices for each projector.
 
-    std::string fileNameControlPoints[GLB_NUM_PROJ];    /// @brief File names for the control points XML files for each projector.
-    bool resultControlPoints[GLB_NUM_PROJ];             /// @brief To check if the XML files were loaded successfully.
-    pugi::xml_document docControlPoints[GLB_NUM_PROJ];  /// @brief XML documents for the control points for each projector.
+    std::string fileNameControlPoints[N_PROJ];    /// @brief File names for the control points XML files for each projector.
+    bool resultControlPoints[N_PROJ];             /// @brief To check if the XML files were loaded successfully.
+    pugi::xml_document docControlPoints[N_PROJ];  /// @brief XML documents for the control points for each projector.
 
     /**
      * @brief Construct a new CalibrationXML object

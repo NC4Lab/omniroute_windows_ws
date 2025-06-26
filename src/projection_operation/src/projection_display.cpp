@@ -57,7 +57,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 F.update_textures = true;
 
                 // Loop through the data and set all entries to a given wall ind
-                for (int i = 0; i < GLB_NUM_PROJ; ++i)
+                for (int i = 0; i < N_PROJ; ++i)
                     for (int j = 0; j < 3; ++j)
                         for (int k = 0; k < 3; ++k)
                             for (int l = 0; l < 3; ++l)
@@ -272,7 +272,7 @@ void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int>
     };
 
     // Iterate through each projector
-    for (int proj = 0; proj < GLB_NUM_PROJ; ++proj) {
+    for (int proj = 0; proj < N_PROJ; ++proj) {
         // Calculate adjusted row and column for each projector
         int adjusted_row = row;
         int adjusted_col = col;
@@ -359,7 +359,7 @@ void rotateFloorImage(int img_rot_deg, const cv::Mat &in_img_mat, std::vector<cv
 }
 
 int updateFloorTexture(int proj_ind, cv::Mat &_floorMats, const cv::Mat _wallBlankMats,
-    std::array<cv::Mat, GLB_NUM_PROJ> &_FLOOR_HMAT_ARR, cv::Mat &out_img_mat) {
+    std::array<cv::Mat, N_PROJ> &_FLOOR_HMAT_ARR, cv::Mat &out_img_mat) {
 
     // Copy the floor image to be used
     //TODO: Is this necessary? Can we use the original image?
@@ -504,7 +504,7 @@ void appLoadAssets() {
 
     // ---------- Load Wall and Floor Homography Matrices from XML ----------
     CalibrationXML calXML;
-    for (int proj_ind = 0; proj_ind < GLB_NUM_PROJ; ++proj_ind) { // for each projector
+    for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) { // for each projector
         for (int cal_i = 0; cal_i < N_CAL_MODES; ++cal_i) {
             CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
 
@@ -526,9 +526,9 @@ void appLoadAssets() {
     }
 
     // ---------- Load Maze Boundary Vertices ----------
-    for (int proj_ind = 0; proj_ind < GLB_NUM_PROJ; ++proj_ind) { // for each projector
-        std::vector<cv::Point2f> maze_vert_ndc_vec(GLB_NUM_PROJ);
-        std::vector<cv::Point2f> maze_vert_cm_vec(GLB_NUM_PROJ);
+    for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) { // for each projector
+        std::vector<cv::Point2f> maze_vert_ndc_vec(N_PROJ);
+        std::vector<cv::Point2f> maze_vert_cm_vec(N_PROJ);
 
         // Load the maze vertices from XML
         if (calXML.loadVertices(proj_ind, maze_vert_ndc_vec) < 0)
@@ -552,11 +552,11 @@ void appLoadAssets() {
 void appInitVariables() {
     // ---------- Intialize the Window Offset Vector ---------
     winOffsetVec.clear();              // Clear any existing elements
-    winOffsetVec.reserve(GLB_NUM_PROJ); // Reserve memory for efficiency
-    for (int mon_ind = 0; mon_ind < GLB_NUM_PROJ; ++mon_ind) {
+    winOffsetVec.reserve(N_PROJ); // Reserve memory for efficiency
+    for (int mon_ind = 0; mon_ind < N_PROJ; ++mon_ind) {
         // Calculate x and y offsets based on the monitor resolution
-        int x_offset = mon_ind * (GLB_MONITOR_WIDTH_PXL / GLB_NUM_PROJ) * 0.9f;
-        int y_offset = mon_ind * (GLB_MONITOR_HEIGHT_PXL / GLB_NUM_PROJ) * 0.9f;
+        int x_offset = mon_ind * (GLB_MONITOR_WIDTH_PXL / N_PROJ) * 0.9f;
+        int y_offset = mon_ind * (GLB_MONITOR_HEIGHT_PXL / N_PROJ) * 0.9f;
         winOffsetVec.emplace_back(x_offset, y_offset);
     }
 
@@ -575,14 +575,14 @@ void appInitVariables() {
 
 void appInitOpenGL() {
     // Initialize GLFW and OpenGL settings and get number of monitors on the system
-    if (MazeRenderContext::SetupGraphicsLibraries(N.monitor, I.proj_mon_vec) < 0)
+    if (MazeRenderContext::SetupGraphicsLibraries(NUM_MONITORS, PROJ_MON_VEC) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
-    ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector monitor indices: %d, %d, %d, %d", I.proj_mon_vec[0], I.proj_mon_vec[1], I.proj_mon_vec[2], I.proj_mon_vec[3]);
+    ROS_INFO("[appInitOpenGL] OpenGL initialized");
 
     // Initialize OpenGL for each projector
-    for (int proj_ind = 0; proj_ind < GLB_NUM_PROJ; ++proj_ind) {
+    for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) {
         // Start on the default screen
-        int mon_ind = I.starting_monitor;
+        int mon_ind = STARTING_MONITOR;
 
         // Initialze render context for each projector
         if (PROJ_CTX_VEC[proj_ind].initWindowContext(proj_ind, mon_ind, GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL, callbackKeyBinding) < 0)
@@ -617,17 +617,14 @@ void appInitOpenGL() {
         // Initialize blank wall image mat
         ProjWallConfigIndices4D proj_wall_cfg_indices_blank = {};                                              // Initialize to all zeros for blank images
         wallBlankMats[proj_ind] = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4); // Initialize cv::Mat
-        if (updateWallTexture(proj_ind,
-                              runtimeWallMats,
-                              proj_wall_cfg_indices_blank,
-                              WALL_HMAT_ARR,
-                              false,
-                              wallBlankMats[proj_ind]))
+        if (updateWallTexture(proj_ind, runtimeWallMats,
+                              proj_wall_cfg_indices_blank, WALL_HMAT_ARR,
+                              false, wallBlankMats[proj_ind]))
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(proj_ind) + "]: Failed to update wall texture");
 
-        ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
+        ROS_INFO("[appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
     }
-    ROS_INFO("[projection_display:appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
+    ROS_INFO("[appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
 }
 
 
@@ -639,7 +636,7 @@ void appMainLoop()
     // Check if the window mode needs to be changed
     if (F.change_window_mode) {
         for (auto &projCtx : PROJ_CTX_VEC) {
-            int mon_ind = F.windows_set_to_proj ? I.proj_mon_vec[projCtx.windowInd] : I.starting_monitor;
+            int mon_ind = F.windows_set_to_proj ? PROJ_MON_VEC[projCtx.windowInd] : STARTING_MONITOR;
             if (projCtx.changeWindowDisplayMode(mon_ind, F.fullscreen_mode, winOffsetVec[projCtx.windowInd]) < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::changeWindowDisplayMode");
         }
@@ -673,12 +670,9 @@ void appMainLoop()
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
 
             // Update wall image texture
-            if (updateWallTexture(projCtx.windowInd,
-                                    runtimeWallMats,
-                                    PROJ_WALL_CONFIG_INDICES_4D,
-                                    WALL_HMAT_ARR,
-                                    true,
-                                    img_mat))
+            if (updateWallTexture(projCtx.windowInd, runtimeWallMats,
+                                    PROJ_WALL_CONFIG_INDICES_4D, WALL_HMAT_ARR,
+                                    true, img_mat))
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
 
             // Load the new texture
@@ -739,7 +733,7 @@ void appCleanup() {
     ROS_INFO("SHUTTING DOWN");
 
     // Clean up OpenGL wall image objects for each window
-    for (int proj_ind = 0; proj_ind < GLB_NUM_PROJ; ++proj_ind) {
+    for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) {
         if (PROJ_CTX_VEC[proj_ind].cleanupContext(true) != 0)
             ROS_WARN("[appCleanup] Error during cleanup of MazeRenderContext: Projector[%d] Window[%d] Monitor[%d]",
                      proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
