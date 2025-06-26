@@ -34,60 +34,6 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         if (key == GLFW_KEY_T) 
             F.force_window_focus = true;
     }
-
-    // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
-    else if (action == GLFW_PRESS || action == GLFW_REPEAT) {
-        static int wall_img_ind_last = -1;
-        static int floor_img_ind_last = -1;
-
-        // ---------- Change wall configuration [SHIFT [0-8]] ----------
-        if (mods & GLFW_MOD_SHIFT) {
-            int wall_img_ind = wall_img_ind_last;
-            if (key == GLFW_KEY_0) wall_img_ind = 0;
-            else if (key == GLFW_KEY_1 && runtimeWallMats.size() > 1) wall_img_ind = 1;
-            else if (key == GLFW_KEY_2 && runtimeWallMats.size() > 2) wall_img_ind = 2;
-            else if (key == GLFW_KEY_3 && runtimeWallMats.size() > 3) wall_img_ind = 3;
-            else if (key == GLFW_KEY_4 && runtimeWallMats.size() > 4) wall_img_ind = 4;
-            else if (key == GLFW_KEY_5 && runtimeWallMats.size() > 5) wall_img_ind = 5;
-            // Check for configuration change
-            if (wall_img_ind != wall_img_ind_last) {
-                ROS_INFO("[callbackKeyBinding] Initiated change wall image configuration from %d to %d", wall_img_ind_last, wall_img_ind);
-                
-                // Set the flag to update the textures
-                F.update_textures = true;
-
-                // Loop through the data and set all entries to a given wall ind
-                for (int i = 0; i < N_PROJ; ++i)
-                    for (int j = 0; j < 3; ++j)
-                        for (int k = 0; k < 3; ++k)
-                            for (int l = 0; l < 3; ++l)
-                                PROJ_WALL_CONFIG_INDICES_4D[i][j][k][l] = wall_img_ind; // Set each element to 1
-
-                wall_img_ind_last = wall_img_ind;
-            }
-        }
-
-        // ---------- Change floor configuration [CTRL [0-5]] ----------
-        else if (mods & GLFW_MOD_CONTROL) {
-            int floor_img_ind = floor_img_ind_last;
-            if (key == GLFW_KEY_0) floor_img_ind = 0;
-            else if (key == GLFW_KEY_1 && rotatedRuntimeFloorMats.size() > 1) floor_img_ind = 1;
-            else if (key == GLFW_KEY_2 && rotatedRuntimeFloorMats.size() > 2) floor_img_ind = 2;
-            else if (key == GLFW_KEY_3 && rotatedRuntimeFloorMats.size() > 3) floor_img_ind = 3;
-            else if (key == GLFW_KEY_4 && rotatedRuntimeFloorMats.size() > 4) floor_img_ind = 4;
-            else if (key == GLFW_KEY_5 && rotatedRuntimeFloorMats.size() > 5) floor_img_ind = 5;
-
-            // Check for configuration change
-            if (floor_img_ind != floor_img_ind_last) {
-                ROS_INFO("[callbackKeyBinding] Initiated change floor image configuration from %d to %d", floor_img_ind_last, floor_img_ind);
-                // Set the flag to update the textures
-                F.update_textures = true;
-                // Update index
-                projFloorConfigIndex = floor_img_ind;
-                floor_img_ind_last = floor_img_ind;
-            }
-        }
-    }
 }
 
 void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg) {
@@ -342,24 +288,22 @@ void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec)
     }
 }
 
-void rotateFloorImage(int img_rot_deg, const cv::Mat &in_img_mat, std::vector<cv::Mat> &out_img_mat_vec) {
-    // Normalize rotation to be within 0-270 degrees using modulo
-    int normalized_rot_deg = (img_rot_deg % 360 + 360) % 360;
+cv::Mat rotateImage(Projector proj, const cv::Mat &in_img_mat) {
+    cv::Mat rotated_img = in_img_mat.clone(); // Initialize with the input image
 
-    cv::Mat rotated_img;
+    switch (proj) {
+    case Projector::PROJ_0: cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_COUNTERCLOCKWISE);
+        break;
+    case Projector::PROJ_1: cv::rotate(in_img_mat, rotated_img, cv::ROTATE_180);
+        break;
+    case Projector::PROJ_2: cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_CLOCKWISE);
+        break;
+    }
 
-    // Rotate based on the normalized rotation angle
-    if (normalized_rot_deg ==  90) cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_CLOCKWISE);
-    else if (normalized_rot_deg == 180) cv::rotate(in_img_mat, rotated_img, cv::ROTATE_180);
-    else if (normalized_rot_deg == 270) cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_COUNTERCLOCKWISE);
-    else rotated_img = in_img_mat.clone(); // No rotation needed
-
-    // Store the rotated image in the output vector
-    out_img_mat_vec.push_back(rotated_img);
+    return rotated_img;
 }
 
-int updateFloorTexture(int proj_ind, cv::Mat &_floorMats, const cv::Mat _wallBlankMats,
-    std::array<cv::Mat, N_PROJ> &_FLOOR_HMAT_ARR, cv::Mat &out_img_mat) {
+int updateFloorTexture(int proj_ind, cv::Mat &_floorMats, cv::Mat &out_img_mat) {
 
     // Copy the floor image to be used
     //TODO: Is this necessary? Can we use the original image?
@@ -367,7 +311,7 @@ int updateFloorTexture(int proj_ind, cv::Mat &_floorMats, const cv::Mat _wallBla
     // _floorMats.copyTo(img_copy);
 
     // Get homography matrix for this wall
-    cv::Mat H = _FLOOR_HMAT_ARR[proj_ind];
+    cv::Mat H = FLOOR_HMAT_ARR[proj_ind];
 
     // Warp Perspective
     cv::Mat img_warp;
@@ -381,16 +325,13 @@ int updateFloorTexture(int proj_ind, cv::Mat &_floorMats, const cv::Mat _wallBla
         return -1;
 
     // Merge the blank wall image with the final image
-    if (mergeImgMat(_wallBlankMats, out_img_mat) < 0)
+    if (mergeImgMat(blankMat, out_img_mat) < 0)
         return -1;
 
     return 0;
 }
 
-int updateWallTexture(int proj_ind, const std::vector<cv::Mat> &_runtimeWallMats,
-    const ProjWallConfigIndices4D &_PROJ_WALL_CONFIG_INDICES_4D,
-    const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES - 1>, 4> &_WALL_HMAT_ARR,
-    bool do_ignore_blank_img, cv::Mat &out_img_mat) {
+int updateWallTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_mat) {
     // Iterate through through calibration modes (left walls, middle walls, right walls)
     for (int cal_i = 0; cal_i < N_CAL_MODES - 1; cal_i++) {
         CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
@@ -398,8 +339,8 @@ int updateWallTexture(int proj_ind, const std::vector<cv::Mat> &_runtimeWallMats
         // Iterate through the maze grid rows
         for (int gr_i = 0; gr_i < GLB_MAZE_SIZE; gr_i++) { // image bottom to top
             for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; gc_i++) { // image left to right
-                int img_ind = _PROJ_WALL_CONFIG_INDICES_4D[proj_ind][gr_i][gc_i][_CAL_MODE];
-                if (_runtimeWallMats[img_ind].empty()) {
+                int img_ind = PROJ_WALL_CONFIG_INDICES_4D[proj_ind][gr_i][gc_i][_CAL_MODE];
+                if (runtimeWallMats[img_ind].empty()) {
                     ROS_ERROR("[updateWallTexture] Stored OpenCV wall image is empty: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
                               proj_ind, gr_i, gc_i, _CAL_MODE, img_ind);
                     return -1;
@@ -411,10 +352,10 @@ int updateWallTexture(int proj_ind, const std::vector<cv::Mat> &_runtimeWallMats
 
                 // Copy the wall image to be used
                 cv::Mat img_copy;
-                _runtimeWallMats[img_ind].copyTo(img_copy);
+                runtimeWallMats[img_ind].copyTo(img_copy);
 
                 // Get homography matrix for this wall
-                cv::Mat H = _WALL_HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i];
+                cv::Mat H = WALL_HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i];
 
                 // Warp Perspective
                 cv::Mat img_warp;
@@ -425,8 +366,7 @@ int updateWallTexture(int proj_ind, const std::vector<cv::Mat> &_runtimeWallMats
                 }
 
                 // Merge the warped image with the final image
-                if (mergeImgMat(img_warp, out_img_mat) < 0)
-                    return -1;
+                if (mergeImgMat(img_warp, out_img_mat) < 0) return -1;
             }
         }
     }
@@ -615,11 +555,8 @@ void appInitOpenGL() {
             throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
 
         // Initialize blank wall image mat
-        ProjWallConfigIndices4D proj_wall_cfg_indices_blank = {};                                              // Initialize to all zeros for blank images
-        wallBlankMats[proj_ind] = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4); // Initialize cv::Mat
-        if (updateWallTexture(proj_ind, runtimeWallMats,
-                              proj_wall_cfg_indices_blank, WALL_HMAT_ARR,
-                              false, wallBlankMats[proj_ind]))
+        ProjWallConfigIndices4D proj_wall_cfg_indices_blank = {}; // Initialize to all zeros for blank images
+        if (updateWallTexture(proj_ind, runtimeWallMats, proj_wall_cfg_indices_blank, false, wallBlankMats[proj_ind]))
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(proj_ind) + "]: Failed to update wall texture");
 
         ROS_INFO("[appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
@@ -659,24 +596,18 @@ void appMainLoop()
     // Recompute wall parameters and update wall image texture
     if (F.update_textures) {
         for (auto &projCtx : PROJ_CTX_VEC) {
-            cv::Mat img_mat = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
+            cv::Mat imgMat = blankMat.clone();
 
             // Update floor image texture
-            if (updateFloorTexture(projCtx.windowInd,
-                                    rotatedRuntimeFloorMats[projCtx.windowInd][projFloorConfigIndex],
-                                    wallBlankMats[projCtx.windowInd],
-                                    FLOOR_HMAT_ARR,
-                                    img_mat))
+            if (updateFloorTexture(projCtx.windowInd, rotatedRuntimeFloorMats[projCtx.windowInd][projFloorConfigIndex], imgMat))
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
 
             // Update wall image texture
-            if (updateWallTexture(projCtx.windowInd, runtimeWallMats,
-                                    PROJ_WALL_CONFIG_INDICES_4D, WALL_HMAT_ARR,
-                                    true, img_mat))
+            if (updateWallTexture(projCtx.windowInd, true, imgMat))
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
 
             // Load the new texture
-            if (projCtx.loadMatTexture(img_mat) < 0)
+            if (projCtx.loadMatTexture(imgMat) < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to load wall texture");
         }
     }

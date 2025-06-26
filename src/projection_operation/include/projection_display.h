@@ -67,7 +67,6 @@ int projFloorConfigIndex = 0;
  * the floor image transformations.
  */
 std::array<cv::Mat, N_PROJ> FLOOR_HMAT_ARR;
-std::map<Projector, std::vector<cv::Mat>> FLOOR_HMAT;
 
 /**
  * @brief A vector of size n_projectors, where each element contains a 3x3x3 data container for storing 3x3 homography matrices
@@ -118,10 +117,9 @@ std::vector<cv::Mat> runtimeWallMats;  // Vector of individual wall image textur
 std::vector<cv::Mat> runtimeFloorMats; // Vector of individual floor image texture matrices
 
 /**
- * @brief Array to store the image of all blank walls to use as the
- * baseline image.
+ * @brief Blank baseline image.
  */
-std::array<cv::Mat, N_PROJ> wallBlankMats;
+cv::Mat blankMat = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
 
 /**
  * @brief Array of vectors to store the rotated floor images in cv::Mat format
@@ -249,8 +247,6 @@ void rotateFloorImage(
  *
  * @param proj_ind Index of the projector associated with the given image.
  * @param _floorMats Floor image in cv::Mat format
- * @param _wallBlankMats Blank walls image in cv::Mat format
- * @param _FLOOR_HMAT_ARR Array of homography matrices for the floor image transformations.
  * @param[out] out_img_mat Reference to store the new cv::Mat image.
  *
  * @return Integer status code [-1:error, 0:successful].
@@ -258,17 +254,12 @@ void rotateFloorImage(
 int updateFloorTexture(
     int proj_ind,
     cv::Mat &_floorMats,
-    const cv::Mat _wallBlankMats,
-    std::array<cv::Mat, N_PROJ> &_FLOOR_HMAT_ARR,
     cv::Mat &out_img_mat);
 
 /**
  * @brief Applies the homography matrices to warp wall image textures and combine them into a new image.
  *
  * @param proj_ind Index of the projector associated with the given image.
- * @param runtimeWallMats Vector containing the loaded runtime wall images in cv::Mat format
- * @param _PROJ_WALL_CONFIG_INDICES_4D Multidimensional array of walll image indices.
- * @param _WALL_HMAT_ARR Big ass ugly array of arrays of arrays of matrices!
  * @param do_ignore_blank_img Bool to handle blank/black imgages [true: skip; false: include]
  * @param[out] out_img_mat Reference to store the new cv::Mat image.
  *
@@ -276,9 +267,6 @@ int updateFloorTexture(
  */
 int updateWallTexture(
     int proj_ind,
-    const std::vector<cv::Mat> &_runtimeWallMats,
-    const ProjWallConfigIndices4D &_PROJ_WALL_CONFIG_INDICES_4D,
-    const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>,  - 1>, 4> &_WALL_HMAT_ARR,
     bool do_ignore_blank_img,
     cv::Mat &out_img_mat);
 
