@@ -58,8 +58,8 @@
 #include <projection_config.h>
 
 const int STARTING_MONITOR = 0;
-const std::vector<int> PROJ_MON_VEC = {1, 2, 3, 4}; // Vector of indices of the monitor associated with each projector
-int NUM_MONITORS;   // Number of monitors detected by GLFW
+std::vector<int> PROJ_MON_VEC = {1, 2, 3, 4}; // Vector of indices of the monitor associated with each projector
+int N_MONITORS;   // Number of monitors detected by GLFW
 
 // ================================================== CLASS: MazeRenderContext ==================================================
 
@@ -232,12 +232,11 @@ public:
      * @brief Initializes GLFW and discovers monitors.
      *
      * Sets up GLFW, including setting an error callback and initializing the library.
-     * It also discovers and stores the available monitors, reporting the total count.
+     * It discovers and stores the available monitors, updating the total count.
+     * It also populates the vector of monitor indices for projection.
      *
-     * @param[out] out_n_mon Reference to an integer to store the number of monitors found.
-     * @return int Status of setup (0 for success, -1 for failure).
      */
-    int static SetupGraphicsLibraries(int &out_n_mon, std::vector<int> &out_proj_mon_ind);
+    int static SetupGraphicsLibraries();
 
     /**
      * @brief Compiles and links shaders for a given class instance.

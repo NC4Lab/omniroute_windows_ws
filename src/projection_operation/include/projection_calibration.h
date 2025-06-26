@@ -280,7 +280,7 @@ int updateTexture(
     cv::Mat img_base_mat,
     cv::Mat img_mode_mat,
     CalibrationMode _CAL_MODE,
-    const std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, > &_HMAT_ARR,
+    const std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES> &_HMAT_ARR,
     MazeRenderContext &out_projCtx);
 
 /**

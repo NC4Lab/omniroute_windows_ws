@@ -575,7 +575,7 @@ void appInitVariables() {
 
 void appInitOpenGL() {
     // Initialize GLFW and OpenGL settings and get number of monitors on the system
-    if (MazeRenderContext::SetupGraphicsLibraries(NUM_MONITORS, PROJ_MON_VEC) < 0)
+    if (MazeRenderContext::SetupGraphicsLibraries() < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
     ROS_INFO("[appInitOpenGL] OpenGL initialized");
 

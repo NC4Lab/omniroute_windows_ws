@@ -91,7 +91,7 @@ std::map<Projector, std::vector<cv::Mat>> FLOOR_HMAT;
  * The overall structure stores homography matrices (3x3 matrices) for all wall and floor images across different calibration modes
  * for each projector. Each innermost element is a cv::Mat (3x3 matrix) containing homography data for the given wall or floor image.
  */
-std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES - 1>, 4> WALL_HMAT_ARR;
+std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES - 1>, N_PROJ> WALL_HMAT_ARR;
 
 /**
  * @brief Array of homography matrices for warping the rat mask marker from maze cm to ndc space for each projector.
@@ -278,7 +278,7 @@ int updateWallTexture(
     int proj_ind,
     const std::vector<cv::Mat> &_runtimeWallMats,
     const ProjWallConfigIndices4D &_PROJ_WALL_CONFIG_INDICES_4D,
-    const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>,  - 1>, 4> &_WALL_HMAT_ARR,
+    const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES - 1>, N_PROJ> &_WALL_HMAT_ARR,
     bool do_ignore_blank_img,
     cv::Mat &out_img_mat);
 
@@ -333,7 +333,7 @@ class TimingData{
 
         void printTimingData() {
             ROS_INFO("[Timer: %s] Duration: %f, Min: %f, Max: %f",
-                     name, deltaTime.toSec(), minDeltaTime.toSec(), maxDeltaTime.toSec());
+                     name.c_str(), deltaTime.toSec(), minDeltaTime.toSec(), maxDeltaTime.toSec());
         }
 
 };

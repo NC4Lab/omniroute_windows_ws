@@ -119,7 +119,7 @@ int MazeRenderContext::CheckErrorGLFW(int line, const char *file_str, const char
     return 0;
 }
 
-int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon, std::vector<int> &out_proj_mon_ind) {
+int MazeRenderContext::SetupGraphicsLibraries() {
     int status = 0;
 
     // Initialize GLFW and set error callback
@@ -157,15 +157,15 @@ int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon, std::vector<int> &
     std::sort(monitor_x_ind.begin(), monitor_x_ind.end());
 
     // Store the monitor indices for projection
-    out_proj_mon_ind.clear();
+    PROJ_MON_VEC.clear();
     for (auto &pair : monitor_x_ind)
-        out_proj_mon_ind.push_back(pair.second);
+        PROJ_MON_VEC.push_back(pair.second);
 
     // Take out first monitor as the default projection monitor
-    out_proj_mon_ind.erase(out_proj_mon_ind.begin());
+    PROJ_MON_VEC.erase(PROJ_MON_VEC.begin());
 
     ROS_INFO("[MazeRenderContext::SetupGraphicsLibraries] Monitors Found: %d", _NumMonitors);
-    out_n_mon = _NumMonitors;
+    N_MONITORS = _NumMonitors;
 
     return 0;
 }
@@ -1437,7 +1437,7 @@ CalibrationXML::CalibrationXML() {
     } 
     else ROS_WARN("[CalibrationXML] Vertices XML file does not exist at path: %s", fileNameVertices.c_str());
 
-    for (int proj_ind = 0; proj_ind < GLB_NUM_PROJ; ++proj_ind) {
+    for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) {
         // Load the homography matrix XML file for each projector
         fileNameHMat[proj_ind] = CONFIG_DIR_PATH + "/hmats_p" + std::to_string(proj_ind) + ".xml";
         if (fileExists(fileNameHMat[proj_ind])) {
@@ -1462,7 +1462,7 @@ CalibrationXML::~CalibrationXML() {
 
 int CalibrationXML::loadHMat(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col, cv::Mat &out_H) {
     // Check if the projector index is valid
-    if (proj_ind < 0 || proj_ind >= GLB_NUM_PROJ) {
+    if (proj_ind < 0 || proj_ind >= N_PROJ) {
         ROS_ERROR("[CalibrationXML::loadHMat] Invalid projector index: %d", proj_ind);
         return -1;
     }
@@ -1527,7 +1527,7 @@ int CalibrationXML::loadHMat(int proj_ind, CalibrationMode _CAL_MODE, int grid_r
 
 int CalibrationXML::saveVertices(int proj_ind, const std::vector<cv::Point2f> &quad_vertices_ndc) {
     // Check if the projector index is valid
-    if (proj_ind < 0 || proj_ind >= GLB_NUM_PROJ) {
+    if (proj_ind < 0 || proj_ind >= N_PROJ) {
         ROS_ERROR("[CalibrationXML::saveVertices] Invalid projector index: %d", proj_ind);
         return -1;
     }
