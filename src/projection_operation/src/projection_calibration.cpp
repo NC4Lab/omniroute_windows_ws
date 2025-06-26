@@ -48,14 +48,14 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         // ---------- Image selector keys [F1-F4] ----------
         // Update the image index
-        int img_ind = (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) ? I.wall_image : I.floor_image;
+        int img_ind = (CAL_MODE == MODE_WALLS_LEFT || CAL_MODE == MODE_WALLS_MIDDLE || CAL_MODE == MODE_WALLS_RIGHT) ? I.wall_image : I.floor_image;
         if (key == GLFW_KEY_F1)         img_ind = 0;
         else if (key == GLFW_KEY_F2)    img_ind = 1;
         else if (key == GLFW_KEY_F3)    img_ind = 2;
         else if (key == GLFW_KEY_F4)    img_ind = 3;
 
         // Check for image change
-        if ((CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) &&
+        if ((CAL_MODE == MODE_WALLS_LEFT || CAL_MODE == MODE_WALLS_MIDDLE || CAL_MODE == MODE_WALLS_RIGHT) &&
             (img_ind != I.wall_image) &&
             (img_ind < CALIB_TEST_WALL_IMAGES.size())) {
             ROS_INFO("[callbackKeyBinding] Initiated change image from %d to %d", I.wall_image, img_ind);
@@ -64,7 +64,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             F.update_mode_img = true;       // Set the update mode image flag
         }
 
-        if ((CAL_MODE == FLOOR) && 
+        if ((CAL_MODE == MODE_FLOOR) && 
         (img_ind != I.floor_image) && 
         (img_ind < CALIB_TEST_FLOOR_IMAGES.size())) {
             ROS_INFO("[callbackKeyBinding] Initiated change image from %d to %d", I.floor_image, img_ind);
@@ -190,21 +190,18 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     }
 }
 
-void initVertexCoordinates(
-    CalibrationMode _CAL_MODE,
-    std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR,
-    std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> &out_WALL_GRID_ARR_DEFAULT) {
+void initVertexCoordinates(CalibrationMode _CAL_MODE) {
     // Spacing between vertices for the x and y axis
     // Set the spacing to be the wall image size for wall calibration and the maze size for floor calibration
-    float vert_space_x = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_WALL_IMAGE_WIDTH_NDC : GLB_MAZE_WIDTH_NDC;
-    float vert_space_y = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_WALL_IMAGE_HEIGHT_NDC : GLB_MAZE_HEIGHT_NDC;
+    float vert_space_x = (_CAL_MODE == MODE_WALLS_LEFT || _CAL_MODE == MODE_WALLS_MIDDLE || _CAL_MODE == MODE_WALLS_RIGHT) ? GLB_WALL_IMAGE_WIDTH_NDC : GLB_MAZE_WIDTH_NDC;
+    float vert_space_y = (_CAL_MODE == MODE_WALLS_LEFT || _CAL_MODE == MODE_WALLS_MIDDLE || _CAL_MODE == MODE_WALLS_RIGHT) ? GLB_WALL_IMAGE_HEIGHT_NDC : GLB_MAZE_HEIGHT_NDC;
 
     // Starting and ending points for x and y
     cv::Point2f start_point(-(GLB_MAZE_WIDTH_NDC / 2), -(GLB_MAZE_HEIGHT_NDC / 2));
     cv::Point2f end_point(+(GLB_MAZE_WIDTH_NDC / 2), +(GLB_MAZE_HEIGHT_NDC / 2));
 
     // Specify number of rows/cols to loop through
-    int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
+    int grid_size = (_CAL_MODE == MODE_WALLS_LEFT || _CAL_MODE == MODE_WALLS_MIDDLE || _CAL_MODE == MODE_WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
 
     // Iterate through the maze grid rows
     for (int gr_i = 0; gr_i < grid_size; gr_i++) { // image bottom to top
@@ -213,14 +210,14 @@ void initVertexCoordinates(
             // Calculate x and y
             double p_org_x = start_point.x;
             double p_org_y = start_point.y;
-            if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) {
+            if (_CAL_MODE == MODE_WALLS_LEFT || _CAL_MODE == MODE_WALLS_MIDDLE || _CAL_MODE == MODE_WALLS_RIGHT) {
                 // Calculate wall specific x and y
                 p_org_x = start_point.x + ((end_point.x - start_point.x) * gc_i) / (grid_size - 1);
                 p_org_y = start_point.y + ((end_point.y - start_point.y) * gr_i) / (grid_size - 1);
             }
 
             // Set x y values for vertex of the wall
-            out_WALL_GRID_ARR_DEFAULT[gr_i][gc_i] = {
+            WALL_GRID_ARR_DEFAULT[gr_i][gc_i] = {
                 cv::Point2f(p_org_x, p_org_y),                               // Top left wall vertext
                 cv::Point2f(p_org_x + vert_space_x, p_org_y),                // Top right wall vertext
                 cv::Point2f(p_org_x + vert_space_x, p_org_y + vert_space_y), // Bottom right wall vertext
@@ -230,10 +227,10 @@ void initVertexCoordinates(
     }
 
     // Reinitialize the control points
-    out_CP_GRID_ARR[0] = out_WALL_GRID_ARR_DEFAULT[0][0];                         // Top left maze corner
-    out_CP_GRID_ARR[1] = out_WALL_GRID_ARR_DEFAULT[0][GLB_MAZE_SIZE - 1];             // Top right maze corner
-    out_CP_GRID_ARR[2] = out_WALL_GRID_ARR_DEFAULT[GLB_MAZE_SIZE - 1][GLB_MAZE_SIZE - 1]; // Bottom right maze corner
-    out_CP_GRID_ARR[3] = out_WALL_GRID_ARR_DEFAULT[GLB_MAZE_SIZE - 1][0];             // Bottom left maze corner
+    CP_GRID_ARR[0] = WALL_GRID_ARR_DEFAULT[0][0];                         // Top left maze corner
+    CP_GRID_ARR[1] = WALL_GRID_ARR_DEFAULT[0][GLB_MAZE_SIZE - 1];             // Top right maze corner
+    CP_GRID_ARR[2] = WALL_GRID_ARR_DEFAULT[GLB_MAZE_SIZE - 1][GLB_MAZE_SIZE - 1]; // Bottom right maze corner
+    CP_GRID_ARR[3] = WALL_GRID_ARR_DEFAULT[GLB_MAZE_SIZE - 1][0];             // Bottom left maze corner
 
     // Reset the selected control points
     I.cp_maze_vert_selected = {0, 0};
@@ -266,7 +263,7 @@ int drawControlPoints(CalibrationMode _CAL_MODE,
     CircleRenderer::SetupShader();
 
     // Specify number of control point groups to loop through
-    int n_cp_groups = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? 4 : 1;
+    int n_cp_groups = (_CAL_MODE == MODE_WALLS_LEFT || _CAL_MODE == MODE_WALLS_MIDDLE || _CAL_MODE == MODE_WALLS_RIGHT) ? 4 : 1;
 
     // Loop through the control points and draw them
     for (int cp_i = 0; cp_i < n_cp_groups; ++cp_i) {
@@ -305,11 +302,7 @@ int drawControlPoints(CalibrationMode _CAL_MODE,
     return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "drawControlPoints");
 }
 
-int updateWallHomographys(
-    CalibrationMode _CAL_MODE,
-    const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
-    const std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> &_WALL_GRID_ARR_DEFAULT,
-    std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES> &out_HMAT_ARR) {
+int updateWallHomographys(CalibrationMode _CAL_MODE) {
     // Define source plane vertices
     std::vector<cv::Point2f> source_vertices_pxl = {
         cv::Point2f(0.0f, 0.0f),                                            // Top-left
@@ -318,27 +311,27 @@ int updateWallHomographys(
         cv::Point2f(0.0f, GLB_WALL_IMAGE_HEIGHT_PXL)};                      // Bottom-left
 
     // Iterate trough grid/wall rows
-    for (float gr_i = 0; gr_i < GLB_MAZE_SIZE; gr_i++) { // image bottom to top
+    for (float gr_i = 0; gr_i < N_ROWS; gr_i++) { // image bottom to top
         // Iterate trough grid/wall columns
-        for (float gc_i = 0; gc_i < GLB_MAZE_SIZE; gc_i++) { // image left to right
+        for (float gc_i = 0; gc_i < N_COLS; gc_i++) { // image left to right
             std::vector<cv::Point2f> target_vertices_ndc(4);
 
             // Loop through the wall vertices
             for (int wv_i = 0; wv_i < 4; wv_i++) {
                 // Get the source vertices based on the default wall vertex coordinates
                 std::vector<cv::Point2f> s_vert = {
-                        _WALL_GRID_ARR_DEFAULT[0][0][wv_i],                         // Top left maze corner
-                        _WALL_GRID_ARR_DEFAULT[0][GLB_MAZE_SIZE - 1][wv_i],             // Top right maze corner
-                        _WALL_GRID_ARR_DEFAULT[GLB_MAZE_SIZE - 1][GLB_MAZE_SIZE - 1][wv_i], // Bottom right maze corner
-                        _WALL_GRID_ARR_DEFAULT[GLB_MAZE_SIZE - 1][0][wv_i],             // Bottom left maze corner
+                        WALL_GRID_ARR_DEFAULT[0][0][wv_i],                         // Top left maze corner
+                        WALL_GRID_ARR_DEFAULT[0][N_COLS - 1][wv_i],             // Top right maze corner
+                        WALL_GRID_ARR_DEFAULT[N_ROWS - 1][N_COLS - 1][wv_i], // Bottom right maze corner
+                        WALL_GRID_ARR_DEFAULT[N_ROWS - 1][0][wv_i],             // Bottom left maze corner
                     };
 
                 // Get the target vertices corresponding to this wall vertex
                 std::vector<cv::Point2f> t_vert = {
-                        _CP_GRID_ARR[0][wv_i], // Top-left maze corner
-                        _CP_GRID_ARR[1][wv_i], // Top-right maze corner
-                        _CP_GRID_ARR[2][wv_i], // Bottom-right maze corner
-                        _CP_GRID_ARR[3][wv_i]  // Bottom-left maze corner
+                        CP_GRID_ARR[0][wv_i], // Top-left maze corner
+                        CP_GRID_ARR[1][wv_i], // Top-right maze corner
+                        CP_GRID_ARR[2][wv_i], // Bottom-right maze corner
+                        CP_GRID_ARR[3][wv_i]  // Bottom-left maze corner
                     };
 
                 // Compute the homography matrix for this this point
@@ -346,7 +339,7 @@ int updateWallHomographys(
                 if (computeHomographyMatrix(s_vert, t_vert, H) < 0) return -1;
 
                 // Create a vector for the original and warped point
-                std::vector<cv::Point2f> s_pnt = {_WALL_GRID_ARR_DEFAULT[gr_i][gc_i][wv_i]};
+                std::vector<cv::Point2f> s_pnt = {WALL_GRID_ARR_DEFAULT[gr_i][gc_i][wv_i]};
                 std::vector<cv::Point2f> t_pnt(1);
 
                 // Perspective warp the source vertex to the target plane
@@ -360,7 +353,7 @@ int updateWallHomographys(
             std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL);
 
             // Compute and store the homography matrix for this wall image
-            if (computeHomographyMatrix(source_vertices_pxl, target_vertices_pxl, out_HMAT_ARR[_CAL_MODE][gr_i][gc_i]) < 0)
+            if (computeHomographyMatrix(source_vertices_pxl, target_vertices_pxl, HMAT_ARR[_CAL_MODE][gr_i][gc_i]) < 0)
                 return -1;
         }
     }
@@ -368,7 +361,7 @@ int updateWallHomographys(
     return 0;
 }
 
-int updateFloorHomography(const std::array<cv::Point2f, 4> &_CP_ARR, cv::Mat &out_H) {
+int updateFloorHomography(CalibrationMode _CAL_MODE) {
     // Define source plane vertices
     std::vector<cv::Point2f> source_vertices_pxl = {
         cv::Point2f(0.0f, 0.0f),                                            // Top-left
@@ -377,14 +370,14 @@ int updateFloorHomography(const std::array<cv::Point2f, 4> &_CP_ARR, cv::Mat &ou
         cv::Point2f(0.0f, GLB_MAZE_IMAGE_HEIGHT_PXL)                        // Bottom-left
     }; 
 
-    // Convert _CP_ARR to vector
-    std::vector<cv::Point2f> target_vertices_ndc(_CP_ARR.begin(), _CP_ARR.end());
+    // Convert CP_GRID_ARR values to vector
+    std::vector<cv::Point2f> target_vertices_ndc(CP_GRID_ARR[0].begin(), CP_GRID_ARR[0].end());
 
     // Convert NDC coordinates to pixels
     std::vector<cv::Point2f> target_vertices_pxl = quadVertNdc2Pxl(target_vertices_ndc, GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL);
 
     // Compute and store the homography matrix
-    if (computeHomographyMatrix(source_vertices_pxl, target_vertices_pxl, out_H) < 0) return -1;
+    if (computeHomographyMatrix(source_vertices_pxl, target_vertices_pxl, HMAT_ARR[_CAL_MODE][0][0]) < 0) return -1;
 
     return 0;
 }
@@ -410,7 +403,7 @@ int updateTexture(
     cv::Mat img_merge = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
 
     // Specify number of rows/cols to loop through
-    int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
+    int grid_size = (_CAL_MODE == MODE_WALLS_LEFT || _CAL_MODE == MODE_WALLS_MIDDLE || _CAL_MODE == MODE_WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
 
     // Iterate through the maze grid rows
     for (int gr_i = 0; gr_i < grid_size; gr_i++) { // image bottom to top
@@ -531,7 +524,7 @@ void appInitFileXML() {
             CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
 
             // Specify number of rows/cols to loop through based on active calibration mode
-            int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
+            int grid_size = (_CAL_MODE == MODE_WALLS_LEFT || _CAL_MODE == MODE_WALLS_MIDDLE || _CAL_MODE == MODE_WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
 
             // Iterate through the maze grid rows
             for (int gr_i = 0; gr_i < grid_size && !isMonMissing; ++gr_i) {
@@ -550,35 +543,30 @@ void appInitFileXML() {
         }
     }
 
-    // Hack: make temp variables for control point grid and wall homography matrices
-    std::array<std::array<cv::Point2f, 4>, 4> _CP_GRID_ARR;
-    std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> _WALL_GRID_ARR_DEFAULT;
-    std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES> _HMAT_ARR;
-
     // Loop through the missing projectors
     for (auto &proj_i : mon_missing_vec) {
         for (int cal_i = 0; cal_i < N_CAL_MODES; ++cal_i) {
             CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
 
             // Initalize temp control points and homography matrices
-            initVertexCoordinates(_CAL_MODE, _CP_GRID_ARR, _WALL_GRID_ARR_DEFAULT);
-            if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT)
-                if (updateWallHomographys(_CAL_MODE, _CP_GRID_ARR, _WALL_GRID_ARR_DEFAULT, _HMAT_ARR) < 0)
+            initVertexCoordinates(_CAL_MODE);
+            if (_CAL_MODE == MODE_WALLS_LEFT || _CAL_MODE == MODE_WALLS_MIDDLE || _CAL_MODE == MODE_WALLS_RIGHT)
+                if (updateWallHomographys(_CAL_MODE) < 0)
                     throw std::runtime_error("[appInitFileXML] Failed to initialize wall parameters");
-            else if (_CAL_MODE == FLOOR)
-                if (updateFloorHomography(_CP_GRID_ARR[0], _HMAT_ARR[_CAL_MODE][0][0]) < 0)
+            else if (_CAL_MODE == MODE_FLOOR)
+                if (updateFloorHomography(_CAL_MODE) < 0)
                     throw std::runtime_error("[appInitFileXML] Failed to initialize floor parameters");
 
             // Specify number of rows/cols to loop through based on active calibration mode
-            int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
+            int grid_size = (_CAL_MODE == MODE_WALLS_LEFT || _CAL_MODE == MODE_WALLS_MIDDLE || _CAL_MODE == MODE_WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
 
             // Save each homography matrix to XML
             for (int gr_i = 0; gr_i < grid_size; ++gr_i) {
                 for (int gc_i = 0; gc_i < grid_size; ++gc_i) {
-                    if (calXML.saveHMat(proj_i, _CAL_MODE, gr_i, gc_i, _HMAT_ARR[_CAL_MODE][gr_i][gc_i]) < 0)
+                    if (calXML.saveHMat(proj_i, _CAL_MODE, gr_i, gc_i, HMAT_ARR[_CAL_MODE][gr_i][gc_i]) < 0)
                         throw std::runtime_error("[appInitFileXML] Error returned from: calXML.saveHMat");
-                    if (_CAL_MODE == FLOOR) {
-                        std::vector<cv::Point2f> vert_vec(_CP_GRID_ARR[0].begin(), _CP_GRID_ARR[0].end());
+                    if (_CAL_MODE == MODE_FLOOR) {
+                        std::vector<cv::Point2f> vert_vec(CP_GRID_ARR[0].begin(), CP_GRID_ARR[0].end());
                         if (calXML.saveVertices(proj_i, vert_vec) < 0)
                             throw std::runtime_error("[appInitFileXML] Error returned from: calXML.saveVertices");
                     }
@@ -586,11 +574,11 @@ void appInitFileXML() {
             }
 
             // Specify number of control point groups to loop through based on active calibration mode
-            int cp_group_size = (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) ? 4 : 1;
+            int cp_group_size = (CAL_MODE == MODE_WALLS_LEFT || CAL_MODE == MODE_WALLS_MIDDLE || CAL_MODE == MODE_WALLS_RIGHT) ? 4 : 1;
 
             // Save the control points to XML
             for (int cp_i = 0; cp_i < cp_group_size; ++cp_i) {
-                if (calXML.saveControlPoints(proj_i, _CAL_MODE, cp_i, _CP_GRID_ARR[cp_i]) < 0)
+                if (calXML.saveControlPoints(proj_i, _CAL_MODE, cp_i, CP_GRID_ARR[cp_i]) < 0)
                     throw std::runtime_error("[appInitFileXML] Error returned from: calXML.saveControlPoints");
             }
         }
@@ -608,7 +596,7 @@ void appMainLoop() {
             if (I.projector < 0) I.projector = promptForProjectorNumber();
 
             // Specify number of rows/cols to loop through based on active calibration mode
-            int grid_size = (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
+            int grid_size = (CAL_MODE == MODE_WALLS_LEFT || CAL_MODE == MODE_WALLS_MIDDLE || CAL_MODE == MODE_WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
 
             // Loop through the maze grid rows
             for (int gr_i = 0; gr_i < grid_size; ++gr_i) {
@@ -620,7 +608,7 @@ void appMainLoop() {
                             throw std::runtime_error("[appMainLoop] Error returned from: calXML.saveHMat");
 
                         // Save the maze vertices to XML
-                        if (CAL_MODE == FLOOR) {
+                        if (CAL_MODE == MODE_FLOOR) {
                             std::vector<cv::Point2f> vert_vec(CP_GRID_ARR[0].begin(), CP_GRID_ARR[0].end());
                             if (calXML.saveVertices(I.projector, vert_vec) < 0)
                                 throw std::runtime_error("[appMainLoop] Error returned from: calXML.saveVertices");
@@ -636,7 +624,7 @@ void appMainLoop() {
             }
 
             // Specify number of control point groups to loop through based on active calibration mode
-            int cp_group_size = (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT) ? 4 : 1;
+            int cp_group_size = (CAL_MODE == MODE_WALLS_LEFT || CAL_MODE == MODE_WALLS_MIDDLE || CAL_MODE == MODE_WALLS_RIGHT) ? 4 : 1;
 
             // Save/load the control points to XML
             for (int cp_i = 0; cp_i < cp_group_size; ++cp_i) {
@@ -661,28 +649,28 @@ void appMainLoop() {
 
         // Initialize/reinitialize control point coordinate dataset
         if (F.init_control_points)
-            initVertexCoordinates(CAL_MODE, CP_GRID_ARR, WALL_GRID_ARR_DEFAULT);
+            initVertexCoordinates(CAL_MODE);
 
         // Update homography matrices array
         if (F.update_homographys || F.init_control_points) {
             // Update wall homographys
-            if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
-                if (updateWallHomographys(CAL_MODE, CP_GRID_ARR, WALL_GRID_ARR_DEFAULT, HMAT_ARR) < 0)
+            if (CAL_MODE == MODE_WALLS_LEFT || CAL_MODE == MODE_WALLS_MIDDLE || CAL_MODE == MODE_WALLS_RIGHT)
+                if (updateWallHomographys(CAL_MODE) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from: updateWallHomographys");
             // Update floor homography
-            else if (CAL_MODE == FLOOR)
-                if (updateFloorHomography(CP_GRID_ARR[0], HMAT_ARR[CAL_MODE][0][0]) < 0)
+            else if (CAL_MODE == MODE_FLOOR)
+                if (updateFloorHomography(CAL_MODE) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from: updateFloorHomography");
         }
 
         // Update the caliration and monitor mode image
         if (F.update_mode_img) {
             // Update wall textures
-            if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
+            if (CAL_MODE == MODE_WALLS_LEFT || CAL_MODE == MODE_WALLS_MIDDLE || CAL_MODE == MODE_WALLS_RIGHT)
                 if (updateModeImage(calibTestWallMats[I.wall_image], calibMonWallMats[I.monitor], calibModeMats[CAL_MODE], modeMat) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from: updateModeImage for wall image");
             // Update floor texture
-            else if (CAL_MODE == FLOOR)
+            else if (CAL_MODE == MODE_FLOOR)
                 if (updateModeImage(calibTestFloorMats[I.floor_image], calibMonFloorMats[I.monitor], calibModeMats[CAL_MODE], modeMat) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from: updateModeImage for floor image");
         }
@@ -690,11 +678,11 @@ void appMainLoop() {
         // Update image texture
         if (F.update_textures || F.update_homographys || F.init_control_points) {
             // Update wall textures
-            if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
+            if (CAL_MODE == MODE_WALLS_LEFT || CAL_MODE == MODE_WALLS_MIDDLE || CAL_MODE == MODE_WALLS_RIGHT)
                 if (updateTexture(calibTestWallMats[I.wall_image], modeMat, CAL_MODE, HMAT_ARR, projCtx) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from: updateTexture for wall images");
             // Update floor texture
-            else if (CAL_MODE == FLOOR)
+            else if (CAL_MODE == MODE_FLOOR)
                 if (updateTexture(calibTestFloorMats[I.floor_image], modeMat, CAL_MODE, HMAT_ARR, projCtx) < 0)
                     throw std::runtime_error("[appMainLoop] Error returned from: updateTexture for floor images");
         }

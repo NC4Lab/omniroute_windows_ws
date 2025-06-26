@@ -14,20 +14,6 @@
 
 // ================================================== VARIABLES ==================================================
 
-// Data structure to hold stuff for each projector, row, column, and calibration mode
-template <typename T>
-using ProjectionMap = std::map<Projector, 
-    std::map<Row, 
-    std::map<Column,
-    std::map<CalibrationMode,
-    T>>>>;
-
-// Map to store the indices of wall images
-ProjectionMap<int> indexMap;
-
-// Map to store all the homography matrices
-ProjectionMap<cv::Mat> hMatMap;
-
 /**
  * @brief  4x4 data container for tracking the vertex coordinates for the corner wall images which are used as control point.
  *
@@ -89,7 +75,7 @@ std::array<std::array<CircleRenderer, 4>, 4> CP_CIRCREND_ARR;
 /**
  * @brief  Enum for tracking the current calibration mode
  */
-CalibrationMode CAL_MODE = WALLS_MIDDLE;
+CalibrationMode CAL_MODE = MODE_WALLS_MIDDLE;
 
 // Control point graphics parameters
 const GLfloat cpMakerRadius = 0.0025f;                                 // Control point rendered circle radius
@@ -179,21 +165,16 @@ void callbackKeyBinding(
     int mods);
 
 /**
- * @brief Initializes values for the verteces of the coner walls which will be used as calibraton control points.
+ * @brief Initializes values for the vertices of the corner walls which will be used as calibration control points.
  *
  * @param _CAL_MODE Enum of type CalibrationMode for the active calibration mode.
- * @param[out] out_CP_GRID_ARR Reference to the 4x4 array containing the coordinates of the corner wall's vertices.
- * @param[out] out_WALL_GRID_ARR_DEFAULT Reference to 3x3x4 data contianer for storing default wall vertices for each wall.
  *
  * @details
  * Control point x and y coordinates are specified in Normalized Device Coordinates (NDC) [-1, 1].
  * The vertices for the entire projected image are calculated based on the dimensions that enclose
  * all control points (i.e., boundary dimensions in the control point plane).
  */
-void initVertexCoordinates(
-    CalibrationMode _CAL_MODE,
-    std::array<std::array<cv::Point2f, 4>, 4> &out_CP_GRID_ARR,
-    std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> &out_WALL_GRID_ARR_DEFAULT);
+void initVertexCoordinates(CalibrationMode _CAL_MODE);
 
 /**
  * @brief Initialize OpenGL resources for CircleRenderer objects.
@@ -227,31 +208,25 @@ int drawControlPoints(
 
 /**
  * @brief Computes updated homography matrices for all walls.
+ * 
+ * @details Updates HMAT_ARR with the homography matrices for all wall images
  *
  * @param _CAL_MODE Enum of type CalibrationMode for the active calibration mode.
- * @param _CP_GRID_ARR The control point coordinates used to warp the wall image.
- * @param _WALL_GRID_ARR_DEFAULT The 3x3x4 data contianer of default wall vertices for each wall.
- * @param[out] out_HMAT_ARR Reference to array to store calibration matrices.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int updateWallHomographys(
-    CalibrationMode _CAL_MODE,
-    const std::array<std::array<cv::Point2f, 4>, 4> &_CP_GRID_ARR,
-    const std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> &_WALL_GRID_ARR_DEFAULT,
-    std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES> &out_HMAT_ARR);
+int updateWallHomographys(CalibrationMode _CAL_MODE);
 
 /**
  * @brief Computes updated homography matrices for the floor image.
+ * 
+ * @details Updates HMAT_ARR with the homography matrices for the floor image
  *
- * @param _CP_ARR The control point coordinates used to warp the floor image.
- * @param[out] out_H The output homography matrix.
- *
+ * @param _CAL_MODE Enum of type CalibrationMode for the active calibration mode.
+ * 
  * @return Integer status code [-1:error, 0:successful].
  */
-int updateFloorHomography(
-    const std::array<cv::Point2f, 4> &_CP_ARR,
-    cv::Mat &out_H);
+int updateFloorHomography(CalibrationMode _CAL_MODE);
 
 /**
  * @brief Update the mode image.

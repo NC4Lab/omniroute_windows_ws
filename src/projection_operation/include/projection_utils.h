@@ -57,10 +57,6 @@
 // Configuration parameters
 #include <projection_config.h>
 
-const int STARTING_MONITOR = 0;
-std::vector<int> PROJ_MON_VEC = {1, 2, 3, 4}; // Vector of indices of the monitor associated with each projector
-int N_MONITORS;   // Number of monitors detected by GLFW
-
 // ================================================== CLASS: MazeRenderContext ==================================================
 
 #ifndef MAZE_RENDER_CONTEXT_CALLBACKS_H
@@ -1051,7 +1047,7 @@ void dbLogHomMat(const cv::Mat &_HMAT);
  *
  * @param _HMAT ProjWallConfigIndices4D array to print.
  */
-void dbLogProjWallImageCfg4D(const ProjWallConfigIndices4D &wallImageConfig);
+void dbLogProjWallImageCfg4D(const ProjectionMap<int> &wallImageConfig);
 
 /**
  * @brief Displays a warped image in a window.

@@ -55,12 +55,12 @@ static struct ROSComm {
 /**
  * @brief A 4x3x3x3 array container for storing the wall image configuration indices
  */
-ProjWallConfigIndices4D PROJ_WALL_CONFIG_INDICES_4D;
+ProjectionMap<int> PROJ_WALL_CONFIG_INDICES_4D;
 
 /**
- * @brief Floor image configurations
+ * @brief Floor image index
  */
-int projFloorConfigIndex = 0;
+int floorImageIndex = 0;
 
 /**
  * @brief A vector of size n_projectors, where each element contains a 3x3 homography matrices for
@@ -212,10 +212,10 @@ void simulateRatMovement(
  */
 
 // Overload for setting an image on a single wall
-void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D);
+void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind, ProjectionMap<int> &out_PROJ_WALL_CONFIG_INDICES_4D);
 
 // Overload for setting images on multiple walls
-void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D);
+void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjectionMap<int> &out_PROJ_WALL_CONFIG_INDICES_4D);
 
 /**
  * @brief Get the vertices cooresponding to the maze boundaries in centimeters.
@@ -253,7 +253,6 @@ void rotateFloorImage(
  */
 int updateFloorTexture(
     int proj_ind,
-    cv::Mat &_floorMats,
     cv::Mat &out_img_mat);
 
 /**

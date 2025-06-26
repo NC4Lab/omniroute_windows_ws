@@ -182,36 +182,73 @@
 
 // ================================================== VARIABLES ==================================================
 
-enum Projector {
+const int STARTING_MONITOR = 0;
+int N_MONITORS;   // Number of monitors detected by GLFW
+// Vector of indices of the monitor associated with each projector. This will be updated by SetupGraphicsLibraries().
+std::vector<int> PROJ_MON_VEC = {1, 2, 3, 4}; 
+
+enum ChamberEnum {
+    CHAM_0 = 0, 
+    CHAM_1,
+    CHAM_2,
+    CHAM_3,   
+    CHAM_4,
+    CHAM_5,
+    CHAM_6,
+    CHAM_7,
+    CHAM_8 
+};
+const int N_CHAMBERS = 9; // Number of chambers in the maze
+const std::array<ChamberEnum, N_CHAMBERS> Chambers = {CHAM_0, CHAM_1, CHAM_2, CHAM_3, CHAM_4, CHAM_5, CHAM_6, CHAM_7, CHAM_8};
+
+enum SurfaceEnum {
+    WALL_0 = 0,
+    WALL_1,
+    WALL_2,
+    WALL_3,
+    WALL_4,
+    WALL_5,
+    WALL_6,
+    WALL_7,
+    FLOOR,
+};
+const int N_SURF = 9; // Number of surfaces in each chamber (8 walls + 1 floor)
+const std::array<SurfaceEnum, N_SURF> Surfaces = {WALL_0, WALL_1, WALL_2, WALL_3, WALL_4, WALL_5, WALL_6, WALL_7, FLOOR};
+
+enum ProjectorEnum {
     PROJ_0 = 0, // Projector 0 (East)
     PROJ_1,     // Projector 1 (North)
     PROJ_2,     // Projector 2 (West)
     PROJ_3      // Projector 3 (South)
 };
 const int N_PROJ = 4; // Number of projectors
+const std::array<ProjectorEnum, N_PROJ> Projectors = {PROJ_0, PROJ_1, PROJ_2, PROJ_3};
 
-enum Row {
+enum RowEnum {
     ROW_0 = 0, // Top row
     ROW_1,     // Middle row
     ROW_2      // Bottom row
 };
 const int N_ROWS = 3; // Number of rows in the chamber grid
+const std::array<RowEnum, N_ROWS> Rows = {ROW_0, ROW_1, ROW_2};
 
-enum Column {
+enum ColumnEnum {
     COL_0 = 0, // Left column
     COL_1,     // Center column
     COL_2      // Right column
 };
 const int N_COLS = 3; // Number of columns in the chamber grid
+const std::array<ColumnEnum, N_COLS> Columns = {COL_0, COL_1, COL_2};
 
 // Enum for tracking the current calibration mode
 enum CalibrationMode {
-    WALLS_LEFT = 0,
-    WALLS_MIDDLE = 1,
-    WALLS_RIGHT = 2,
-    FLOOR = 3
+    MODE_WALLS_LEFT = 0,
+    MODE_WALLS_MIDDLE,
+    MODE_WALLS_RIGHT,
+    MODE_FLOOR
 };
 const int N_CAL_MODES = 4; // Number of calibration modes
+const std::array<CalibrationMode, N_CAL_MODES> CalibrationModes = {MODE_WALLS_LEFT, MODE_WALLS_MIDDLE, MODE_WALLS_RIGHT, MODE_FLOOR};
 
 /**
  * @brief ROS loop rate in Hertz.
@@ -288,7 +325,13 @@ const int GLB_DEBUG_LEVEL_GL = 2;
  *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
  *      }}}};
  */
-using ProjWallConfigIndices4D = std::array<std::array<std::array<std::array<int, 3>, 3>, 3>, 4>;
 
+// Data structure to hold stuff for each projector, row, column, and calibration mode
+// T[Projectors][Rows][Columns][CalibrationModes]
+template <typename T>
+using ProjectionMap = std::array<std::array<std::array<std::array<T, N_CAL_MODES>, N_COLS>, N_ROWS>, N_PROJ>;
+
+// Map to store all the homography matrices
+ProjectionMap<cv::Mat> hMatMap;
 
 #endif

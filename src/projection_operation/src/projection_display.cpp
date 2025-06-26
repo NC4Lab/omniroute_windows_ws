@@ -33,6 +33,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // ---------- Force Window to Top of UI Stack [T] ----------
         if (key == GLFW_KEY_T) 
             F.force_window_focus = true;
+        
     }
 }
 
@@ -60,34 +61,21 @@ void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg) {
 }
 
 void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
-    // Check that the received data has the correct size for a 10x8 array (80 elements)
-    if (msg->data.size() != 80) {
+    // Expects a N_CHAMBERS x N_SURF array of integers
+    // where N_CHAMBERS = 9 and N_SURF = 9 (8 walls + 1 floor)
+
+    // Check that the received data has the correct size for a 9x9 array (81 elements)
+    if (msg->data.size() != N_CHAMBERS * N_SURF) {
         ROS_ERROR("[callbackProjImgROS] Received incorrect array size. Expected 80 elements, but got %zu", msg->data.size());
         return;
     }
 
-    int proj_img_data[10][8]; // Temporary 2D array to store the projection image data
-    // Store the 10x8 data in proj_img_data
-    for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
-        for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
-            proj_img_data[cham_ind][wall_ind] = msg->data[cham_ind * 8 + wall_ind];
-
-    // Log the entire 2D array
-    if (GLB_DO_VERBOSE_DEBUG) {
-        ROS_INFO("[callbackProjImgROS] Stored ROS projection image data:");
-        for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
-            std::stringstream row_stream;
-            row_stream << "Walls[" << cham_ind << "] = [";
-            for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
-                row_stream << proj_img_data[cham_ind][wall_ind];
-                if (wall_ind < 7) // Add a comma between elements, but not after the last one
-                    row_stream << ", ";
-            }
-            row_stream << "]";
-            ROS_INFO("%s", row_stream.str().c_str());
-        }
-    }
-
+    int proj_img_data[9][9]; // Temporary 2D array to store the projection image data
+    // Store the 9x9 data in proj_img_data
+    for (auto &cham : Chambers)
+        for (auto &surf : Surfaces)
+            proj_img_data[cham][surf] = msg->data[cham * N_SURF + surf];
+    
     // ---------- Update image index data ----------
     for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
         for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
@@ -98,9 +86,9 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
             if (cham_ind < 9)
                 configWallImageIndex(img_ind, cham_ind, wall_ind, PROJ_WALL_CONFIG_INDICES_4D);
             // Update the floor image index
-            else if (wall_ind == 0) // Only store the first entry
-                projFloorConfigIndex = img_ind;
-            // Skip unused floor entries
+            else if (cham_ind == 9 && wall_ind == 0) // Only store the first entry
+                floorImageIndex = img_ind;
+                // Skip unused floor entries
             else
                 continue;
         }
@@ -199,12 +187,12 @@ void simulateRatMovement(float move_step, float max_turn_angle) {
     keepWithinBoundsAndTurn(RT.marker_position);
 }
 
-void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D) {
+void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind, ProjectionMap<int> &out_PROJ_WALL_CONFIG_INDICES_4D) {
     std::vector<int> walls_ind = {wall_ind};
     configWallImageIndex(image_ind, chamber_ind, walls_ind, out_PROJ_WALL_CONFIG_INDICES_4D);
 }
 
-void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D) {
+void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjectionMap<int> &out_PROJ_WALL_CONFIG_INDICES_4D) {
     // Determine the row and column based on chamber index
     int row = chamber_ind / 3;
     int col = chamber_ind % 3;
@@ -288,34 +276,29 @@ void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec)
     }
 }
 
-cv::Mat rotateImage(Projector proj, const cv::Mat &in_img_mat) {
+cv::Mat rotateImage(int proj_ind, const cv::Mat &in_img_mat) {
     cv::Mat rotated_img = in_img_mat.clone(); // Initialize with the input image
 
-    switch (proj) {
-    case Projector::PROJ_0: cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_COUNTERCLOCKWISE);
-        break;
-    case Projector::PROJ_1: cv::rotate(in_img_mat, rotated_img, cv::ROTATE_180);
-        break;
-    case Projector::PROJ_2: cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_CLOCKWISE);
-        break;
-    }
+    if (proj_ind == 0) cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_COUNTERCLOCKWISE);
+    else if (proj_ind == 1) cv::rotate(in_img_mat, rotated_img, cv::ROTATE_180);
+    else if (proj_ind == 2) cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_CLOCKWISE);
 
     return rotated_img;
 }
 
-int updateFloorTexture(int proj_ind, cv::Mat &_floorMats, cv::Mat &out_img_mat) {
 
-    // Copy the floor image to be used
-    //TODO: Is this necessary? Can we use the original image?
-    // cv::Mat img_copy;
-    // _floorMats.copyTo(img_copy);
+int updateFloorTexture(int proj_ind, cv::Mat &out_img_mat) {
 
     // Get homography matrix for this wall
     cv::Mat H = FLOOR_HMAT_ARR[proj_ind];
 
+    // Get image to be used for the floor texture
+    cv::Mat floorMat = runtimeFloorMats[floorImageIndex];
+    floorMat = rotateImage(proj_ind, floorMat); // Rotate the image based on the projector index
+
     // Warp Perspective
     cv::Mat img_warp;
-    if (warpImgMat(_floorMats, H, img_warp) < 0) {
+    if (warpImgMat(floorMat, H, img_warp) < 0) {
         ROS_ERROR("[updateFloorTexture] Warp image error: Projector[%d]", proj_ind);
         return -1;
     }
@@ -331,7 +314,8 @@ int updateFloorTexture(int proj_ind, cv::Mat &_floorMats, cv::Mat &out_img_mat) 
     return 0;
 }
 
-int updateWallTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_mat) {
+//TODO: Not everything needs to be updated every time
+int updateWallTexture(int proj_ind, cv::Mat &out_img_mat) {
     // Iterate through through calibration modes (left walls, middle walls, right walls)
     for (int cal_i = 0; cal_i < N_CAL_MODES - 1; cal_i++) {
         CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
@@ -345,10 +329,6 @@ int updateWallTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_m
                               proj_ind, gr_i, gc_i, _CAL_MODE, img_ind);
                     return -1;
                 }
-
-                // Skip empty images
-                if (img_ind == 0 && do_ignore_blank_img)
-                    continue;
 
                 // Copy the wall image to be used
                 cv::Mat img_copy;
@@ -449,7 +429,7 @@ void appLoadAssets() {
             CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
 
             // Store wall homography matrices
-            if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) {
+            if (_CAL_MODE == MODE_WALLS_LEFT || _CAL_MODE == MODE_WALLS_MIDDLE || _CAL_MODE == MODE_WALLS_RIGHT) {
                 // Iterate through the maze grid rows
                 for (int gr_i = 0; gr_i < GLB_MAZE_SIZE; ++gr_i) {
                     for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; ++gc_i) {
@@ -500,16 +480,6 @@ void appInitVariables() {
         winOffsetVec.emplace_back(x_offset, y_offset);
     }
 
-    // ---------- Convert and store rotated floor images ---------
-    // Loop through runtimeFloorMats images and store a new entry for each projector in rotatedRuntimeFloorMats
-    //TODO: Can we add the rotation into the homography matrix?
-    for (auto &img : runtimeFloorMats) {
-        rotateFloorImage(270, img, rotatedRuntimeFloorMats[0]); // Projector 0
-        rotateFloorImage(180, img, rotatedRuntimeFloorMats[1]); // Projector 1
-        rotateFloorImage(90, img, rotatedRuntimeFloorMats[2]);  // Projector 2
-        rotateFloorImage(0, img, rotatedRuntimeFloorMats[3]);   // Projector 3
-    }
-
     ROS_INFO("[projection_display:appInitVariables] Finished initializing variables successfully");
 }
 
@@ -555,8 +525,8 @@ void appInitOpenGL() {
             throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
 
         // Initialize blank wall image mat
-        ProjWallConfigIndices4D proj_wall_cfg_indices_blank = {}; // Initialize to all zeros for blank images
-        if (updateWallTexture(proj_ind, runtimeWallMats, proj_wall_cfg_indices_blank, false, wallBlankMats[proj_ind]))
+        ProjectionMap<int> proj_wall_cfg_indices_blank = {}; // Initialize to all zeros for blank images
+        if (updateWallTexture(proj_ind, blankMat))
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(proj_ind) + "]: Failed to update wall texture");
 
         ROS_INFO("[appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
@@ -599,11 +569,11 @@ void appMainLoop()
             cv::Mat imgMat = blankMat.clone();
 
             // Update floor image texture
-            if (updateFloorTexture(projCtx.windowInd, rotatedRuntimeFloorMats[projCtx.windowInd][projFloorConfigIndex], imgMat))
+            if (updateFloorTexture(projCtx.windowInd, imgMat))
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
 
             // Update wall image texture
-            if (updateWallTexture(projCtx.windowInd, true, imgMat))
+            if (updateWallTexture(projCtx.windowInd, imgMat))
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
 
             // Load the new texture

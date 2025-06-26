@@ -1347,7 +1347,7 @@ void dbLogHomMat(const cv::Mat &r_HMAT) {
     ROS_INFO("==================================");
 }
 
-void dbLogProjWallImageCfg4D(const ProjWallConfigIndices4D &wallImageConfig) {
+void dbLogProjWallImageCfg4D(const ProjectionMap<int> &wallImageConfig) {
     if (!GLB_DO_VERBOSE_DEBUG) return;
 
     ROS_INFO("                                Projector Wall Image Configuration                                       ");
@@ -1882,7 +1882,7 @@ int computeHomographyMatrix(const std::vector<cv::Point2f> &source_vertices,
 
     // Check that the source plane vertices are valid
     status = checkQuadVertices(source_vertices);
-    if (status < 0) {
+    if (checkQuadVertices(source_vertices) < 0) {
         ROS_ERROR("[computeHomographyMatrix] Source Plane Vertices[%d] Invalid: %s",
                   source_vertices.size(), status == -1 ? "Wrong Number of Vertices" : "Vertices are Collinear");
         return -1;
@@ -1907,7 +1907,6 @@ int computeHomographyMatrix(const std::vector<cv::Point2f> &source_vertices,
 
     // Update the output matrix
     out_H = H.clone();
-
     // Return success
     return 0;
 }
