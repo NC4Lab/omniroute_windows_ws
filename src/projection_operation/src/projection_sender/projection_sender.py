@@ -6,6 +6,7 @@
 
 # ROS Imports
 import rospy
+import rospkg
 from std_msgs.msg import Int32, Int32MultiArray, MultiArrayDimension
 
 # Other
@@ -56,12 +57,10 @@ class ProjectionOperation:
         # Publisher for the 'projection_image' topic
         self.image_pub = rospy.Publisher('projection_image', Int32MultiArray, queue_size=10)
 
-        # Initialize the node (if not already initialized)
-        if not rospy.core.is_initialized():
-            rospy.init_node('projection_operation_node', anonymous=True)
+        self.publish_new_image_message()
 
-        # Initialize image_config as a 10x8 array with default values
-        self.image_config = [[0 for _ in range(8)] for _ in range(10)]
+        # # Initialize image_config as a 10x8 array with default values
+        # self.image_config = [[0 for _ in range(8)] for _ in range(10)]
 
         # # TEMP
         # rospy.sleep(5)
@@ -82,9 +81,29 @@ class ProjectionOperation:
         # self.publish_image_message(self.image_config)
 
         # Rate to publish at 10 Hz
-        r = rospy.Rate(10)
-        while not rospy.is_shutdown():
-            r.sleep()
+        # r = rospy.Rate(10)
+        # while not rospy.is_shutdown():
+        #     r.sleep()
+    
+    def setup_layout_maze(self):
+        """Set up the layout for the maze configuration."""
+        layout = []
+
+        # Define first dimension (chambers)
+        dim1_layout = MultiArrayDimension()
+        dim1_layout.label = "chambers"
+        dim1_layout.size = 9  # Assuming 9 chambers
+        
+        dim2_layout = MultiArrayDimension()
+        dim2_layout.label = "surfaces"
+        dim2_layout.size = 9  # Assuming 9 surfaces (walls + floor)
+        dim2_layout.stride = dim2_layout.size
+
+        dim1_layout.stride = dim1_layout.size * dim2_layout.size
+
+        layout.append(dim1_layout)
+        layout.append(dim2_layout)
+        return layout
 
     def setup_layout(self, dim1, dim2):
         """Helper function to set up the layout for a 2-dimensional array."""
@@ -203,7 +222,31 @@ class ProjectionOperation:
         rospy.loginfo("[ProjectionOperation:publish_image_message] Sent the following CSV-based data:")
         for i in range(10):
             rospy.loginfo("Data[%d] = %s", i, str(image_config[i]))
+    
+    def publish_new_image_message(self):
+        """
+        Send the data from the CSV as an Int32MultiArray message.
+        """
+        rospy.loginfo("[ProjectionOperation:publish_new_image_message] Sending image data")
 
+        # Create the Int32MultiArray message
+        projection_data = Int32MultiArray()
+
+        package_path = rospkg.RosPack().get_path('projection_operation')
+
+        csv_path = os.path.join(package_path, '..', '..', 
+                                'data', 'csv_configs', 'blank_config.csv')
+        fp = open(csv_path, mode='r')
+        rdr = csv.reader(filter(lambda row: row[0]!='#', fp))
+        data = [row for row in rdr]
+
+        projection_data.layout.dim = self.setup_layout_maze()
+        # Flatten the 2D data into a single list
+        flat_data = [int(item) for sublist in data for item in sublist]
+        projection_data.data = flat_data
+        # Publish the image data message
+        self.image_pub.publish(projection_data)
+        fp.close()
 
 # Main function to start the node
 if __name__ == '__main__':

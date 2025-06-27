@@ -118,13 +118,27 @@ const std::map<SurfaceEnum, std::pair<ProjectorEnum, CalibrationMode>> wall_proj
 
 MazeMap<int> MAZE_IMAGE_MAP; // Map to hold image indices for each chamber and surface
 ProjectionMap<int> PROJECTION_IMAGE_MAP; // Map to hold image indices for each projector, row, column, and calibration mode
-
+MazeMap<int> MAZE_BLANK_MAP; // Map to hold blank image indices for each chamber and surface
+ProjectionMap<int> PROJECTION_BLANK_MAP; // Map to hold blank image indices for each
 
 void blankMazeMap(MazeMap<int> &maze_map) {
     // Initialize the maze map with -1 for all chambers and surfaces
     for (auto &cham: Chambers) {
         for (auto &surf: Surfaces) {
-            maze_map[cham][surf] = -1; // -1 indicates no image assigned
+            maze_map[cham][surf] = 0; // 0 indicates blank image assigned
+        }
+    }
+}
+
+void blankProjectionMap(ProjectionMap<int> &projection_map) {
+    // Initialize the projection map with -1 for all projectors, rows, columns, and calibration modes
+    for (auto &proj: Projectors) {
+        for (auto &row: Rows) {
+            for (auto &col: Columns) {
+                for (auto &mode: CalibrationModes) {
+                    projection_map[proj][row][col][mode] = 0; // 0 indicates blank image assigned
+                }
+            }
         }
     }
 }

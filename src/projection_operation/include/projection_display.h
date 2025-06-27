@@ -119,7 +119,7 @@ std::vector<cv::Mat> runtimeFloorMats; // Vector of individual floor image textu
 /**
  * @brief Blank baseline image.
  */
-cv::Mat blankMat = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
+cv::Mat BLANK_PXL_MAT = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
 
 /**
  * @brief Array of vectors to store the rotated floor images in cv::Mat format

@@ -275,6 +275,18 @@ int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width
     _windowWidthPxl = win_width;
     _windowHeightPxl = win_height;
 
+    // Set the GLFW window hints for the window size
+    // glfwWindowHint(GLFW_RESIZABLE, GL_FALSE); // Disable resizing by user
+    // glfwWindowHint(GLFW_VISIBLE, GL_TRUE);   // Make the window visible
+    // glfwWindowHint(GLFW_FOCUSED, GL_FALSE); // Make the window not focused initially
+    // glfwWindowHint(GLFW_DECORATED, GL_FALSE); // Disable window decorations (title bar, close button, etc.)
+    // glfwWindowHint(GLFW_FLOATING, GL_TRUE); // Allow the window to float above others
+    // glfwWindowHint(GLFW_MAXIMIZED, GL_FALSE); // Do not maximize the window initially
+    // glfwWindowHint(GLFW_AUTO_ICONIFY, GL_FALSE); // Do not auto-iconify the window
+    // glfwWindowHint(GLFW_SCALE_TO_MONITOR, GL_FALSE); // Scale the window to the monitor's DPI
+    // glfwWindowHint(GLFW_CENTER_CURSOR, GL_FALSE); // Do not center the cursor in the window
+    // glfwWindowHint(GLFW_FOCUS_ON_SHOW, GL_FALSE); // Do not focus the window when shown
+
     // Create a new GLFW window
     windowID = glfwCreateWindow(_windowWidthPxl, _windowHeightPxl, "", monitorID, NULL); // Use the monitor in window creation
     if (!windowID) {
@@ -1976,48 +1988,51 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
 
 int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img)
 {
-    // Check if images are loaded successfully
-    if (out_base_img.empty() || mask_img.empty()) {
-        ROS_ERROR("[mergeImgMat] Error: Could not read one or both images.");
-        return -1;
-    }
+    // // Check if images are loaded successfully
+    // if (out_base_img.empty() || mask_img.empty()) {
+    //     ROS_ERROR("[mergeImgMat] Error: Could not read one or both images.");
+    //     return -1;
+    // }
 
-    // Check dimensions
-    if (out_base_img.size() != mask_img.size()) {
-        ROS_ERROR("[mergeImgMat] Error: Image dimensions do not match. "
-                  "Base image(%d, %d), Mask image(%d, %d)",
-                  out_base_img.cols, out_base_img.rows,
-                  mask_img.cols, mask_img.rows);
-        return -1;
-    }
+    // // Check dimensions
+    // if (out_base_img.size() != mask_img.size()) {
+    //     ROS_ERROR("[mergeImgMat] Error: Image dimensions do not match. "
+    //               "Base image(%d, %d), Mask image(%d, %d)",
+    //               out_base_img.cols, out_base_img.rows,
+    //               mask_img.cols, mask_img.rows);
+    //     return -1;
+    // }
 
     // Loop through each pixel
-    for (int y = 0; y < out_base_img.rows; ++y) {
-        for (int x = 0; x < out_base_img.cols; ++x) {
-            const cv::Vec4b &base_pixel = out_base_img.at<cv::Vec4b>(y, x);
-            const cv::Vec4b &mask_pixel = mask_img.at<cv::Vec4b>(y, x);
+    // for (int y = 0; y < out_base_img.rows; ++y) {
+    //     for (int x = 0; x < out_base_img.cols; ++x) {
+    //         // const cv::Vec4b &base_pixel = out_base_img.at<cv::Vec4b>(y, x);
+    //         const cv::Vec4b &mask_pixel = mask_img.at<cv::Vec4b>(y, x);
 
-            // If the alpha channel of the mask pixel is not fully transparent, overlay it
-            if (mask_pixel[3] != 0)
-                out_base_img.at<cv::Vec4b>(y, x) = mask_pixel;
-        }
-    }
+    //         // If the alpha channel of the mask pixel is not fully transparent, overlay it
+    //         if (mask_pixel[3] != 0) out_base_img.at<cv::Vec4b>(y, x) = mask_pixel;
+    //     }
+    // }
+
+    cv::add(out_base_img, mask_img, out_base_img);
 
     return 0;
 }
 
 int warpImgMat(cv::Mat img_mat, cv::Mat _H, cv::Mat &out_img_mat) {
-    // Check that the input image is valid
-    if (img_mat.empty()) {
-        ROS_ERROR("[warpImgMat] Input image is empty");
-        return -1;
-    }
+    // // Check that the input image is valid
+    // if (img_mat.empty()) {
+    //     ROS_ERROR("[warpImgMat] Input image is empty");
+    //     return -1;
+    // }
 
-    // Get homography matrix for this wall
-    if (checkHMAT(_H) < 0) {
-        ROS_ERROR("[warpImgMat] Homography matrix error");
-        return -1;
-    }
+    // // Get homography matrix for this wall
+    // if (checkHMAT(_H) < 0) {
+    //     ROS_ERROR("[warpImgMat] Homography matrix error");
+    //     return -1;
+    // }
+
+    std::cout << "[warpImgMat] Warping image with homography matrix: " << std::endl;
 
     // Warp Perspective
     cv::warpPerspective(img_mat, out_img_mat, _H, cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));

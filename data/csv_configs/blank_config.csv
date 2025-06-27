@@ -1,0 +1,21 @@
+# Image indices for the test configuration, given as a 9x9 matrix, N_CHAMBERS x N_SURFACES
+# First 8 elements are for WALL_0 to WALL_7, last element is for FLOOR
+# Blank wall image
+# Chamber 0
+0, 0, 0, 0, 0, 0, 0, 0, 0
+# Chamber 1
+0, 0, 0, 0, 0, 0, 0, 0, 0
+# Chamber 2
+0, 0, 0, 0, 0, 0, 0, 0, 0
+# Chamber 3
+0, 0, 0, 0, 0, 0, 0, 0, 0
+# Chamber 4
+0, 0, 0, 0, 0, 0, 0, 0, 0
+# Chamber 5
+0, 0, 0, 0, 0, 0, 0, 0, 0
+# Chamber 6
+0, 0, 0, 0, 0, 0, 0, 0, 0
+# Chamber 7
+0, 0, 0, 0, 0, 0, 0, 0, 0
+# Chamber 8
+0, 0, 0, 0, 0, 0, 0, 0, 0

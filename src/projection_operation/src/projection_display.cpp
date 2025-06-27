@@ -172,57 +172,57 @@ void simulateRatMovement(float move_step, float max_turn_angle) {
     keepWithinBoundsAndTurn(RT.marker_position);
 }
 
-void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind, ProjectionMap<int> &out_PROJ_WALL_CONFIG_INDICES_4D) {
-    std::vector<int> walls_ind = {wall_ind};
-    configWallImageIndex(image_ind, chamber_ind, walls_ind, out_PROJ_WALL_CONFIG_INDICES_4D);
-}
+// void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind, ProjectionMap<int> &out_PROJ_WALL_CONFIG_INDICES_4D) {
+//     std::vector<int> walls_ind = {wall_ind};
+//     configWallImageIndex(image_ind, chamber_ind, walls_ind, out_PROJ_WALL_CONFIG_INDICES_4D);
+// }
 
-void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjectionMap<int> &out_PROJ_WALL_CONFIG_INDICES_4D) {
-    // Determine the row and column based on chamber index
-    int row = chamber_ind / 3;
-    int col = chamber_ind % 3;
+// void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjectionMap<int> &out_PROJ_WALL_CONFIG_INDICES_4D) {
+//     // Determine the row and column based on chamber index
+//     int row = chamber_ind / 3;
+//     int col = chamber_ind % 3;
 
-    // Iterate through each projector
-    for (auto proj : Projectors) {
-        // Calculate adjusted row and column for each projector
-        int adjusted_row = row;
-        int adjusted_col = col;
+//     // Iterate through each projector
+//     for (auto proj : Projectors) {
+//         // Calculate adjusted row and column for each projector
+//         int adjusted_row = row;
+//         int adjusted_col = col;
 
-        // Adjust the indices based on the projector orientation
-        switch (proj) {
-        case 0: // Adjustments for Projector 0 (West)
-            adjusted_row = 2 - col;
-            adjusted_col = row;
-            break;
-        case 1: // Adjustments for Projector 1 (North)
-            adjusted_row = 2 - row;
-            adjusted_col = 2 - col;
-            break;
-        case 2: // Adjustments for Projector 2 (East)
-            adjusted_row = col;
-            adjusted_col = 2 - row;
-            break;
-        case 3: // No adjustments needed for Projector 3 (South)
-            break;
-        }
+//         // Adjust the indices based on the projector orientation
+//         switch (proj) {
+//         case 0: // Adjustments for Projector 0 (West)
+//             adjusted_row = 2 - col;
+//             adjusted_col = row;
+//             break;
+//         case 1: // Adjustments for Projector 1 (North)
+//             adjusted_row = 2 - row;
+//             adjusted_col = 2 - col;
+//             break;
+//         case 2: // Adjustments for Projector 2 (East)
+//             adjusted_row = col;
+//             adjusted_col = 2 - row;
+//             break;
+//         case 3: // No adjustments needed for Projector 3 (South)
+//             break;
+//         }
 
-        // Wall to array index mapping for each projector
-        std::unordered_map<int, std::unordered_map<int, int>> wallToIndexMapping = {
-            {0, {{3, 0}, {4, 1}, {5, 2}}}, // Projector 0 (West) - East walls
-            {1, {{5, 0}, {6, 1}, {7, 2}}}, // Projector 1 (North) - South walls
-            {2, {{7, 0}, {0, 1}, {1, 2}}}, // Projector 2 (East) - West walls
-            {3, {{1, 0}, {2, 1}, {3, 2}}}  // Projector 3 (South) - North walls
-        };
+//         // Wall to array index mapping for each projector
+//         std::unordered_map<int, std::unordered_map<int, int>> wallToIndexMapping = {
+//             {0, {{3, 0}, {4, 1}, {5, 2}}}, // Projector 0 (West) - East walls
+//             {1, {{5, 0}, {6, 1}, {7, 2}}}, // Projector 1 (North) - South walls
+//             {2, {{7, 0}, {0, 1}, {1, 2}}}, // Projector 2 (East) - West walls
+//             {3, {{1, 0}, {2, 1}, {3, 2}}}  // Projector 3 (South) - North walls
+//         };
 
-        // Iterate through each wall index
-        for (int wall : walls_ind) {
-            // Check if wall index is valid and has a mapping
-            auto wallMapping = wallToIndexMapping[proj].find(wall);
-            if (wallMapping != wallToIndexMapping[proj].end()) // Set the image index for the corresponding wall
-                out_PROJ_WALL_CONFIG_INDICES_4D[proj][adjusted_row][adjusted_col][wallMapping->second] = image_ind;
-        }
-    }
-}
+//         // Iterate through each wall index
+//         for (int wall : walls_ind) {
+//             // Check if wall index is valid and has a mapping
+//             auto wallMapping = wallToIndexMapping[proj].find(wall);
+//             if (wallMapping != wallToIndexMapping[proj].end()) // Set the image index for the corresponding wall
+//                 out_PROJ_WALL_CONFIG_INDICES_4D[proj][adjusted_row][adjusted_col][wallMapping->second] = image_ind;
+//         }
+//     }
+// }
 
 void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec) {
     // Lambda function for circular shift
@@ -273,25 +273,32 @@ cv::Mat rotateImage(int proj_ind, const cv::Mat &in_img_mat) {
 
 
 int updateFloorTexture(int proj_ind, cv::Mat &out_img_mat) {
+
+    // displayTimer[4].start();
+
     // Get homography matrix for this wall
     cv::Mat H = FLOOR_HMAT_ARR[proj_ind];
 
     // Get image to be used for the floor texture
     cv::Mat floorMat = runtimeFloorMats[floorImageIndex];
     floorMat = rotateImage(proj_ind, floorMat); // Rotate the image based on the projector index
-
+    
     // Warp Perspective
     cv::Mat img_warp;
     if (warpImgMat(floorMat, H, img_warp) < 0) {
         ROS_ERROR("[updateFloorTexture] Warp image error: Projector[%d]", proj_ind);
         return -1;
     }
+
     // Merge the warped image with the final image
     if (mergeImgMat(img_warp, out_img_mat) < 0) // TODO: Error messages here
         return -1;
+
     // Merge the blank wall image with the final image
-    if (mergeImgMat(blankMat, out_img_mat) < 0)
+    if (mergeImgMat(BLANK_PXL_MAT, out_img_mat) < 0)
         return -1;
+    
+    // displayTimer[4].update(true);
 
     return 0;
 }
@@ -312,18 +319,22 @@ int updateWallTexture(int proj_ind, cv::Mat &out_img_mat) {
                     //     WALL_HMAT_ARR[proj_ind][mode][row][col], 
                     //     cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
 
+                    // displayTimer[6].start();
                     if (warpImgMat(runtimeWallMats[img_ind], WALL_HMAT_ARR[proj_ind][mode][row][col], img_warp) < 0) {
                         ROS_ERROR("[updateWallTexture] Warp image error: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
                                   proj_ind, row, col, mode, img_ind);
                         return -1;
                     }
-                    
+                    // displayTimer[6].update(true);
+
+                    // displayTimer[7].start();
                     // Merge the warped image with the final image
                     if (mergeImgMat(img_warp, out_img_mat) < 0) {
                         ROS_ERROR("[updateWallTexture] Merge image error: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
                                   proj_ind, row, col, mode, img_ind);
                         return -1;
                     }
+                    // displayTimer[7].update(true);
                 }
             }
         }
@@ -444,6 +455,12 @@ void appLoadAssets() {
         HMAT_CM_TO_NDC_ARR[proj_ind] = H;
     }
 
+    // Blank image maps as default
+    blankMazeMap(MAZE_BLANK_MAP);
+    blankMazeMap(MAZE_IMAGE_MAP);
+    blankProjectionMap(PROJECTION_BLANK_MAP);
+    blankProjectionMap(PROJECTION_IMAGE_MAP);
+
     ROS_INFO("[projection_display:appLoadAssets] Finished loading variables successfully");
 }
 
@@ -471,11 +488,13 @@ void appInitOpenGL() {
     for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) {
         // Start on the default screen
         int mon_ind = STARTING_MONITOR;
+        ROS_INFO("[appInitOpenGL] Initializing OpenGL for Projector[%d] on Monitor[%d]", proj_ind, mon_ind);
 
         // Initialze render context for each projector
-        if (PROJ_CTX_VEC[proj_ind].initWindowContext(proj_ind, mon_ind, GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL, callbackKeyBinding) < 0)
+        // if (PROJ_CTX_VEC[proj_ind].initWindowContext(proj_ind, mon_ind, GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL, callbackKeyBinding) < 0)
+        if (PROJ_CTX_VEC[proj_ind].initWindowContext(proj_ind, mon_ind, 320, 240, callbackKeyBinding) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
-
+        
         // Initialize OpenGL wall image objects
         if (PROJ_CTX_VEC[proj_ind].initRenderObjects(GLB_QUAD_GL_VERTICES, sizeof(GLB_QUAD_GL_VERTICES), GLB_QUAD_GL_INDICES, sizeof(GLB_QUAD_GL_INDICES)) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
@@ -501,11 +520,6 @@ void appInitOpenGL() {
                 HMAT_CM_TO_NDC_ARR[proj_ind] // homography matrix
                 ) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
-
-        // Initialize blank wall image mat
-        ProjectionMap<int> proj_wall_cfg_indices_blank = {}; // Initialize to all zeros for blank images
-        if (updateWallTexture(proj_ind, blankMat))
-            throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(proj_ind) + "]: Failed to update wall texture");
 
         ROS_INFO("[appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
     }
@@ -544,7 +558,7 @@ void appMainLoop()
     // Recompute wall parameters and update wall image texture
     if (F.update_textures) {
         for (auto &projCtx : PROJ_CTX_VEC) {
-            cv::Mat imgMat = blankMat.clone();
+            cv::Mat imgMat = BLANK_PXL_MAT.clone();
 
             // Update floor image texture
             if (updateFloorTexture(projCtx.windowInd, imgMat))
@@ -597,7 +611,6 @@ void appMainLoop()
     displayTimer[2].update(true); // Update the timing data for the third displayTimer
     displayTimer[3].start(); // Start the fourth displayTimer for ROS operations
 
-
     // --------------- Handle ROS Messages and Operations ---------------
     // Process a single round of callbacks for ROS messages
     ros::spinOnce();
@@ -629,7 +642,7 @@ void appCleanup() {
 }
 
 int main(int argc, char **argv) {
-    try {
+    // try {
         appInitROS(argc, argv); // Initialize ROS node and subscribers
         appLoadAssets();
         appInitVariables();
@@ -645,13 +658,16 @@ int main(int argc, char **argv) {
         displayTimer[1].setName("Update_textures");
         displayTimer[2].setName("Image_processing");
         displayTimer[3].setName("ROS_operations");
+        displayTimer[4].setName("Floor_texture_update");
+        displayTimer[6].setName("Warp");
+        displayTimer[7].setName("Merge");
 
         while(ros::ok()) appMainLoop(); // Main loop for rendering and processing
-    }
-    catch (const std::exception &e) {
-        ROS_ERROR("!!EXCEPTION CAUGHT!!: %s", e.what());
-        void appCleanup();
-        return -1;
-    }
+    // }
+    // catch (const std::exception &e) {
+    //     ROS_ERROR("!!EXCEPTION CAUGHT!!: %s", e.what());
+    //     void appCleanup();
+    //     return -1;
+    // }
     return 0;
 }
