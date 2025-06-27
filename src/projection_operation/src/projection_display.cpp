@@ -66,33 +66,18 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
 
     // Check that the received data has the correct size for a 9x9 array (81 elements)
     if (msg->data.size() != N_CHAMBERS * N_SURF) {
-        ROS_ERROR("[callbackProjImgROS] Received incorrect array size. Expected 80 elements, but got %zu", msg->data.size());
+        ROS_ERROR("[callbackProjImgROS] Received incorrect array size. Expected %d elements, but got %zu", 
+            N_CHAMBERS * N_SURF, msg->data.size());
         return;
     }
 
-    int proj_img_data[9][9]; // Temporary 2D array to store the projection image data
-    // Store the 9x9 data in proj_img_data
+    // Store the maze image data in the global maze image map
     for (auto &cham : Chambers)
         for (auto &surf : Surfaces)
-            proj_img_data[cham][surf] = msg->data[cham * N_SURF + surf];
+            MAZE_IMAGE_MAP[cham][surf] = msg->data[cham * N_SURF + surf];
     
-    // ---------- Update image index data ----------
-    for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
-        for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
-            // Store image index
-            int img_ind = proj_img_data[cham_ind][wall_ind];
-
-            // Update the wall index array
-            if (cham_ind < 9)
-                configWallImageIndex(img_ind, cham_ind, wall_ind, PROJ_WALL_CONFIG_INDICES_4D);
-            // Update the floor image index
-            else if (cham_ind == 9 && wall_ind == 0) // Only store the first entry
-                floorImageIndex = img_ind;
-                // Skip unused floor entries
-            else
-                continue;
-        }
-    }
+    // Convert the received data to a projection map
+    mazeToProjectionMap(MAZE_IMAGE_MAP, PROJECTION_IMAGE_MAP);
 
     // Set the flag to update the textures
     F.update_textures = true;
@@ -197,16 +182,8 @@ void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int>
     int row = chamber_ind / 3;
     int col = chamber_ind % 3;
 
-    // Wall to array index mapping for each projector
-    std::unordered_map<int, std::unordered_map<int, int>> wallToIndexMapping = {
-        {0, {{3, 0}, {4, 1}, {5, 2}}}, // Projector 0 (West) - East walls
-        {1, {{5, 0}, {6, 1}, {7, 2}}}, // Projector 1 (North) - South walls
-        {2, {{7, 0}, {0, 1}, {1, 2}}}, // Projector 2 (East) - West walls
-        {3, {{1, 0}, {2, 1}, {3, 2}}}  // Projector 3 (South) - North walls
-    };
-
     // Iterate through each projector
-    for (int proj = 0; proj < N_PROJ; ++proj) {
+    for (auto proj : Projectors) {
         // Calculate adjusted row and column for each projector
         int adjusted_row = row;
         int adjusted_col = col;
@@ -228,6 +205,14 @@ void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int>
         case 3: // No adjustments needed for Projector 3 (South)
             break;
         }
+
+        // Wall to array index mapping for each projector
+        std::unordered_map<int, std::unordered_map<int, int>> wallToIndexMapping = {
+            {0, {{3, 0}, {4, 1}, {5, 2}}}, // Projector 0 (West) - East walls
+            {1, {{5, 0}, {6, 1}, {7, 2}}}, // Projector 1 (North) - South walls
+            {2, {{7, 0}, {0, 1}, {1, 2}}}, // Projector 2 (East) - West walls
+            {3, {{1, 0}, {2, 1}, {3, 2}}}  // Projector 3 (South) - North walls
+        };
 
         // Iterate through each wall index
         for (int wall : walls_ind) {
@@ -288,7 +273,6 @@ cv::Mat rotateImage(int proj_ind, const cv::Mat &in_img_mat) {
 
 
 int updateFloorTexture(int proj_ind, cv::Mat &out_img_mat) {
-
     // Get homography matrix for this wall
     cv::Mat H = FLOOR_HMAT_ARR[proj_ind];
 
@@ -302,11 +286,9 @@ int updateFloorTexture(int proj_ind, cv::Mat &out_img_mat) {
         ROS_ERROR("[updateFloorTexture] Warp image error: Projector[%d]", proj_ind);
         return -1;
     }
-
     // Merge the warped image with the final image
     if (mergeImgMat(img_warp, out_img_mat) < 0) // TODO: Error messages here
         return -1;
-
     // Merge the blank wall image with the final image
     if (mergeImgMat(blankMat, out_img_mat) < 0)
         return -1;
@@ -314,39 +296,35 @@ int updateFloorTexture(int proj_ind, cv::Mat &out_img_mat) {
     return 0;
 }
 
-//TODO: Not everything needs to be updated every time
 int updateWallTexture(int proj_ind, cv::Mat &out_img_mat) {
+    int img_ind = 0; // Initialize image index
+    cv::Mat img_warp;
     // Iterate through through calibration modes (left walls, middle walls, right walls)
-    for (int cal_i = 0; cal_i < N_CAL_MODES - 1; cal_i++) {
-        CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
+    for (auto &mode : CalibrationModes) {
+        for (auto &proj : Projectors) {
+            for (auto &row : Rows) {
+                for (auto &col : Columns) {
+                    img_ind = PROJECTION_IMAGE_MAP[proj][row][col][mode];
+                    // Check if the image index is valid
+                    if (img_ind < 0 || img_ind >= N_RUNTIME_WALL_IMAGES) img_ind = 0; // Reset to default image index if invalid
 
-        // Iterate through the maze grid rows
-        for (int gr_i = 0; gr_i < GLB_MAZE_SIZE; gr_i++) { // image bottom to top
-            for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; gc_i++) { // image left to right
-                int img_ind = PROJ_WALL_CONFIG_INDICES_4D[proj_ind][gr_i][gc_i][_CAL_MODE];
-                if (runtimeWallMats[img_ind].empty()) {
-                    ROS_ERROR("[updateWallTexture] Stored OpenCV wall image is empty: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
-                              proj_ind, gr_i, gc_i, _CAL_MODE, img_ind);
-                    return -1;
+                    // cv::warpPerspective(runtimeWallMats[img_ind], img_warp, 
+                    //     WALL_HMAT_ARR[proj_ind][mode][row][col], 
+                    //     cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
+
+                    if (warpImgMat(runtimeWallMats[img_ind], WALL_HMAT_ARR[proj_ind][mode][row][col], img_warp) < 0) {
+                        ROS_ERROR("[updateWallTexture] Warp image error: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
+                                  proj_ind, row, col, mode, img_ind);
+                        return -1;
+                    }
+                    
+                    // Merge the warped image with the final image
+                    if (mergeImgMat(img_warp, out_img_mat) < 0) {
+                        ROS_ERROR("[updateWallTexture] Merge image error: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
+                                  proj_ind, row, col, mode, img_ind);
+                        return -1;
+                    }
                 }
-
-                // Copy the wall image to be used
-                cv::Mat img_copy;
-                runtimeWallMats[img_ind].copyTo(img_copy);
-
-                // Get homography matrix for this wall
-                cv::Mat H = WALL_HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i];
-
-                // Warp Perspective
-                cv::Mat img_warp;
-                if (warpImgMat(img_copy, H, img_warp) < 0) {
-                    ROS_ERROR("[updateWallTexture] Warp image error: Projector[%d] Wall[%d][%d] Calibration[%d]",
-                              proj_ind, gr_i, gc_i, _CAL_MODE);
-                    return -1;
-                }
-
-                // Merge the warped image with the final image
-                if (mergeImgMat(img_warp, out_img_mat) < 0) return -1;
             }
         }
     }
