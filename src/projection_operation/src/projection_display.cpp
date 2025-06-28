@@ -102,17 +102,17 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     }
 }
 
-void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC) {
+void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg) {
     // Update the last received command
-    out_RC->proj_cmd_data = msg->data;
-    out_RC->is_proj_cmd_message_received = true;
+    RC.proj_cmd_data = msg->data;
+    RC.is_proj_cmd_message_received = true;
 
     // Log projection command
     if (GLB_DO_VERBOSE_DEBUG)
-        ROS_INFO("[callbackProjCmdROS] Received projection command: %d", out_RC->proj_cmd_data);
+        ROS_INFO("[callbackProjCmdROS] Received projection command: %d", RC.proj_cmd_data);
 }
 
-void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm *out_RC) {
+void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
     // Check that the received data has the correct size for a 10x8 array (80 elements)
     if (msg->data.size() != 80) {
         ROS_ERROR("[callbackProjImgROS] Received incorrect array size. Expected 80 elements, but got %zu", msg->data.size());
@@ -122,10 +122,10 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm 
     // Store the 10x8 data in proj_img_data
     for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
         for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
-            out_RC->proj_img_data[cham_ind][wall_ind] = msg->data[cham_ind * 8 + wall_ind];
+            RC.proj_img_data[cham_ind][wall_ind] = msg->data[cham_ind * 8 + wall_ind];
 
     // Flag that a projection image message has been received
-    out_RC->is_proj_img_message_received = true;
+    RC.is_proj_img_message_received = true;
 
     // Log the entire 2D array
     if (GLB_DO_VERBOSE_DEBUG) {
@@ -136,7 +136,7 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm 
             row_stream << "Walls[" << cham_ind << "] = [";
             for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
             {
-                row_stream << out_RC->proj_img_data[cham_ind][wall_ind];
+                row_stream << RC.proj_img_data[cham_ind][wall_ind];
                 if (wall_ind < 7) // Add a comma between elements, but not after the last one
                 {
                     row_stream << ", ";
@@ -148,101 +148,101 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm 
     }
 }
 
-void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSComm *out_RC) {
+void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg) {
     // Update the last received command
-    out_RC->track_pos_data = *msg;
-    out_RC->is_track_pos_message_received = true;
+    RC.track_pos_data = *msg;
+    RC.is_track_pos_message_received = true;
 
     // Log position data
     if (GLB_DO_VERBOSE_DEBUG)
         ROS_INFO("[callbackHarnessPosROS] Received tracking: position x[%f] y[%f] z[%f], orientation x[%f] y[%f] z[%f]",
-                 out_RC->track_pos_data.pose.position.x,
-                 out_RC->track_pos_data.pose.position.y,
-                 out_RC->track_pos_data.pose.position.z,
-                 out_RC->track_pos_data.pose.orientation.x,
-                 out_RC->track_pos_data.pose.orientation.y,
-                 out_RC->track_pos_data.pose.orientation.z);
+                 RC.track_pos_data.pose.position.x,
+                 RC.track_pos_data.pose.position.y,
+                 RC.track_pos_data.pose.position.z,
+                 RC.track_pos_data.pose.orientation.x,
+                 RC.track_pos_data.pose.orientation.y,
+                 RC.track_pos_data.pose.orientation.z);
 }
 
-int initSubscriberROS(ROSComm &out_RC) {
+int initSubscriberROS() {
     // Check if node handle is initialized
-    if (!out_RC.node_handle) {
+    if (!RC.node_handle) {
         ROS_ERROR("[initSubscriberROS]Node handle is not initialized!");
         return -1;
     }
 
     // Initialize the "projection_cmd" subscriber using boost::bind
-    out_RC.proj_cmd_sub = out_RC.node_handle->subscribe<std_msgs::Int32>(
-        "projection_cmd", 10, boost::bind(&callbackProjCmdROS, _1, &out_RC));
-    if (!out_RC.proj_cmd_sub) {
+    RC.proj_cmd_sub = RC.node_handle->subscribe<std_msgs::Int32>(
+        "projection_cmd", 10, boost::bind(&callbackProjCmdROS, _1));
+    if (!RC.proj_cmd_sub) {
         ROS_ERROR("[initSubscriberROS]Failed to subscribe to 'projection_cmd' topic!");
         return -1;
     }
 
     // Initialize the "projection_image" subscriber
-    out_RC.proj_img_sub = out_RC.node_handle->subscribe<std_msgs::Int32MultiArray>(
-        "projection_image", 10, boost::bind(&callbackProjImgROS, _1, &out_RC));
-    if (!out_RC.proj_img_sub) {
+    RC.proj_img_sub = RC.node_handle->subscribe<std_msgs::Int32MultiArray>(
+        "projection_image", 10, boost::bind(&callbackProjImgROS, _1));
+    if (!RC.proj_img_sub) {
         ROS_ERROR("[initSubscriberROS]Failed to subscribe to 'projection_image' topic!");
         return -1;
     }
 
     // Initialize the "harness_pose_in_maze" subscriber
-    out_RC.track_pos_sub = out_RC.node_handle->subscribe<geometry_msgs::PoseStamped>(
-        "harness_pose_in_maze", 10, boost::bind(&callbackTrackPosROS, _1, &out_RC));
-    if (!out_RC.track_pos_sub) {
+    RC.track_pos_sub = RC.node_handle->subscribe<geometry_msgs::PoseStamped>(
+        "harness_pose_in_maze", 10, boost::bind(&callbackTrackPosROS, _1));
+    if (!RC.track_pos_sub) {
         ROS_ERROR("[initSubscriberROS]Failed to subscribe to 'harness_pose_in_maze' topic!");
         return -1;
     }
     return 0;
 }
 
-int procProjCmdROS(ROSComm &out_RC) {
+int procProjCmdROS() {
     // Check if node handle is initialized
     if (!ros::ok()) return -1;
 
     // Bail if no message received
-    if (!out_RC.is_proj_cmd_message_received) return 0;
+    if (!RC.is_proj_cmd_message_received) return 0;
 
     // Reset the flag
-    out_RC.is_proj_cmd_message_received = false;
+    RC.is_proj_cmd_message_received = false;
 
-    // ---------- Monitor Mode Change Commmands ----------
+    // ------- Monitor Mode Change Commmands ----------
 
     // Move monitor command [-1]
-    if (out_RC.proj_cmd_data == -1) {
+    if (RC.proj_cmd_data == -1) {
         F.windows_set_to_proj = !F.windows_set_to_proj;
         F.change_window_mode = true;
     }
     // Set/unset Fullscreen [-2] ----------
-    else if (out_RC.proj_cmd_data == -2) {
+    else if (RC.proj_cmd_data == -2) {
         F.fullscreen_mode = !F.fullscreen_mode;
         F.change_window_mode = true;
     }
     // Force window to top [-3] ----------
-    else if (out_RC.proj_cmd_data == -3)
+    else if (RC.proj_cmd_data == -3)
         F.force_window_focus = true;
     else
-        ROS_WARN("[procProjCmdROS] Received invalid projection command: %d", out_RC.proj_cmd_data);
+        ROS_WARN("[procProjCmdROS] Received invalid projection command: %d", RC.proj_cmd_data);
 
     return 0;
 }
 
-int procProjImgROS(ROSComm &out_RC) {
+int procProjImgROS() {
     // Check if node handle is initialized
     if (!ros::ok()) return -1;
 
     // Bail if no message received
-    if (!out_RC.is_proj_img_message_received) return 0;
+    if (!RC.is_proj_img_message_received) return 0;
 
     // Reset the flag
-    out_RC.is_proj_img_message_received = false;
+    RC.is_proj_img_message_received = false;
 
     // ---------- Update image index data ----------
     for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
         for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
             // Store image index
-            int img_ind = out_RC.proj_img_data[cham_ind][wall_ind];
+            int img_ind = RC.proj_img_data[cham_ind][wall_ind];
 
             // Update the wall index array
             if (cham_ind < 9)
@@ -262,27 +262,27 @@ int procProjImgROS(ROSComm &out_RC) {
     return 0;
 }
 
-int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT) {
+int procTrackMsgROS() {
     // Check if node handle is initialized
     if (!ros::ok()) return -1;
 
     // Bail if no message received
-    if (!out_RC.is_track_pos_message_received) return 0;
+    if (!RC.is_track_pos_message_received) return 0;
 
     // Reset the flag
-    out_RC.is_track_pos_message_received = false;
+    RC.is_track_pos_message_received = false;
 
     // Convert the track pose to centimeters
     geometry_msgs::Point position_cm;
-    position_cm.x = out_RC.track_pos_data.pose.position.x * 100.0f;
-    position_cm.y = out_RC.track_pos_data.pose.position.y * 100.0f;
+    position_cm.x = RC.track_pos_data.pose.position.x * 100.0f;
+    position_cm.y = RC.track_pos_data.pose.position.y * 100.0f;
 
     // Extract the quaternion
     tf::Quaternion q(
-        out_RC.track_pos_data.pose.orientation.x,
-        out_RC.track_pos_data.pose.orientation.y,
-        out_RC.track_pos_data.pose.orientation.z,
-        out_RC.track_pos_data.pose.orientation.w);
+        RC.track_pos_data.pose.orientation.x,
+        RC.track_pos_data.pose.orientation.y,
+        RC.track_pos_data.pose.orientation.z,
+        RC.track_pos_data.pose.orientation.w);
 
     // Convert quaternion to RPY (roll, pitch, yaw)
     tf::Matrix3x3 m(q);
@@ -290,18 +290,18 @@ int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT) {
     m.getRPY(roll, pitch, yaw);
 
     // Convert offset angle from degrees to radians
-    double offset_angle_rad = out_RT.offset_angle * GLOB_PI / 180.0f;
+    double offset_angle_rad = RT.offset_angle * GLOB_PI / 180.0f;
 
     // Adjust the yaw by the offset angle
     double adjusted_yaw = yaw + offset_angle_rad;
 
     // Calculate the offset in global frame
-    double offset_x = out_RT.offset_distance * cos(adjusted_yaw);
-    double offset_y = out_RT.offset_distance * sin(adjusted_yaw);
+    double offset_x = RT.offset_distance * cos(adjusted_yaw);
+    double offset_y = RT.offset_distance * sin(adjusted_yaw);
 
     // Apply the offset to the original position
-    out_RT.marker_position.x = position_cm.x + offset_x;
-    out_RT.marker_position.y = position_cm.y + offset_y;
+    RT.marker_position.x = position_cm.x + offset_x;
+    RT.marker_position.y = position_cm.y + offset_y;
 
     return 0;
 }
@@ -332,7 +332,7 @@ geometry_msgs::Point getOffsetPosition(const geometry_msgs::Pose &pose, double o
     return new_position;
 }
 
-void simulateRatMovement(float move_step, float max_turn_angle, RatTracker &out_RT) {
+void simulateRatMovement(float move_step, float max_turn_angle) {
     // Track marker angle
     static float marker_angle = 0.0f;
 
@@ -354,11 +354,11 @@ void simulateRatMovement(float move_step, float max_turn_angle, RatTracker &out_
 
     // Calculate new position
     float radian_angle = marker_angle * GLOB_PI / 180.0f;
-    out_RT.marker_position.x += move_step * cos(radian_angle);
-    out_RT.marker_position.y += move_step * sin(radian_angle);
+    RT.marker_position.x += move_step * cos(radian_angle);
+    RT.marker_position.y += move_step * sin(radian_angle);
 
     // Keep the rat within the enclosure and turn if hitting the wall
-    keepWithinBoundsAndTurn(out_RT.marker_position);
+    keepWithinBoundsAndTurn(RT.marker_position);
 }
 
 void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D) {
@@ -559,12 +559,12 @@ int updateWallTexture(
     return 0;
 }
 
-int drawRatMask(const RatTracker &_RT, CircleRenderer &out_rmCircRend) {
+int drawRatMask(CircleRenderer &out_rmCircRend) {
     // Setup the CircleRenderer class shaders
     if (CircleRenderer::SetupShader() < 0) return -1;
 
     // Set the marker position
-    out_rmCircRend.setPosition(_RT.marker_position);
+    out_rmCircRend.setPosition(RT.marker_position);
 
     // Recompute the marker parameters
     if (out_rmCircRend.updateCircleObject(true) < 0) return -1;
@@ -579,7 +579,7 @@ int drawRatMask(const RatTracker &_RT, CircleRenderer &out_rmCircRend) {
     return 0;
 }
 
-void appInitROS(int argc, char **argv, ROSComm &out_RC) {
+void appInitROS(int argc, char **argv) {
     ROS_INFO("[projection_display:appInitROS] STARTING PROJECTION DISPLAY NODE");
 
     // Initialize ROS
@@ -591,10 +591,10 @@ void appInitROS(int argc, char **argv, ROSComm &out_RC) {
     RC.node_handle = std::make_unique<ros::NodeHandle>();
 
     // Initialize the ros::Rate object with a specific rate
-    out_RC.loop_rate = std::make_unique<ros::Rate>(GLB_ROS_LOOP_RATE);
+    RC.loop_rate = std::make_unique<ros::Rate>(GLB_ROS_LOOP_RATE);
 
     // Initialize the subscriber
-    if (initSubscriberROS(out_RC) < 0)
+    if (initSubscriberROS() < 0)
         throw std::runtime_error("[appInitROS] Failed to initialize ROS subscriber");
 
     ROS_INFO("[projection_display:appInitROS] Finished initializing ROS successfully");
@@ -825,7 +825,7 @@ void appMainLoop() {
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawTexture");
 
             // Draw/update rat mask marker
-            if (drawRatMask(RT, RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
+            if (drawRatMask(RM_CIRCREND_ARR[projCtx.windowInd]) < 0)
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: drawRatMask");
 
             // Swap buffers and poll events
@@ -851,15 +851,15 @@ void appMainLoop() {
         ros::spinOnce();
 
         // Process ROS projection command messages
-        if (procProjCmdROS(RC) < 0)
+        if (procProjCmdROS() < 0)
             throw std::runtime_error("[appMainLoop] Error returned from: procProjCmdROS");
 
         // Process ROS projection image messages
-        if (procProjImgROS(RC) < 0)
+        if (procProjImgROS() < 0)
             throw std::runtime_error("[appMainLoop] Error returned from: procProjImgROS");
 
         // Process ROS tracking position messages
-        if (procTrackMsgROS(RC, RT) < 0)
+        if (procTrackMsgROS() < 0)
             throw std::runtime_error("[appMainLoop] Error returned from: procTrackMsgROS");
 
         // Measure the time taken for the loop iteration
@@ -900,7 +900,7 @@ void appCleanup() {
 
 int main(int argc, char **argv) {
     try {
-        appInitROS(argc, argv, RC);
+        appInitROS(argc, argv);
         appLoadAssets();
         appInitVariables();
         appInitOpenGL();

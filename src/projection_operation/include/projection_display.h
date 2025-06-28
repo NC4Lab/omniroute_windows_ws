@@ -75,7 +75,7 @@ static struct RatTracker
 /**
  * @brief Struct for ROS communication.
  */
-struct ROSComm
+static struct ROSComm
 {
     std::unique_ptr<ros::NodeHandle> node_handle; // Smart pointer to ROS node handler
     std::unique_ptr<ros::Rate> loop_rate;         // Smart pointer to ros::Rate
@@ -214,9 +214,8 @@ void callbackKeyBinding(
  * It stores the received data and flags the new message.
  *
  * @param msg Const pointer to the received message.
- * @param out_RC Pointer to the ROSComm struct where the last command and message received flag are updated.
  */
-void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC);
+void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg);
 
 /**
  * @brief Callback function for the "projection_image" topic subscription.
@@ -226,9 +225,8 @@ void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg, ROSComm *out_RC);
  * It stores the received data and flags the new message.
  *
  * @param msg Const pointer to the received message.
- * @param out_RC Pointer to the ROSComm struct where the last command and message received flag are updated.
  */
-void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm *out_RC);
+void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg);
 
 /**
  * @brief Callback function for the "track_pose" topic subscription.
@@ -238,9 +236,8 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg, ROSComm 
  * It stores the received data and flags the new message.
  *
  * @param msg Const pointer to the received message.
- * @param out_RC Pointer to the ROSComm struct where the last command and message received flag are updated.
  */
-void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSComm *out_RC);
+void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg);
 
 /**
  * @brief Initializes the ROS subscriber for the "projection_cmd" topic within the given ROSComm structure.
@@ -250,11 +247,9 @@ void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg, ROSCom
  * The received command updates the proj_cmd_data field in the ROSComm struct and sets
  * a flag indicating a message has been received.
  *
- * @param out_RC Reference to the ROSComm struct that holds the ROS node handle and subscriber.
- *
  * @return Integer status code [-1:error, 0:successful].
  */
-int initSubscriberROS(ROSComm &out_RC);
+int initSubscriberROS();
 
 /**
  * @brief Processes commands received from the "projection_cmd" topic.
@@ -262,23 +257,19 @@ int initSubscriberROS(ROSComm &out_RC);
  * @details
  * This function checks for new projection command message and processes the message.
  *
- * @param[out] out_RC Reference to the ROSComm struct containing the ROS coms data.
- *
  * @return Integer status code [-1:error, 0:successful].
  */
-int procProjCmdROS(ROSComm &out_RC);
+int procProjCmdROS();
 
 /**
  * @brief Processes commands received from the "projection_image" topic.
  *
  * @details
- * This function checks for new projection imgage message and processes the message.
- *
- * @param[out] out_RC Reference to the ROSComm struct containing the ROS coms data.
+ * This function checks for new projection image message and processes the message.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int procProjImgROS(ROSComm &out_RC);
+int procProjImgROS();
 
 /**
  * @brief Processes commands received from the "harness_pose_in_maze" topic.
@@ -286,24 +277,17 @@ int procProjImgROS(ROSComm &out_RC);
  * @details
  * This function checks if a new position tracking message has been received and processes the message.
  *
- * @param[out] out_RC Reference to the ROSComm struct containing the ROS coms data.
- * @param[out] out_RT Rat tracker struct object to be updated.
- *
  * @return Integer status code [-1:error, 0:successful].
  */
-int procTrackMsgROS(ROSComm &out_RC, RatTracker &out_RT);
+int procTrackMsgROS();
 
 /**
  * @brief Simulates rat movement.
  *
  * @param move_step Distance to move in cm.
  * @param max_turn_angle Maximum angle to turn in degrees.
- * @param[out] out_RT RatTracker struct object to be updated.
  */
-void simulateRatMovement(
-    float move_step,
-    float max_turn_angle,
-    RatTracker &out_RT);
+void simulateRatMovement(float move_step, float max_turn_angle);
 
 /**
  * @brief Sets the wall image configuration for a projector array.
@@ -390,14 +374,11 @@ int updateWallTexture(
 /**
  * @brief Draws control points associated with each corner wall.
  *
- * @param _RT RatTracker struct object.
  * @param[out] out_rmCircRend CircleRenderer objects used to draw the control points.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
-int drawRatMask(
-    const RatTracker &_RT,
-    CircleRenderer &out_rmCircRend);
+int drawRatMask(CircleRenderer &out_rmCircRend);
 
 class TimingData{
     public:
@@ -445,11 +426,10 @@ TimingData mainLoopTD; // Timing data for the main loop
  *
  * @param argc The argc argument from the main function (number of command-line arguments).
  * @param argv The argv argument from the main function (array of command-line argument strings).
- * @param out_RC Reference to the ROSComm struct to be used for storing the node handle and subscriber.
  *
  * @throws std::runtime_error.
  */
-void appInitROS(int argc, char **argv, ROSComm &out_RC);
+void appInitROS(int argc, char **argv);
 
 /**
  * @brief Loads the necessary images and data for the application.
