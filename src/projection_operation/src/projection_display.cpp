@@ -18,19 +18,19 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
     if (action == GLFW_RELEASE) {
         // ---------- Set/unset Fullscreen [F] ----------
         if (key == GLFW_KEY_F) {
-            F.fullscreen_mode = !F.fullscreen_mode;
-            F.change_window_mode = true;
+            FLAG_FULLSCREEN_MODE = !FLAG_FULLSCREEN_MODE;
+            FLAG_CHANGE_WINDOW_MODE = true;
         }
 
         // ---------- Check for change window monitor command [M] ----------
         if (key == GLFW_KEY_M) {
-            F.windows_set_to_proj = !F.windows_set_to_proj;
-            F.change_window_mode = true;
+            FLAG_WINDOWS_SET_TO_PROJ = !FLAG_WINDOWS_SET_TO_PROJ;
+            FLAG_CHANGE_WINDOW_MODE = true;
         }
 
         // ---------- Force Window to Top of UI Stack [T] ----------
         if (key == GLFW_KEY_T) {
-            F.force_window_focus = true;
+            FLAG_FORCE_WINDOW_FOCUS = true;
         }
     }
 
@@ -59,7 +59,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 ROS_INFO("[callbackKeyBinding] Initiated change wall image configuration from %d to %d", wall_img_ind_last, wall_img_ind);
                 
                 // Set the flag to update the textures
-                F.update_textures = true;
+                FLAG_UPDATE_TEXTURES = true;
 
                 // Loop through the data and set all entries to a given wall ind
                 for (int i = 0; i < 4; ++i)
@@ -93,7 +93,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             if (floor_img_ind != floor_img_ind_last) {
                 ROS_INFO("[callbackKeyBinding] Initiated change floor image configuration from %d to %d", floor_img_ind_last, floor_img_ind);
                 // Set the flag to update the textures
-                F.update_textures = true;
+                FLAG_UPDATE_TEXTURES = true;
                 // Update index
                 projFloorConfigIndex = floor_img_ind;
                 floor_img_ind_last = floor_img_ind;
@@ -114,17 +114,17 @@ void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg) {
 
     // Move monitor command [-1]
     if (RC.proj_cmd_data == -1) {
-        F.windows_set_to_proj = !F.windows_set_to_proj;
-        F.change_window_mode = true;
+        FLAG_WINDOWS_SET_TO_PROJ = !FLAG_WINDOWS_SET_TO_PROJ;
+        FLAG_CHANGE_WINDOW_MODE = true;
     }
     // Set/unset Fullscreen [-2] ----------
     else if (RC.proj_cmd_data == -2) {
-        F.fullscreen_mode = !F.fullscreen_mode;
-        F.change_window_mode = true;
+        FLAG_FULLSCREEN_MODE = !FLAG_FULLSCREEN_MODE;
+        FLAG_CHANGE_WINDOW_MODE = true;
     }
     // Force window to top [-3] ----------
     else if (RC.proj_cmd_data == -3)
-        F.force_window_focus = true;
+        FLAG_FORCE_WINDOW_FOCUS = true;
     else ROS_WARN("[procProjCmdROS] Received invalid projection command: %d", RC.proj_cmd_data);
 }
 
@@ -175,7 +175,7 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
     }
 
     // Set the flag to update the textures
-    F.update_textures = true;
+    FLAG_UPDATE_TEXTURES = true;
 }
 
 void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg) {
@@ -633,15 +633,15 @@ void appInitVariables() {
 
 void appInitOpenGL() {
     // Initialize GLFW and OpenGL settings and get number of monitors on the system
-    if (MazeRenderContext::SetupGraphicsLibraries(N.monitor, I.proj_mon_vec) < 0)
+    if (MazeRenderContext::SetupGraphicsLibraries(N.monitor, PROJ_MON_VEC) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
-    ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector monitor indices: %d, %d, %d, %d", I.proj_mon_vec[0], I.proj_mon_vec[1], I.proj_mon_vec[2], I.proj_mon_vec[3]);
+    ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector monitor indices: %d, %d, %d, %d", PROJ_MON_VEC[0], PROJ_MON_VEC[1], PROJ_MON_VEC[2], PROJ_MON_VEC[3]);
 
     // Initialize OpenGL for each projector
     for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind)
     {
         // Start on the default screen
-        int mon_ind = I.starting_monitor;
+        int mon_ind = STARTING_MONITOR;
 
         // Initialze render context for each projector
         if (PROJ_CTX_VEC[proj_ind].initWindowContext(proj_ind, mon_ind, GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL, callbackKeyBinding) < 0)
@@ -660,7 +660,7 @@ void appInitOpenGL() {
             throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
 
         // Set all projectors to the starting monitor and include xy offset
-        if (PROJ_CTX_VEC[proj_ind].changeWindowDisplayMode(mon_ind, F.fullscreen_mode, winOffsetVec[PROJ_CTX_VEC[proj_ind].windowInd]) < 0)
+        if (PROJ_CTX_VEC[proj_ind].changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, winOffsetVec[PROJ_CTX_VEC[proj_ind].windowInd]) < 0)
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(PROJ_CTX_VEC[proj_ind].windowInd) + "]: Failed Initial update of window monitor mode");
 
         // Initialize the CircleRenderer class object for rat masking
@@ -692,16 +692,16 @@ int appMainLoop() {
         timer[0].start(); // Start the timer for the loop
 
         // --------------- Check State Flags ---------------
-        if (F.change_window_mode) {
+        if (FLAG_CHANGE_WINDOW_MODE) {
             for (auto &projCtx : PROJ_CTX_VEC) {
-                int mon_ind = F.windows_set_to_proj ? I.proj_mon_vec[projCtx.windowInd] : I.starting_monitor;
-                if (projCtx.changeWindowDisplayMode(mon_ind, F.fullscreen_mode, winOffsetVec[projCtx.windowInd]) < 0)
+                int mon_ind = FLAG_WINDOWS_SET_TO_PROJ ? PROJ_MON_VEC[projCtx.windowInd] : STARTING_MONITOR;
+                if (projCtx.changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, winOffsetVec[projCtx.windowInd]) < 0)
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::changeWindowDisplayMode");
             }
         }
 
         // Force to windows so thay are on top
-        if (F.force_window_focus) {
+        if (FLAG_FORCE_WINDOW_FOCUS) {
             for (auto &projCtx : PROJ_CTX_VEC) {
                 if (projCtx.forceWindowFocus() < 0)
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::forceWindowFocus");
@@ -712,7 +712,7 @@ int appMainLoop() {
         // simulateRatMovement(0.5f, 45.0f, RT);
 
         // Recompute wall parameters and update wall image texture
-        if (F.update_textures) {
+        if (FLAG_UPDATE_TEXTURES) {
             for (auto &projCtx : PROJ_CTX_VEC) {
                 cv::Mat img_mat = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
 
@@ -737,9 +737,9 @@ int appMainLoop() {
         }
 
         // Reset keybinding flags
-        F.change_window_mode = false;
-        F.update_textures = false;
-        F.force_window_focus = false;
+        FLAG_CHANGE_WINDOW_MODE = false;
+        FLAG_UPDATE_TEXTURES = false;
+        FLAG_FORCE_WINDOW_FOCUS = false;
 
         // --------------- Handle Image Processing for Next Frame ---------------
         for (auto &projCtx : PROJ_CTX_VEC) {

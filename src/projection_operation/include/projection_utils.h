@@ -57,6 +57,22 @@
 // Configuration parameters
 #include <projection_config.h>
 
+// Global flags for application state management
+bool FLAG_CHANGE_WINDOW_MODE = false; // Flag to indicate if all window modes needs to be updated
+bool FLAG_WINDOWS_SET_TO_PROJ = false; // Flag to indicate if the windows are set to their respective projectors
+bool FLAG_FULLSCREEN_MODE = false; // Flag to indicate if the window is in full screen mode
+bool FLAG_FORCE_WINDOW_FOCUS = false; // Flag to indicate if the window should be forced into focus
+bool FLAG_XML_LOAD_HMAT = false;      // Flag to indicate if the XML file needs to be loaded
+bool FLAG_XML_SAVE_HMAT = false;      // Flag to indicate if the XML file needs to
+bool FLAG_INIT_CONTROL_POINTS = true; // Flag to indicate if the control point markers need to be
+bool FLAG_UPDATE_MODE_IMG = true;     // Flag to indicate if the monitor and calibration mode image
+bool FLAG_UPDATE_TEXTURES = true;     // Flag to indicate if textures need to be updated
+bool FLAG_UPDATE_HOMOGRAPHYS = true;  // Flag to indicate if homography matrices need to be updated
+
+const int STARTING_MONITOR = 0; // Default starting monitor index for the windows (hardcoded)
+
+std::vector<int> PROJ_MON_VEC = {1, 2, 3, 4}; // Vector of indeces of the monitor associated with each projector
+
 // ================================================== CLASS: MazeRenderContext ==================================================
 
 #ifndef MAZE_RENDER_CONTEXT_CALLBACKS_H

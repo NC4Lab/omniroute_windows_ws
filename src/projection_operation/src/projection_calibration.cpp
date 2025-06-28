@@ -24,8 +24,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         if (key == GLFW_KEY_F)
         {
-            F.fullscreen_mode = !F.fullscreen_mode;
-            F.change_window_mode = true;
+            FLAG_FULLSCREEN_MODE = !FLAG_FULLSCREEN_MODE;
+            FLAG_CHANGE_WINDOW_MODE = true;
         }
 
         // ----------Move the window to another monitor [0-5] ----------
@@ -65,11 +65,11 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Update the monitor index
             I.monitor = mon_ind;
             // Set the window update flag
-            F.change_window_mode = true;
+            FLAG_CHANGE_WINDOW_MODE = true;
             // Set the reinstalize control points flag
-            F.init_control_points = true;
+            FLAG_INIT_CONTROL_POINTS = true;
             // Set flag to update mode image
-            F.update_mode_img = true;
+            FLAG_UPDATE_MODE_IMG = true;
         }
 
         // ---------- Image selector keys [F1-F4] ----------
@@ -94,9 +94,9 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Update the image index
             I.wall_image = img_ind;
             // Set the update texture flag
-            F.update_homographys = true;
+            FLAG_UPDATE_HOMOGRAPHYS = true;
             // Set the update mode image flag
-            F.update_mode_img = true;
+            FLAG_UPDATE_MODE_IMG = true;
         }
         if ((CAL_MODE == FLOOR) &&
             (img_ind != I.floor_image) &&
@@ -106,9 +106,9 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Update the image index
             I.floor_image = img_ind;
             // Set the update texture flag
-            F.update_homographys = true;
+            FLAG_UPDATE_HOMOGRAPHYS = true;
             // Set the update mode image flag
-            F.update_mode_img = true;
+            FLAG_UPDATE_MODE_IMG = true;
         }
 
         // ---------- XML Handling [ENTER, L] ----------
@@ -117,16 +117,16 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         if (key == GLFW_KEY_S)
         {
             ROS_INFO("[callbackKeyBinding] Initiated save XML");
-            F.xml_save_hmat = true;
-            F.update_textures = true;
+            FLAG_XML_SAVE_HMAT = true;
+            FLAG_UPDATE_TEXTURES = true;
         }
 
         // Load coordinates from XML
         if (key == GLFW_KEY_L)
         {
             ROS_INFO("[callbackKeyBinding] Initiated load XML");
-            F.xml_load_hmat = true;
-            F.update_textures = true;
+            FLAG_XML_LOAD_HMAT = true;
+            FLAG_UPDATE_TEXTURES = true;
         }
 
         // ---------- Control Point Reset [R] ----------
@@ -134,7 +134,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         if (key == GLFW_KEY_R)
         {
             ROS_INFO("[callbackKeyBinding] Initiated control point reset");
-            F.init_control_points = true;
+            FLAG_INIT_CONTROL_POINTS = true;
         }
     }
 
@@ -164,9 +164,9 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             if (is_cal_mode_changed)
             {
                 // Set flag to update the control points
-                F.init_control_points = true;
+                FLAG_INIT_CONTROL_POINTS = true;
                 // Set flag to update mode image
-                F.update_mode_img = true;
+                FLAG_UPDATE_MODE_IMG = true;
             }
         }
 
@@ -204,7 +204,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             if (is_vert_changed)
             {
                 // Set flag to update the wall homography matrix when the vertex is changed
-                F.update_homographys = true;
+                FLAG_UPDATE_HOMOGRAPHYS = true;
 
                 // Set the wall vertex to the ortin if the maze vertex is changed
                 for (int i = 0; i < 2; ++i)
@@ -265,22 +265,22 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             if (key == GLFW_KEY_LEFT)
             {
                 CP_GRID_ARR[mv_ind][wv_ind].x -= pos_inc; // Move left
-                F.update_homographys = true;
+                FLAG_UPDATE_HOMOGRAPHYS = true;
             }
             else if (key == GLFW_KEY_RIGHT)
             {
                 CP_GRID_ARR[mv_ind][wv_ind].x += pos_inc; // Move right
-                F.update_homographys = true;
+                FLAG_UPDATE_HOMOGRAPHYS = true;
             }
             else if (key == GLFW_KEY_UP)
             {
                 CP_GRID_ARR[mv_ind][wv_ind].y -= pos_inc; // Move up
-                F.update_homographys = true;
+                FLAG_UPDATE_HOMOGRAPHYS = true;
             }
             else if (key == GLFW_KEY_DOWN)
             {
                 CP_GRID_ARR[mv_ind][wv_ind].y += pos_inc; // Move down
-                F.update_homographys = true;
+                FLAG_UPDATE_HOMOGRAPHYS = true;
             }
 
             // Shift all control points if origin moved
@@ -649,7 +649,7 @@ void appInitOpenGL()
         throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
 
     // Update monitor and window mode settings
-    if (projCtx.changeWindowDisplayMode(I.monitor, F.fullscreen_mode, cv::Point(0.0f, 0.0f)) < 0)
+    if (projCtx.changeWindowDisplayMode(I.monitor, FLAG_FULLSCREEN_MODE, cv::Point(0.0f, 0.0f)) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed Initial update of window monitor mode");
 
     // Create the shader program for wall image rendering
@@ -776,7 +776,7 @@ void appMainLoop()
         // --------------- Check Kayboard Callback Flags ---------------
 
         // Load/save XML file
-        if (F.xml_load_hmat || F.xml_save_hmat)
+        if (FLAG_XML_LOAD_HMAT || FLAG_XML_SAVE_HMAT)
         {
             // Prompt for projector number if not specified
             if (I.projector < 0)
@@ -791,7 +791,7 @@ void appMainLoop()
                 for (int gc_i = 0; gc_i < grid_size; ++gc_i)
                 {
                     // Save XML file
-                    if (F.xml_save_hmat)
+                    if (FLAG_XML_SAVE_HMAT)
                     {
                         // Save the homography matrix to XML
                         if (xmlSaveHMAT(HMAT_ARR[CAL_MODE][gr_i][gc_i], I.projector, CAL_MODE, gr_i, gc_i) < 0)
@@ -806,7 +806,7 @@ void appMainLoop()
                         }
                     }
                     // Load XML file
-                    if (F.xml_load_hmat)
+                    if (FLAG_XML_LOAD_HMAT)
                     {
                         // Load the homography matrix from XML
                         if (xmlLoadHMAT(I.projector, CAL_MODE, gr_i, gc_i, HMAT_ARR[CAL_MODE][gr_i][gc_i]) < 0)
@@ -821,12 +821,12 @@ void appMainLoop()
             // Save/load the control points to XML
             for (int cp_i = 0; cp_i < cp_group_size; ++cp_i)
             {
-                if (F.xml_save_hmat)
+                if (FLAG_XML_SAVE_HMAT)
                 {
                     if (xmlSaveControlPoints(CP_GRID_ARR[cp_i], I.projector, CAL_MODE, cp_i) < 0)
                         throw std::runtime_error("[appMainLoop] Error returned from: xmlSaveControlPoints");
                 }
-                if (F.xml_load_hmat)
+                if (FLAG_XML_LOAD_HMAT)
                 {
                     if (xmlLoadControlPoints(I.projector, CAL_MODE, cp_i, CP_GRID_ARR[cp_i]) < 0)
                         throw std::runtime_error("[appMainLoop] Error returned from: xmlSaveControlPoints");
@@ -838,21 +838,21 @@ void appMainLoop()
         }
 
         // Update the window monitor and mode
-        if (F.change_window_mode)
+        if (FLAG_CHANGE_WINDOW_MODE)
         {
-            if (projCtx.changeWindowDisplayMode(I.monitor, F.fullscreen_mode) < 0)
+            if (projCtx.changeWindowDisplayMode(I.monitor, FLAG_FULLSCREEN_MODE) < 0)
                 throw std::runtime_error("[appMainLoop] Error returned from: changeWindowDisplayMode");
         }
 
         // Initialize/reinitialize control point coordinate dataset
-        if (F.init_control_points)
+        if (FLAG_INIT_CONTROL_POINTS)
         {
             initVertexCoordinates(CAL_MODE, CP_GRID_ARR, WALL_GRID_ARR_DEFAULT);
         }
 
         // Update homography matrices array
-        if (F.update_homographys ||
-            F.init_control_points)
+        if (FLAG_UPDATE_HOMOGRAPHYS ||
+            FLAG_INIT_CONTROL_POINTS)
         {
             // Update wall homographys
             if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
@@ -869,7 +869,7 @@ void appMainLoop()
         }
 
         // Update the caliration and monitor mode image
-        if (F.update_mode_img)
+        if (FLAG_UPDATE_MODE_IMG)
         {
             // Update wall textures
             if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
@@ -886,9 +886,9 @@ void appMainLoop()
         }
 
         // Update image texture
-        if (F.update_textures ||
-            F.update_homographys ||
-            F.init_control_points)
+        if (FLAG_UPDATE_TEXTURES ||
+            FLAG_UPDATE_HOMOGRAPHYS ||
+            FLAG_INIT_CONTROL_POINTS)
         {
             // Update wall textures
             if (CAL_MODE == WALLS_LEFT || CAL_MODE == WALLS_MIDDLE || CAL_MODE == WALLS_RIGHT)
@@ -905,13 +905,13 @@ void appMainLoop()
         }
 
         // Reset keybinding flags
-        F.xml_load_hmat = false;
-        F.xml_save_hmat = false;
-        F.change_window_mode = false;
-        F.init_control_points = false;
-        F.update_textures = false;
-        F.update_homographys = false;
-        F.update_mode_img = false;
+        FLAG_XML_LOAD_HMAT = false;
+        FLAG_XML_SAVE_HMAT = false;
+        FLAG_CHANGE_WINDOW_MODE = false;
+        FLAG_INIT_CONTROL_POINTS = false;
+        FLAG_UPDATE_TEXTURES = false;
+        FLAG_UPDATE_HOMOGRAPHYS = false;
+        FLAG_UPDATE_MODE_IMG = false;
 
         // --------------- Handle Rendering for Next Frame ---------------
 

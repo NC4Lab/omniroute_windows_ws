@@ -15,47 +15,12 @@
 // ================================================== VARIABLES ==================================================
 
 /**
- * @brief Struct for flaging state changes.
- *
- * @details Flag update_textures is initialized as true to force the
- * initial update of the displayed texture.
- */
-static struct FlagStateStruct
-{
-    bool update_textures = true;      // Flag to indicate if wall vertices, homography and texture need to be updated
-    bool change_window_mode = false;  // Flag to indicate if all window modes needs to be updated
-    bool windows_set_to_proj = false; // Flag to indicate if the windows are set to their respective projectors
-    bool fullscreen_mode = false;     // Flag to indicate if the window is in full screen mode
-    bool force_window_focus = false;  // Flag to indicate if the window should be forced into focus
-} F;
-
-/**
- * @brief Struct for global indices.
- */
-static struct IndStruct
-{
-    const int starting_monitor = 0; // Default starting monitor index for the windows (hardcoded)
-
-    std::vector<int> proj_mon_vec = {1, 2, 3, 4}; // Vector of indeces of the monitor associated with each projector
-    /*
-    MSM: 2024-03-20
-    Is not hardcoded anymore.
-    = {
-        2, // Projector 0
-        1, // Projector 1
-        4, // Projector 2
-        3, // Projector 3
-    };
-    */
-} I;
-
-/**
  * @brief Struct for global counts
  */
 static struct CountStruct
 {
     int monitor;                                                   // Number of monitors connected to the system
-    const int projector = static_cast<int>(I.proj_mon_vec.size()); // Number of projectors
+    const int projector = static_cast<int>(PROJ_MON_VEC.size()); // Number of projectors
     const int wall_image = 6;                                      // Number of wall images
 } N;
 
@@ -81,13 +46,10 @@ static struct ROSComm
     std::unique_ptr<ros::Rate> loop_rate;         // Smart pointer to ros::Rate
     ros::Subscriber proj_cmd_sub;                 // ROS subscriber for projection commands
     int proj_cmd_data = -1;                       // Variable to store the last command received, initialized with an invalid value
-    bool is_proj_cmd_message_received = false;    // Flag to indicate if a projection command message has been received
     ros::Subscriber proj_img_sub;                 // ROS subscriber for projection image data
     int proj_img_data[10][8];                     // Variable to store the last image configuration received (10x8)
-    bool is_proj_img_message_received = false;    // Flag to indicate if a projection image message has been received
     ros::Subscriber track_pos_sub;                // ROS subscriber for tracking rat position
     geometry_msgs::PoseStamped track_pos_data;    // Variable to store the last tracking rat pose received
-    bool is_track_pos_message_received = false;   // Flag to indicate if a track position message has been received
 
     // Constructor to initialize proj_img_data to -1
     ROSComm()
