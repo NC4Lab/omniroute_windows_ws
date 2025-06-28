@@ -164,7 +164,7 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
 
             // Update the wall index array
             if (cham_ind < 9)
-                configWallImageIndex(img_ind, cham_ind, wall_ind, PROJ_WALL_CONFIG_INDICES_4D);
+                configWallImageIndex(img_ind, cham_ind, wall_ind);
             // Update the floor image index
             else if (wall_ind == 0) // Only store the first entry
                 projFloorConfigIndex = img_ind;
@@ -312,12 +312,12 @@ void simulateRatMovement(float move_step, float max_turn_angle) {
     keepWithinBoundsAndTurn(RT.marker_position);
 }
 
-void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D) {
+void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind) {
     std::vector<int> walls_ind = {wall_ind};
-    configWallImageIndex(image_ind, chamber_ind, walls_ind, out_PROJ_WALL_CONFIG_INDICES_4D);
+    configWallImageIndex(image_ind, chamber_ind, walls_ind);
 }
 
-void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D) {
+void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind) {
     // Determine the row and column based on chamber index
     int row = chamber_ind / 3;
     int col = chamber_ind % 3;
@@ -359,7 +359,7 @@ void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int>
             // Check if wall index is valid and has a mapping
             auto wallMapping = wallToIndexMapping[proj].find(wall);
             if (wallMapping != wallToIndexMapping[proj].end()) // Set the image index for the corresponding wall
-                out_PROJ_WALL_CONFIG_INDICES_4D[proj][adjusted_row][adjusted_col][wallMapping->second] = image_ind;
+                PROJ_WALL_CONFIG_INDICES_4D[proj][adjusted_row][adjusted_col][wallMapping->second] = image_ind;
         }
     }
 }
@@ -429,20 +429,13 @@ void rotateFloorImage(int img_rot_deg, const cv::Mat &in_img_mat, std::vector<cv
     out_img_mat_vec.push_back(rotated_img);
 }
 
-int updateFloorTexture(
-    int proj_ind,
-    cv::Mat &_floorImgMat,
-    const cv::Mat _wallBlankImgMat,
-    std::array<cv::Mat, 4> &_FLOOR_HMAT_ARR,
-    cv::Mat &out_img_mat)
-{
-
+int updateFloorTexture(int proj_ind, cv::Mat &_floorImgMat, const cv::Mat _wallBlankImgMat, cv::Mat &out_img_mat) {
     // Copy the floor image to be used
     cv::Mat img_copy;
     _floorImgMat.copyTo(img_copy);
 
     // Get homography matrix for this wall
-    cv::Mat H = _FLOOR_HMAT_ARR[proj_ind];
+    cv::Mat H = FLOOR_HMAT_ARR[proj_ind];
 
     // Warp Perspective
     cv::Mat img_warp;
@@ -460,13 +453,7 @@ int updateFloorTexture(
     return 0;
 }
 
-int updateWallTexture(
-    int proj_ind,
-    const std::vector<cv::Mat> &_wallRawImgMatVec,
-    const ProjWallConfigIndices4D &_PROJ_WALL_CONFIG_INDICES_4D,
-    const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES - 1>, 4> &_WALL_HMAT_ARR,
-    bool do_ignore_blank_img,
-    cv::Mat &out_img_mat) {
+int updateWallTexture(int proj_ind, const std::vector<cv::Mat> &_wallRawImgMatVec, bool do_ignore_blank_img, cv::Mat &out_img_mat) {
     // Iterate through through calibration modes (left walls, middle walls, right walls)
     for (int cal_i = 0; cal_i < N_CAL_MODES - 1; cal_i++) {
         CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
@@ -476,7 +463,7 @@ int updateWallTexture(
             // Iterate through each column in the maze row
             for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; gc_i++) { // image left to right
                 // Get the index of the wall image to be used
-                int img_ind = _PROJ_WALL_CONFIG_INDICES_4D[proj_ind][gr_i][gc_i][_CAL_MODE];
+                int img_ind = PROJ_WALL_CONFIG_INDICES_4D[proj_ind][gr_i][gc_i][_CAL_MODE];
                 if (_wallRawImgMatVec[img_ind].empty()) {
                     ROS_ERROR("[updateWallTexture] Stored OpenCV wall image is empty: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
                               proj_ind, gr_i, gc_i, _CAL_MODE, img_ind);
@@ -491,7 +478,7 @@ int updateWallTexture(
                 _wallRawImgMatVec[img_ind].copyTo(img_copy);
 
                 // Get homography matrix for this wall
-                cv::Mat H = _WALL_HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i];
+                cv::Mat H = WALL_HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i];
 
                 // Warp Perspective
                 cv::Mat img_warp;
@@ -687,12 +674,9 @@ void appInitOpenGL() {
             throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
 
         // Initialize blank wall image mat
-        ProjWallConfigIndices4D proj_wall_cfg_indices_blank = {};                                              // Initialize to all zeros for blank images
         wallBlankImgMatArr[proj_ind] = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4); // Initialize cv::Mat
         if (updateWallTexture(proj_ind,
                               wallRawImgMatVec,
-                              proj_wall_cfg_indices_blank,
-                              WALL_HMAT_ARR,
                               false,
                               wallBlankImgMatArr[proj_ind]))
             throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(proj_ind) + "]: Failed to update wall texture");
@@ -736,15 +720,12 @@ int appMainLoop() {
                 if (updateFloorTexture(projCtx.windowInd,
                                        floorRotatedImgMatVecArr[projCtx.windowInd][projFloorConfigIndex],
                                        wallBlankImgMatArr[projCtx.windowInd],
-                                       FLOOR_HMAT_ARR,
                                        img_mat))
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
 
                 // Update wall image texture
                 if (updateWallTexture(projCtx.windowInd,
                                       wallRawImgMatVec,
-                                      PROJ_WALL_CONFIG_INDICES_4D,
-                                      WALL_HMAT_ARR,
                                       true,
                                       img_mat))
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
@@ -834,7 +815,6 @@ int main(int argc, char **argv) {
         for (auto &t: timer) t.reset();
         
         timer[0].name = "Main_Loop";
-
     }
     catch (const std::exception &e) {
         ROS_ERROR("!!EXCEPTION CAUGHT!!: %s", e.what());

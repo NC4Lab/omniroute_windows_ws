@@ -262,21 +262,20 @@ void simulateRatMovement(float move_step, float max_turn_angle);
 /**
  * @brief Sets the wall image configuration for a projector array.
  *
- * This function updates the out_PROJ_WALL_CONFIG_INDICES_4D array to set images on specified walls
+ * This function updates the PROJ_WALL_CONFIG_INDICES_4D array to set images on specified walls
  * in a chamber, considering each projector's orientation. It supports setting images for multiple walls.
  *
  * @param image_ind Index of the image to be projected.
  * @param chamber_ind Index of the target chamber.
  * @param wall_ind Index of the wall for single-wall overload.
  * @param walls_ind Vector of wall indices for multiple-wall overload.
- * @param out_PROJ_WALL_CONFIG_INDICES_4D Reference to the 4D projector configuration array.
  */
 
 // Overload for setting an image on a single wall
-void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D);
+void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind);
 
 // Overload for setting images on multiple walls
-void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind, ProjWallConfigIndices4D &out_PROJ_WALL_CONFIG_INDICES_4D);
+void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind);
 
 /**
  * @brief Get the vertices cooresponding to the maze boundaries in centimeters.
@@ -309,7 +308,6 @@ void rotateFloorImage(
  * @param proj_ind Index of the projector associated with the given image.
  * @param _floorImgMat Floor image in cv::Mat format
  * @param _wallBlankImgMat Blank walls image in cv::Mat format
- * @param _FLOOR_HMAT_ARR Array of homography matrices for the floor image transformations.
  * @param[out] out_img_mat Reference to store the new cv::Mat image.
  *
  * @return Integer status code [-1:error, 0:successful].
@@ -318,7 +316,6 @@ int updateFloorTexture(
     int proj_ind,
     cv::Mat &_floorImgMat,
     const cv::Mat _wallBlankImgMat,
-    std::array<cv::Mat, 4> &_FLOOR_HMAT_ARR,
     cv::Mat &out_img_mat);
 
 /**
@@ -326,8 +323,6 @@ int updateFloorTexture(
  *
  * @param proj_ind Index of the projector associated with the given image.
  * @param _wallRawImgMatVec Vectors containing the loaded wall images in cv::Mat format
- * @param _PROJ_WALL_CONFIG_INDICES_4D Multidimensional array of walll image indices.
- * @param _WALL_HMAT_ARR Big ass ugly array of arrays of arrays of matrices!
  * @param do_ignore_blank_img Bool to handle blank/black imgages [true: skip; false: include]
  * @param[out] out_img_mat Reference to store the new cv::Mat image.
  *
@@ -336,8 +331,6 @@ int updateFloorTexture(
 int updateWallTexture(
     int proj_ind,
     const std::vector<cv::Mat> &_wallRawImgMatVec,
-    const ProjWallConfigIndices4D &_PROJ_WALL_CONFIG_INDICES_4D,
-    const std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES - 1>, 4> &_WALL_HMAT_ARR,
     bool do_ignore_blank_img,
     cv::Mat &out_img_mat);
 
