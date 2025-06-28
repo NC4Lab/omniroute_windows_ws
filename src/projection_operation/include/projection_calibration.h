@@ -85,23 +85,6 @@ const cv::Scalar cpDefaultRGB = cv::Scalar(0.0f, 0.0f, 1.0f);          // Defaul
 const int cpRenderSegments = 36;                                       // Number of segments used to approximate the circle geometry
 
 /**
- * @brief Struct for flaging state changes.
- *
- * @details Flags update_mode_img and update_textures are initialized as true
- * to force the initial update of the mode image and displayed texture.
- */
-static struct FlagStateStruct {
-    bool xml_load_hmat = false;      // Flag to indicate if the XML file needs to be loaded
-    bool xml_save_hmat = false;      // Flag to indicate if the XML file needs to be saved
-    bool change_window_mode = false; // Flag to indicate if the window mode needs to be updated
-    bool init_control_points = true; // Flag to indicate if the control point markers need to be reinitialized
-    bool fullscreen_mode = false;    // Flag to indicate if the window is in full screen mode
-    bool update_mode_img = true;     // Flag to indicate if the monitor and calibration mode image needs to be updated
-    bool update_textures = true;     // Flag to indicate if image vertices, homography and texture need to be updated
-    bool update_homographys = true;  // Flag to indicate if image vertices, homography and texture need to be updated
-} F;
-
-/**
  * @brief Struct for global indices.
  *
  * @details CP_MAP

@@ -12,21 +12,6 @@
 // Local custom libraries
 #include "projection_utils.h"
 
-// ================================================== VARIABLES ==================================================
-
-/**
- * @brief Struct for flaging state changes.
- *
- * @details Flag update_textures is initialized as true to force the
- * initial update of the displayed texture.
- */
-static struct FlagStateStruct {
-    bool update_textures = true;      // Flag to indicate if wall vertices, homography and texture need to be updated
-    bool change_window_mode = false;  // Flag to indicate if all window modes needs to be updated
-    bool windows_set_to_proj = false; // Flag to indicate if the windows are set to their respective projectors
-    bool fullscreen_mode = false;     // Flag to indicate if the window is in full screen mode
-    bool force_window_focus = false;  // Flag to indicate if the window should be forced into focus
-} F;
 
 
 /**
@@ -105,7 +90,7 @@ std::array<CircleRenderer, N_PROJ> RM_CIRCREND_ARR;
 /**
  * @brief  Array of OpenGL context objects.
  */
-std::vector<MazeRenderContext> PROJ_CTX_VEC(N_PROJ);
+std::array<MazeRenderContext, N_PROJ> PROJ_CTX_ARR;
 
 /**
  * @brief Offset for the window position
@@ -120,19 +105,6 @@ std::vector<cv::Mat> runtimeFloorMats; // Vector of individual floor image textu
  * @brief Blank baseline image.
  */
 cv::Mat BLANK_PXL_MAT = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
-
-/**
- * @brief Array of vectors to store the rotated floor images in cv::Mat format
- * for each projector.
- *
- * @details
- * [4][N] = [number of projectors][number of images]
- *
- * - Dimension 1: Projectors [0, 1, 2, 3]
- *
- * - Dimension 2: Image N
- */
-std::array<std::vector<cv::Mat>, N_PROJ> rotatedRuntimeFloorMats;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -152,8 +124,7 @@ std::array<std::vector<cv::Mat>, N_PROJ> rotatedRuntimeFloorMats;
  * @param action GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT.
  * @param mods Bit field describing which modifier keys were held down.
  */
-void callbackKeyBinding(GLFWwindow *window, int key,
-    int scancode, int action, int mods);
+void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, int mods);
 
 /**
  * @brief Callback function for the "projection_cmd" topic subscription.

@@ -182,11 +182,6 @@
 
 // ================================================== VARIABLES ==================================================
 
-const int STARTING_MONITOR = 0;
-int N_MONITORS;   // Number of monitors detected by GLFW
-// Vector of indices of the monitor associated with each projector. This will be updated by SetupGraphicsLibraries().
-std::vector<int> PROJ_MON_VEC = {1, 2, 3, 4}; 
-
 enum ChamberEnum {
     CHAM_0 = 0, 
     CHAM_1,

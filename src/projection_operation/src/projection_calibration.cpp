@@ -20,15 +20,15 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         // ----------Set/unset Fullscreen [F] ----------
 
         if (key == GLFW_KEY_F) {
-            F.fullscreen_mode = !F.fullscreen_mode;
-            F.change_window_mode = true;
+            FLAG_FULLSCREEN_MODE = !FLAG_FULLSCREEN_MODE;
+            FLAG_CHANGE_WINDOW_MODE = true;
         }
 
         // ----------Move the window to another monitor [0-5] ----------
 
         // Check number keys and update the monitor index
         int mon_ind = I.monitor;
-        if (key == GLFW_KEY_0)                          mon_ind = 0;
+        if (key == GLFW_KEY_0)                           mon_ind = 0;
         else if (key == GLFW_KEY_1 && N_MONITORS > 1)    mon_ind = 1;
         else if (key == GLFW_KEY_2 && N_MONITORS > 2)    mon_ind = 2;
         else if (key == GLFW_KEY_3 && N_MONITORS > 3)    mon_ind = 3;
@@ -41,9 +41,9 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             ROS_INFO("[callbackKeyBinding] Initiated monitor change: Projector[%d], Monitor[%d]", I.projector, mon_ind);
 
             I.monitor = mon_ind;            // Update the monitor index
-            F.change_window_mode = true;    // Set the window update flag
-            F.init_control_points = true;   // Set the reinstalize control points flag
-            F.update_mode_img = true;       // Set flag to update mode image
+            FLAG_CHANGE_WINDOW_MODE = true;    // Set the window update flag
+            FLAG_INIT_CONTROL_POINTS = true;   // Set the reinstalize control points flag
+            FLAG_UPDATE_MODE_IMG = true;       // Set flag to update mode image
         }
 
         // ---------- Image selector keys [F1-F4] ----------
@@ -60,8 +60,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             (img_ind < CALIB_TEST_WALL_IMAGES.size())) {
             ROS_INFO("[callbackKeyBinding] Initiated change image from %d to %d", I.wall_image, img_ind);
             I.wall_image = img_ind;         // Update the image index
-            F.update_homographys = true;    // Set the update texture flag
-            F.update_mode_img = true;       // Set the update mode image flag
+            FLAG_UPDATE_HOMOGRAPHYS = true;    // Set the update texture flag
+            FLAG_UPDATE_MODE_IMG = true;       // Set the update mode image flag
         }
 
         if ((CAL_MODE == MODE_FLOOR) && 
@@ -69,29 +69,29 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         (img_ind < CALIB_TEST_FLOOR_IMAGES.size())) {
             ROS_INFO("[callbackKeyBinding] Initiated change image from %d to %d", I.floor_image, img_ind);
             I.floor_image = img_ind;         // Update the image index
-            F.update_homographys = true;     // Set the update texture flag
-            F.update_mode_img = true;        // Set the update mode image flag
+            FLAG_UPDATE_HOMOGRAPHYS = true;     // Set the update texture flag
+            FLAG_UPDATE_MODE_IMG = true;        // Set the update mode image flag
         }
 
         // ---------- XML Handling [ENTER, L] ----------
         // Save coordinates to XML
         if (key == GLFW_KEY_S) {
             ROS_INFO("[callbackKeyBinding] Initiated save XML");
-            F.xml_save_hmat = true;
-            F.update_textures = true;
+            FLAG_XML_SAVE_HMAT = true;
+            FLAG_UPDATE_TEXTURES = true;
         }
 
         // Load coordinates from XML
         if (key == GLFW_KEY_L) {
             ROS_INFO("[callbackKeyBinding] Initiated load XML");
-            F.xml_load_hmat = true;
-            F.update_textures = true;
+            FLAG_XML_LOAD_HMAT = true;
+            FLAG_UPDATE_TEXTURES = true;
         }
 
         // ---------- Control Point Reset [R] ----------
         if (key == GLFW_KEY_R) {
             ROS_INFO("[callbackKeyBinding] Initiated control point reset");
-            F.init_control_points = true;
+            FLAG_INIT_CONTROL_POINTS = true;
         }
     }
 
@@ -108,8 +108,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
             // Set flags
             if (is_cal_mode_changed) {
-                F.init_control_points = true;   // Set flag to update the control points
-                F.update_mode_img = true;       // Set flag to update mode image
+                FLAG_INIT_CONTROL_POINTS = true;   // Set flag to update the control points
+                FLAG_UPDATE_MODE_IMG = true;       // Set flag to update mode image
             }
         }
 
@@ -125,7 +125,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
             if (is_vert_changed) {
                 // Set flag to update the wall homography matrix when the vertex is changed
-                F.update_homographys = true;
+                FLAG_UPDATE_HOMOGRAPHYS = true;
 
                 // Set the wall vertex to the ortin if the maze vertex is changed
                 for (int i = 0; i < 2; ++i) {
@@ -167,7 +167,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             else if (key == GLFW_KEY_UP)    CP_GRID_ARR[mv_ind][wv_ind].y -= pos_inc; // Move up
             else if (key == GLFW_KEY_DOWN)  CP_GRID_ARR[mv_ind][wv_ind].y += pos_inc; // Move down
             else update_homographys = false; // No valid key pressed, do not update homography
-            F.update_homographys = update_homographys;
+            FLAG_UPDATE_HOMOGRAPHYS = update_homographys;
 
             // Shift all control points if origin moved
             cv::Point2f cp_origin_new = CP_GRID_ARR[mv_ind][I.cp_wall_origin_vertex];
@@ -253,7 +253,7 @@ int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_
     }
 
     // Return GL status
-    return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "initCircleRendererObjects");
+    return CheckErrorOpenGL(__LINE__, __FILE__, "initCircleRendererObjects");
 }
 
 int drawControlPoints(CalibrationMode _CAL_MODE,
@@ -288,7 +288,7 @@ int drawControlPoints(CalibrationMode _CAL_MODE,
             out_CP_RENDERERS[cp_i][cp_j].draw();
 
             // Check for errors
-            if (MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0) {
+            if (CheckErrorOpenGL(__LINE__, __FILE__) < 0) {
                 ROS_ERROR("[drawControlPoints] Error Thrown for Control Point[%d][%d]", cp_i, cp_j);
                 return -1;
             }
@@ -299,7 +299,7 @@ int drawControlPoints(CalibrationMode _CAL_MODE,
     CircleRenderer::UnsetShader();
 
     // Return GL status
-    return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "drawControlPoints");
+    return CheckErrorOpenGL(__LINE__, __FILE__, "drawControlPoints");
 }
 
 int updateWallHomographys(CalibrationMode _CAL_MODE) {
@@ -483,7 +483,7 @@ void appLoadAssets() {
 void appInitOpenGL() {
     // Initialize GLFW and OpenGL settings
     std::vector<int> proj_mon_vec = {1,2,3,4};
-    if (MazeRenderContext::SetupGraphicsLibraries() < 0)
+    if (SetupGraphicsLibraries() < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
 
     // Initialze render context
@@ -495,7 +495,7 @@ void appInitOpenGL() {
         throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
 
     // Update monitor and window mode settings
-    if (projCtx.changeWindowDisplayMode(I.monitor, F.fullscreen_mode, cv::Point(0.0f, 0.0f)) < 0)
+    if (projCtx.changeWindowDisplayMode(I.monitor, FLAG_FULLSCREEN_MODE, cv::Point(0.0f, 0.0f)) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed Initial update of window monitor mode");
 
     // Create the shader program for wall image rendering
@@ -591,7 +591,7 @@ void appMainLoop() {
         // --------------- Check Kayboard Callback Flags ---------------
 
         // Load/save XML file
-        if (F.xml_load_hmat || F.xml_save_hmat) {
+        if (FLAG_XML_LOAD_HMAT || FLAG_XML_SAVE_HMAT) {
             // Prompt for projector number if not specified
             if (I.projector < 0) I.projector = promptForProjectorNumber();
 
@@ -602,7 +602,7 @@ void appMainLoop() {
             for (int gr_i = 0; gr_i < grid_size; ++gr_i) {
                 for (int gc_i = 0; gc_i < grid_size; ++gc_i) {
                     // Save XML file
-                    if (F.xml_save_hmat) {
+                    if (FLAG_XML_SAVE_HMAT) {
                         // Save the homography matrix to XML
                         if (calXML.saveHMat(I.projector, CAL_MODE, gr_i, gc_i, HMAT_ARR[CAL_MODE][gr_i][gc_i]) < 0)
                             throw std::runtime_error("[appMainLoop] Error returned from: calXML.saveHMat");
@@ -615,7 +615,7 @@ void appMainLoop() {
                         }
                     }
                     // Load XML file
-                    if (F.xml_load_hmat) {
+                    if (FLAG_XML_LOAD_HMAT) {
                         // Load the homography matrix from XML
                         if (calXML.loadHMat(I.projector, CAL_MODE, gr_i, gc_i, HMAT_ARR[CAL_MODE][gr_i][gc_i]) < 0)
                             throw std::runtime_error("[appMainLoop] Error returned from: loadHMat");
@@ -628,11 +628,11 @@ void appMainLoop() {
 
             // Save/load the control points to XML
             for (int cp_i = 0; cp_i < cp_group_size; ++cp_i) {
-                if (F.xml_save_hmat) {
+                if (FLAG_XML_SAVE_HMAT) {
                     if (calXML.saveControlPoints(I.projector, CAL_MODE, cp_i, CP_GRID_ARR[cp_i]) < 0)
                         throw std::runtime_error("[appMainLoop] Error returned from: calXML.saveControlPoints");
                 }
-                if (F.xml_load_hmat) {
+                if (FLAG_XML_LOAD_HMAT) {
                     if (calXML.loadControlPoints(I.projector, CAL_MODE, cp_i, CP_GRID_ARR[cp_i]) < 0)
                         throw std::runtime_error("[appMainLoop] Error returned from: calXML.saveControlPoints");
                 }
@@ -643,16 +643,16 @@ void appMainLoop() {
         }
 
         // Update the window monitor and mode
-        if (F.change_window_mode)
-            if (projCtx.changeWindowDisplayMode(I.monitor, F.fullscreen_mode) < 0)
+        if (FLAG_CHANGE_WINDOW_MODE)
+            if (projCtx.changeWindowDisplayMode(I.monitor, FLAG_FULLSCREEN_MODE) < 0)
                 throw std::runtime_error("[appMainLoop] Error returned from: changeWindowDisplayMode");
 
         // Initialize/reinitialize control point coordinate dataset
-        if (F.init_control_points)
+        if (FLAG_INIT_CONTROL_POINTS)
             initVertexCoordinates(CAL_MODE);
 
         // Update homography matrices array
-        if (F.update_homographys || F.init_control_points) {
+        if (FLAG_UPDATE_HOMOGRAPHYS || FLAG_INIT_CONTROL_POINTS) {
             // Update wall homographys
             if (CAL_MODE == MODE_WALLS_LEFT || CAL_MODE == MODE_WALLS_MIDDLE || CAL_MODE == MODE_WALLS_RIGHT)
                 if (updateWallHomographys(CAL_MODE) < 0)
@@ -664,7 +664,7 @@ void appMainLoop() {
         }
 
         // Update the caliration and monitor mode image
-        if (F.update_mode_img) {
+        if (FLAG_UPDATE_MODE_IMG) {
             // Update wall textures
             if (CAL_MODE == MODE_WALLS_LEFT || CAL_MODE == MODE_WALLS_MIDDLE || CAL_MODE == MODE_WALLS_RIGHT)
                 if (updateModeImage(calibTestWallMats[I.wall_image], calibMonWallMats[I.monitor], calibModeMats[CAL_MODE], modeMat) < 0)
@@ -676,7 +676,7 @@ void appMainLoop() {
         }
 
         // Update image texture
-        if (F.update_textures || F.update_homographys || F.init_control_points) {
+        if (FLAG_UPDATE_TEXTURES || FLAG_UPDATE_HOMOGRAPHYS || FLAG_INIT_CONTROL_POINTS) {
             // Update wall textures
             if (CAL_MODE == MODE_WALLS_LEFT || CAL_MODE == MODE_WALLS_MIDDLE || CAL_MODE == MODE_WALLS_RIGHT)
                 if (updateTexture(calibTestWallMats[I.wall_image], modeMat, CAL_MODE, HMAT_ARR, projCtx) < 0)
@@ -688,23 +688,23 @@ void appMainLoop() {
         }
 
         // Reset keybinding flags
-        F.xml_load_hmat = false;
-        F.xml_save_hmat = false;
-        F.change_window_mode = false;
-        F.init_control_points = false;
-        F.update_textures = false;
-        F.update_homographys = false;
-        F.update_mode_img = false;
+        FLAG_XML_LOAD_HMAT = false;
+        FLAG_XML_SAVE_HMAT = false;
+        FLAG_CHANGE_WINDOW_MODE = false;
+        FLAG_INIT_CONTROL_POINTS = false;
+        FLAG_UPDATE_TEXTURES = false;
+        FLAG_UPDATE_HOMOGRAPHYS = false;
+        FLAG_UPDATE_MODE_IMG = false;
 
         // --------------- Handle Rendering for Next Frame ---------------
 
         // Prepare the frame for rendering (make context clear the back buffer)
         if (projCtx.initWindowForDrawing() < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: MazeRenderContext::initWindowForDrawing");
+            throw std::runtime_error("[appMainLoop] Error returned from: initWindowForDrawing");
 
         // Make sure winsow always stays on top in fullscreen mode
         if (projCtx.forceWindowFocus() < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: MazeRenderContext::forceWindowFocus");
+            throw std::runtime_error("[appMainLoop] Error returned from: forceWindowFocus");
 
         // Draw/update texture
         if (projCtx.drawTexture() < 0)
@@ -716,7 +716,7 @@ void appMainLoop() {
 
         // Swap buffers and poll events
         if (projCtx.bufferSwapPoll() < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: MazeRenderContext::bufferSwapPoll");
+            throw std::runtime_error("[appMainLoop] Error returned from: bufferSwapPoll");
 
         // Check if ROS shutdown
         if (!ros::ok())
@@ -725,7 +725,7 @@ void appMainLoop() {
         // Check for exit
         status = projCtx.checkExitRequest();
         if (status < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: MazeRenderContext::checkExitRequest");
+            throw std::runtime_error("[appMainLoop] Error returned from: checkExitRequest");
     }
 
     // Check which condition caused the loop to exit
@@ -753,7 +753,7 @@ void appCleanup() {
         ROS_INFO("[appCleanup] MazeRenderContext instance cleaned up successfully");
 
     // Terminate graphics
-    if (MazeRenderContext::CleanupGraphicsLibraries() < 0)
+    if (CleanupGraphicsLibraries() < 0)
         ROS_WARN("[appCleanup] Failed to terminate GLFW library");
     else
         ROS_INFO("[appCleanup] GLFW library terminated successfully");

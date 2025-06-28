@@ -194,6 +194,113 @@ void mazeToProjectionMap(const MazeMap<T> &maze_map, ProjectionMap<T> &projectio
     }
 }
 
+// Global flags to control the application state
+bool FLAG_XML_LOAD_HMAT = false; // Global flag to indicate if the XML file needs
+bool FLAG_XML_SAVE_HMAT = false; // Global flag to indicate if the XML file needs to be saved
+bool FLAG_CHANGE_WINDOW_MODE = false; // Global flag to indicate if the window mode needs to be updated
+bool FLAG_INIT_CONTROL_POINTS = true; // Global flag to indicate if the control point markers need
+bool FLAG_FULLSCREEN_MODE = false; // Global flag to indicate if the windows are in full screen mode
+bool FLAG_UPDATE_MODE_IMG = true; // Global flag to indicate if the mode image needs to be updated
+bool FLAG_UPDATE_TEXTURES = true; // Global flag to indicate if the wall and floor textures need to be updated
+bool FLAG_UPDATE_HOMOGRAPHYS = true; // Global flag to indicate if the homography
+bool FLAG_WINDOWS_SET_TO_PROJ = false; // Global flag to indicate if the windows are set to their respective projectors
+bool FLAG_FORCE_WINDOW_FOCUS = false; // Global flag to indicate if the window should be forced into focus
+
+// ================================================== GLFW variables and functions ==================================================
+
+GLFWmonitor **MONITORS = nullptr; // Pointer to the pointer to the GLFW monitors
+GLFWmonitor *PRIMARY_MONITOR = nullptr; // Pointer to the primary monitor (usually the first one detected)
+int N_MONITORS;   // Number of monitors detected by GLFW
+// Vector of indices of the monitor associated with each projector. This will be updated by SetupGraphicsLibraries().
+std::vector<int> PROJ_MON_VEC = {1, 2, 3, 4};
+
+/**
+ * @brief Callback function for handling framebuffer size changes.
+ *
+ * This function is called whenever the framebuffer size changes,
+ * and it updates the OpenGL viewport to match the new dimensions.
+ *
+ * @param window Pointer to the GLFW window.
+ * @param width The new width of the framebuffer.
+ * @param height The new height of the framebuffer.
+ */
+void CallbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height);
+
+/**
+ * @brief Callback function for handling OpenGL errors.
+ *
+ * This function is called whenever an error occurs in the OpenGL context.
+ * It logs the error message using ROS_ERROR.
+ *
+ * @param source The source of the error.
+ * @param type The type of the error.
+ * @param id The error ID.
+ * @param severity The severity of the error.
+ * @param length The length of the error message.
+ * @param message The error message.
+ * @param userParam User-defined parameter.
+ */
+void CallbackDebugOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, 
+    GLsizei length, const GLchar *message, const void *userParam);
+
+/**
+ * @brief Callback function for handling errors.
+ *
+ * This function is called whenever an error occurs in the GLFW context.
+ * It logs the error message using ROS_ERROR.
+ *
+ * @param error The error code.
+ * @param description The error description.
+ */
+void CallbackErrorGLFW(int error, const char *description);
+
+/**
+ * @brief Checks for OpenGL errors and logs them.
+ * Should be called after OpenGL API calls.
+ *
+ * @param line Line number where the function is called.
+ * @param file_str File name where the function is called.
+ * @param msg_str Optional message to provide additional context (default to nullptr).
+ * @return Integer status code [-1:error, 0:successful].
+ *
+ * @example CheckErrorOpenGL(__LINE__, __FILE__);
+ */
+int CheckErrorOpenGL(int line, const char *file_str, const char *msg_str = nullptr);
+
+/**
+ * @brief Checks for GLFW errors and logs them.
+ * Should be called after GLFW API calls.
+ *
+ * @param line Line number where the function is called.
+ * @param file_str File name where the function is called.
+ * @param msg_str Optional message to provide additional context (default to nullptr).
+ * @return Integer status code [-1:error, 0:successful].
+ *
+ * @example CheckErrorGLFW(__LINE__, __FILE__);
+ */
+int CheckErrorGLFW(int line, const char *file_str, const char *msg_str = nullptr);
+
+/**
+ * @brief Initializes GLFW and discovers monitors.
+ *
+ * Sets up GLFW, including setting an error callback and initializing the library.
+ * It discovers and stores the available monitors, updating the total count.
+ * It also populates the vector of monitor indices for projection.
+ *
+ */
+int SetupGraphicsLibraries();
+
+/**
+ * @brief Cleans up GLFW and resets monitor info.
+ *
+ * Terminates GLFW to clean up all resources and resets monitor pointers and count.
+ * Logs the result of the cleanup process.
+ *
+ * @return int Status of cleanup (0 for success, -1 for failure indicated by GLFW errors).
+ */
+int CleanupGraphicsLibraries();
+
+
 // ================================================== CLASS: MazeRenderContext ==================================================
 
 #ifndef MAZE_RENDER_CONTEXT_CALLBACKS_H
@@ -207,17 +314,16 @@ using KeyCallbackFunc = void (*)(GLFWwindow *, int, int, int, int);
 #ifndef MAZE_RENDER_CONTEXT_H
 #define MAZE_RENDER_CONTEXT_H
 
+
 class MazeRenderContext {
 public:
     GLuint textureID;                   // Texture for the wall
-    GLFWwindow *windowID;               // The window associated with this context
-    GLFWmonitor *monitorID;             // The monitor associated with this context
+    GLFWwindow *window;               // The window associated with this context
+    GLFWmonitor *monitor;             // The monitor associated with this context
     int windowInd;                      // Index for the window associated with this context
     int monitorInd;                     // Index for the monitor associated with this context
     bool isContextInitialized;          // Flag indicating whether there context has been initialized
     bool isFullScreen;                  // Flag indicating whether the window is in full screen mode
-    static int WindowWidthWindowedPxl;  // Width of the window in windowed mode
-    static int WindowHeightWindowedPxl; // Height of the window in windowed mode
 
 private:
     int _windowWidthPxl;              // Width of the window
@@ -226,8 +332,6 @@ private:
     GLuint _vao;                      // Vertex Array Object
     GLuint _vbo;                      // Vertex Buffer Object
     GLuint _ebo;                      // Element Buffer Object
-    static GLFWmonitor **_PP_Monitor; // Pointer to the pointer to the GLFW monitors
-    static int _NumMonitors;          // Number of monitors connected to the system
 
 public:
     /**
@@ -278,98 +382,7 @@ public:
      */
     MazeRenderContext &operator=(MazeRenderContext &&other) noexcept;
 
-    /**
-     * @brief Callback function for handling framebuffer size changes.
-     *
-     * This function is called whenever the framebuffer size changes,
-     * and it updates the OpenGL viewport to match the new dimensions.
-     *
-     * @param window Pointer to the GLFW window.
-     * @param width The new width of the framebuffer.
-     * @param height The new height of the framebuffer.
-     */
-    static void CallbackFrameBufferSizeGLFW(
-        GLFWwindow *window,
-        int width,
-        int height);
 
-    /**
-     * @brief Callback function for handling OpenGL errors.
-     *
-     * This function is called whenever an error occurs in the OpenGL context.
-     * It logs the error message using ROS_ERROR.
-     *
-     * @param source The source of the error.
-     * @param type The type of the error.
-     * @param id The error ID.
-     * @param severity The severity of the error.
-     * @param length The length of the error message.
-     * @param message The error message.
-     * @param userParam User-defined parameter.
-     */
-    static void CallbackDebugOpenGL(
-        GLenum source,
-        GLenum type,
-        GLuint id,
-        GLenum severity,
-        GLsizei length,
-        const GLchar *message,
-        const void *userParam);
-
-    /**
-     * @brief Callback function for handling errors.
-     *
-     * This function is called whenever an error occurs in the GLFW context.
-     * It logs the error message using ROS_ERROR.
-     *
-     * @param error The error code.
-     * @param description The error description.
-     */
-    static void CallbackErrorGLFW(
-        int error,
-        const char *description);
-
-    /**
-     * @brief Checks for OpenGL errors and logs them.
-     * Should be called after OpenGL API calls.
-     *
-     * @param line Line number where the function is called.
-     * @param file_str File name where the function is called.
-     * @param msg_str Optional message to provide additional context (default to nullptr).
-     * @return Integer status code [-1:error, 0:successful].
-     *
-     * @example CheckErrorOpenGL(__LINE__, __FILE__);
-     */
-    static int CheckErrorOpenGL(
-        int line,
-        const char *file_str,
-        const char *msg_str = nullptr);
-
-    /**
-     * @brief Checks for GLFW errors and logs them.
-     * Should be called after GLFW API calls.
-     *
-     * @param line Line number where the function is called.
-     * @param file_str File name where the function is called.
-     * @param msg_str Optional message to provide additional context (default to nullptr).
-     * @return Integer status code [-1:error, 0:successful].
-     *
-     * @example CheckErrorGLFW(__LINE__, __FILE__);
-     */
-    static int CheckErrorGLFW(
-        int line,
-        const char *file_str,
-        const char *msg_str = nullptr);
-
-    /**
-     * @brief Initializes GLFW and discovers monitors.
-     *
-     * Sets up GLFW, including setting an error callback and initializing the library.
-     * It discovers and stores the available monitors, updating the total count.
-     * It also populates the vector of monitor indices for projection.
-     *
-     */
-    int static SetupGraphicsLibraries();
 
     /**
      * @brief Compiles and links shaders for a given class instance.
@@ -416,7 +429,7 @@ public:
      * and sets up the OpenGL context with necessary callbacks and extensions.
      *
      * @param win_ind Index for the window to initialize.
-     * @param mon_ind Index for the monitor to use for the window.
+     * @param monitor Monitor to use for the window.
      * @param win_width Width of the window to create.
      * @param win_height Height of the window to create.
      * @param key_callback Optional key callback function to set for the window (default to nullptr).
@@ -542,16 +555,6 @@ public:
     int checkExitRequest();
 
     /**
-     * @brief Cleans up GLFW and resets monitor info.
-     *
-     * Terminates GLFW to clean up all resources and resets monitor pointers and count.
-     * Logs the result of the cleanup process.
-     *
-     * @return int Status of cleanup (0 for success, -1 for failure indicated by GLFW errors).
-     */
-    static int CleanupGraphicsLibraries();
-
-    /**
      * @brief Cleans up all OpenGL resources.
      *
      * This method deletes the shader program, textures, VAO, VBO, EBO, and destroys
@@ -593,15 +596,6 @@ private:
      * @return Integer status code [-1:error, 0:successful].
      */
     int _checkProgramLinking(GLuint __shaderProgram);
-
-    /**
-     * @brief  Private method to check monitor index and id is valid.
-     *
-     * @param mon_ind Index of monitor ID to check.
-     *
-     * @return Integer status code [-1:error, 0:successful].
-     */
-    int _setMonitor(int mon_ind);
 
     /**
      * @brief  Simple test of OpenGL and GLFW callbacks.
@@ -983,6 +977,7 @@ const std::string CALIB_IMAGE_PATH = IMAGE_DIR_PATH + "/calibration";
  * @brief File names for available calibration test wall images
  * 
  */
+const int N_CALIB_TEST_WALL_IMAGES = 4; // Number of available calibration test wall images
 std::vector<std::string> CALIB_TEST_WALL_IMAGES = {
     "0_test_wall.png",
     "1_test_wall.png",

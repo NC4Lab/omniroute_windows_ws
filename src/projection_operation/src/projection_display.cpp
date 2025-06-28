@@ -20,19 +20,19 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
         // ---------- Set/unset Fullscreen [F] ----------
         if (key == GLFW_KEY_F) {
-            F.fullscreen_mode = !F.fullscreen_mode;
-            F.change_window_mode = true;
+            FLAG_FULLSCREEN_MODE = !FLAG_FULLSCREEN_MODE;
+            FLAG_CHANGE_WINDOW_MODE = true;
         }
 
         // ---------- Check for change window monitor command [M] ----------
         if (key == GLFW_KEY_M) {
-            F.windows_set_to_proj = !F.windows_set_to_proj;
-            F.change_window_mode = true;
+            FLAG_WINDOWS_SET_TO_PROJ = !FLAG_WINDOWS_SET_TO_PROJ;
+            FLAG_CHANGE_WINDOW_MODE = true;
         }
 
         // ---------- Force Window to Top of UI Stack [T] ----------
         if (key == GLFW_KEY_T) 
-            F.force_window_focus = true;
+            FLAG_FORCE_WINDOW_FOCUS = true;
         
     }
 }
@@ -45,17 +45,17 @@ void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg) {
     // ---------- Monitor Mode Change Commmands ----------
     // Move monitor command [-1]
     if (msg->data == -1) {
-        F.windows_set_to_proj = !F.windows_set_to_proj;
-        F.change_window_mode = true;
+        FLAG_WINDOWS_SET_TO_PROJ = !FLAG_WINDOWS_SET_TO_PROJ;
+        FLAG_CHANGE_WINDOW_MODE = true;
     }
     // Set/unset Fullscreen [-2] ----------
     else if (msg->data == -2) {
-        F.fullscreen_mode = !F.fullscreen_mode;
-        F.change_window_mode = true;
+        FLAG_FULLSCREEN_MODE = !FLAG_FULLSCREEN_MODE;
+        FLAG_CHANGE_WINDOW_MODE = true;
     }
     // Force window to top [-3] ----------
     else if (msg->data == -3)
-        F.force_window_focus = true;
+        FLAG_FORCE_WINDOW_FOCUS = true;
     else
         ROS_WARN("[callbackProjCmdROS] Received invalid projection command: %d", msg->data);
 }
@@ -80,7 +80,7 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
     mazeToProjectionMap(MAZE_IMAGE_MAP, PROJECTION_IMAGE_MAP);
 
     // Set the flag to update the textures
-    F.update_textures = true;
+    FLAG_UPDATE_TEXTURES = true;
 }
 
 void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg) {
@@ -274,7 +274,7 @@ cv::Mat rotateImage(int proj_ind, const cv::Mat &in_img_mat) {
 
 int updateFloorTexture(int proj_ind, cv::Mat &out_img_mat) {
 
-    // displayTimer[4].start();
+    displayTimer[4].start();
 
     // Get homography matrix for this wall
     cv::Mat H = FLOOR_HMAT_ARR[proj_ind];
@@ -298,16 +298,17 @@ int updateFloorTexture(int proj_ind, cv::Mat &out_img_mat) {
     if (mergeImgMat(BLANK_PXL_MAT, out_img_mat) < 0)
         return -1;
     
-    // displayTimer[4].update(true);
+    displayTimer[4].update(true);
 
     return 0;
 }
 
 int updateWallTexture(int proj_ind, cv::Mat &out_img_mat) {
+    displayTimer[5].start();
     int img_ind = 0; // Initialize image index
     cv::Mat img_warp;
     // Iterate through through calibration modes (left walls, middle walls, right walls)
-    for (auto &mode : CalibrationModes) {
+    for (auto &mode : {MODE_WALLS_LEFT, MODE_WALLS_MIDDLE, MODE_WALLS_RIGHT}) {
         for (auto &proj : Projectors) {
             for (auto &row : Rows) {
                 for (auto &col : Columns) {
@@ -339,7 +340,7 @@ int updateWallTexture(int proj_ind, cv::Mat &out_img_mat) {
             }
         }
     }
-
+    displayTimer[5].update(true);
     return 0;
 }
 
@@ -480,36 +481,35 @@ void appInitVariables() {
 
 void appInitOpenGL() {
     // Initialize GLFW and OpenGL settings and get number of monitors on the system
-    if (MazeRenderContext::SetupGraphicsLibraries() < 0)
+    if (SetupGraphicsLibraries() < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
     ROS_INFO("[appInitOpenGL] OpenGL initialized");
 
     // Initialize OpenGL for each projector
     for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) {
         // Start on the default screen
-        int mon_ind = STARTING_MONITOR;
+        int mon_ind = 0;
         ROS_INFO("[appInitOpenGL] Initializing OpenGL for Projector[%d] on Monitor[%d]", proj_ind, mon_ind);
 
         // Initialze render context for each projector
-        // if (PROJ_CTX_VEC[proj_ind].initWindowContext(proj_ind, mon_ind, GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL, callbackKeyBinding) < 0)
-        if (PROJ_CTX_VEC[proj_ind].initWindowContext(proj_ind, mon_ind, 320, 240, callbackKeyBinding) < 0)
+        if (PROJ_CTX_ARR[proj_ind].initWindowContext(proj_ind, mon_ind, GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL, callbackKeyBinding) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
         
         // Initialize OpenGL wall image objects
-        if (PROJ_CTX_VEC[proj_ind].initRenderObjects(GLB_QUAD_GL_VERTICES, sizeof(GLB_QUAD_GL_VERTICES), GLB_QUAD_GL_INDICES, sizeof(GLB_QUAD_GL_INDICES)) < 0)
+        if (PROJ_CTX_ARR[proj_ind].initRenderObjects(GLB_QUAD_GL_VERTICES, sizeof(GLB_QUAD_GL_VERTICES), GLB_QUAD_GL_INDICES, sizeof(GLB_QUAD_GL_INDICES)) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
 
         // Create the shader program for wall image rendering
-        if (PROJ_CTX_VEC[proj_ind].compileAndLinkShaders(GLB_QUAD_GL_VERTEX_SOURCE, GLB_QUAD_GL_FRAGMENT_SOURCE) < 0)
-            throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(PROJ_CTX_VEC[proj_ind].windowInd) + "]: Failed to compile and link wall shader");
+        if (PROJ_CTX_ARR[proj_ind].compileAndLinkShaders(GLB_QUAD_GL_VERTEX_SOURCE, GLB_QUAD_GL_FRAGMENT_SOURCE) < 0)
+            throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(PROJ_CTX_ARR[proj_ind].windowInd) + "]: Failed to compile and link wall shader");
 
         // Create the shader program for CircleRenderer class rat mask rendering
         if (CircleRenderer::CompileAndLinkCircleShaders(1.0) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
 
         // Set all projectors to the starting monitor and include xy offset
-        if (PROJ_CTX_VEC[proj_ind].changeWindowDisplayMode(mon_ind, F.fullscreen_mode, winOffsetVec[PROJ_CTX_VEC[proj_ind].windowInd]) < 0)
-            throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(PROJ_CTX_VEC[proj_ind].windowInd) + "]: Failed Initial update of window monitor mode");
+        if (PROJ_CTX_ARR[proj_ind].changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, winOffsetVec[PROJ_CTX_ARR[proj_ind].windowInd]) < 0)
+            throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(PROJ_CTX_ARR[proj_ind].windowInd) + "]: Failed Initial update of window monitor mode");
 
         // Initialize the CircleRenderer class object for rat masking
         if (RM_CIRCREND_ARR[proj_ind].initializeCircleObject(
@@ -521,7 +521,7 @@ void appInitOpenGL() {
                 ) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
 
-        ROS_INFO("[appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
+        ROS_INFO("[appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj_ind, PROJ_CTX_ARR[proj_ind].windowInd, PROJ_CTX_ARR[proj_ind].monitorInd);
     }
     ROS_INFO("[appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
 }
@@ -533,19 +533,19 @@ void appMainLoop()
 
     // --------------- Check State Flags ---------------
     // Check if the window mode needs to be changed
-    if (F.change_window_mode) {
-        for (auto &projCtx : PROJ_CTX_VEC) {
-            int mon_ind = F.windows_set_to_proj ? PROJ_MON_VEC[projCtx.windowInd] : STARTING_MONITOR;
-            if (projCtx.changeWindowDisplayMode(mon_ind, F.fullscreen_mode, winOffsetVec[projCtx.windowInd]) < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::changeWindowDisplayMode");
+    if (FLAG_CHANGE_WINDOW_MODE) {
+        for (auto &projCtx : PROJ_CTX_ARR) {
+            int mon_ind = FLAG_WINDOWS_SET_TO_PROJ ? PROJ_MON_VEC[projCtx.windowInd] : 0;
+            if (projCtx.changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, winOffsetVec[projCtx.windowInd]) < 0)
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: changeWindowDisplayMode");
         }
     }
 
     // Force to windows so thay are on top
-    if (F.force_window_focus) {
-        for (auto &projCtx : PROJ_CTX_VEC) {
+    if (FLAG_FORCE_WINDOW_FOCUS) {
+        for (auto &projCtx : PROJ_CTX_ARR) {
             if (projCtx.forceWindowFocus() < 0)
-                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::forceWindowFocus");
+                throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: forceWindowFocus");
         }
     }
 
@@ -556,8 +556,8 @@ void appMainLoop()
     // simulateRatMovement(0.5f, 45.0f, RT);
 
     // Recompute wall parameters and update wall image texture
-    if (F.update_textures) {
-        for (auto &projCtx : PROJ_CTX_VEC) {
+    if (FLAG_UPDATE_TEXTURES) {
+        for (auto &projCtx : PROJ_CTX_ARR) {
             cv::Mat imgMat = BLANK_PXL_MAT.clone();
 
             // Update floor image texture
@@ -575,18 +575,18 @@ void appMainLoop()
     }
 
     // Reset keybinding flags
-    F.change_window_mode = false;
-    F.update_textures = false;
-    F.force_window_focus = false;
+    FLAG_CHANGE_WINDOW_MODE = false;
+    FLAG_UPDATE_TEXTURES = false;
+    FLAG_FORCE_WINDOW_FOCUS = false;
 
     displayTimer[1].update(true); // Update the timing data for the second displayTimer
     displayTimer[2].start(); // Start the third displayTimer for image processing
 
     // --------------- Handle image processing for each projector ---------------
-    for (auto &projCtx : PROJ_CTX_VEC) {
+    for (auto &projCtx : PROJ_CTX_ARR) {
         // Prepare the frame for rendering (clear the back buffer)
         if (projCtx.initWindowForDrawing() < 0)
-            throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::initWindowForDrawing");
+            throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: initWindowForDrawing");
 
         // Draw/update wall images
         if (projCtx.drawTexture() < 0)
@@ -598,7 +598,7 @@ void appMainLoop()
 
         // Swap buffers and poll events
         if (projCtx.bufferSwapPoll() < 0)
-            throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::bufferSwapPoll");
+            throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: bufferSwapPoll");
 
         // Check if ROS shutdown
         if (!ros::ok())
@@ -626,16 +626,16 @@ void appCleanup() {
 
     // Clean up OpenGL wall image objects for each window
     for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) {
-        if (PROJ_CTX_VEC[proj_ind].cleanupContext(true) != 0)
+        if (PROJ_CTX_ARR[proj_ind].cleanupContext(true) != 0)
             ROS_WARN("[appCleanup] Error during cleanup of MazeRenderContext: Projector[%d] Window[%d] Monitor[%d]",
-                     proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
+                     proj_ind, PROJ_CTX_ARR[proj_ind].windowInd, PROJ_CTX_ARR[proj_ind].monitorInd);
         else
             ROS_INFO("[projection_display:appCleanup] MazeRenderContext instance cleaned up successfully: Projector[%d] Window[%d] Monitor[%d]",
-                     proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
+                     proj_ind, PROJ_CTX_ARR[proj_ind].windowInd, PROJ_CTX_ARR[proj_ind].monitorInd);
     }
 
     // Terminate graphics
-    if (MazeRenderContext::CleanupGraphicsLibraries() < 0)
+    if (CleanupGraphicsLibraries() < 0)
         ROS_WARN("[appCleanup] Failed to terminate GLFW library");
     else
         ROS_INFO("[projection_display:appCleanup] GLFW library terminated successfully");
@@ -659,6 +659,7 @@ int main(int argc, char **argv) {
         displayTimer[2].setName("Image_processing");
         displayTimer[3].setName("ROS_operations");
         displayTimer[4].setName("Floor_texture_update");
+        displayTimer[5].setName("Wall_texture_update");
         displayTimer[6].setName("Warp");
         displayTimer[7].setName("Merge");
 
