@@ -105,11 +105,27 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg) {
     // Update the last received command
     RC.proj_cmd_data = msg->data;
-    RC.is_proj_cmd_message_received = true;
 
     // Log projection command
     if (GLB_DO_VERBOSE_DEBUG)
         ROS_INFO("[callbackProjCmdROS] Received projection command: %d", RC.proj_cmd_data);
+    
+    // ------- Monitor Mode Change Commmands ----------
+
+    // Move monitor command [-1]
+    if (RC.proj_cmd_data == -1) {
+        F.windows_set_to_proj = !F.windows_set_to_proj;
+        F.change_window_mode = true;
+    }
+    // Set/unset Fullscreen [-2] ----------
+    else if (RC.proj_cmd_data == -2) {
+        F.fullscreen_mode = !F.fullscreen_mode;
+        F.change_window_mode = true;
+    }
+    // Force window to top [-3] ----------
+    else if (RC.proj_cmd_data == -3)
+        F.force_window_focus = true;
+    else ROS_WARN("[procProjCmdROS] Received invalid projection command: %d", RC.proj_cmd_data);
 }
 
 void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
@@ -124,34 +140,47 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
         for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
             RC.proj_img_data[cham_ind][wall_ind] = msg->data[cham_ind * 8 + wall_ind];
 
-    // Flag that a projection image message has been received
-    RC.is_proj_img_message_received = true;
-
     // Log the entire 2D array
     if (GLB_DO_VERBOSE_DEBUG) {
         ROS_INFO("[callbackProjImgROS] Stored ROS projection image data:");
-        for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
-        {
+        for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
             std::stringstream row_stream;
             row_stream << "Walls[" << cham_ind << "] = [";
-            for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
-            {
+            for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
                 row_stream << RC.proj_img_data[cham_ind][wall_ind];
                 if (wall_ind < 7) // Add a comma between elements, but not after the last one
-                {
                     row_stream << ", ";
-                }
             }
             row_stream << "]";
             ROS_INFO("%s", row_stream.str().c_str());
         }
     }
+
+    // ---------- Update image index data ----------
+    for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
+        for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
+            // Store image index
+            int img_ind = RC.proj_img_data[cham_ind][wall_ind];
+
+            // Update the wall index array
+            if (cham_ind < 9)
+                configWallImageIndex(img_ind, cham_ind, wall_ind, PROJ_WALL_CONFIG_INDICES_4D);
+            // Update the floor image index
+            else if (wall_ind == 0) // Only store the first entry
+                projFloorConfigIndex = img_ind;
+            // Skip unused floor entries
+            else
+                continue;
+        }
+    }
+
+    // Set the flag to update the textures
+    F.update_textures = true;
 }
 
 void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg) {
     // Update the last received command
     RC.track_pos_data = *msg;
-    RC.is_track_pos_message_received = true;
 
     // Log position data
     if (GLB_DO_VERBOSE_DEBUG)
@@ -162,6 +191,37 @@ void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg) {
                  RC.track_pos_data.pose.orientation.x,
                  RC.track_pos_data.pose.orientation.y,
                  RC.track_pos_data.pose.orientation.z);
+    
+    // Convert the track pose to centimeters
+    geometry_msgs::Point position_cm;
+    position_cm.x = RC.track_pos_data.pose.position.x * 100.0f;
+    position_cm.y = RC.track_pos_data.pose.position.y * 100.0f;
+
+    // Extract the quaternion
+    tf::Quaternion q(
+        RC.track_pos_data.pose.orientation.x,
+        RC.track_pos_data.pose.orientation.y,
+        RC.track_pos_data.pose.orientation.z,
+        RC.track_pos_data.pose.orientation.w);
+
+    // Convert quaternion to RPY (roll, pitch, yaw)
+    tf::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+
+    // Convert offset angle from degrees to radians
+    double offset_angle_rad = RT.offset_angle * GLOB_PI / 180.0f;
+
+    // Adjust the yaw by the offset angle
+    double adjusted_yaw = yaw + offset_angle_rad;
+
+    // Calculate the offset in global frame
+    double offset_x = RT.offset_distance * cos(adjusted_yaw);
+    double offset_y = RT.offset_distance * sin(adjusted_yaw);
+
+    // Apply the offset to the original position
+    RT.marker_position.x = position_cm.x + offset_x;
+    RT.marker_position.y = position_cm.y + offset_y;
 }
 
 int initSubscriberROS() {
@@ -194,115 +254,6 @@ int initSubscriberROS() {
         ROS_ERROR("[initSubscriberROS]Failed to subscribe to 'harness_pose_in_maze' topic!");
         return -1;
     }
-    return 0;
-}
-
-int procProjCmdROS() {
-    // Check if node handle is initialized
-    if (!ros::ok()) return -1;
-
-    // Bail if no message received
-    if (!RC.is_proj_cmd_message_received) return 0;
-
-    // Reset the flag
-    RC.is_proj_cmd_message_received = false;
-
-    // ------- Monitor Mode Change Commmands ----------
-
-    // Move monitor command [-1]
-    if (RC.proj_cmd_data == -1) {
-        F.windows_set_to_proj = !F.windows_set_to_proj;
-        F.change_window_mode = true;
-    }
-    // Set/unset Fullscreen [-2] ----------
-    else if (RC.proj_cmd_data == -2) {
-        F.fullscreen_mode = !F.fullscreen_mode;
-        F.change_window_mode = true;
-    }
-    // Force window to top [-3] ----------
-    else if (RC.proj_cmd_data == -3)
-        F.force_window_focus = true;
-    else
-        ROS_WARN("[procProjCmdROS] Received invalid projection command: %d", RC.proj_cmd_data);
-
-    return 0;
-}
-
-int procProjImgROS() {
-    // Check if node handle is initialized
-    if (!ros::ok()) return -1;
-
-    // Bail if no message received
-    if (!RC.is_proj_img_message_received) return 0;
-
-    // Reset the flag
-    RC.is_proj_img_message_received = false;
-
-    // ---------- Update image index data ----------
-    for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
-        for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
-            // Store image index
-            int img_ind = RC.proj_img_data[cham_ind][wall_ind];
-
-            // Update the wall index array
-            if (cham_ind < 9)
-                configWallImageIndex(img_ind, cham_ind, wall_ind, PROJ_WALL_CONFIG_INDICES_4D);
-            // Update the floor image index
-            else if (wall_ind == 0) // Only store the first entry
-                projFloorConfigIndex = img_ind;
-            // Skip unused floor entries
-            else
-                continue;
-        }
-    }
-
-    // Set the flag to update the textures
-    F.update_textures = true;
-
-    return 0;
-}
-
-int procTrackMsgROS() {
-    // Check if node handle is initialized
-    if (!ros::ok()) return -1;
-
-    // Bail if no message received
-    if (!RC.is_track_pos_message_received) return 0;
-
-    // Reset the flag
-    RC.is_track_pos_message_received = false;
-
-    // Convert the track pose to centimeters
-    geometry_msgs::Point position_cm;
-    position_cm.x = RC.track_pos_data.pose.position.x * 100.0f;
-    position_cm.y = RC.track_pos_data.pose.position.y * 100.0f;
-
-    // Extract the quaternion
-    tf::Quaternion q(
-        RC.track_pos_data.pose.orientation.x,
-        RC.track_pos_data.pose.orientation.y,
-        RC.track_pos_data.pose.orientation.z,
-        RC.track_pos_data.pose.orientation.w);
-
-    // Convert quaternion to RPY (roll, pitch, yaw)
-    tf::Matrix3x3 m(q);
-    double roll, pitch, yaw;
-    m.getRPY(roll, pitch, yaw);
-
-    // Convert offset angle from degrees to radians
-    double offset_angle_rad = RT.offset_angle * GLOB_PI / 180.0f;
-
-    // Adjust the yaw by the offset angle
-    double adjusted_yaw = yaw + offset_angle_rad;
-
-    // Calculate the offset in global frame
-    double offset_x = RT.offset_distance * cos(adjusted_yaw);
-    double offset_y = RT.offset_distance * sin(adjusted_yaw);
-
-    // Apply the offset to the original position
-    RT.marker_position.x = position_cm.x + offset_x;
-    RT.marker_position.y = position_cm.y + offset_y;
-
     return 0;
 }
 
@@ -752,11 +703,8 @@ void appInitOpenGL() {
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
 }
 
-void appMainLoop() {
-    int status = 0;
-    ROS_INFO("[appMainLoop] Starting");
-
-    while (status == 0) {
+int appMainLoop() {
+        int status = 0; // Initialize status to 0 (no error)
         timer[0].start(); // Start the timer for the loop
 
         // --------------- Check State Flags ---------------
@@ -840,38 +788,16 @@ void appMainLoop() {
                 throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Error returned from: MazeRenderContext::checkExitRequest");
         }
 
-        // Check for exit
-        if (status > 0) break;
-
         // --------------- Handle ROS Messages and Operations ---------------
 
         // Process a single round of callbacks for ROS messages
         ros::spinOnce();
 
-        // Process ROS projection command messages
-        if (procProjCmdROS() < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: procProjCmdROS");
-
-        // Process ROS projection image messages
-        if (procProjImgROS() < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: procProjImgROS");
-
-        // Process ROS tracking position messages
-        if (procTrackMsgROS() < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: procTrackMsgROS");
-
         timer[0].update(true);
         // Sleep to maintain the loop rate
         RC.loop_rate->sleep();
-    }
 
-    // Check which condition caused the loop to exit
-    if (status == 1)
-        ROS_INFO("[projection_display:appMainLoop] Loop Terminated:  GLFW window should close");
-    else if (status == 2)
-        ROS_INFO("[projection_display:appMainLoop] Loop Terminated:  Escape key was pressed");
-    else
-        ROS_INFO("[projection_display:appMainLoop] Loop Terminated:  Reason unknown");
+        return status; // Return the status of the main loop
 }
 
 void appCleanup() {
@@ -900,7 +826,9 @@ int main(int argc, char **argv) {
         appLoadAssets();
         appInitVariables();
         appInitOpenGL();
-        appMainLoop();
+
+        int mainLoopStatus = 0;
+        while (ros::ok() && !mainLoopStatus) mainLoopStatus = appMainLoop();
 
         // Setup timers
         for (auto &t: timer) t.reset();

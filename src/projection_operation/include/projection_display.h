@@ -252,36 +252,6 @@ void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg);
 int initSubscriberROS();
 
 /**
- * @brief Processes commands received from the "projection_cmd" topic.
- *
- * @details
- * This function checks for new projection command message and processes the message.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int procProjCmdROS();
-
-/**
- * @brief Processes commands received from the "projection_image" topic.
- *
- * @details
- * This function checks for new projection image message and processes the message.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int procProjImgROS();
-
-/**
- * @brief Processes commands received from the "harness_pose_in_maze" topic.
- *
- * @details
- * This function checks if a new position tracking message has been received and processes the message.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int procTrackMsgROS();
-
-/**
  * @brief Simulates rat movement.
  *
  * @param move_step Distance to move in cm.
@@ -481,8 +451,9 @@ void appInitOpenGL();
  * or when an error occurs.
  *
  * @throws std::runtime_error if an error occurs during execution.
+ * @return Integer status code [<0:error, 0:successful, >0:exit request].
  */
-void appMainLoop();
+int appMainLoop();
 
 /**
  * @brief Cleans up resources upon application shutdown.
