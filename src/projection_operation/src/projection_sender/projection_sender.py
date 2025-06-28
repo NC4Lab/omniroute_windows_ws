@@ -60,7 +60,7 @@ class ProjectionOperation:
             rospy.init_node('projection_opperation_node', anonymous=True)
 
         # Initialize image_config as a 10x8 array with default values
-        self.image_config = [[0 for _ in range(8)] for _ in range(10)]
+        self.image_config = [[1 for _ in range(8)] for _ in range(10)]
 
         package_path = rospkg.RosPack().get_path('projection_operation')
 
@@ -76,7 +76,7 @@ class ProjectionOperation:
         # self.publish_image_message(self.image_config)
 
         # TEMP
-        rospy.sleep(5)
+        rospy.sleep(3)
         self.image_config = self.set_config(self.image_config, "walls", 3, 4, 1)
         self.image_config = self.set_config(self.image_config, "floor", 2)
         # Send the image configuration message
