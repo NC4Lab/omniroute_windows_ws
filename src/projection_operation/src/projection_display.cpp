@@ -63,6 +63,7 @@ void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg) {
 void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
     // Expects a N_CHAMBERS x N_SURF array of integers
     // where N_CHAMBERS = 9 and N_SURF = 9 (8 walls + 1 floor)
+    ROS_INFO("[callbackProjImgROS] Received projection image data with size: %zu", msg->data.size());
 
     // Check that the received data has the correct size for a 9x9 array (81 elements)
     if (msg->data.size() != N_CHAMBERS * N_SURF) {
@@ -648,20 +649,18 @@ int main(int argc, char **argv) {
         appInitVariables();
         appInitOpenGL();
 
-        // Initialize timers
-        for (auto &t: displayTimer) {
-            t.reset();
-            t.setName("Foo");
+        TIMING_ENABLED = false; // Disable timing for now
+        for (auto &timer : displayTimer) {
+            timer.reset();
         }
-
-        displayTimer[0].setName("Window_operations");
-        displayTimer[1].setName("Update_textures");
-        displayTimer[2].setName("Image_processing");
-        displayTimer[3].setName("ROS_operations");
-        displayTimer[4].setName("Floor_texture_update");
-        displayTimer[5].setName("Wall_texture_update");
-        displayTimer[6].setName("Warp");
-        displayTimer[7].setName("Merge");
+        displayTimer[0].name = "Window_operations";
+        displayTimer[1].name = "Update_textures";
+        displayTimer[2].name = "Image_processing";
+        displayTimer[3].name = "ROS_operations";
+        displayTimer[4].name = "Floor_texture_update";
+        displayTimer[5].name = "Wall_texture_update";
+        displayTimer[6].name = "Warp";
+        displayTimer[7].name = "Merge";
 
         while(ros::ok()) appMainLoop(); // Main loop for rendering and processing
     // }

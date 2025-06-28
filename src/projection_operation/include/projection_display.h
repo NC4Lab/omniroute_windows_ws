@@ -252,29 +252,30 @@ int drawRatMask(
     const RatTracker &_RT,
     CircleRenderer &out_rmCircRend);
 
+bool TIMING_ENABLED = true; // Global flag to enable/disable timing
 class TimingData{
     public:
         ros::Time currentTime, lastTime;
         ros::Duration deltaTime, minDeltaTime, maxDeltaTime;
         std::string name;
 
-        void setName(const std::string &_name) {
-            name = _name;
-        }
-
-        void start() {
-            currentTime = ros::Time::now();
-            lastTime = currentTime;
-        }
-
         void reset() {
             deltaTime = ros::Duration(0);
             minDeltaTime = ros::Duration(0.0);
             maxDeltaTime = ros::Duration(0.0);
-            start();
+            currentTime = ros::Time::now();
+            lastTime = currentTime;
         }
+
+        void start() {
+            if (!TIMING_ENABLED) return;
+            currentTime = ros::Time::now();
+            lastTime = currentTime;
+        }
+
         
         void update(bool print = false) {
+            if (!TIMING_ENABLED) return;
             currentTime = ros::Time::now();
             deltaTime = currentTime - lastTime;
             lastTime = currentTime;
@@ -290,6 +291,7 @@ class TimingData{
         }
 
         void printTimingData() {
+            if (!TIMING_ENABLED) return;
             ROS_INFO("[Timer: %s] Duration: %f, Min: %f, Max: %f",
                      name.c_str(), deltaTime.toSec(), minDeltaTime.toSec(), maxDeltaTime.toSec());
         }
