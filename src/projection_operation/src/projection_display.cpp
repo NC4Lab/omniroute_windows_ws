@@ -753,13 +753,11 @@ void appInitOpenGL() {
 }
 
 void appMainLoop() {
-    // Initialize the timing data
-    mainLoopTD.reset();
-
     int status = 0;
     ROS_INFO("[appMainLoop] Starting");
 
     while (status == 0) {
+        timer[0].start(); // Start the timer for the loop
 
         // --------------- Check State Flags ---------------
         if (F.change_window_mode) {
@@ -862,9 +860,7 @@ void appMainLoop() {
         if (procTrackMsgROS() < 0)
             throw std::runtime_error("[appMainLoop] Error returned from: procTrackMsgROS");
 
-        // Measure the time taken for the loop iteration
-        // mainLoopTD.addDeltaTime(true); // Add delta time and print timing data
-
+        timer[0].update(true);
         // Sleep to maintain the loop rate
         RC.loop_rate->sleep();
     }
@@ -905,6 +901,12 @@ int main(int argc, char **argv) {
         appInitVariables();
         appInitOpenGL();
         appMainLoop();
+
+        // Setup timers
+        for (auto &t: timer) t.reset();
+        
+        timer[0].name = "Main_Loop";
+
     }
     catch (const std::exception &e) {
         ROS_ERROR("!!EXCEPTION CAUGHT!!: %s", e.what());

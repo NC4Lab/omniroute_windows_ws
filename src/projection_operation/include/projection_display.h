@@ -380,20 +380,29 @@ int updateWallTexture(
  */
 int drawRatMask(CircleRenderer &out_rmCircRend);
 
-class TimingData{
+bool TIMING_ENABLED = true;
+class TimingData {
     public:
         ros::Time currentTime, lastTime;
         ros::Duration deltaTime, minDeltaTime, maxDeltaTime;
+        std::string name;
 
         void reset() {
-            currentTime = ros::Time::now();
-            lastTime = currentTime;
+            if (!TIMING_ENABLED) return;
+            name = "";
             deltaTime = ros::Duration(0);
             minDeltaTime = ros::Duration(0.0);
             maxDeltaTime = ros::Duration(0.0);
+            start();
+        }
+
+        void start() {
+            currentTime = ros::Time::now();
+            lastTime = currentTime;
         }
         
-        void addDeltaTime(bool print = false) {
+        void update(bool print = false) {
+            if (!TIMING_ENABLED) return;
             currentTime = ros::Time::now();
             deltaTime = currentTime - lastTime;
             lastTime = currentTime;
@@ -409,13 +418,13 @@ class TimingData{
         }
 
         void printTimingData() {
-            ROS_INFO("[TimingData] Delta Time: %f, Min Delta Time: %f, Max Delta Time: %f",
-                     deltaTime.toSec(), minDeltaTime.toSec(), maxDeltaTime.toSec());
+            if (!TIMING_ENABLED) return;
+            ROS_INFO("[%s] Delta: %f, Min Delta: %f, Max Delta: %f",
+                     name.c_str(), deltaTime.toSec(), minDeltaTime.toSec(), maxDeltaTime.toSec());
         }
 
 };
-
-TimingData mainLoopTD; // Timing data for the main loop
+TimingData timer[10]; // Array of TimingData objects for different parts of the application
 
 /**
  * @brief Initializes the ROS node and sets up the subscriber for the "projection_cmd" topic.
