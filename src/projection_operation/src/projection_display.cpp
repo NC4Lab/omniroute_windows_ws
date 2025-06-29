@@ -73,8 +73,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         }
 
         // ---------- Change floor configuration [CTRL [0-5]] ----------
-        else if (mods & GLFW_MOD_CONTROL)
-        {
+        else if (mods & GLFW_MOD_CONTROL) {
             int floor_img_ind = floor_img_ind_last;
             if (key == GLFW_KEY_0)
                 floor_img_ind = 0;
@@ -429,7 +428,7 @@ void rotateFloorImage(int img_rot_deg, const cv::Mat &in_img_mat, std::vector<cv
     out_img_mat_vec.push_back(rotated_img);
 }
 
-int updateFloorTexture(int proj_ind, cv::Mat &_floorImgMat, const cv::Mat _wallBlankImgMat, cv::Mat &out_img_mat) {
+int updateFloorTexture(int proj_ind, cv::Mat &_floorImgMat, cv::Mat &out_img_mat) {
     // Copy the floor image to be used
     cv::Mat img_copy;
     _floorImgMat.copyTo(img_copy);
@@ -448,7 +447,7 @@ int updateFloorTexture(int proj_ind, cv::Mat &_floorImgMat, const cv::Mat _wallB
     if (mergeImgMat(img_warp, out_img_mat) < 0) return -1;
 
     // Merge the blank wall image with the final image
-    if (mergeImgMat(_wallBlankImgMat, out_img_mat) < 0) return -1;
+    if (mergeImgMat(WALL_BLANK_IMG_MAT, out_img_mat) < 0) return -1;
 
     return 0;
 }
@@ -674,12 +673,9 @@ void appInitOpenGL() {
             throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
 
         // Initialize blank wall image mat
-        wallBlankImgMatArr[proj_ind] = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4); // Initialize cv::Mat
-        if (updateWallTexture(proj_ind,
-                              wallRawImgMatVec,
-                              false,
-                              wallBlankImgMatArr[proj_ind]))
-            throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(proj_ind) + "]: Failed to update wall texture");
+        // wallBlankImgMatArr[proj_ind] = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4); // Initialize cv::Mat
+        // if (updateWallTexture(proj_ind, wallRawImgMatVec, false, wallBlankImgMatArr[proj_ind]))
+        //     throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(proj_ind) + "]: Failed to update wall texture");
 
         ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
     }
@@ -719,7 +715,6 @@ int appMainLoop() {
                 // Update floor image texture
                 if (updateFloorTexture(projCtx.windowInd,
                                        floorRotatedImgMatVecArr[projCtx.windowInd][projFloorConfigIndex],
-                                       wallBlankImgMatArr[projCtx.windowInd],
                                        img_mat))
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
 

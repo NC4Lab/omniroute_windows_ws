@@ -13,6 +13,8 @@
 #include "projection_utils.h"
 
 // ================================================== VARIABLES ==================================================
+// Initialize blank wall image mat
+const cv::Mat WALL_BLANK_IMG_MAT = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4); // Initialize cv::Mat
 
 /**
  * @brief Struct for global counts
@@ -123,12 +125,6 @@ std::vector<cv::Point> winOffsetVec;
 // Vectors to store the raw loaded images in cv::Mat format
 std::vector<cv::Mat> wallRawImgMatVec;  // Vector of indevidual wall image texture matrices
 std::vector<cv::Mat> floorRawImgMatVec; // Vector of indevidual floor image texture matrices
-
-/**
- * @brief Array to store the image of all blank walls to use as the
- * baseline image.
- */
-std::array<cv::Mat, 4> wallBlankImgMatArr;
 
 /**
  * @brief Array of vectors to store the rotated floor images in cv::Mat format
@@ -269,7 +265,6 @@ void rotateFloorImage(
  *
  * @param proj_ind Index of the projector associated with the given image.
  * @param _floorImgMat Floor image in cv::Mat format
- * @param _wallBlankImgMat Blank walls image in cv::Mat format
  * @param[out] out_img_mat Reference to store the new cv::Mat image.
  *
  * @return Integer status code [-1:error, 0:successful].
@@ -277,7 +272,6 @@ void rotateFloorImage(
 int updateFloorTexture(
     int proj_ind,
     cv::Mat &_floorImgMat,
-    const cv::Mat _wallBlankImgMat,
     cv::Mat &out_img_mat);
 
 /**
