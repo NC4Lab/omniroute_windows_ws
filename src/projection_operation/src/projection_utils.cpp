@@ -1963,13 +1963,7 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
 
 int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img) {
     cv::Mat mask_img_4ch;
-    cv::extractChannel(mask_img, 3, mask_img_4ch); // Extract the alpha channel from the mask image
+    cv::extractChannel(mask_img, mask_img_4ch, 3); // Extract the alpha channel from the mask image
     cv::add(out_base_img, mask_img, out_base_img, mask_img_4ch); // Add the mask image to the base image using the alpha channel as a mask
-    return 0;
-}
-
-int warpImgMat(cv::Mat img_mat, cv::Mat _H, cv::Mat &out_img_mat) {
-    // Warp Perspective
-    cv::warpPerspective(img_mat, out_img_mat, _H, cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
     return 0;
 }

@@ -545,8 +545,7 @@ int updateModeImage(cv::Mat img_main_mat, cv::Mat img_mon_mat, cv::Mat img_cal_m
 int updateTexture(
     cv::Mat img_base_mat, cv::Mat img_mode_mat, CalibrationMode _CAL_MODE,
     const std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES> &_HMAT_ARR,
-    MazeRenderContext &out_projCtx)
-{
+    MazeRenderContext &out_projCtx) {
     // Initialize the image to be used as the texture
     cv::Mat img_merge = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4);
 
@@ -554,46 +553,32 @@ int updateTexture(
     int grid_size = (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) ? GLB_MAZE_SIZE : 1;
 
     // Iterate through the maze grid rows
-    for (int gr_i = 0; gr_i < grid_size; gr_i++) // image bottom to top
-    {
+    for (int gr_i = 0; gr_i < grid_size; gr_i++) { // image bottom to top
         // Iterate through each column in the maze row
-        for (int gc_i = 0; gc_i < grid_size; gc_i++) // image left to right
-        {
+        for (int gc_i = 0; gc_i < grid_size; gc_i++) { // image left to right
             cv::Mat img_copy;
 
             // Get the maze vertex indice cooresponding to the selected control point
             int mv_ind = I.CP_MAP[I.cp_maze_vert_selected[0]][I.cp_maze_vert_selected[1]];
 
             //  Check if mode image should be used
-            if (
-                (mv_ind == 0 && gr_i == 0 && gc_i == 0) ||
+            if ((mv_ind == 0 && gr_i == 0 && gc_i == 0) ||
                 (mv_ind == 1 && gr_i == 0 && gc_i == grid_size - 1) ||
                 (mv_ind == 3 && gr_i == grid_size - 1 && gc_i == 0) ||
                 (mv_ind == 2 && gr_i == grid_size - 1 && gc_i == grid_size - 1))
-            {
-                // Use mode image
-                img_mode_mat.copyTo(img_copy);
-            }
+                img_mode_mat.copyTo(img_copy); // Use mode image
             else
-            {
-                // Use standard image
-                img_base_mat.copyTo(img_copy);
-            }
+                img_base_mat.copyTo(img_copy); // Use standard image
 
             // Get homography matrix for this wall
             cv::Mat H = _HMAT_ARR[_CAL_MODE][gr_i][gc_i];
 
             // Warp the image
             cv::Mat img_warp;
-            if (warpImgMat(img_copy, H, img_warp) < 0)
-            {
-                ROS_ERROR("[updateTexture] Warp image error: Wall[%d][%d] Calibration[%d]", gr_i, gc_i, _CAL_MODE);
-                return -1;
-            }
+            cv::warpPerspective(img_copy, img_warp, H, cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
 
             // Merge the warped image with the final image
-            if (mergeImgMat(img_warp, img_merge) < 0)
-                return -1;
+            if (mergeImgMat(img_warp, img_merge) < 0) return -1;
         }
     }
 

@@ -438,10 +438,7 @@ int updateFloorTexture(int proj_ind, cv::Mat &_floorImgMat, cv::Mat &out_img_mat
 
     // Warp Perspective
     cv::Mat img_warp;
-    if (warpImgMat(img_copy, H, img_warp) < 0) {
-        ROS_ERROR("[updateFloorTexture] Warp image error: Projector[%d]", proj_ind);
-        return -1;
-    }
+    cv::warpPerspective(img_copy, img_warp, H, cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
 
     // Merge the warped image with the final image
     if (mergeImgMat(img_warp, out_img_mat) < 0) return -1;
@@ -481,11 +478,7 @@ int updateWallTexture(int proj_ind, const std::vector<cv::Mat> &_wallRawImgMatVe
 
                 // Warp Perspective
                 cv::Mat img_warp;
-                if (warpImgMat(img_copy, H, img_warp) < 0) {
-                    ROS_ERROR("[updateWallTexture] Warp image error: Projector[%d] Wall[%d][%d] Calibration[%d]",
-                              proj_ind, gr_i, gc_i, _CAL_MODE);
-                    return -1;
-                }
+                cv::warpPerspective(img_copy, img_warp, H, cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
 
                 // Merge the warped image with the final image
                 if (mergeImgMat(img_warp, out_img_mat) < 0) return -1;

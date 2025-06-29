@@ -1283,9 +1283,7 @@ int computeHomographyMatrix(
  * - Tick the 'Transparency' checkbox in the PNG export options to include the alpha channel.
  * - Confirm the PNG is exported with a bit depth that supports alpha (typically PNG-24).
  */
-int loadImgMat(
-    const std::vector<std::string> &img_paths_vec,
-    std::vector<cv::Mat> &out_img_mat_vec);
+int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Mat> &out_img_mat_vec);
 
 /**
  * @brief Merges a mask image over a base image using the alpha channel and stores the result.
@@ -1300,22 +1298,6 @@ int loadImgMat(
  * of the mask image. Pixels from the mask image are copied over to the base image based on
  * the alpha value - if the alpha value is not fully transparent (0), the pixel is copied.
  */
-int mergeImgMat(
-    const cv::Mat &mask_img,
-    cv::Mat &out_base_img);
-
-/**
- * @brief Warp OpenCV image using homography matrix.
- *
- * @param img_mat The cv::Mat image that needs to be warped.
- * @param _H The homography matrix used for warping.
- * @param[out] out_img_mat Reference to the outputed warped image.
- *
- * @return Integer status code [-1:error, 0:successful].
- */
-int warpImgMat(
-    cv::Mat img_mat,
-    cv::Mat _H,
-    cv::Mat &out_img_mat);
+int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img);
 
 #endif
