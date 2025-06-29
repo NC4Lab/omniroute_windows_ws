@@ -44,15 +44,15 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             int wall_img_ind = wall_img_ind_last;
             if (key == GLFW_KEY_0)
                 wall_img_ind = 0;
-            else if (key == GLFW_KEY_1 && wallRawImgMatVec.size() > 1)
+            else if (key == GLFW_KEY_1 && N_RUNTIME_WALL_IMAGES > 1)
                 wall_img_ind = 1;
-            else if (key == GLFW_KEY_2 && wallRawImgMatVec.size() > 2)
+            else if (key == GLFW_KEY_2 && N_RUNTIME_WALL_IMAGES > 2)
                 wall_img_ind = 2;
-            else if (key == GLFW_KEY_3 && wallRawImgMatVec.size() > 3)
+            else if (key == GLFW_KEY_3 && N_RUNTIME_WALL_IMAGES > 3)
                 wall_img_ind = 3;
-            else if (key == GLFW_KEY_4 && wallRawImgMatVec.size() > 4)
+            else if (key == GLFW_KEY_4 && N_RUNTIME_WALL_IMAGES > 4)
                 wall_img_ind = 4;
-            else if (key == GLFW_KEY_5 && wallRawImgMatVec.size() > 5)
+            else if (key == GLFW_KEY_5 && N_RUNTIME_WALL_IMAGES > 5)
                 wall_img_ind = 5;
             // Check for configuration change
             if (wall_img_ind != wall_img_ind_last) {
@@ -449,7 +449,7 @@ int updateFloorTexture(int proj_ind, cv::Mat &_floorImgMat, cv::Mat &out_img_mat
     return 0;
 }
 
-int updateWallTexture(int proj_ind, const std::vector<cv::Mat> &_wallRawImgMatVec, bool do_ignore_blank_img, cv::Mat &out_img_mat) {
+int updateWallTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_mat) {
     // Iterate through through calibration modes (left walls, middle walls, right walls)
     for (int cal_i = 0; cal_i < N_CAL_MODES - 1; cal_i++) {
         CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
@@ -460,7 +460,7 @@ int updateWallTexture(int proj_ind, const std::vector<cv::Mat> &_wallRawImgMatVe
             for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; gc_i++) { // image left to right
                 // Get the index of the wall image to be used
                 int img_ind = PROJ_WALL_CONFIG_INDICES_4D[proj_ind][gr_i][gc_i][_CAL_MODE];
-                if (_wallRawImgMatVec[img_ind].empty()) {
+                if (runtimeWallMats[img_ind].empty()) {
                     ROS_ERROR("[updateWallTexture] Stored OpenCV wall image is empty: Projector[%d] Wall[%d][%d] Calibration[%d] Image[%d]",
                               proj_ind, gr_i, gc_i, _CAL_MODE, img_ind);
                     return -1;
@@ -471,7 +471,7 @@ int updateWallTexture(int proj_ind, const std::vector<cv::Mat> &_wallRawImgMatVe
 
                 // Copy the wall image to be used
                 cv::Mat img_copy;
-                _wallRawImgMatVec[img_ind].copyTo(img_copy);
+                runtimeWallMats[img_ind].copyTo(img_copy);
 
                 // Get homography matrix for this wall
                 cv::Mat H = WALL_HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i];
@@ -533,22 +533,19 @@ void appInitROS(int argc, char **argv) {
 void appLoadAssets()
 {
     // ---------- Load Images with OpenCV ----------
+    // Get the configured image paths
+    std::vector<std::string> runtimeWallImages, runtimeFloorImages; // declare the vector to store the paths
+    for (auto &fileName : RUNTIME_WALL_IMAGES)
+        runtimeWallImages.push_back(RUNTIME_IMAGE_PATH + "/" + fileName);
+    for (auto &filename : RUNTIME_FLOOR_IMAGES) // iterate through the file names
+        runtimeFloorImages.push_back(RUNTIME_IMAGE_PATH + "/" + filename);
 
-    // Get the wall images
-    std::vector<std::string> fi_img_path_wall_vec;                                        // declare the vector to store the paths
-    size_t n_wall_img = sizeof(WALL_IMAGE_FILE_NAMES) / sizeof(WALL_IMAGE_FILE_NAMES[0]); // calculate the number of images
-    for (size_t i = 0; i < n_wall_img; ++i)
-        fi_img_path_wall_vec.push_back(RUNTIME_IMAGE_PATH + "/" + WALL_IMAGE_FILE_NAMES[i] + ".png");
-    if (loadImgMat(fi_img_path_wall_vec, wallRawImgMatVec) < 0)
-        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV wall images");
+    //TODO: Move to dynamic loading - this is a static list that is memory inefficient
+    if (loadImgMat(runtimeWallImages, runtimeWallMats) < 0)
+        throw std::runtime_error("[appLoadAssets] Failed to load OpenCV wall images");
 
-    // Get the floor images
-    std::vector<std::string> fi_img_path_floor_vec;                                          // declare the vector to store the paths
-    size_t n_floor_img = sizeof(FLOOR_IMAGE_FILE_NAMES) / sizeof(FLOOR_IMAGE_FILE_NAMES[0]); // calculate the number of images
-    for (size_t i = 0; i < n_floor_img; ++i)
-        fi_img_path_floor_vec.push_back(RUNTIME_IMAGE_PATH + "/" + FLOOR_IMAGE_FILE_NAMES[i] + ".png");
-    if (loadImgMat(fi_img_path_floor_vec, floorRawImgMatVec) < 0)
-        throw std::runtime_error("[appLoadAssets] Failed to load OpentCV floor images");
+    if (loadImgMat(runtimeFloorImages, runtimeFloorMats) < 0)
+        throw std::runtime_error("[appLoadAssets] Failed to load OpenCV floor images");
 
     // ---------- Load Wall and Floor Homography Matrices from XML ----------
     for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) { // for each projector
@@ -556,7 +553,7 @@ void appLoadAssets()
             CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
 
             // Store wall homography matrices
-            if (_CAL_MODE == WALLS_LEFT || _CAL_MODE == WALLS_MIDDLE || _CAL_MODE == WALLS_RIGHT) {
+            if (_CAL_MODE == MODE_WALLS_LEFT || _CAL_MODE == MODE_WALLS_MIDDLE || _CAL_MODE == MODE_WALLS_RIGHT) {
                 // Iterate through the maze grid rows
                 for (int gr_i = 0; gr_i < GLB_MAZE_SIZE; ++gr_i) {
                     for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; ++gc_i) {
@@ -612,12 +609,12 @@ void appInitVariables() {
 
     // ---------- Convert and store rotated floor images ---------
 
-    // Loop through floorRawImgMatVec images and store a new entry for each projector in floorRotatedImgMatVecArr
-    for (size_t i = 0; i < floorRawImgMatVec.size(); ++i) {
-        rotateFloorImage(270, floorRawImgMatVec[i], floorRotatedImgMatVecArr[0]); // Projector 0
-        rotateFloorImage(180, floorRawImgMatVec[i], floorRotatedImgMatVecArr[1]); // Projector 1
-        rotateFloorImage(90, floorRawImgMatVec[i], floorRotatedImgMatVecArr[2]);  // Projector 2
-        rotateFloorImage(0, floorRawImgMatVec[i], floorRotatedImgMatVecArr[3]);   // Projector 3
+    // Loop through runtimeFloorMats images and store a new entry for each projector in floorRotatedImgMatVecArr
+    for (size_t i = 0; i < runtimeFloorMats.size(); ++i) {
+        rotateFloorImage(270, runtimeFloorMats[i], floorRotatedImgMatVecArr[0]); // Projector 0
+        rotateFloorImage(180, runtimeFloorMats[i], floorRotatedImgMatVecArr[1]); // Projector 1
+        rotateFloorImage(90, runtimeFloorMats[i], floorRotatedImgMatVecArr[2]);  // Projector 2
+        rotateFloorImage(0, runtimeFloorMats[i], floorRotatedImgMatVecArr[3]);   // Projector 3
     }
 
     ROS_INFO("[projection_display:appInitVariables] Finished initializing variables successfully");
@@ -667,7 +664,7 @@ void appInitOpenGL() {
 
         // Initialize blank wall image mat
         // wallBlankImgMatArr[proj_ind] = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4); // Initialize cv::Mat
-        // if (updateWallTexture(proj_ind, wallRawImgMatVec, false, wallBlankImgMatArr[proj_ind]))
+        // if (updateWallTexture(proj_ind, false, wallBlankImgMatArr[proj_ind]))
         //     throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(proj_ind) + "]: Failed to update wall texture");
 
         ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
@@ -712,7 +709,7 @@ int appMainLoop() {
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
 
                 // Update wall image texture
-                if (updateWallTexture(projCtx.windowInd, wallRawImgMatVec, true, img_mat))
+                if (updateWallTexture(projCtx.windowInd, true, img_mat))
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
 
                 // Load the new texture

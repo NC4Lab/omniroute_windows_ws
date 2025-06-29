@@ -91,8 +91,7 @@ int SetupGraphicsLibraries() {
 
     // Store the monitor indices for projection
     PROJ_MON_VEC.clear();
-    for (auto &pair : monitor_x_ind)
-        PROJ_MON_VEC.push_back(pair.second);
+    for (auto &pair : monitor_x_ind) PROJ_MON_VEC.push_back(pair.second);
 
     // Take out first monitor as the default projection monitor
     PROJ_MON_VEC.erase(PROJ_MON_VEC.begin());
@@ -108,10 +107,8 @@ int CleanupGraphicsLibraries() {
     // Terminate GLFW, which cleans up all GLFW resources.
     glfwTerminate();
     status = CheckErrorGLFW(__LINE__, __FILE__);
-    if (status < 0)
-        ROS_WARN("[CleanupGraphicsLibraries] Failed to Terminate GLFW Library");
-    else
-        ROS_INFO("[CleanupGraphicsLibraries] Graphics libraries and shared resources cleaned up successfully.");
+    if (status < 0) ROS_WARN("[CleanupGraphicsLibraries] Failed to Terminate GLFW Library");
+    else ROS_INFO("[CleanupGraphicsLibraries] Graphics libraries and shared resources cleaned up successfully.");
 
     // Reset monitor pointers and count
     MONITORS = nullptr;
@@ -1399,29 +1396,15 @@ int promptForProjectorNumber() {
 }
 
 void xmlFrmtFileStringsControlPoints(int proj_ind, std::string &out_path) {
-    // Format the output tag
-    out_path =
-        GLB_CONFIG_DIR_PATH + "/" +
-        "cp" +
-        "_p" + std::to_string(proj_ind) +
-        ".xml";
+    out_path = CONFIG_DIR_PATH + "/cp_p" + std::to_string(proj_ind) + ".xml"; // Format the output tag
 }
 
 void xmlFrmtFileStringsHmat(int proj_ind, std::string &out_path) {
-    // Format the output tag
-    out_path =
-        GLB_CONFIG_DIR_PATH + "/" +
-        "hmats" +
-        "_p" + std::to_string(proj_ind) +
-        ".xml";
+    out_path = CONFIG_DIR_PATH + "/hmats_p" + std::to_string(proj_ind) + ".xml"; // Format the output tag
 }
 
 void xmlFrmtFileStringsVertices(std::string &out_path) {
-    // Format the output tag
-    out_path =
-        GLB_CONFIG_DIR_PATH + "/" +
-        "maze_vertices" +
-        ".xml";
+    out_path = CONFIG_DIR_PATH + "/maze_vertices.xml"; // Format the output tag
 }
 
 int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind, CalibrationMode _CAL_MODE, int cp_ind) {

@@ -122,8 +122,8 @@ std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projector);
 std::vector<cv::Point> winOffsetVec;
 
 // Vectors to store the raw loaded images in cv::Mat format
-std::vector<cv::Mat> wallRawImgMatVec;  // Vector of indevidual wall image texture matrices
-std::vector<cv::Mat> floorRawImgMatVec; // Vector of indevidual floor image texture matrices
+std::vector<cv::Mat> runtimeWallMats;  // Vector of individual wall image texture matrices
+std::vector<cv::Mat> runtimeFloorMats; // Vector of individual floor image texture matrices
 
 /**
  * @brief Array of vectors to store the rotated floor images in cv::Mat format
@@ -277,7 +277,6 @@ int updateFloorTexture(
  * @brief Applies the homography matrices to warp wall image textures and combine them into a new image.
  *
  * @param proj_ind Index of the projector associated with the given image.
- * @param _wallRawImgMatVec Vectors containing the loaded wall images in cv::Mat format
  * @param do_ignore_blank_img Bool to handle blank/black imgages [true: skip; false: include]
  * @param[out] out_img_mat Reference to store the new cv::Mat image.
  *
@@ -285,7 +284,6 @@ int updateFloorTexture(
  */
 int updateWallTexture(
     int proj_ind,
-    const std::vector<cv::Mat> &_wallRawImgMatVec,
     bool do_ignore_blank_img,
     cv::Mat &out_img_mat);
 

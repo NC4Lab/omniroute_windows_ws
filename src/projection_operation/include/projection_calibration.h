@@ -75,7 +75,7 @@ std::array<std::array<CircleRenderer, 4>, 4> CP_CIRCREND_ARR;
 /**
  * @brief  Enum for tracking the current calibration mode
  */
-CalibrationMode CAL_MODE = WALLS_MIDDLE;
+CalibrationMode CAL_MODE = MODE_WALLS_MIDDLE;
 
 // Control point graphics parameters
 const GLfloat cpMakerRadius = 0.0025f;                                 // Control point rendered circle radius
@@ -117,65 +117,12 @@ static struct IndStruct
     const int cp_wall_origin_vertex = 3;                   // Vertex index of the wall image origin (bottom-left)
 } I;
 
-/**
- * @brief Image file sub-directory path
- */
-std::string calib_image_path = GLB_IMAGE_TOP_DIR_PATH + "/calibration";
-
-/**
- * @brief List of test wall image file paths
- */
-std::vector<std::string> fiImgPathWallVec = {
-    calib_image_path + "/0_test_wall.png",
-    calib_image_path + "/1_test_wall.png",
-    calib_image_path + "/2_test_wall.png",
-    calib_image_path + "/3_test_wall.png",
-};
-/**
- * @brief List of test floor image file paths
- */
-std::vector<std::string> fiImgPathFloorVec = {
-    calib_image_path + "/0_test_floor.png",
-    calib_image_path + "/1_test_floor.png",
-};
-/**
- * @brief List of monitor number image file paths
- */
-std::vector<std::string> fiImgPathMonWallVec = {
-    calib_image_path + "/w_m0.png",
-    calib_image_path + "/w_m1.png",
-    calib_image_path + "/w_m2.png",
-    calib_image_path + "/w_m3.png",
-    calib_image_path + "/w_m4.png",
-    calib_image_path + "/w_m5.png",
-};
-/**
- * @brief List of monitor number image file paths
- */
-std::vector<std::string> fiImgPathMonFloorVec = {
-    calib_image_path + "/f_m0.png",
-    calib_image_path + "/f_m1.png",
-    calib_image_path + "/f_m2.png",
-    calib_image_path + "/f_m3.png",
-    calib_image_path + "/f_m4.png",
-    calib_image_path + "/f_m5.png",
-};
-/**
- * @brief List of mode image file paths
- */
-std::vector<std::string> fiImgPathCalVec = {
-    calib_image_path + "/w_c0.png", // left walls
-    calib_image_path + "/w_c1.png", // middle walls
-    calib_image_path + "/w_c2.png", // right walls
-    calib_image_path + "/f_c0.png", // maze floor
-};
-
 // Vectors to store the loaded images in cv::Mat format
-std::vector<cv::Mat> wallImgMatVec;     // Vector of wall test image texture matrices
-std::vector<cv::Mat> floorImgMatVec;    // Vector of floor test image texture matrices
-std::vector<cv::Mat> monWallImgMatVec;  // Vector of monitor mode image texture matrices for wall calibration
-std::vector<cv::Mat> monFloorImgMatVec; // Vector of monitor mode image texture matrices for floor calibration
-std::vector<cv::Mat> calImgMatVec;      // Vector of calibration mode image texture matrices
+std::vector<cv::Mat> calibTestWallMats;     // Vector of wall test image texture matrices
+std::vector<cv::Mat> calibTestFloorMats;    // Vector of floor test image texture matrices
+std::vector<cv::Mat> calibMonWallMats;      // Vector of monitor mode image texture matrices for wall calibration
+std::vector<cv::Mat> calibMonFloorMats;     // Vector of monitor mode image texture matrices for floor calibration
+std::vector<cv::Mat> calibModeMats;         // Vector of calibration mode image texture matrices
 
 /**
  * @brief Scalar to store the mode image displaying the current calibration mode and monitor
@@ -200,10 +147,7 @@ cv::Mat modeImgMat;
  * ## Keybindings:
  * @see README.md
  */
-void callbackKeyBinding(
-    GLFWwindow *window,
-    int key,
-    int scancode,
+void callbackKeyBinding(GLFWwindow *window, int key, int scancode,
     int action,
     int mods);
 
