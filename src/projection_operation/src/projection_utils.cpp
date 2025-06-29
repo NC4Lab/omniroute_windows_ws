@@ -1962,50 +1962,14 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
 }
 
 int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img) {
-    // Check if images are loaded successfully
-    if (out_base_img.empty() || mask_img.empty()) {
-        ROS_ERROR("[mergeImgMat] Error: Could not read one or both images.");
-        return -1;
-    }
-
-    // Check dimensions
-    if (out_base_img.size() != mask_img.size()) {
-        ROS_ERROR("[mergeImgMat] Error: Image dimensions do not match. "
-                  "Base image(%d, %d), Mask image(%d, %d)",
-                  out_base_img.cols, out_base_img.rows,
-                  mask_img.cols, mask_img.rows);
-        return -1;
-    }
-
-    // Loop through each pixel
-    for (int y = 0; y < out_base_img.rows; ++y) {
-        for (int x = 0; x < out_base_img.cols; ++x) {
-            const cv::Vec4b &base_pixel = out_base_img.at<cv::Vec4b>(y, x);
-            const cv::Vec4b &mask_pixel = mask_img.at<cv::Vec4b>(y, x);
-
-            // If the alpha channel of the mask pixel is not fully transparent, overlay it
-            if (mask_pixel[3] != 0)
-                out_base_img.at<cv::Vec4b>(y, x) = mask_pixel;
-        }
-    }
+    cv::Mat mask_img_4ch;
+    cv::extractChannel(mask_img, 3, mask_img_4ch); // Extract the alpha channel from the mask image
+    cv::add(out_base_img, mask_img, out_base_img, mask_img_4ch); // Add the mask image to the base image using the alpha channel as a mask
     return 0;
 }
 
 int warpImgMat(cv::Mat img_mat, cv::Mat _H, cv::Mat &out_img_mat) {
-    // Check that the input image is valid
-    if (img_mat.empty()) {
-        ROS_ERROR("[warpImgMat] Input image is empty");
-        return -1;
-    }
-
-    // Get homography matrix for this wall
-    if (checkHMAT(_H) < 0) {
-        ROS_ERROR("[warpImgMat] Homography matrix error");
-        return -1;
-    }
-
     // Warp Perspective
     cv::warpPerspective(img_mat, out_img_mat, _H, cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
-
     return 0;
 }
