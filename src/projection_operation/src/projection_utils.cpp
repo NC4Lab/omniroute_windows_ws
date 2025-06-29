@@ -8,11 +8,120 @@
 
 #include "projection_utils.h"
 
-// ================================================== CLASS: MazeRenderContext ==================================================
+void CallbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height) {
+    glViewport(0, 0, width, height);
+    CheckErrorGLFW(__LINE__, __FILE__, "CallbackFrameBufferSizeGLFW");
+}
 
-// Initialize MazeRenderContext static members
-GLFWmonitor **MazeRenderContext::_PP_Monitor = nullptr;
-int MazeRenderContext::_NumMonitors = 0;
+void CallbackDebugOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam) {
+    // Get level of severity
+    int s_level = (severity == GL_DEBUG_SEVERITY_NOTIFICATION) ? 1 : (severity == GL_DEBUG_SEVERITY_LOW)  ? 2
+                                                                 : (severity == GL_DEBUG_SEVERITY_MEDIUM) ? 3
+                                                                 : (severity == GL_DEBUG_SEVERITY_HIGH)   ? 4
+                                                                                                          : 0;
+    // Check if the message is below the specified debug level
+    if (s_level < GLB_DEBUG_LEVEL_GL) return;
+    if (s_level == 1)
+        ROS_INFO("[callbackDebugOpenGL] Type[0x%x] ID[%d] Severity[%d:0x%x] Message[%s]", type, id, s_level, severity, message);
+    else
+        ROS_ERROR("[callbackDebugOpenGL] Type[0x%x] ID[%d] Severity[%d:0x%x] Message[%s]", type, id, s_level, severity, message);
+}
+
+void CallbackErrorGLFW(int error, const char *description) {
+    ROS_ERROR("[CallbackErrorGLFW] Error[%d] Description[%s]", error, description);
+}
+
+int CheckErrorOpenGL(int line, const char *file_str, const char *msg_str) {
+    GLenum gl_err;
+    while ((gl_err = glGetError()) != GL_NO_ERROR) {
+        ROS_ERROR("[CheckErrorOpenGL] Message[%s] Error Number[%u] File[%s] Line[%d]",
+                  msg_str ? msg_str : "No additional info", gl_err, file_str, line);
+        return -1;
+    }
+    return 0;
+}
+
+int CheckErrorGLFW(int line, const char *file_str, const char *msg_str) {
+    const char *description;
+    int glfw_err = glfwGetError(&description);
+    if (glfw_err != GLFW_NO_ERROR) {
+        ROS_ERROR("[CheckErrorGLFW] Message[%s] Description[%s] File[%s] Line[%d]",
+                  msg_str ? msg_str : "No additional info", description, file_str, line);
+        return -1;
+    }
+    return 0;
+}
+
+int SetupGraphicsLibraries() {
+    int status = 0;
+
+    // Initialize GLFW and set error callback
+    glfwSetErrorCallback(CallbackErrorGLFW);
+    if (!glfwInit()) {
+        ROS_ERROR("[SetupGraphicsLibraries] GLFW Initialization Failed");
+        return -1;
+    }
+    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Request a debug context for future windows (all windows can share the same context)
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);                 // Specify OpenGL version if needed
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);                 // Specify OpenGL version if needed
+    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // Request core profile
+    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);            // Request debug context
+    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Discover available monitors
+    MONITORS = glfwGetMonitors(&N_MONITORS);
+    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    // Check for errors in monitor discovery
+    if (!MONITORS || N_MONITORS == 0) {
+        ROS_ERROR("[SetupGraphicsLibraries] No Monitors Found");
+        return -1;
+    }
+
+    // Sort the monitors by x
+    int monitor_x, monitor_y, monitor_width, monitor_height;
+    std::vector<std::pair<int, int>> monitor_x_ind;
+    for (int i = 0; i < N_MONITORS; i++) {
+        glfwGetMonitorWorkarea(MONITORS[i], &monitor_x, &monitor_y, &monitor_width, &monitor_height);
+        monitor_x_ind.push_back(std::make_pair(monitor_x, i));
+    }
+    std::sort(monitor_x_ind.begin(), monitor_x_ind.end());
+
+    // Store the monitor indices for projection
+    PROJ_MON_VEC.clear();
+    for (auto &pair : monitor_x_ind)
+        PROJ_MON_VEC.push_back(pair.second);
+
+    // Take out first monitor as the default projection monitor
+    PROJ_MON_VEC.erase(PROJ_MON_VEC.begin());
+
+    ROS_INFO("[SetupGraphicsLibraries] Monitors Found: %d", N_MONITORS);
+
+    return 0;
+}
+
+int CleanupGraphicsLibraries() {
+    int status = 0;
+
+    // Terminate GLFW, which cleans up all GLFW resources.
+    glfwTerminate();
+    status = CheckErrorGLFW(__LINE__, __FILE__);
+    if (status < 0)
+        ROS_WARN("[CleanupGraphicsLibraries] Failed to Terminate GLFW Library");
+    else
+        ROS_INFO("[CleanupGraphicsLibraries] Graphics libraries and shared resources cleaned up successfully.");
+
+    // Reset monitor pointers and count
+    MONITORS = nullptr;
+    N_MONITORS = 0;
+
+    return status;
+}
+
+
+// ================================================== CLASS: MazeRenderContext ==================================================
 
 // Constructor
 MazeRenderContext::MazeRenderContext()
@@ -70,101 +179,6 @@ MazeRenderContext &MazeRenderContext::operator=(MazeRenderContext &&other) noexc
         other._resetMembers();
     }
     return *this;
-}
-
-void MazeRenderContext::CallbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height) {
-    glViewport(0, 0, width, height);
-    CheckErrorGLFW(__LINE__, __FILE__, "CallbackFrameBufferSizeGLFW");
-}
-
-void MazeRenderContext::CallbackDebugOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar *message, const void *userParam) {
-    // Get level of severity
-    int s_level = (severity == GL_DEBUG_SEVERITY_NOTIFICATION) ? 1 : (severity == GL_DEBUG_SEVERITY_LOW)  ? 2
-                                                                 : (severity == GL_DEBUG_SEVERITY_MEDIUM) ? 3
-                                                                 : (severity == GL_DEBUG_SEVERITY_HIGH)   ? 4
-                                                                                                          : 0;
-    // Check if the message is below the specified debug level
-    if (s_level < GLB_DEBUG_LEVEL_GL) return;
-    if (s_level == 1)
-        ROS_INFO("[callbackDebugOpenGL] Type[0x%x] ID[%d] Severity[%d:0x%x] Message[%s]", type, id, s_level, severity, message);
-    else
-        ROS_ERROR("[callbackDebugOpenGL] Type[0x%x] ID[%d] Severity[%d:0x%x] Message[%s]", type, id, s_level, severity, message);
-}
-
-void MazeRenderContext::CallbackErrorGLFW(int error, const char *description) {
-    ROS_ERROR("[CallbackErrorGLFW] Error[%d] Description[%s]", error, description);
-}
-
-int MazeRenderContext::CheckErrorOpenGL(int line, const char *file_str, const char *msg_str) {
-    GLenum gl_err;
-    while ((gl_err = glGetError()) != GL_NO_ERROR) {
-        ROS_ERROR("[CheckErrorOpenGL] Message[%s] Error Number[%u] File[%s] Line[%d]",
-                  msg_str ? msg_str : "No additional info", gl_err, file_str, line);
-        return -1;
-    }
-    return 0;
-}
-
-int MazeRenderContext::CheckErrorGLFW(int line, const char *file_str, const char *msg_str) {
-    const char *description;
-    int glfw_err = glfwGetError(&description);
-    if (glfw_err != GLFW_NO_ERROR) {
-        ROS_ERROR("[CheckErrorGLFW] Message[%s] Description[%s] File[%s] Line[%d]",
-                  msg_str ? msg_str : "No additional info", description, file_str, line);
-        return -1;
-    }
-    return 0;
-}
-
-int MazeRenderContext::SetupGraphicsLibraries(int &out_n_mon, std::vector<int> &out_proj_mon_ind) {
-    int status = 0;
-
-    // Initialize GLFW and set error callback
-    glfwSetErrorCallback(CallbackErrorGLFW);
-    if (!glfwInit()) {
-        ROS_ERROR("[MazeRenderContext::SetupGraphicsLibraries] GLFW Initialization Failed");
-        return -1;
-    }
-    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    // Request a debug context for future windows (all windows can share the same context)
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);                 // Specify OpenGL version if needed
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);                 // Specify OpenGL version if needed
-    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // Request core profile
-    glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);            // Request debug context
-    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    // Discover available monitors
-    _PP_Monitor = glfwGetMonitors(&_NumMonitors);
-    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    // Check for errors in monitor discovery
-    if (!_PP_Monitor || _NumMonitors == 0) {
-        ROS_ERROR("[MazeRenderContext::SetupGraphicsLibraries] No Monitors Found");
-        return -1;
-    }
-
-    // Sort the monitors by x
-    int monitor_x, monitor_y, monitor_width, monitor_height;
-    std::vector<std::pair<int, int>> monitor_x_ind;
-    for (int i = 0; i < _NumMonitors; i++) {
-        glfwGetMonitorWorkarea(_PP_Monitor[i], &monitor_x, &monitor_y, &monitor_width, &monitor_height);
-        monitor_x_ind.push_back(std::make_pair(monitor_x, i));
-    }
-    std::sort(monitor_x_ind.begin(), monitor_x_ind.end());
-
-    // Store the monitor indices for projection
-    out_proj_mon_ind.clear();
-    for (auto &pair : monitor_x_ind)
-        out_proj_mon_ind.push_back(pair.second);
-
-    // Take out first monitor as the default projection monitor
-    out_proj_mon_ind.erase(out_proj_mon_ind.begin());
-
-    ROS_INFO("[MazeRenderContext::SetupGraphicsLibraries] Monitors Found: %d", _NumMonitors);
-    out_n_mon = _NumMonitors;
-
-    return 0;
 }
 
 int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source) {
@@ -335,39 +349,39 @@ int MazeRenderContext::initRenderObjects(float *vertices, size_t vertices_size,
     // Generate and bind an Element Buffer Object (EBO)
     glGenBuffers(1, &_ebo);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+    status = CheckErrorOpenGL(__LINE__, __FILE__);
 
     // Initialize the EBO with index data
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices_size, indices, GL_DYNAMIC_DRAW);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+    status = CheckErrorOpenGL(__LINE__, __FILE__);
 
     // Generate and bind a Vertex Array Object (VAO)
     glGenVertexArrays(1, &_vao);
     glBindVertexArray(_vao);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+    status = CheckErrorOpenGL(__LINE__, __FILE__);
 
     // Generate and bind a Vertex Buffer Object (VBO)
     glGenBuffers(1, &_vbo);
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+    status = CheckErrorOpenGL(__LINE__, __FILE__);
 
     // Initialize the VBO with vertex data
     glBufferData(GL_ARRAY_BUFFER, vertices_size, vertices, GL_STATIC_DRAW);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+    status = CheckErrorOpenGL(__LINE__, __FILE__);
 
     // Specify the format of the vertex data for the position attribute
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)0);
     glEnableVertexAttribArray(0); // Enable the position attribute
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+    status = CheckErrorOpenGL(__LINE__, __FILE__);
 
     // Specify the format of the vertex data for the texture coordinate attribute
     glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void *)(2 * sizeof(float)));
     glEnableVertexAttribArray(1); // Enable the texture coordinate attribute
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+    status = CheckErrorOpenGL(__LINE__, __FILE__);
 
     // Unbind the VAO to prevent accidental modification
     glBindVertexArray(0);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+    status = CheckErrorOpenGL(__LINE__, __FILE__);
 
     // Return GL status
     return status;
@@ -620,24 +634,6 @@ int MazeRenderContext::checkExitRequest() {
     return 0;
 }
 
-int MazeRenderContext::CleanupGraphicsLibraries() {
-    int status = 0;
-
-    // Terminate GLFW, which cleans up all GLFW resources.
-    glfwTerminate();
-    status = CheckErrorGLFW(__LINE__, __FILE__);
-    if (status < 0)
-        ROS_WARN("[MazeRenderContext::CleanupGraphicsLibraries] Failed to Terminate GLFW Library");
-    else
-        ROS_INFO("[MazeRenderContext::CleanupGraphicsLibraries] Graphics libraries and shared resources cleaned up successfully.");
-
-    // Reset monitor pointers and count
-    _PP_Monitor = nullptr;
-    _NumMonitors = 0;
-
-    return status;
-}
-
 int MazeRenderContext::cleanupContext(bool log_errors) {
     int status = 0;
 
@@ -747,13 +743,13 @@ int MazeRenderContext::_checkProgramLinking(GLuint __shaderProgram) {
 
 int MazeRenderContext::_setMonitor(int mon_ind) {
     // Validate the inputs
-    if (mon_ind >= _NumMonitors) {
-        ROS_ERROR("[MazeRenderContext::_setMonitor] Monitor Index[%d] Exceeds Available Monitors[%d]", mon_ind, _NumMonitors);
+    if (mon_ind >= N_MONITORS) {
+        ROS_ERROR("[MazeRenderContext::_setMonitor] Monitor Index[%d] Exceeds Available Monitors[%d]", mon_ind, N_MONITORS);
         return -1;
     }
 
     // Check that the monitor pointer is valid
-    GLFWmonitor *monitor_id = _PP_Monitor[mon_ind];
+    GLFWmonitor *monitor_id = MONITORS[mon_ind];
     if (!monitor_id) {
         ROS_ERROR("[MazeRenderContext::_setMonitor] Invalid monitor pointer for index %d", mon_ind);
         return -1;
@@ -839,17 +835,17 @@ int CircleRenderer::initializeCircleObject(cv::Point2f _circPosition, float _cir
     glGenVertexArrays(1, &_vao);
     // Generate a new Vertex Buffer Object (VBO) and store the ID
     glGenBuffers(1, &_vbo);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Bind the VAO to set it up
     glBindVertexArray(_vao);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Bind the VBO to the GL_ARRAY_BUFFER target
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
     // Copy vertex data into the buffer's memory (GL_DYNAMIC_DRAW hints that the data might change often)
     glBufferData(GL_ARRAY_BUFFER, circVertices.size() * sizeof(float), circVertices.data(), GL_DYNAMIC_DRAW);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Define an array of generic vertex attribute data. Arguments:
     // 0: the index of the vertex attribute to be modified.
@@ -859,15 +855,15 @@ int CircleRenderer::initializeCircleObject(cv::Point2f _circPosition, float _cir
     // 2 * sizeof(float): the byte offset between consecutive vertex attributes.
     // (void*)0: offset of the first component of the first generic vertex attribute in the array.
     glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void *)0);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Enable the vertex attribute array for the VAO at index 0
     glEnableVertexAttribArray(0);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Unbind the VAO to prevent further modification.
     glBindVertexArray(0);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     return status;
 }
@@ -887,7 +883,7 @@ int CircleRenderer::CompileAndLinkCircleShaders(float __AspectRatioUniform) {
         ROS_ERROR("[CircleRenderer::CompileAndLinkCircleShaders] Vertex shader compilation failed.");
         return -1;
     }
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Compile fragment shader
     GLuint temp_fragment_shader = glCreateShader(GL_FRAGMENT_SHADER);
@@ -899,7 +895,7 @@ int CircleRenderer::CompileAndLinkCircleShaders(float __AspectRatioUniform) {
         ROS_ERROR("[CircleRenderer::CompileAndLinkCircleShaders] Fragment shader compilation failed.");
         return -1;
     }
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Link shaders into a program
     _ShaderProgram = glCreateProgram();
@@ -913,20 +909,20 @@ int CircleRenderer::CompileAndLinkCircleShaders(float __AspectRatioUniform) {
         ROS_ERROR("[CircleRenderer::CompileAndLinkCircleShaders] Shader program linking failed.");
         return -1;
     }
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Cleanup: detach and delete shaders
     glDetachShader(_ShaderProgram, temp_vertex_shader);
     glDeleteShader(temp_vertex_shader);
     glDetachShader(_ShaderProgram, temp_fragment_shader);
     glDeleteShader(temp_fragment_shader);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Get uniform locations
     _ColorLocation = glGetUniformLocation(_ShaderProgram, "color");
     _TransformLocation = glGetUniformLocation(_ShaderProgram, "transform");
     _AspectRatioLocation = glGetUniformLocation(_ShaderProgram, "aspectRatio");
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Check for errors in getting uniforms
     if (_ColorLocation == -1 || _TransformLocation == -1 || _AspectRatioLocation == -1) {
@@ -942,11 +938,11 @@ int CircleRenderer::SetupShader() {
 
     // Use the shader program
     glUseProgram(_ShaderProgram);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Set the aspect ratio uniform
     glUniform1f(_AspectRatioLocation, _AspectRatioUniform);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     return status;
 }
@@ -954,7 +950,7 @@ int CircleRenderer::SetupShader() {
 int CircleRenderer::UnsetShader() {
     // Unset the shader program
     glUseProgram(0);
-    return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__);
+    return CheckErrorOpenGL(__LINE__, __FILE__);
 }
 
 void CircleRenderer::setPosition(cv::Point2f _circPosition) {
@@ -983,16 +979,16 @@ int CircleRenderer::updateCircleObject(bool do_coord_warp) {
 
     // Bind the VBO to the GL_ARRAY_BUFFER target
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Update the VBO's data with the new vertices. This call will reallocate the buffer if necessary
     // or simply update the data store's contents if the buffer is large enough.
     glBufferData(GL_ARRAY_BUFFER, circVertices.size() * sizeof(float), circVertices.data(), GL_DYNAMIC_DRAW);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Unbind the buffer
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     return status;
 }
@@ -1002,21 +998,21 @@ int CircleRenderer::draw() {
 
     // Set color
     glUniform4f(_ColorLocation, circColor[0], circColor[1], circColor[2], 1.0f);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Use the updated transformation matrix instead of an identity matrix
     auto transformArray = _cvMatToGlArray(_transformationMatrix);
     glUniformMatrix4fv(_TransformLocation, 1, GL_FALSE, transformArray.data());
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Bind the VAO and draw the circle using GL_TRIANGLE_FAN
     glBindVertexArray(_vao);
     glDrawArrays(GL_TRIANGLE_FAN, 0, static_cast<GLsizei>(circVertices.size() / 2));
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Unbind the VAO to leave a clean state
     glBindVertexArray(0);
-    status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     return status;
 }
@@ -1028,7 +1024,7 @@ int CircleRenderer::CleanupClassResources() {
     if (_ShaderProgram != 0) {
         glDeleteProgram(_ShaderProgram);
         _ShaderProgram = 0;
-        status = MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+        status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
     }
 
     // Reset the static uniform locations to -1 indicating they are no longer valid

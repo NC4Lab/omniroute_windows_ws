@@ -625,7 +625,7 @@ void appInitVariables() {
 
 void appInitOpenGL() {
     // Initialize GLFW and OpenGL settings and get number of monitors on the system
-    if (MazeRenderContext::SetupGraphicsLibraries(N.monitor, PROJ_MON_VEC) < 0)
+    if (SetupGraphicsLibraries() < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector monitor indices: %d, %d, %d, %d", PROJ_MON_VEC[0], PROJ_MON_VEC[1], PROJ_MON_VEC[2], PROJ_MON_VEC[3]);
 
@@ -712,10 +712,7 @@ int appMainLoop() {
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
 
                 // Update wall image texture
-                if (updateWallTexture(projCtx.windowInd,
-                                      wallRawImgMatVec,
-                                      true,
-                                      img_mat))
+                if (updateWallTexture(projCtx.windowInd, wallRawImgMatVec, true, img_mat))
                     throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
 
                 // Load the new texture
@@ -783,7 +780,7 @@ void appCleanup() {
     }
 
     // Terminate graphics
-    if (MazeRenderContext::CleanupGraphicsLibraries() < 0)
+    if (CleanupGraphicsLibraries() < 0)
         ROS_WARN("[appCleanup] Failed to terminate GLFW library");
     else
         ROS_INFO("[projection_display:appCleanup] GLFW library terminated successfully");

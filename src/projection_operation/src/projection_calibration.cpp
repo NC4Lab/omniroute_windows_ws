@@ -36,23 +36,23 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         {
             mon_ind = 0;
         }
-        else if (key == GLFW_KEY_1 && N.monitor > 1)
+        else if (key == GLFW_KEY_1 && N_MONITORS > 1)
         {
             mon_ind = 1;
         }
-        else if (key == GLFW_KEY_2 && N.monitor > 2)
+        else if (key == GLFW_KEY_2 && N_MONITORS > 2)
         {
             mon_ind = 2;
         }
-        else if (key == GLFW_KEY_3 && N.monitor > 3)
+        else if (key == GLFW_KEY_3 && N_MONITORS > 3)
         {
             mon_ind = 3;
         }
-        else if (key == GLFW_KEY_4 && N.monitor > 4)
+        else if (key == GLFW_KEY_4 && N_MONITORS > 4)
         {
             mon_ind = 4;
         }
-        else if (key == GLFW_KEY_5 && N.monitor > 5)
+        else if (key == GLFW_KEY_5 && N_MONITORS > 5)
         {
             mon_ind = 5;
         }
@@ -380,7 +380,7 @@ int initCircleRendererObjects(const std::array<std::array<cv::Point2f, 4>, 4> &_
     }
 
     // Return GL status
-    return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "initCircleRendererObjects");
+    return CheckErrorOpenGL(__LINE__, __FILE__, "initCircleRendererObjects");
 }
 
 int drawControlPoints(CalibrationMode _CAL_MODE,
@@ -417,7 +417,7 @@ int drawControlPoints(CalibrationMode _CAL_MODE,
             out_CP_RENDERERS[cp_i][cp_j].draw();
 
             // Check for errors
-            if (MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__) < 0)
+            if (CheckErrorOpenGL(__LINE__, __FILE__) < 0)
             {
                 ROS_ERROR("[drawControlPoints] Error Thrown for Control Point[%d][%d]", cp_i, cp_j);
                 return -1;
@@ -429,7 +429,7 @@ int drawControlPoints(CalibrationMode _CAL_MODE,
     CircleRenderer::UnsetShader();
 
     // Return GL status
-    return MazeRenderContext::CheckErrorOpenGL(__LINE__, __FILE__, "drawControlPoints");
+    return CheckErrorOpenGL(__LINE__, __FILE__, "drawControlPoints");
 }
 
 int updateWallHomographys(
@@ -622,7 +622,7 @@ void appInitOpenGL()
 {
     // Initialize GLFW and OpenGL settings
     std::vector<int> proj_mon_vec = {1,2,3,4};
-    if (MazeRenderContext::SetupGraphicsLibraries(N.monitor, proj_mon_vec) < 0)
+    if (SetupGraphicsLibraries() < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize graphics");
 
     // Initialze render context
@@ -956,7 +956,7 @@ void appCleanup()
         ROS_INFO("[appCleanup] MazeRenderContext instance cleaned up successfully");
 
     // Terminate graphics
-    if (MazeRenderContext::CleanupGraphicsLibraries() < 0)
+    if (CleanupGraphicsLibraries() < 0)
         ROS_WARN("[appCleanup] Failed to terminate GLFW library");
     else
         ROS_INFO("[appCleanup] GLFW library terminated successfully");

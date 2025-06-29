@@ -21,7 +21,6 @@ const cv::Mat WALL_BLANK_IMG_MAT = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MO
  */
 static struct CountStruct
 {
-    int monitor;                                                   // Number of monitors connected to the system
     const int projector = static_cast<int>(PROJ_MON_VEC.size()); // Number of projectors
     const int wall_image = 6;                                      // Number of wall images
 } N;

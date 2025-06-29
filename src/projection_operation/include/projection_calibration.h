@@ -89,7 +89,6 @@ const int cpRenderSegments = 36;                                       // Number
  */
 static struct CountStruct
 {
-    int monitor;               // Number of monitors connected to the system
     const int wall_image = 4;  // Number of wall test images
     const int floor_image = 2; // Number of floor test images
 } N;
