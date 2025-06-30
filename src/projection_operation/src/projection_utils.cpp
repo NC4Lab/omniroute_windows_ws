@@ -123,7 +123,7 @@ int CleanupGraphicsLibraries() {
 // Constructor
 MazeRenderContext::MazeRenderContext()
     : _shaderProgram(0), _vao(0), _vbo(0), _ebo(0), textureID(0),
-      windowID(nullptr), monitorID(nullptr),
+      window(nullptr), monitor(nullptr),
       _windowWidthPxl(1024), _windowHeightPxl(576),
       windowInd(-1), monitorInd(-1)
 {// Members are initialized to default values, setup is deferred
@@ -136,8 +136,8 @@ MazeRenderContext::~MazeRenderContext() {
 
 MazeRenderContext::MazeRenderContext(MazeRenderContext &&other) noexcept
     : textureID(other.textureID),
-      windowID(other.windowID),
-      monitorID(other.monitorID),
+      window(other.window),
+      monitor(other.monitor),
       windowInd(other.windowInd),
       monitorInd(other.monitorInd),
       isContextInitialized(other.isContextInitialized),
@@ -159,8 +159,8 @@ MazeRenderContext &MazeRenderContext::operator=(MazeRenderContext &&other) noexc
 
         // Transfer ownership of resources from other to this
         textureID = other.textureID;
-        windowID = other.windowID;
-        monitorID = other.monitorID;
+        window = other.window;
+        monitor = other.monitor;
         windowInd = other.windowInd;
         monitorInd = other.monitorInd;
         isContextInitialized = other.isContextInitialized;
@@ -182,8 +182,8 @@ int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const 
     int status = 0;
 
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr) return -1;
-    glfwMakeContextCurrent(windowID);
+    if (window == nullptr) return -1;
+    glfwMakeContextCurrent(window);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Check that context is initialized
@@ -273,18 +273,15 @@ int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width
     int status = 0;
 
     // Check/set the new monitor id
-    if (_setMonitor(mon_ind) < 0) {
-        ROS_ERROR("[MazeRenderContext::initWindowContext] Context Setup Failed: Window[%d] Monitor[%d]", win_ind, mon_ind);
-        return -1;
-    }
+    _setMonitor(mon_ind);
 
     // Store the window size
     _windowWidthPxl = win_width;
     _windowHeightPxl = win_height;
 
     // Create a new GLFW window
-    windowID = glfwCreateWindow(_windowWidthPxl, _windowHeightPxl, "", monitorID, NULL); // Use the monitor in window creation
-    if (!windowID) {
+    window = glfwCreateWindow(_windowWidthPxl, _windowHeightPxl, "", monitor, NULL); // Use the monitor in window creation
+    if (!window) {
         glfwTerminate();
         ROS_ERROR("[MazeRenderContext::initWindowContext] GLFW Failed to Create Window");
         return -1;
@@ -293,7 +290,7 @@ int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width
     windowInd = win_ind; // Store the window index
 
     // Set the GLFW window as the current OpenGL context
-    glfwMakeContextCurrent(windowID);
+    glfwMakeContextCurrent(window);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Very imporant flag!
@@ -301,17 +298,17 @@ int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width
 
     // Load OpenGL extensions using GLAD
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress) || !gladLoadGL()) {
-        glfwDestroyWindow(windowID);
+        glfwDestroyWindow(window);
         ROS_ERROR("[MazeRenderContext::initWindowContext] Failed to load GLAD");
         return -1;
     }
 
     // Set GLFW callbacks for keyboard events using the KeyCallbackFunc function pointer
-    if (key_callback != nullptr) glfwSetKeyCallback(windowID, key_callback);
+    if (key_callback != nullptr) glfwSetKeyCallback(window, key_callback);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Set GLFW callbacks for framebuffer size events
-    glfwSetFramebufferSizeCallback(windowID, CallbackFrameBufferSizeGLFW);
+    glfwSetFramebufferSizeCallback(window, CallbackFrameBufferSizeGLFW);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Enable OpenGL debugging context and associate callback
@@ -339,8 +336,8 @@ int MazeRenderContext::initRenderObjects(float *vertices, size_t vertices_size,
     int status = 0;
 
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr) return -1;
-    glfwMakeContextCurrent(windowID);
+    if (window == nullptr) return -1;
+    glfwMakeContextCurrent(window);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Generate and bind an Element Buffer Object (EBO)
@@ -380,147 +377,100 @@ int MazeRenderContext::initRenderObjects(float *vertices, size_t vertices_size,
     glBindVertexArray(0);
     status = CheckErrorOpenGL(__LINE__, __FILE__);
 
+    // Set the texture parameters for minification and magnification filters to GL_LINEAR.
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    // status = CheckErrorOpenGL(__LINE__, __FILE__);
+
     // Return GL status
     return status;
 }
 
-int MazeRenderContext::initWindowForDrawing() {
-    int status = 0;
-
+void MazeRenderContext::initWindowForDrawing() {
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr) return -1;
-    glfwMakeContextCurrent(windowID);
-    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
+    glfwMakeContextCurrent(window);
 
     // Clear the back buffer for a new frame
     glClear(GL_COLOR_BUFFER_BIT);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    return status;
 }
 
-int MazeRenderContext::loadMatTexture(cv::Mat img_mat) {
-    int status = 0;
-
+void MazeRenderContext::loadMatTexture(cv::Mat img_mat) {
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr) return -1;
-    glfwMakeContextCurrent(windowID);
-    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
+    glfwMakeContextCurrent(window);
 
     // Generate and bind the texture
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Convert image from BGR to RGB
-    cv::Mat image_rgb;
-    cv::cvtColor(img_mat, image_rgb, cv::COLOR_BGR2RGB);
+    cv::cvtColor(img_mat, img_mat, cv::COLOR_BGR2RGB);
 
     // Handle alignment
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Create texture
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image_rgb.cols,
-                 image_rgb.rows, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                 image_rgb.data);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img_mat.cols,
+                 img_mat.rows, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                 img_mat.data);
 
     // Set the texture parameters for minification and magnification filters to GL_LINEAR.
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    return status;
 }
 
-int MazeRenderContext::drawTexture() {
-    int status = 0;
-
+void MazeRenderContext::drawTexture() {
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr) return -1;
-    glfwMakeContextCurrent(windowID);
-    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
+    glfwMakeContextCurrent(window);
 
     // Check the shader program for errors
-    if (checkShaderProgram()) {
-        ROS_ERROR("[MazeRenderContext::drawTexture] Shader program validation failed");
-        return -1;
-    }
+    checkShaderProgram();
 
     // Use the shader program for wall rendering
     glUseProgram(_shaderProgram);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Bind the texture for the image
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, textureID);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Bind the Vertex Array Object(VAO) specific to the current wall
     glBindVertexArray(_vao);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Bind the common Element Buffer Object (EBO)
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, _ebo);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Draw the rectangle (2 triangles) for the current wall
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Unbind the VAO to prevent accidental modification
     glBindVertexArray(0);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Unset the shader program
     glUseProgram(0);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    return status;
 }
 
-int MazeRenderContext::bufferSwapPoll() {
-    // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr) return -1;
-    glfwMakeContextCurrent(windowID);
-
-    // Swap buffers and poll events
-    glfwSwapBuffers(windowID);
+void MazeRenderContext::bufferSwapPoll() {
+    // Swap buffers 
+    glfwSwapBuffers(window);
 
     // Poll events
     glfwPollEvents();
-
-    return CheckErrorGLFW(__LINE__, __FILE__);
 }
 
-int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscreen, cv::Point offset_xy) {
+void MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscreen, cv::Point offset_xy) {
     int win_x, win_y;
     int win_width, win_height;
-
-    // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr) return -1;
-    glfwMakeContextCurrent(windowID);
 
     // Update global
     isFullScreen = do_fullscreen;
 
     // Check/set the new monitor id
-    if (_setMonitor(mon_ind_new) < 0) {
-        ROS_ERROR("[MazeRenderContext::changeWindowDisplayMode] Context Setup Failed: Window[%d] Monitor[%d]", windowInd, mon_ind_new);
-        return -1;
-    }
-
-    if (!monitorID) { // Early return if monitor pointer is invalid
-        ROS_ERROR("[MazeRenderContext::changeWindowDisplayMode] Invalid Monitor Pointer: Monitor[%d]", mon_ind_new);
-        return -1;
-    }
+    _setMonitor(mon_ind_new);
 
     // Get the video mode of the selected monitor
-    const GLFWvidmode *mode = glfwGetVideoMode(monitorID);
+    const GLFWvidmode *mode = glfwGetVideoMode(monitor);
     if (!mode) { // Validate video mode retrieval
         ROS_ERROR("[MazeRenderContext::changeWindowDisplayMode] Failed to Get Video Mode: Monitor[%d]", mon_ind_new);
-        return -1;
+        return;
     }
 
     // Set position to match fullscreeen
@@ -531,16 +481,14 @@ int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscre
 
     // Update window to full-screen or windowed mode based on 'isFullScreen'
     if (isFullScreen)
-        glfwSetWindowMonitor(windowID, monitorID, win_x, win_x, win_width, win_height, mode->refreshRate);
+        glfwSetWindowMonitor(window, monitor, win_x, win_x, win_width, win_height, mode->refreshRate);
     else {
         // Get monitor position
         int monitor_x = 0, monitor_y = 0; // Initialize to default values
-        glfwGetMonitorPos(monitorID, &monitor_x, &monitor_y);
+        glfwGetMonitorPos(monitor, &monitor_x, &monitor_y);
 
-        if (monitor_x < 0 || monitor_y < 0) { // Validate monitor position
+        if (monitor_x < 0 || monitor_y < 0) // Validate monitor position
             ROS_WARN("[MazeRenderContext::changeWindowDisplayMode] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_ind_new, monitor_x, monitor_y);
-            return 0;
-        }
 
         // Calculate window size based on aspect ratio of the inialized window dimensions
         win_width = static_cast<int>(576.0f * (_windowWidthPxl / static_cast<float>(_windowHeightPxl)));
@@ -551,41 +499,31 @@ int MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscre
         win_y = monitor_y + offset_xy.y + 100;
 
         // Set windowed mode position and size and include offset
-        glfwSetWindowMonitor(windowID, NULL, win_x, win_y, win_width, win_height, 0);
+        glfwSetWindowMonitor(window, NULL, win_x, win_y, win_width, win_height, 0);
     }
 
     // Update window title with window and monitor indices
     std::string new_title = "Window[" + std::to_string(windowInd) + "] Monitor[" + std::to_string(mon_ind_new) + "]";
-    glfwSetWindowTitle(windowID, new_title.c_str());
+    glfwSetWindowTitle(window, new_title.c_str());
 
     // Log the new window display mode if verbose logging is enabled
     if (GLB_DO_VERBOSE_DEBUG)
         ROS_INFO("[MazeRenderContext::changeWindowDisplayMode] Modified Window[%d]: Monitor[%d] Position[%d,%d,%d,%d] Format[%s]",
                  windowInd, monitorInd, win_x, win_y, win_width, win_height, isFullScreen ? "fullscreen" : "windowed");
-
-    return CheckErrorGLFW(__LINE__, __FILE__, "changeWindowDisplayMode");
 }
 
-int MazeRenderContext::forceWindowFocus() {
-    // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr) return -1;
-    glfwMakeContextCurrent(windowID);
-
+void MazeRenderContext::forceWindowFocus() {
     // Check if the window is minimized (iconified)
-    if (glfwGetWindowAttrib(windowID, GLFW_ICONIFIED)) {
-        // If the window is minimized and in fullscreen mode, restore the window
-        glfwRestoreWindow(windowID);
-    }
-
-    return CheckErrorGLFW(__LINE__, __FILE__);
+    if (glfwGetWindowAttrib(window, GLFW_ICONIFIED))
+        glfwRestoreWindow(window); // If the window is minimized and in fullscreen mode, restore the window
 }
 
 int MazeRenderContext::flashBackgroundColor(const cv::Scalar &color, int duration) {
     int status = 0;
 
     // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr) return -1;
-    glfwMakeContextCurrent(windowID);
+    if (window == nullptr) return -1;
+    glfwMakeContextCurrent(window);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Set the new clear color using BGR values from cv::Scalar
@@ -593,7 +531,7 @@ int MazeRenderContext::flashBackgroundColor(const cv::Scalar &color, int duratio
 
     // Clear the window with the new color
     glClear(GL_COLOR_BUFFER_BIT);
-    glfwSwapBuffers(windowID);
+    glfwSwapBuffers(window);
 
     // Wait for the duration of the flash
     std::this_thread::sleep_for(std::chrono::milliseconds(duration));
@@ -606,37 +544,12 @@ int MazeRenderContext::flashBackgroundColor(const cv::Scalar &color, int duratio
     return status;
 }
 
-int MazeRenderContext::checkExitRequest() {
-    int status = 0;
-
-    // Set the GLFW window as the current OpenGL context
-    if (windowID == nullptr) return -1;
-    glfwMakeContextCurrent(windowID);
-    status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    // Check if the window should close
-    if (glfwWindowShouldClose(windowID)) {
-        ROS_INFO("[MazeRenderContext::checkExitRequest] Close Requested: Window[%d] Monitor[%d]", windowInd, monitorInd);
-        return 1;
-    }
-
-    // Check if the escape key is pressed
-    if (glfwGetKey(windowID, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-        ROS_INFO("[MazeRenderContext::checkExitRequest] Escape Key Pressed: Window[%d] Monitor[%d]", windowInd, monitorInd);
-        return 2;
-    }
-
-    if (CheckErrorGLFW(__LINE__, __FILE__) < 0) return -1;
-
-    return 0;
-}
-
 int MazeRenderContext::cleanupContext(bool log_errors) {
     int status = 0;
 
     // Set the GLFW window as the current OpenGL context
-    if (windowID != nullptr) {
-        glfwMakeContextCurrent(windowID);
+    if (window != nullptr) {
+        glfwMakeContextCurrent(window);
         status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
     }
 
@@ -687,12 +600,12 @@ int MazeRenderContext::cleanupContext(bool log_errors) {
     }
 
     // Destroy the GLFW window
-    if (windowID != nullptr) {
-        glfwDestroyWindow(windowID);
+    if (window != nullptr) {
+        glfwDestroyWindow(window);
         status = CheckErrorGLFW(__LINE__, __FILE__, "[MazeRenderContext::cleanupContext] glfwDestroyWindow error") < 0 ? -1 : status;
         if (log_errors)
             ROS_INFO("[MazeRenderContext::cleanupContext] %s", status ? "Failed to destroy GLFW window" : "GLFW window destroyed successfully");
-        windowID = nullptr;
+        window = nullptr;
         status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
     }
     return status ? -1 : 0;
@@ -704,8 +617,8 @@ void MazeRenderContext::_resetMembers() {
     _vbo = 0;
     _ebo = 0;
     textureID = 0;
-    windowID = nullptr;
-    monitorID = nullptr;
+    window = nullptr;
+    monitor = nullptr;
     windowInd = -1;
     monitorInd = -1;
     _windowWidthPxl = 800;
@@ -738,34 +651,27 @@ int MazeRenderContext::_checkProgramLinking(GLuint __shaderProgram) {
     return 0;
 }
 
-int MazeRenderContext::_setMonitor(int mon_ind) {
+void MazeRenderContext::_setMonitor(int mon_ind) {
     // Validate the inputs
     if (mon_ind >= N_MONITORS) {
         ROS_ERROR("[MazeRenderContext::_setMonitor] Monitor Index[%d] Exceeds Available Monitors[%d]", mon_ind, N_MONITORS);
-        return -1;
+        return;
     }
 
     // Check that the monitor pointer is valid
-    GLFWmonitor *monitor_id = MONITORS[mon_ind];
-    if (!monitor_id) {
-        ROS_ERROR("[MazeRenderContext::_setMonitor] Invalid monitor pointer for index %d", mon_ind);
-        return -1;
-    }
+    monitor = MONITORS[mon_ind];
 
     // Set the references to the class intance monitor id and index
-    monitorID = monitor_id;
     monitorInd = mon_ind;
-
-    return 0;
 }
 
 int MazeRenderContext::_testCallbacks() {
     // Check that the window pointer is valid
-    if (windowID == nullptr) return -1;
+    if (window == nullptr) return -1;
 
     ROS_INFO("============== START: CALLBACK DEBUGGIN ==============");
     // Trigger buffer
-    glfwSetWindowSize(windowID, 800, 600); // Change the size to something different
+    glfwSetWindowSize(window, 800, 600); // Change the size to something different
 
     // Insert a debug message manually
     glDebugMessageInsert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_ERROR, 0, GL_DEBUG_SEVERITY_HIGH, -1, "Test debug message");

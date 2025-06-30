@@ -253,6 +253,8 @@ enum CalibrationMode {
 };
 const int N_CAL_MODES = 4; // Number of calibration modes
 const std::array<CalibrationMode, N_CAL_MODES> CalibrationModes = {MODE_WALLS_LEFT, MODE_WALLS_MIDDLE, MODE_WALLS_RIGHT, MODE_FLOOR};
+const std::array<CalibrationMode, N_CAL_MODES-1> WallCalibrationModes = {MODE_WALLS_LEFT, MODE_WALLS_MIDDLE, MODE_WALLS_RIGHT};
+
 
 // ================================================== VARIABLES ==================================================
 /**

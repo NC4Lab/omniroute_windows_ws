@@ -191,8 +191,8 @@ class MazeRenderContext
 {
 public:
     GLuint textureID;                   // Texture for the wall
-    GLFWwindow *windowID;               // The window associated with this context
-    GLFWmonitor *monitorID;             // The monitor associated with this context
+    GLFWwindow *window;               // The window associated with this context
+    GLFWmonitor *monitor;             // The monitor associated with this context
     int windowInd;                      // Index for the window associated with this context
     int monitorInd;                     // Index for the monitor associated with this context
     bool isContextInitialized;          // Flag indicating whether there context has been initialized
@@ -340,16 +340,13 @@ public:
      * Makes this the current GL context and clears the color
      * buffers of the back buffer for a new frame.
      *
-     * @return Integer status code [-1:error, 0:successful].
      */
-    int initWindowForDrawing();
+    void initWindowForDrawing();
 
     /**
      * @brief Converts an OpenCV Mat image into an OpenGL texture for this context.
      *
      * @param img_mat The cv::Mat image that needs to be converted.
-     *
-     * @return Integer status code [-1:error, 0:successful].
      *
      * @details
      * This function takes an OpenCV Mat image as input and converts it into an OpenGL texture.
@@ -358,14 +355,13 @@ public:
      *
      * @note This function assumes that the input image is of type CV_8UC3 and has no alpha channel.
      */
-    int loadMatTexture(cv::Mat img_mat);
+    void loadMatTexture(cv::Mat img_mat);
 
     /**
      * @brief Renders the current texture stored in a given class instance.
      *
-     * @return Integer status code [-1:error, 0:successful].
      */
-    int drawTexture();
+    void drawTexture();
 
     /**
      * @brief Swap and poll the buffer.
@@ -373,9 +369,8 @@ public:
      * Basically a wrapper for glfwSwapBuffers() and glfwPollEvents() which
      * swaps the front and back buffers of the window and processes events.
      *
-     * @return Integer status code [-1:error, 0:successful].
      */
-    int bufferSwapPoll();
+    void bufferSwapPoll();
 
     /**
      * @brief Changes the display mode and monitor of the application window.
@@ -387,21 +382,16 @@ public:
      * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
      * @param offset_xy Optional offset to apply to window position (default to (0, 0)).
      *
-     * @return Integer status code [-1:error, 0:successful].
      */
-    int changeWindowDisplayMode(
-        int mon_ind,
-        bool is_fullscreen,
-        cv::Point offset_xy = cv::Point(0.0f, 0.0f));
+    void changeWindowDisplayMode(int mon_ind, bool is_fullscreen, cv::Point offset_xy = cv::Point(0.0f, 0.0f));
 
     /**
      * @brief Sets the GLFW window to take focus.
      *
-     * @note  This is not ideal as  it steals focus from other windows.
+     * @note  This is not ideal as it steals focus from other windows.
      *
-     * @return Integer status code [-1:error, 0:successful].
      */
-    int forceWindowFocus();
+    void forceWindowFocus();
 
     /**
      * @brief Function to set the background color and redraw the window
@@ -416,16 +406,6 @@ public:
     int flashBackgroundColor(
         const cv::Scalar &color,
         int duration);
-
-    /**
-     * @brief Check if the user has requested to exit the program.
-     *
-     * This function checks if the user has pressed the escape key
-     * or if the window has been closed.
-     *
-     * @return Integer status code  [-1:error, 0:no change, 1:window closed, 2:esc key pressed].
-     */
-    int checkExitRequest();
 
     /**
      * @brief Cleans up all OpenGL resources.
@@ -475,9 +455,8 @@ private:
      *
      * @param mon_ind Index of monitor ID to check.
      *
-     * @return Integer status code [-1:error, 0:successful].
      */
-    int _setMonitor(int mon_ind);
+    void _setMonitor(int mon_ind);
 
     /**
      * @brief  Simple test of OpenGL and GLFW callbacks.

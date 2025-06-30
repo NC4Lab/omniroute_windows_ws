@@ -292,9 +292,8 @@ int updateWallTexture(
  *
  * @param[out] out_rmCircRend CircleRenderer objects used to draw the control points.
  *
- * @return Integer status code [-1:error, 0:successful].
  */
-int drawRatMask(CircleRenderer &out_rmCircRend);
+void drawRatMask(CircleRenderer &out_rmCircRend);
 
 bool TIMING_ENABLED = true;
 class TimingData {

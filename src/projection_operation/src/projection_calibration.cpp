@@ -437,10 +437,7 @@ int updateTexture(
     }
 
     // Load the new texture and return status
-    if (out_projCtx.loadMatTexture(img_merge) < 0) {
-        ROS_ERROR("[updateTexture] Failed to load texture");
-        return -1;
-    }
+    out_projCtx.loadMatTexture(img_merge);
 
     return 0;
 }
@@ -491,8 +488,7 @@ void appInitOpenGL() {
         throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
 
     // Update monitor and window mode settings
-    if (projCtx.changeWindowDisplayMode(I.monitor, FLAG_FULLSCREEN_MODE, cv::Point(0.0f, 0.0f)) < 0)
-        throw std::runtime_error("[appInitOpenGL] Failed Initial update of window monitor mode");
+    projCtx.changeWindowDisplayMode(I.monitor, FLAG_FULLSCREEN_MODE, cv::Point(0.0f, 0.0f));
 
     // Create the shader program for wall image rendering
     if (projCtx.compileAndLinkShaders(GLB_QUAD_GL_VERTEX_SOURCE, GLB_QUAD_GL_FRAGMENT_SOURCE) < 0)
@@ -647,8 +643,7 @@ void appMainLoop() {
 
         // Update the window monitor and mode
         if (FLAG_CHANGE_WINDOW_MODE)
-            if (projCtx.changeWindowDisplayMode(I.monitor, FLAG_FULLSCREEN_MODE) < 0)
-                throw std::runtime_error("[appMainLoop] Error returned from: changeWindowDisplayMode");
+            projCtx.changeWindowDisplayMode(I.monitor, FLAG_FULLSCREEN_MODE);
 
         // Initialize/reinitialize control point coordinate dataset
         if (FLAG_INIT_CONTROL_POINTS)
@@ -704,33 +699,21 @@ void appMainLoop() {
         // --------------- Handle Rendering for Next Frame ---------------
 
         // Prepare the frame for rendering (make context clear the back buffer)
-        if (projCtx.initWindowForDrawing() < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: MazeRenderContext::initWindowForDrawing");
+        projCtx.initWindowForDrawing();
 
         // Make sure window always stays on top in fullscreen mode
-        if (projCtx.forceWindowFocus() < 0)
+        projCtx.forceWindowFocus();
             throw std::runtime_error("[appMainLoop] Error returned from: MazeRenderContext::forceWindowFocus");
 
         // Draw/update texture
-        if (projCtx.drawTexture() < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: drawTexture");
+        projCtx.drawTexture();
 
         // Draw/update control point markers
         if (drawControlPoints(CAL_MODE, CP_GRID_ARR, CP_CIRCREND_ARR) < 0)
             throw std::runtime_error("[appMainLoop] Error returned from: drawControlPoints");
 
         // Swap buffers and poll events
-        if (projCtx.bufferSwapPoll() < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: MazeRenderContext::bufferSwapPoll");
-
-        // Check if ROS shutdown
-        if (!ros::ok())
-            throw std::runtime_error("[appMainLoop] Unexpected ROS shutdown");
-
-        // Check for exit
-        status = projCtx.checkExitRequest();
-        if (status < 0)
-            throw std::runtime_error("[appMainLoop] Error returned from: MazeRenderContext::checkExitRequest");
+        projCtx.bufferSwapPoll();
     }
 
     // Check which condition caused the loop to exit
