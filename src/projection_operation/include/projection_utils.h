@@ -57,6 +57,17 @@
 // Configuration parameters
 #include <projection_config.h>
 
+// Reference frame with respect to the projetors
+// Data structure to hold stuff for each projector, row, column, and calibration mode
+// T[Projectors][Rows][Columns][CalibrationModes]
+template <typename T>
+using ProjectionMap = std::array<std::array<std::array<std::array<T, N_CAL_MODES>, N_COLS>, N_ROWS>, N_PROJ>;
+
+// Reference frame with respect to the maze
+// Data structure to hold stuff for each chamber and projection surface
+template <typename T>
+using MazeMap = std::array<std::array<T, N_SURF>, N_CHAMBERS>;
+
 // Global flags for application state management
 bool FLAG_CHANGE_WINDOW_MODE = false; // Flag to indicate if all window modes needs to be updated
 bool FLAG_WINDOWS_SET_TO_PROJ = false; // Flag to indicate if the windows are set to their respective projectors
@@ -947,46 +958,6 @@ std::vector<std::string> RUNTIME_FLOOR_IMAGES = {
 };
 size_t N_RUNTIME_FLOOR_IMAGES = RUNTIME_FLOOR_IMAGES.size(); // Number of available runtime floor images
 
-// /**
-//  * @brief File names for available wall images
-//  * 
-//  * @note This list needs to match that used in:
-//  * omniroute_ubuntu_ws\src\omniroute_operation\src\shared_utils\projection_operation.py
-//  */
-// //leave the first bracket empty. Let the compiler infer the size. This way it's safer — no risk of mismatch between declared size and number of initializers.
-// const char WALL_IMAGE_FILE_NAMES[][30] = {
-//     "w_black",
-//     "w_square",
-//     "w_circle",
-//     "w_triangle",
-//     "w_star",
-//     "w_pentagon",
-//     "w_rm_blue_left",
-//     "w_rm_blue_middle",
-//     "w_rm_blue_right",
-//     "w_rm_green_left",
-//     "w_rm_green_middle",
-//     "w_rm_green_right",
-//     "w_rm_teal_left",
-//     "w_rm_teal_middle",
-//     "w_rm_teal_right"
-// };
-
-// /**
-//  * @brief File names for available floor images
-//  * 
-//  * @note This list needs to match that used in:
-//  * omniroute_ubuntu_ws\src\omniroute_operation\src\shared_utils\projection_operation.py
-//  */
-// const char FLOOR_IMAGE_FILE_NAMES[6][30] = {
-//     "f_black",
-//     "f_green",
-//     "f_pattern_0",
-//     "f_pattern_1",
-//     "f_pattern_2",
-//     "f_white",
-// };
-
 // Number of rows and columns in the maze grid
 extern const int GLB_MAZE_SIZE = 3;
 
@@ -1018,15 +989,6 @@ extern const float GLB_WALL_IMAGE_HEIGHT_NDC = (GLB_MAZE_HEIGHT_NDC / (float(GLB
 
 // Calibration mode strings
 extern const std::vector<std::string> CAL_MODE_STR_VEC = {"cwl", "cwm", "cwr", "cmf"};
-
-// Enum for tracking the current calibration mode
-enum CalibrationMode {
-    MODE_WALLS_LEFT = 0,
-    MODE_WALLS_MIDDLE = 1,
-    MODE_WALLS_RIGHT = 2,
-    MODE_FLOOR = 3,
-};
-const int N_CAL_MODES = 4; // Number of calibration modes
 
 // ================================================== FUNCTIONS ==================================================
 

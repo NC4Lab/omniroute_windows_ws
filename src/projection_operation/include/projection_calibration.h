@@ -85,15 +85,6 @@ const cv::Scalar cpDefaultRGB = cv::Scalar(0.0f, 0.0f, 1.0f);          // Defaul
 const int cpRenderSegments = 36;                                       // Number of segments used to approximate the circle geometry
 
 /**
- * @brief Struct for global counts.
- */
-static struct CountStruct
-{
-    const int wall_image = 4;  // Number of wall test images
-    const int floor_image = 2; // Number of floor test images
-} N;
-
-/**
  * @brief Struct for global indices.
  *
  * @details CP_MAP
