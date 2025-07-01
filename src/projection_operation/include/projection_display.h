@@ -45,35 +45,6 @@ static struct ROSComm
 } RC;
 
 /**
- * @brief Floor image configurations
- */
-int projFloorConfigIndex = 0;
-
-/**
- * @brief A vector of size n_projectors, where each element contains a 3x3x3 data container for storing 3x3 homography matrices
- * for the wall image transformations.
- *
- * @details
- * [4][3][3][3] = [number of projectors][grid rows][grid columns][calibration modes]
- *
- * - Dimension 1: Projectors [0, 1, 2, 3]
- *   - Represents different projectors, where each projector has its own set of homography matrices.
- *
- * - Dimension 2: Calibration Mode [0: left walls, 1: middle walls, 2: right walls]
- *   - Represents different calibration modes corresponding to various parts of the environment (walls and floor).
- *
- * - Dimension 3: Grid Rows [0, 1, 2]
- *   - Index with respect to the grid rows in the chamber.
- *
- * - Dimension 4: Grid Columns [0, 1, 2]
- *   - Index with respect to the grid columns in the chamber.
- *
- * The overall structure stores homography matrices (3x3 matrices) for all wall and floor images across different calibration modes
- * for each projector. Each innermost element is a cv::Mat (3x3 matrix) containing homography data for the given wall or floor image.
- */
-std::array<std::array<std::array<std::array<cv::Mat, GLB_MAZE_SIZE>, GLB_MAZE_SIZE>, N_CAL_MODES - 1>, 4> WALL_HMAT_ARR;
-
-/**
  * @brief Array of homography matrices for warping the rat mask marker from maze cm to ndc space for each projector.
  */
 std::array<cv::Mat, 4> HMAT_CM_TO_NDC_ARR;
@@ -96,19 +67,6 @@ std::vector<cv::Point> winOffsetVec;
 // Vectors to store the raw loaded images in cv::Mat format
 std::vector<cv::Mat> runtimeWallMats;  // Vector of individual wall image texture matrices
 std::vector<cv::Mat> runtimeFloorMats; // Vector of individual floor image texture matrices
-
-/**
- * @brief Array of vectors to store the rotated floor images in cv::Mat format
- * for each projector.
- *
- * @details
- * [4][N] = [number of projectors][number of images]
- *
- * - Dimension 1: Projectors [0, 1, 2, 3]
- *
- * - Dimension 2: Image N
- */
-std::array<std::vector<cv::Mat>, 4> floorRotatedImgMatVecArr;
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -220,29 +178,17 @@ void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int>
 void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec);
 
 /**
- * @brief Rotate the floor image texture for a given projector.
- *
- * @param img_rot_deg Rotation angle in degrees which must be in incriments of 90.
- * @param in_img_mat Input image matrix.
- * @param[out] out_img_mat_vec Reference to a vector of cv::Mat where rotated images will be stored.
- */
-void rotateFloorImage(
-    int img_rot_deg,
-    const cv::Mat &in_img_mat,
-    std::vector<cv::Mat> &out_img_mat_vec);
-
-/**
  * @brief Applies the homography matrices to warp floor image textures.
  *
  * @param proj_ind Index of the projector associated with the given image.
- * @param _floorImgMat Floor image in cv::Mat format
+ * @param do_ignore_blank_img Bool to handle blank/black imgages [true: skip; false: include]
  * @param[out] out_img_mat Reference to store the new cv::Mat image.
  *
  * @return Integer status code [-1:error, 0:successful].
  */
 int updateFloorTexture(
     int proj_ind,
-    cv::Mat &_floorImgMat,
+    bool do_ignore_blank_img,
     cv::Mat &out_img_mat);
 
 /**

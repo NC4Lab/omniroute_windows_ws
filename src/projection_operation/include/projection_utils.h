@@ -1241,7 +1241,7 @@ int xmlSaveHMAT(const cv::Mat &_H,
  */
 int xmlLoadHMAT(
     int proj_ind,
-    CalibrationMode _CAL_MODE,
+    CalibrationMode cal_mode,
     int grid_row,
     int grid_col,
     cv::Mat &out_H);

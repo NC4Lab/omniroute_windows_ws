@@ -43,7 +43,7 @@ std::array<std::array<cv::Point2f, 4>, 4> CP_GRID_ARR;
 std::array<std::array<std::array<cv::Point2f, 4>, GLB_MAZE_SIZE>, GLB_MAZE_SIZE> WALL_GRID_ARR_DEFAULT;
 
 /**
- * @brief 3x3x4 data contianer for storing wall homography matrices for each wall image (3x3)
+ * @brief 3x3x4 data container for storing wall homography matrices for each wall image (3x3)
  * and floor image (1x1) and each calibration mode (4).
  *
  * @details
