@@ -328,7 +328,7 @@ void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int>
     };
 
     // Iterate through each projector
-    for (int proj = 0; proj < N_PROJ; ++proj) {
+    for (auto proj : Projectors) {
         // Calculate adjusted row and column for each projector
         int adjusted_row = row;
         int adjusted_col = col;
@@ -337,12 +337,10 @@ void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int>
         if (proj == 0) {
             adjusted_row = 2 - col;
             adjusted_col = row;
-        }
-        else if (proj == 1) {
+        } else if (proj == 1) {
             adjusted_row = 2 - row;
             adjusted_col = 2 - col;
-        }
-        else if (proj == 2) {
+        } else if (proj == 2) {
             adjusted_row = col;
             adjusted_col = 2 - row;
         }
@@ -436,16 +434,13 @@ int updateFloorTexture(int proj_ind, cv::Mat &floorImgMat, cv::Mat &out_img_mat)
 int updateWallTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_mat) {
     // Iterate through through calibration modes (left walls, middle walls, right walls)
     for (auto cal_mode : WallCalibrationModes) {
-        // Iterate through the maze grid rows
-        for (int gr_i = 0; gr_i < GLB_MAZE_SIZE; gr_i++) { // image bottom to top
-            // Iterate through each column in the maze row
-            for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; gc_i++) { // image left to right
-                // Get the index of the wall image to be used
+        for (auto row: Rows) {
+            for (auto col: Cols) { 
                 //TODO: Update only new indices
-                int img_ind = PROJ_WALL_CONFIG_INDICES_4D[proj_ind][gr_i][gc_i][cal_mode];
+                int img_ind = PROJ_WALL_CONFIG_INDICES_4D[proj_ind][row][col][cal_mode];
                 if (img_ind < 0 || img_ind >= N_RUNTIME_WALL_IMAGES) {
                     ROS_ERROR("[updateWallTexture] Invalid image index: %d for projector %d, grid (%d, %d), calibration mode %d", 
-                        img_ind, proj_ind, gr_i, gc_i, cal_mode);
+                        img_ind, proj_ind, row, col, cal_mode);
                     return -1;
                 }
 
