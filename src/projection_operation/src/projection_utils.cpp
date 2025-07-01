@@ -1858,3 +1858,25 @@ bool fileExists(const std::string &_file_path) {
     std::ifstream file(_file_path);
     return file.good();
 }
+
+void blankMazeMap(MazeMap<int> &maze_map) {
+    // Initialize the maze map with -1 for all chambers and surfaces
+    for (auto &cham: CHAMBERS) {
+        for (auto &surf: SURFACES) {
+            maze_map[cham][surf] = 0; // 0 indicates blank image assigned
+        }
+    }
+}
+
+void blankProjectionMap(ProjectionMap<int> &projection_map) {
+    // Initialize the projection map with -1 for all projectors, rows, columns, and calibration modes
+    for (auto &proj: PROJECTORS) {
+        for (auto &row: ROWS) {
+            for (auto &col: COLS) {
+                for (auto &mode: CAL_MODES) {
+                    projection_map[proj][row][col][mode] = 0; // 0 indicates blank image assigned
+                }
+            }
+        }
+    }
+}

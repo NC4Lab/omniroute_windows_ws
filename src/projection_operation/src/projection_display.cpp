@@ -449,7 +449,7 @@ void rotateFloorImage(int img_rot_deg, const cv::Mat &in_img_mat, std::vector<cv
 int updateFloorTexture(int proj_ind, cv::Mat &floorImgMat, cv::Mat &out_img_mat) {
     // Warp Perspective
     cv::Mat img_warp;
-    cv::warpPerspective(floorImgMat, img_warp, FLOOR_HMAT_ARR[proj_ind], 
+    cv::warpPerspective(floorImgMat, img_warp, HMAT_MAP[proj_ind][0][0][MODE_FLOOR], 
         cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
 
     // Merge the warped image with the final image
@@ -552,9 +552,8 @@ void appLoadAssets()
                 }
             }
         } 
-
         // Load floor homography matrices
-        if (xmlLoadHMAT(proj, MODE_FLOOR, 0, 0, FLOOR_HMAT_ARR[proj]) < 0)
+        if (xmlLoadHMAT(proj, MODE_FLOOR, 0, 0, HMAT_MAP[proj][0][0][MODE_FLOOR]) < 0)
                 throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadHMAT");
     }
 

@@ -50,12 +50,6 @@ static struct ROSComm
 int projFloorConfigIndex = 0;
 
 /**
- * @brief A vector of size n_projectors, where each element contains a 3x3 homography matrices for
- * the floor image transformations.
- */
-std::array<cv::Mat, 4> FLOOR_HMAT_ARR;
-
-/**
  * @brief A vector of size n_projectors, where each element contains a 3x3x3 data container for storing 3x3 homography matrices
  * for the wall image transformations.
  *

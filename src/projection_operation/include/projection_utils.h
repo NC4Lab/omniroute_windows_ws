@@ -141,39 +141,42 @@ const std::map<SurfaceEnum, std::pair<ProjectorEnum, CalibrationMode>> wall_proj
 
 MazeMap<int> MAZE_IMAGE_MAP; // Map to hold image indices for each chamber and surface
 ProjectionMap<int> PROJECTION_IMAGE_MAP; // Map to hold image indices for each projector, row, column, and calibration mode
-MazeMap<int> MAZE_BLANK_MAP; // Map to hold blank image indices for each chamber and surface
-ProjectionMap<int> PROJECTION_BLANK_MAP; // Map to hold blank image indices for each
+MazeMap<int> MAZE_BLANK_MAP; // Map to hold a blank maze map
+ProjectionMap<int> PROJECTION_BLANK_MAP; // Map to hold a blank projection map
 
-void blankMazeMap(MazeMap<int> &maze_map) {
-    // Initialize the maze map with -1 for all chambers and surfaces
-    for (auto &cham: CHAMBERS) {
-        for (auto &surf: SURFACES) {
-            maze_map[cham][surf] = 0; // 0 indicates blank image assigned
-        }
-    }
-}
+ProjectionMap<cv::Mat> HMAT_MAP; // Map to hold homography matrices for each projector, row, column, and calibration mode
 
-void blankProjectionMap(ProjectionMap<int> &projection_map) {
-    // Initialize the projection map with -1 for all projectors, rows, columns, and calibration modes
-    for (auto &proj: PROJECTORS) {
-        for (auto &row: ROWS) {
-            for (auto &col: COLS) {
-                for (auto &mode: CAL_MODES) {
-                    projection_map[proj][row][col][mode] = 0; // 0 indicates blank image assigned
-                }
-            }
-        }
-    }
-}
+/**
+ * @brief Blank out the maze map by setting all indices to 0.
+ *
+ * @param maze_map The maze map to blank out.
+ */
+void blankMazeMap(MazeMap<int> &maze_map);
 
+/**
+ * @brief Blank out the projection map by setting all indices to 0.
+ *
+ * @param projection_map The projection map to blank out.
+ */
+void blankProjectionMap(ProjectionMap<int> &projection_map);
 
-// We need to be able to map between these two reference frames
-// Let's say we want to put images on chamber 7, wall 5 and chamber 5, wall 6 
-// These are shown using ## in the diagram above
-// Example 1: cham = CHAM_7, surf = WALL_5
-// Example 2: cham = CHAM_5, surf = WALL_6
+/**
+ * @brief Convert a maze map to a projection map.
+ *
+ * This function maps the maze map indices to the projection map indices based on the wall_projector_map.
+ * It fills the projection map with the corresponding image indices from the maze map.
+ *
+ * @param maze_map The maze map containing image indices for each chamber and surface.
+ * @param projection_map The projection map to be filled with image indices for each projector, row, column, and calibration mode.
+ */
 template <typename T>
 void mazeToProjectionMap(const MazeMap<T> &maze_map, ProjectionMap<T> &projection_map) {
+    // We need to be able to map between the maze map and the projection map
+    // The maze map is a 2D array of chambers and surfaces, while the projection map is a 4D array of projectors, rows, columns, and modes.
+    // Let's say we want to put images on chamber 7, wall 5 and chamber 5, wall 6 
+    // These are shown using ## in the diagram above
+    // Example 1: cham = CHAM_7, surf = WALL_5
+    // Example 2: cham = CHAM_5, surf = WALL_6
     int row, col;
     ProjectorEnum proj;
     CalibrationMode mode;
