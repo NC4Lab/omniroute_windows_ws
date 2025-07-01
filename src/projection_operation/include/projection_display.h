@@ -42,20 +42,7 @@ static struct ROSComm
     int proj_img_data[10][8];                     // Variable to store the last image configuration received (10x8)
     ros::Subscriber track_pos_sub;                // ROS subscriber for tracking rat position
     geometry_msgs::PoseStamped track_pos_data;    // Variable to store the last tracking rat pose received
-
-    // Constructor to initialize proj_img_data to -1
-    ROSComm()
-    {
-        for (int i = 0; i < 10; ++i)
-            for (int j = 0; j < 8; ++j)
-                proj_img_data[i][j] = -1;
-    }
 } RC;
-
-/**
- * @brief A 4x3x3x3 array contianer for storring the wall image configuration indeces
- */
-ProjWallConfigIndices4D PROJ_WALL_CONFIG_INDICES_4D;
 
 /**
  * @brief Floor image configurations

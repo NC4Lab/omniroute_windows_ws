@@ -686,13 +686,13 @@ void appCleanup() {
     ROS_INFO("SHUTTING DOWN");
 
     // Clean up OpenGL wall image objects for each window
-    for (auto proj_ind : PROJECTORS) {
+    for (auto proj : PROJECTORS) {
         if (PROJ_CTX_VEC[proj].cleanupContext(true) != 0)
             ROS_WARN("[appCleanup] Error during cleanup of MazeRenderContext: Projector[%d] Window[%d] Monitor[%d]",
-                     proj_ind, PROJ_CTX_VEC[proj].windowInd, PROJ_CTX_VEC[proj].monitorInd);
+                     proj, PROJ_CTX_VEC[proj].windowInd, PROJ_CTX_VEC[proj].monitorInd);
         else
             ROS_INFO("[projection_display:appCleanup] MazeRenderContext instance cleaned up successfully: Projector[%d] Window[%d] Monitor[%d]",
-                     proj_ind, PROJ_CTX_VEC[proj].windowInd, PROJ_CTX_VEC[proj].monitorInd);
+                     proj, PROJ_CTX_VEC[proj].windowInd, PROJ_CTX_VEC[proj].monitorInd);
     }
 
     // Terminate graphics

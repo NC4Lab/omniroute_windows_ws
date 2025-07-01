@@ -68,6 +68,137 @@ using ProjectionMap = std::array<std::array<std::array<std::array<T, N_CAL_MODES
 template <typename T>
 using MazeMap = std::array<std::array<T, N_SURF>, N_CHAMBERS>;
 
+/**
+ * @brief A 4x3x3x3 array contianer for storring the wall image configuration indeces
+ */
+ProjWallConfigIndices4D PROJ_WALL_CONFIG_INDICES_4D;
+
+ /*                                         ______
+ *                                         |  p1  |
+ *                                         |______|
+ *                                           /__\
+ *
+ *                       ________          ________          ________
+ *                     /    w2    \      /          \      /          \
+ *                   / w1        w3 \  /              \  /              \
+ *                  |                ||                ||                |
+ *                  |w0    [c0]    w4||      [c1]      ||      [c2]      |
+ *                  |                ||                ||                |
+ *                   \  w7       w5 /  \              /  \              /
+ *                     \ ___w6___ /      \ ________ /      \ ________ /
+ *                     /          \      /          \      /          \
+ *   ____            /              \  /              \  /              \            ____
+ *  |    |/|        |                ||                ||                |        |\|    |
+ *  | p0 | |        |      [c3]      ||      [c4]      ||      [c5]      |        | | p2 |
+ *  |____|\|        |                ||                ||                |        |/|____|
+ *                   \              /  \              /  \              /
+ *                     \ ________ /      \ ________ /      \ ___##___ /
+ *                     /          \      /          \      /          \
+ *                   /              \  /              \  /              \
+ *                  |                |                 ||                |
+ *                  |      [c6]      ||      [c7]      ||      [c8]      |
+ *                  |                ||                ||                |
+ *                   \              /  \              #  \              /
+ *                     \ ________ /      \ ________ #      \ ________ /
+ *
+ *           N                                __
+ *           |                              _\__/_
+ *      W ---+--- E                        |  p3  |
+ *           |                             |______|
+ *           S
+ */
+
+// Decide which walls are displayed on which projector
+// For each wall, we need to know which projector to use and which calibration mode to use
+const std::map<SurfaceEnum, std::pair<ProjectorEnum, CalibrationMode>> wall_projector_map = {
+    {WALL_0, {PROJ_2, MODE_WALLS_MIDDLE}}, // West wall on Projector 2
+    {WALL_1, {PROJ_2, MODE_WALLS_RIGHT}},  // Northwest wall on Projector 2
+    {WALL_2, {PROJ_3, MODE_WALLS_MIDDLE}}, // North wall on Projector 3
+    {WALL_3, {PROJ_3, MODE_WALLS_RIGHT}},  // Northeast wall on Projector 1
+    {WALL_4, {PROJ_0, MODE_WALLS_MIDDLE}}, // East wall on Projector 0
+    {WALL_5, {PROJ_0, MODE_WALLS_RIGHT}},  // Southeast wall on Projector 0
+    {WALL_6, {PROJ_1, MODE_WALLS_MIDDLE}}, // South wall on Projector 1
+    {WALL_7, {PROJ_1, MODE_WALLS_RIGHT}},  // Southwest wall on Projector 1
+};
+
+MazeMap<int> MAZE_IMAGE_MAP; // Map to hold image indices for each chamber and surface
+ProjectionMap<int> PROJECTION_IMAGE_MAP; // Map to hold image indices for each projector, row, column, and calibration mode
+MazeMap<int> MAZE_BLANK_MAP; // Map to hold blank image indices for each chamber and surface
+ProjectionMap<int> PROJECTION_BLANK_MAP; // Map to hold blank image indices for each
+
+void blankMazeMap(MazeMap<int> &maze_map) {
+    // Initialize the maze map with -1 for all chambers and surfaces
+    for (auto &cham: CHAMBERS) {
+        for (auto &surf: SURFACES) {
+            maze_map[cham][surf] = 0; // 0 indicates blank image assigned
+        }
+    }
+}
+
+void blankProjectionMap(ProjectionMap<int> &projection_map) {
+    // Initialize the projection map with -1 for all projectors, rows, columns, and calibration modes
+    for (auto &proj: PROJECTORS) {
+        for (auto &row: ROWS) {
+            for (auto &col: COLS) {
+                for (auto &mode: CAL_MODES) {
+                    projection_map[proj][row][col][mode] = 0; // 0 indicates blank image assigned
+                }
+            }
+        }
+    }
+}
+
+
+// We need to be able to map between these two reference frames
+// Let's say we want to put images on chamber 7, wall 5 and chamber 5, wall 6 
+// These are shown using ## in the diagram above
+// Example 1: cham = CHAM_7, surf = WALL_5
+// Example 2: cham = CHAM_5, surf = WALL_6
+template <typename T>
+void mazeToProjectionMap(const MazeMap<T> &maze_map, ProjectionMap<T> &projection_map) {
+    int row, col;
+    ProjectorEnum proj;
+    CalibrationMode mode;
+    for (auto &cham: Chambers) {
+        for (auto &surf: Surfaces) {
+            if (surf == FLOOR) {
+                for (auto &proj: Projectors) // Put floor images on all projectors
+                    projection_map[proj][row][col][MODE_FLOOR] = maze_map[cham][surf];
+            } else {
+                // The wall determines which projector and mode to use
+                auto loc = wall_projector_map.at(surf);
+                proj = loc.first; // Get the projector for the wall
+                mode = loc.second; // Get the calibration mode for the wall
+                // Example 1: surf = WALL_5 ==> proj = PROJ_0, mode = MODE_WALLS_RIGHT
+                // Example 2: surf = WALL_6 ==> proj = PROJ_1, mode = MODE_WALLS_MIDDLE
+
+                // The chamber determines the row and column indices
+                row = static_cast<int>(cham) / N_ROWS; // Integer division to get the row index
+                col = static_cast<int>(cham) % N_COLS; // Modulus to get the column index
+                // Example 1: cham = CHAM_7 ==> row = 2, col = 1
+                // Example 2: cham = CHAM_5 ==> row = 1, col = 2
+                // But this is only correct for Projector 3
+                // Need to correct the row and column indices based on the projector orientation
+
+                if (proj == PROJ_0) {
+                    row = N_COLS-1 - col;
+                    col = row; 
+                    // Example 1: row = 1, col = 2
+                } else if (proj == PROJ_1) {
+                    row = N_COLS-1 - row;
+                    col = N_ROWS-1 - col;
+                    // Example 2: row = 1, col = 0
+                } else if (proj == PROJ_2) {
+                    row = col;
+                    col = N_ROWS-1 - row;
+                }
+
+                projection_map[proj][row][col][mode] = maze_map[cham][surf];
+            }
+        }
+    }
+}
+
 // Global flags for application state management
 bool FLAG_CHANGE_WINDOW_MODE = false; // Flag to indicate if all window modes needs to be updated
 bool FLAG_WINDOWS_SET_TO_PROJ = false; // Flag to indicate if the windows are set to their respective projectors
