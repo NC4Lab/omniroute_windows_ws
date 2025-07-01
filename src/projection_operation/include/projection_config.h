@@ -203,7 +203,7 @@ enum ChamberEnum {
     CHAM_8 
 };
 const int N_CHAMBERS = 9; // Number of chambers in the maze
-const std::array<ChamberEnum, N_CHAMBERS> Chambers = {CHAM_0, CHAM_1, CHAM_2, CHAM_3, CHAM_4, CHAM_5, CHAM_6, CHAM_7, CHAM_8};
+const std::array<ChamberEnum, N_CHAMBERS> CHAMBERS = {CHAM_0, CHAM_1, CHAM_2, CHAM_3, CHAM_4, CHAM_5, CHAM_6, CHAM_7, CHAM_8};
 
 enum SurfaceEnum {
     WALL_0 = 0,
@@ -217,7 +217,7 @@ enum SurfaceEnum {
     FLOOR,
 };
 const int N_SURF = 9; // Number of surfaces in each chamber (8 walls + 1 floor)
-const std::array<SurfaceEnum, N_SURF> Surfaces = {WALL_0, WALL_1, WALL_2, WALL_3, WALL_4, WALL_5, WALL_6, WALL_7, FLOOR};
+const std::array<SurfaceEnum, N_SURF> SURFACES = {WALL_0, WALL_1, WALL_2, WALL_3, WALL_4, WALL_5, WALL_6, WALL_7, FLOOR};
 
 enum ProjectorEnum {
     PROJ_0 = 0, // Projector 0 (East)
@@ -226,7 +226,7 @@ enum ProjectorEnum {
     PROJ_3      // Projector 3 (South)
 };
 const int N_PROJ = 4; // Number of projectors
-const std::array<ProjectorEnum, N_PROJ> Projectors = {PROJ_0, PROJ_1, PROJ_2, PROJ_3};
+const std::array<ProjectorEnum, N_PROJ> PROJECTORS = {PROJ_0, PROJ_1, PROJ_2, PROJ_3};
 
 enum RowEnum {
     ROW_0 = 0, // Top row
@@ -234,7 +234,7 @@ enum RowEnum {
     ROW_2      // Bottom row
 };
 const int N_ROWS = 3; // Number of rows in the chamber grid
-const std::array<RowEnum, N_ROWS> Rows = {ROW_0, ROW_1, ROW_2};
+const std::array<RowEnum, N_ROWS> ROWS = {ROW_0, ROW_1, ROW_2};
 
 enum ColumnEnum {
     COL_0 = 0, // Left column
@@ -242,7 +242,7 @@ enum ColumnEnum {
     COL_2      // Right column
 };
 const int N_COLS = 3; // Number of columns in the chamber grid
-const std::array<ColumnEnum, N_COLS> Columns = {COL_0, COL_1, COL_2};
+const std::array<ColumnEnum, N_COLS> COLS = {COL_0, COL_1, COL_2};
 
 // Enum for tracking the current calibration mode
 enum CalibrationMode {
@@ -252,8 +252,8 @@ enum CalibrationMode {
     MODE_FLOOR
 };
 const int N_CAL_MODES = 4; // Number of calibration modes
-const std::array<CalibrationMode, N_CAL_MODES> CalibrationModes = {MODE_WALLS_LEFT, MODE_WALLS_MIDDLE, MODE_WALLS_RIGHT, MODE_FLOOR};
-const std::array<CalibrationMode, N_CAL_MODES-1> WallCalibrationModes = {MODE_WALLS_LEFT, MODE_WALLS_MIDDLE, MODE_WALLS_RIGHT};
+const std::array<CalibrationMode, N_CAL_MODES> CAL_MODES = {MODE_WALLS_LEFT, MODE_WALLS_MIDDLE, MODE_WALLS_RIGHT, MODE_FLOOR};
+const std::array<CalibrationMode, N_CAL_MODES-1> WALL_CAL_MODES = {MODE_WALLS_LEFT, MODE_WALLS_MIDDLE, MODE_WALLS_RIGHT};
 
 
 // ================================================== VARIABLES ==================================================

@@ -59,7 +59,7 @@
 
 // Reference frame with respect to the projetors
 // Data structure to hold stuff for each projector, row, column, and calibration mode
-// T[Projectors][Rows][Columns][CalibrationModes]
+// T[Projectors][Rows][Columns][CAL_MODES]
 template <typename T>
 using ProjectionMap = std::array<std::array<std::array<std::array<T, N_CAL_MODES>, N_COLS>, N_ROWS>, N_PROJ>;
 

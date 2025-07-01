@@ -1287,7 +1287,7 @@ int promptForProjectorNumber() {
             proj_ind = std::stoi(input);
 
             // Check if the input is between 0 and 3
-            if (proj_ind < 4) {
+            if (proj_ind < N_PROJ) {
                 std::cout << "[promptForProjectorNumber] Projector number/index set to " + std::to_string(proj_ind) + "." << std::endl;
                 return std::stoi(input);
             }

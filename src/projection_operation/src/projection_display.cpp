@@ -328,7 +328,7 @@ void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int>
     };
 
     // Iterate through each projector
-    for (auto proj : Projectors) {
+    for (auto proj : PROJECTORS) {
         // Calculate adjusted row and column for each projector
         int adjusted_row = row;
         int adjusted_col = col;
@@ -372,24 +372,12 @@ void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec)
         cv::Point2f(GLB_MAZE_WIDTH_HEIGHT_CM, GLB_MAZE_WIDTH_HEIGHT_CM),
         cv::Point2f(GLB_MAZE_WIDTH_HEIGHT_CM, 0.0),
         cv::Point2f(0.0, 0.0)};
-
+    
     // Apply circular shift based on the given projector
-    switch (proj_ind) {
-    case 0: // Circular shift left by 1
-        maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 1);
-        break;
-    case 1: // Circular shift left by 2
-        maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 2);
-        break;
-    case 2: // Circular shift right by 1
-        maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, -1);
-        break;
-    case 3: // No shift
-        maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 0);
-        break;
-    default:
-        break;
-    }
+    if (proj_ind == 0) maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 1);
+    else if (proj_ind == 1) maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 2);
+    else if (proj_ind == 2) maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, -1);
+    else if (proj_ind == 3) maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 0);
 }
 
 void rotateFloorImage(int img_rot_deg, const cv::Mat &in_img_mat, std::vector<cv::Mat> &out_img_mat_vec) {
@@ -398,23 +386,10 @@ void rotateFloorImage(int img_rot_deg, const cv::Mat &in_img_mat, std::vector<cv
 
     cv::Mat rotated_img;
 
-    // Rotate based on the normalized rotation angle
-    switch (normalized_rot_deg) {
-    case 90:
-        cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_CLOCKWISE);
-        break;
-    case 180:
-        cv::rotate(in_img_mat, rotated_img, cv::ROTATE_180);
-        break;
-    case 270:
-        cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_COUNTERCLOCKWISE);
-        break;
-    case 0:
-    default:
-        // No rotation needed, just copy the input image
-        rotated_img = in_img_mat.clone();
-        break;
-    }
+    if (normalized_rot_deg == 90) cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_CLOCKWISE);
+    else if (normalized_rot_deg == 180) cv::rotate(in_img_mat, rotated_img, cv::ROTATE_180);
+    else if (normalized_rot_deg == 270) cv::rotate(in_img_mat, rotated_img, cv::ROTATE_90_COUNTERCLOCKWISE);
+    else if (normalized_rot_deg == 0) rotated_img = in_img_mat.clone();
 
     // Store the rotated image in the output vector
     out_img_mat_vec.push_back(rotated_img);
@@ -433,23 +408,18 @@ int updateFloorTexture(int proj_ind, cv::Mat &floorImgMat, cv::Mat &out_img_mat)
 
 int updateWallTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_mat) {
     // Iterate through through calibration modes (left walls, middle walls, right walls)
-    for (auto cal_mode : WallCalibrationModes) {
-        for (auto row: Rows) {
-            for (auto col: Cols) { 
+    for (auto cal_mode : WALL_CAL_MODES) {
+        for (auto row : ROWS) {
+            for (auto col : COLS) {
                 //TODO: Update only new indices
                 int img_ind = PROJ_WALL_CONFIG_INDICES_4D[proj_ind][row][col][cal_mode];
-                if (img_ind < 0 || img_ind >= N_RUNTIME_WALL_IMAGES) {
-                    ROS_ERROR("[updateWallTexture] Invalid image index: %d for projector %d, grid (%d, %d), calibration mode %d", 
-                        img_ind, proj_ind, row, col, cal_mode);
-                    return -1;
-                }
 
                 // Skip empty images
                 if (img_ind == 0 && do_ignore_blank_img) continue;
 
                 // Warp Perspective
                 cv::Mat img_warp;
-                cv::warpPerspective(runtimeWallMats[img_ind], img_warp, WALL_HMAT_ARR[proj_ind][cal_mode][gr_i][gc_i],
+                cv::warpPerspective(runtimeWallMats[img_ind], img_warp, WALL_HMAT_ARR[proj_ind][cal_mode][row][col],
                     cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
 
                 // Merge the warped image with the final image
@@ -516,49 +486,41 @@ void appLoadAssets()
         throw std::runtime_error("[appLoadAssets] Failed to load OpenCV floor images");
 
     // ---------- Load Wall and Floor Homography Matrices from XML ----------
-    for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) { // for each projector
-        for (int cal_i = 0; cal_i < N_CAL_MODES; ++cal_i) {
-            CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
-
-            // Store wall homography matrices
-            if (_CAL_MODE == MODE_WALLS_LEFT || _CAL_MODE == MODE_WALLS_MIDDLE || _CAL_MODE == MODE_WALLS_RIGHT) {
-                // Iterate through the maze grid rows
-                for (int gr_i = 0; gr_i < GLB_MAZE_SIZE; ++gr_i) {
-                    for (int gc_i = 0; gc_i < GLB_MAZE_SIZE; ++gc_i) {
-                        // Load the homography matrix from XML
-                        if (xmlLoadHMAT(proj_ind, _CAL_MODE, gr_i, gc_i, WALL_HMAT_ARR[proj_ind][_CAL_MODE][gr_i][gc_i]) < 0)
-                            throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadHMAT");
-                    }
+    for (auto proj : PROJECTORS) { // for each projector
+        for (auto cal_mode : WALL_CAL_MODES) { 
+            // Load wall homography matrices
+            for (auto row: ROWS) {
+                for (auto col: COLS) {
+                    if (xmlLoadHMAT(proj, cal_mode, row, col, WALL_HMAT_ARR[proj][cal_mode][row][col]) < 0)
+                        throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadHMAT");
                 }
             }
-            // Store floor homography matrices
-            else {
-                // Load the homography matrix from XML
-                if (xmlLoadHMAT(proj_ind, _CAL_MODE, 0, 0, FLOOR_HMAT_ARR[proj_ind]) < 0)
-                    throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadHMAT");
-            }
-        }
+        } 
+
+        // Load floor homography matrices
+        if (xmlLoadHMAT(proj, MODE_FLOOR, 0, 0, FLOOR_HMAT_ARR[proj]) < 0)
+                throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadHMAT");
     }
 
-    // ---------- Load Maze Boundary Vertices ----------
-    for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) { // for each projector
+    // ---------- Load Maze Boundary Vertices ---------
+    for (auto proj : PROJECTORS) { // for each projector
         std::vector<cv::Point2f> maze_vert_ndc_vec(4);
         std::vector<cv::Point2f> maze_vert_cm_vec(4);
 
         // Load the maze vertices from XML
-        if (xmlLoadVertices(proj_ind, maze_vert_ndc_vec) < 0)
+        if (xmlLoadVertices(proj, maze_vert_ndc_vec) < 0)
             throw std::runtime_error("[appLoadAssets] Error returned from: xmlLoadVertices");
 
         // Compute the rotated maze vertices in centimeter units
-        computeMazeVertCm(proj_ind, maze_vert_cm_vec);
+        computeMazeVertCm(proj, maze_vert_cm_vec);
 
         // Compute the homography matrix for warping the rat mask marker from maze cm to ndc space for each projector
         cv::Mat H;
         if (computeHomographyMatrix(maze_vert_cm_vec, maze_vert_ndc_vec, H))
-            throw std::runtime_error("[appLoadAssets] Projector[" + std::to_string(proj_ind) + "]: Invalid homography matrix for rat mask image");
+            throw std::runtime_error("[appLoadAssets] Projector[" + std::to_string(proj) + "]: Invalid homography matrix for rat mask image");
 
         // Store the homography matrix
-        HMAT_CM_TO_NDC_ARR[proj_ind] = H;
+        HMAT_CM_TO_NDC_ARR[proj] = H;
     }
 
     ROS_INFO("[projection_display:appLoadAssets] Finished loading variables successfully");
@@ -568,10 +530,10 @@ void appInitVariables() {
     // ---------- Intialize the Window Offset Vector ---------
     winOffsetVec.clear();              // Clear any existing elements
     winOffsetVec.reserve(N_PROJ); // Reserve memory for efficiency
-    for (int mon_ind = 0; mon_ind < N_PROJ; ++mon_ind) {
+    for (auto proj : PROJECTORS) {
         // Calculate x and y offsets based on the monitor resolution
-        int x_offset = mon_ind * (GLB_MONITOR_WIDTH_PXL / N_PROJ) * 0.9f;
-        int y_offset = mon_ind * (GLB_MONITOR_HEIGHT_PXL / N_PROJ) * 0.9f;
+        int x_offset = proj * (GLB_MONITOR_WIDTH_PXL / N_PROJ) * 0.9f;
+        int y_offset = proj * (GLB_MONITOR_HEIGHT_PXL / N_PROJ) * 0.9f;
         winOffsetVec.emplace_back(x_offset, y_offset);
     }
 
@@ -595,41 +557,41 @@ void appInitOpenGL() {
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector monitor indices: %d, %d, %d, %d", PROJ_MON_VEC[0], PROJ_MON_VEC[1], PROJ_MON_VEC[2], PROJ_MON_VEC[3]);
 
     // Initialize OpenGL for each projector
-    for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind)
+    for (auto proj : PROJECTORS)
     {
         // Start on the default screen
         int mon_ind = STARTING_MONITOR;
 
         // Initialze render context for each projector
-        if (PROJ_CTX_VEC[proj_ind].initWindowContext(proj_ind, mon_ind, GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL, callbackKeyBinding) < 0)
+        if (PROJ_CTX_VEC[proj].initWindowContext(proj, mon_ind, GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL, callbackKeyBinding) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
 
         // Initialize OpenGL wall image objects
-        if (PROJ_CTX_VEC[proj_ind].initRenderObjects(GLB_QUAD_GL_VERTICES, sizeof(GLB_QUAD_GL_VERTICES), GLB_QUAD_GL_INDICES, sizeof(GLB_QUAD_GL_INDICES)) < 0)
+        if (PROJ_CTX_VEC[proj].initRenderObjects(GLB_QUAD_GL_VERTICES, sizeof(GLB_QUAD_GL_VERTICES), GLB_QUAD_GL_INDICES, sizeof(GLB_QUAD_GL_INDICES)) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize opengl wall image objects");
 
         // Create the shader program for wall image rendering
-        if (PROJ_CTX_VEC[proj_ind].compileAndLinkShaders(GLB_QUAD_GL_VERTEX_SOURCE, GLB_QUAD_GL_FRAGMENT_SOURCE) < 0)
-            throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(PROJ_CTX_VEC[proj_ind].windowInd) + "]: Failed to compile and link wall shader");
+        if (PROJ_CTX_VEC[proj].compileAndLinkShaders(GLB_QUAD_GL_VERTEX_SOURCE, GLB_QUAD_GL_FRAGMENT_SOURCE) < 0)
+            throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(PROJ_CTX_VEC[proj].windowInd) + "]: Failed to compile and link wall shader");
 
         // Create the shader program for CircleRenderer class rat mask rendering
         if (CircleRenderer::CompileAndLinkCircleShaders(1.0) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
 
         // Set all projectors to the starting monitor and include xy offset
-        PROJ_CTX_VEC[proj_ind].changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, winOffsetVec[PROJ_CTX_VEC[proj_ind].windowInd]);
+        PROJ_CTX_VEC[proj].changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, winOffsetVec[PROJ_CTX_VEC[proj].windowInd]);
 
         // Initialize the CircleRenderer class object for rat masking
-        if (RM_CIRCREND_ARR[proj_ind].initializeCircleObject(
+        if (RM_CIRCREND_ARR[proj].initializeCircleObject(
                 RT.marker_position,          // position
                 RT.marker_radius,            // radius
                 RT.marker_rgb,               // color
                 RT.marker_segments,          // segments
-                HMAT_CM_TO_NDC_ARR[proj_ind] // homography matrix
+                HMAT_CM_TO_NDC_ARR[proj] // homography matrix
                 ) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
 
-        ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
+        ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj, PROJ_CTX_VEC[proj].windowInd, PROJ_CTX_VEC[proj].monitorInd);
     }
 
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
@@ -641,9 +603,9 @@ void projectorLoop(MazeRenderContext &projCtx) {
     
     // --------------- Check State Flags ---------------
     if (FLAG_CHANGE_WINDOW_MODE) {
-            int mon_ind = FLAG_WINDOWS_SET_TO_PROJ ? PROJ_MON_VEC[projCtx.windowInd] : STARTING_MONITOR;
-            projCtx.changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, winOffsetVec[projCtx.windowInd]);
-        }
+        int mon_ind = FLAG_WINDOWS_SET_TO_PROJ ? PROJ_MON_VEC[projCtx.windowInd] : STARTING_MONITOR;
+        projCtx.changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, winOffsetVec[projCtx.windowInd]);
+    }
 
     if (FLAG_FORCE_WINDOW_FOCUS) projCtx.forceWindowFocus();
 
@@ -679,7 +641,7 @@ void projectorLoop(MazeRenderContext &projCtx) {
     projCtx.bufferSwapPoll();
 }
 
-std::array<std::thread, N_PROJ> projThreads; // Array to hold projector threads
+// std::array<std::thread, N_PROJ> projThreads; // Array to hold projector threads
 
 int appMainLoop() {
         int status = 0; // Initialize status to 0 (no error)
@@ -689,15 +651,15 @@ int appMainLoop() {
         // simulateRatMovement(0.5f, 45.0f);
 
         // Single-threaded projector loop
-        for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) {
-            projectorLoop(PROJ_CTX_VEC[proj_ind]); // Call the projector loop for each context
+        for (auto proj : PROJECTORS) {
+            projectorLoop(PROJ_CTX_VEC[proj]); // Call the projector loop for each context
         }
 
         // Multi-threaded projector loop (commented out for now, causes shader issues)
-        // for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) {
+        // for (auto proj : PROJECTORS) {
         //     // projectorLoop(projCtx); // Call the projector loop for each context
-        //     std::thread pt(projectorLoop, std::ref(PROJ_CTX_VEC[proj_ind])); // Create a thread for each projector loop
-        //     projThreads[proj_ind] = std::move(pt); // Store the thread in the array
+        //     std::thread pt(projectorLoop, std::ref(PROJ_CTX_VEC[proj])); // Create a thread for each projector loop
+        //     projThreads[proj] = std::move(pt); // Store the thread in the array
         // }
         // // Wait for all projector threads to finish
         // for (auto &pt : projThreads) 
@@ -724,13 +686,13 @@ void appCleanup() {
     ROS_INFO("SHUTTING DOWN");
 
     // Clean up OpenGL wall image objects for each window
-    for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) {
-        if (PROJ_CTX_VEC[proj_ind].cleanupContext(true) != 0)
+    for (auto proj_ind : PROJECTORS) {
+        if (PROJ_CTX_VEC[proj].cleanupContext(true) != 0)
             ROS_WARN("[appCleanup] Error during cleanup of MazeRenderContext: Projector[%d] Window[%d] Monitor[%d]",
-                     proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
+                     proj_ind, PROJ_CTX_VEC[proj].windowInd, PROJ_CTX_VEC[proj].monitorInd);
         else
             ROS_INFO("[projection_display:appCleanup] MazeRenderContext instance cleaned up successfully: Projector[%d] Window[%d] Monitor[%d]",
-                     proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
+                     proj_ind, PROJ_CTX_VEC[proj].windowInd, PROJ_CTX_VEC[proj].monitorInd);
     }
 
     // Terminate graphics
