@@ -166,11 +166,8 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
             if (cham_ind < 9)
                 configWallImageIndex(img_ind, cham_ind, wall_ind);
             // Update the floor image index
-            else if (wall_ind == 0) // Only store the first entry
+            else if (cham_ind == 9 && wall_ind == 0) // Only store the first entry
                 projFloorConfigIndex = img_ind;
-            // Skip unused floor entries
-            else
-                continue;
         }
     }
 
@@ -331,27 +328,23 @@ void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int>
     };
 
     // Iterate through each projector
-    for (int proj = 0; proj < 4; ++proj) {
+    for (int proj = 0; proj < N_PROJ; ++proj) {
         // Calculate adjusted row and column for each projector
         int adjusted_row = row;
         int adjusted_col = col;
 
         // Adjust the indices based on the projector orientation
-        switch (proj) {
-        case 0: // Adjustments for Projector 0 (West)
+        if (proj == 0) {
             adjusted_row = 2 - col;
             adjusted_col = row;
-            break;
-        case 1: // Adjustments for Projector 1 (North)
+        }
+        else if (proj == 1) {
             adjusted_row = 2 - row;
             adjusted_col = 2 - col;
-            break;
-        case 2: // Adjustments for Projector 2 (East)
+        }
+        else if (proj == 2) {
             adjusted_row = col;
             adjusted_col = 2 - row;
-            break;
-        case 3: // No adjustments needed for Projector 3 (South)
-            break;
         }
 
         // Iterate through each wall index
