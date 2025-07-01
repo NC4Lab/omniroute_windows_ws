@@ -22,9 +22,9 @@ void CallbackDebugOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity,
     // Check if the message is below the specified debug level
     if (s_level < GLB_DEBUG_LEVEL_GL) return;
     if (s_level == 1)
-        ROS_INFO("[callbackDebugOpenGL] Type[0x%x] ID[%d] Severity[%d:0x%x] Message[%s]", type, id, s_level, severity, message);
+        ROS_INFO("[CallbackDebugOpenGL] Type[0x%x] ID[%d] Severity[%d:0x%x] Message[%s]", type, id, s_level, severity, message);
     else
-        ROS_ERROR("[callbackDebugOpenGL] Type[0x%x] ID[%d] Severity[%d:0x%x] Message[%s]", type, id, s_level, severity, message);
+        ROS_ERROR("[CallbackDebugOpenGL] Type[0x%x] ID[%d] Severity[%d:0x%x] Message[%s]", type, id, s_level, severity, message);
 }
 
 void CallbackErrorGLFW(int error, const char *description) {
@@ -176,6 +176,15 @@ MazeRenderContext &MazeRenderContext::operator=(MazeRenderContext &&other) noexc
         other._resetMembers();
     }
     return *this;
+}
+
+void MazeRenderContext::makeContextCurrent() {
+    // Set the GLFW window as the current OpenGL context
+    if (window == nullptr) {
+        ROS_ERROR("[MazeRenderContext::makeContextCurrent] Window is not initialized.");
+        return;
+    }
+    glfwMakeContextCurrent(window);
 }
 
 int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source) {
@@ -387,17 +396,11 @@ int MazeRenderContext::initRenderObjects(float *vertices, size_t vertices_size,
 }
 
 void MazeRenderContext::initWindowForDrawing() {
-    // Set the GLFW window as the current OpenGL context
-    glfwMakeContextCurrent(window);
-
     // Clear the back buffer for a new frame
     glClear(GL_COLOR_BUFFER_BIT);
 }
 
 void MazeRenderContext::loadMatTexture(cv::Mat img_mat) {
-    // Set the GLFW window as the current OpenGL context
-    glfwMakeContextCurrent(window);
-
     // Generate and bind the texture
     glGenTextures(1, &textureID);
     glBindTexture(GL_TEXTURE_2D, textureID);
@@ -419,11 +422,8 @@ void MazeRenderContext::loadMatTexture(cv::Mat img_mat) {
 }
 
 void MazeRenderContext::drawTexture() {
-    // Set the GLFW window as the current OpenGL context
-    glfwMakeContextCurrent(window);
-
     // Check the shader program for errors
-    checkShaderProgram();
+    // checkShaderProgram();
 
     // Use the shader program for wall rendering
     glUseProgram(_shaderProgram);
@@ -841,11 +841,11 @@ int CircleRenderer::SetupShader() {
 
     // Use the shader program
     glUseProgram(_ShaderProgram);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    // status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Set the aspect ratio uniform
     glUniform1f(_AspectRatioLocation, _AspectRatioUniform);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
+    // status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     return status;
 }

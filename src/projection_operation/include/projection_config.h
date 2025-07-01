@@ -265,7 +265,7 @@ const int GLB_ROS_LOOP_RATE = 100;
 /**
  * @brief Global variable for verbose logging.
  */
-const bool GLB_DO_VERBOSE_DEBUG = true;
+const bool GLB_DO_VERBOSE_DEBUG = false;
 
 /**
  * @brief Global variable to set the OpenGL debug level.

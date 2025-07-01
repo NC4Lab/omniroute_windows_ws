@@ -258,6 +258,12 @@ public:
     MazeRenderContext &operator=(MazeRenderContext &&other) noexcept;
 
     /**
+     * @brief Makes the OpenGL context current for this thread.
+     * 
+     */
+    void makeContextCurrent();
+
+    /**
      * @brief Compiles and links shaders for a given class instance.
      *
      * @param vertex_source Source code for the vertex shader stored as a C++ raw string literal.

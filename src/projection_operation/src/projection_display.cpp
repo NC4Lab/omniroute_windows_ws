@@ -7,6 +7,7 @@
 // ================================================== INCLUDE ==================================================
 
 #include "projection_display.h"
+#include<thread>
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -527,7 +528,7 @@ void appLoadAssets()
         throw std::runtime_error("[appLoadAssets] Failed to load OpenCV floor images");
 
     // ---------- Load Wall and Floor Homography Matrices from XML ----------
-    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) { // for each projector
+    for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) { // for each projector
         for (int cal_i = 0; cal_i < N_CAL_MODES; ++cal_i) {
             CalibrationMode _CAL_MODE = static_cast<CalibrationMode>(cal_i);
 
@@ -552,7 +553,7 @@ void appLoadAssets()
     }
 
     // ---------- Load Maze Boundary Vertices ----------
-    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) { // for each projector
+    for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) { // for each projector
         std::vector<cv::Point2f> maze_vert_ndc_vec(4);
         std::vector<cv::Point2f> maze_vert_cm_vec(4);
 
@@ -578,11 +579,11 @@ void appLoadAssets()
 void appInitVariables() {
     // ---------- Intialize the Window Offset Vector ---------
     winOffsetVec.clear();              // Clear any existing elements
-    winOffsetVec.reserve(N.projector); // Reserve memory for efficiency
-    for (int mon_ind = 0; mon_ind < N.projector; ++mon_ind) {
+    winOffsetVec.reserve(N_PROJ); // Reserve memory for efficiency
+    for (int mon_ind = 0; mon_ind < N_PROJ; ++mon_ind) {
         // Calculate x and y offsets based on the monitor resolution
-        int x_offset = mon_ind * (GLB_MONITOR_WIDTH_PXL / N.projector) * 0.9f;
-        int y_offset = mon_ind * (GLB_MONITOR_HEIGHT_PXL / N.projector) * 0.9f;
+        int x_offset = mon_ind * (GLB_MONITOR_WIDTH_PXL / N_PROJ) * 0.9f;
+        int y_offset = mon_ind * (GLB_MONITOR_HEIGHT_PXL / N_PROJ) * 0.9f;
         winOffsetVec.emplace_back(x_offset, y_offset);
     }
 
@@ -606,7 +607,7 @@ void appInitOpenGL() {
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector monitor indices: %d, %d, %d, %d", PROJ_MON_VEC[0], PROJ_MON_VEC[1], PROJ_MON_VEC[2], PROJ_MON_VEC[3]);
 
     // Initialize OpenGL for each projector
-    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind)
+    for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind)
     {
         // Start on the default screen
         int mon_ind = STARTING_MONITOR;
@@ -640,59 +641,79 @@ void appInitOpenGL() {
                 ) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
 
-        // Initialize blank wall image mat
-        // wallBlankImgMatArr[proj_ind] = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4); // Initialize cv::Mat
-        // if (updateWallTexture(proj_ind, false, wallBlankImgMatArr[proj_ind]))
-        //     throw std::runtime_error("[appInitOpenGL] Window[" + std::to_string(proj_ind) + "]: Failed to update wall texture");
-
         ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
     }
 
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
 }
 
+
+void projectorLoop(MazeRenderContext &projCtx) {
+    projCtx.makeContextCurrent(); // Make the OpenGL context current for this thread
+    
+    // --------------- Check State Flags ---------------
+    if (FLAG_CHANGE_WINDOW_MODE) {
+            int mon_ind = FLAG_WINDOWS_SET_TO_PROJ ? PROJ_MON_VEC[projCtx.windowInd] : STARTING_MONITOR;
+            projCtx.changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, winOffsetVec[projCtx.windowInd]);
+        }
+
+    if (FLAG_FORCE_WINDOW_FOCUS) projCtx.forceWindowFocus();
+
+    // Recompute wall parameters and update wall image texture
+    if (FLAG_UPDATE_TEXTURES) {
+        cv::Mat img_mat = WALL_BLANK_IMG_MAT.clone(); // Initialize the image matrix to blank
+
+        displayTimer[1].start();
+        // Update floor image texture
+        if (updateFloorTexture(projCtx.windowInd, floorRotatedImgMatVecArr[projCtx.windowInd][projFloorConfigIndex], img_mat))
+            throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
+        displayTimer[1].update(true);
+
+        displayTimer[2].start();
+        // Update wall image texture
+        if (updateWallTexture(projCtx.windowInd, true, img_mat))
+            throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
+        displayTimer[2].update(true);
+
+        displayTimer[3].start();
+        // Load the new texture
+        projCtx.loadMatTexture(img_mat);
+        displayTimer[3].update(true);
+    }
+    // --------------- Handle Image Processing for Next Frame ---------------
+    // Prepare the frame for rendering (clear the back buffer)
+    projCtx.initWindowForDrawing();
+    // Draw/update wall images
+    projCtx.drawTexture();
+    // Draw/update rat mask marker
+    drawRatMask(RM_CIRCREND_ARR[projCtx.windowInd]);
+    // Swap buffers and poll events
+    projCtx.bufferSwapPoll();
+}
+
+std::array<std::thread, N_PROJ> projThreads; // Array to hold projector threads
+
 int appMainLoop() {
         int status = 0; // Initialize status to 0 (no error)
-        timer[0].start(); // Start the timer for the loop
+        displayTimer[0].start(); // Start the timer for the loop
 
         // TEMP Simulate rat movement for testing
-        simulateRatMovement(0.5f, 45.0f);
+        // simulateRatMovement(0.5f, 45.0f);
 
-        for (auto &projCtx : PROJ_CTX_VEC) {
-            // --------------- Check State Flags ---------------
-            if (FLAG_CHANGE_WINDOW_MODE) {
-                    int mon_ind = FLAG_WINDOWS_SET_TO_PROJ ? PROJ_MON_VEC[projCtx.windowInd] : STARTING_MONITOR;
-                    projCtx.changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, winOffsetVec[projCtx.windowInd]);
-                }
-
-            if (FLAG_FORCE_WINDOW_FOCUS) projCtx.forceWindowFocus();
-
-            // Recompute wall parameters and update wall image texture
-            if (FLAG_UPDATE_TEXTURES) {
-                cv::Mat img_mat = WALL_BLANK_IMG_MAT.clone(); // Initialize the image matrix to blank
-
-                // Update floor image texture
-                if (updateFloorTexture(projCtx.windowInd, floorRotatedImgMatVecArr[projCtx.windowInd][projFloorConfigIndex], img_mat))
-                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
-
-                // Update wall image texture
-                if (updateWallTexture(projCtx.windowInd, true, img_mat))
-                    throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
-
-                // Load the new texture
-                projCtx.loadMatTexture(img_mat);
-            }
-
-            // --------------- Handle Image Processing for Next Frame ---------------
-            // Prepare the frame for rendering (clear the back buffer)
-            projCtx.initWindowForDrawing();
-            // Draw/update wall images
-            projCtx.drawTexture();
-            // Draw/update rat mask marker
-            drawRatMask(RM_CIRCREND_ARR[projCtx.windowInd]);
-            // Swap buffers and poll events
-            projCtx.bufferSwapPoll();
+        // Single-threaded projector loop
+        for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) {
+            projectorLoop(PROJ_CTX_VEC[proj_ind]); // Call the projector loop for each context
         }
+
+        // Multi-threaded projector loop (commented out for now, causes shader issues)
+        // for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) {
+        //     // projectorLoop(projCtx); // Call the projector loop for each context
+        //     std::thread pt(projectorLoop, std::ref(PROJ_CTX_VEC[proj_ind])); // Create a thread for each projector loop
+        //     projThreads[proj_ind] = std::move(pt); // Store the thread in the array
+        // }
+        // // Wait for all projector threads to finish
+        // for (auto &pt : projThreads) 
+        //     if (pt.joinable()) pt.join();
 
         // Reset keybinding flags
         FLAG_CHANGE_WINDOW_MODE = false;
@@ -704,7 +725,7 @@ int appMainLoop() {
         // Process a single round of callbacks for ROS messages
         ros::spinOnce();
 
-        timer[0].update(true);
+        displayTimer[0].update(true);
         // Sleep to maintain the loop rate
         RC.loop_rate->sleep();
 
@@ -715,7 +736,7 @@ void appCleanup() {
     ROS_INFO("SHUTTING DOWN");
 
     // Clean up OpenGL wall image objects for each window
-    for (int proj_ind = 0; proj_ind < N.projector; ++proj_ind) {
+    for (int proj_ind = 0; proj_ind < N_PROJ; ++proj_ind) {
         if (PROJ_CTX_VEC[proj_ind].cleanupContext(true) != 0)
             ROS_WARN("[appCleanup] Error during cleanup of MazeRenderContext: Projector[%d] Window[%d] Monitor[%d]",
                      proj_ind, PROJ_CTX_VEC[proj_ind].windowInd, PROJ_CTX_VEC[proj_ind].monitorInd);
@@ -738,13 +759,16 @@ int main(int argc, char **argv) {
         appInitVariables();
         appInitOpenGL();
 
+        // Setup timers
+        for (auto &t: displayTimer) t.reset();
+
+        displayTimer[0].name = "Main Loop";
+        displayTimer[1].name = "Update Floor Texture";
+        displayTimer[2].name = "Update Wall Texture";
+        displayTimer[3].name = "Load Texture";
+    
         int mainLoopStatus = 0;
         while (ros::ok() && !mainLoopStatus) mainLoopStatus = appMainLoop();
-
-        // Setup timers
-        for (auto &t: timer) t.reset();
-        
-        timer[0].name = "Main_Loop";
     }
     catch (const std::exception &e) {
         ROS_ERROR("!!EXCEPTION CAUGHT!!: %s", e.what());

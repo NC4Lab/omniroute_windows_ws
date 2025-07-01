@@ -17,15 +17,6 @@
 const cv::Mat WALL_BLANK_IMG_MAT = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MONITOR_WIDTH_PXL, CV_8UC4); // Initialize cv::Mat
 
 /**
- * @brief Struct for global counts
- */
-static struct CountStruct
-{
-    const int projector = static_cast<int>(PROJ_MON_VEC.size()); // Number of projectors
-    const int wall_image = 6;                                      // Number of wall images
-} N;
-
-/**
  * @brief  Struct for rat mask tracking and graphics.
  */
 static struct RatTracker
@@ -114,7 +105,7 @@ std::array<CircleRenderer, 4> RM_CIRCREND_ARR;
 /**
  * @brief  Array of OpenGL context objects.
  */
-std::vector<MazeRenderContext> PROJ_CTX_VEC(N.projector);
+std::vector<MazeRenderContext> PROJ_CTX_VEC(N_PROJ);
 
 /**
  * @brief Offset for the window position
@@ -304,10 +295,10 @@ class TimingData {
 
         void reset() {
             if (!TIMING_ENABLED) return;
-            name = "";
             deltaTime = ros::Duration(0);
             minDeltaTime = ros::Duration(0.0);
             maxDeltaTime = ros::Duration(0.0);
+            name = "";
             start();
         }
 
@@ -339,7 +330,7 @@ class TimingData {
         }
 
 };
-TimingData timer[10]; // Array of TimingData objects for different parts of the application
+TimingData displayTimer[10]; // Array of TimingData objects for different parts of the application
 
 /**
  * @brief Initializes the ROS node and sets up the subscriber for the "projection_cmd" topic.
