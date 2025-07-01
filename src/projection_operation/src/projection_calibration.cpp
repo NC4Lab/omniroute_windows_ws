@@ -506,10 +506,6 @@ void appInitOpenGL() {
 }
 
 void appInitFileXML() {
-    auto fileExists = [](const std::string &_file_path) -> bool {
-        std::ifstream file(_file_path);
-        return file.good();
-    };
     std::vector<int> mon_missing_vec;
     std::string file_path;
 

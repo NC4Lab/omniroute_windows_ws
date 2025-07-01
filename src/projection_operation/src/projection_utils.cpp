@@ -1852,3 +1852,9 @@ int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img) {
     cv::add(out_base_img, mask_img, out_base_img, mask_img_4ch); // Add the mask image to the base image using the alpha channel as a mask
     return 0;
 }
+
+bool fileExists(const std::string &_file_path) {
+    // Check if the file exists at the given path
+    std::ifstream file(_file_path);
+    return file.good();
+}

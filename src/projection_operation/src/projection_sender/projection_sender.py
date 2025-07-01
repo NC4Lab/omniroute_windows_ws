@@ -15,40 +15,6 @@ import os
 
 class ProjectionOperation:
     # ------------------------ CLASS VARIABLES ------------------------
-
-    # Wall image file names
-    # NOTE: This list needs to match that used in:
-    # omniroute_windows_ws\src\projection_operation\include\projection_utils.h
-    WALL_IMAGE_FILE_NAMES = [
-        "w_black",
-        "w_square",
-        "w_circle",
-        "w_triangle",
-        "w_star",
-        "w_pentagon",
-        "w_rm_blue_left",
-        "w_rm_blue_middle",
-        "w_rm_blue_right",
-        "w_rm_green_left",
-        "w_rm_green_middle",
-        "w_rm_green_right",
-        "w_rm_teal_left",
-        "w_rm_teal_middle",
-        "w_rm_teal_right"
-    ]
-
-    # Floor image file names
-    # NOTE: This list needs to match that used in:
-    # omniroute_windows_ws\src\projection_operation\include\projection_utils.h
-    FLOOR_IMAGE_FILE_NAMES = [
-        "f_black",
-        "f_green",
-        "f_pattern_0",
-        "f_pattern_1",
-        "f_pattern_2",
-        "f_white"
-    ]
-
     def __init__(self):
         rospy.loginfo('[ProjectionOperation:__init__] PROJECTION SENDER NODE STARTED')
 
@@ -57,10 +23,13 @@ class ProjectionOperation:
 
         # Initialize the node (if not already initialized)
         if not rospy.core.is_initialized():
-            rospy.init_node('projection_opperation_node', anonymous=True)
+            rospy.init_node('projection_operation_node', anonymous=True)
 
         # Initialize image_config as a 10x8 array with default values
-        self.image_config = [[1 for _ in range(8)] for _ in range(10)]
+        # self.image_config = [[1 for _ in range(8)] for _ in range(10)]
+
+        self.image_config = [[1 for _ in range(8)] for _ in range(9)]
+        self.image_config = [c + [2] for c in self.image_config]  # Add an extra column to make it 9x9
 
         package_path = rospkg.RosPack().get_path('projection_operation')
 
@@ -77,10 +46,29 @@ class ProjectionOperation:
 
         # TEMP
         rospy.sleep(3)
-        self.image_config = self.set_config(self.image_config, "walls", 3, 4, 1)
-        self.image_config = self.set_config(self.image_config, "floor", 2)
+
+        # self.image_config = self.set_config(self.image_config, "walls", 3, 4, 1)
+        # self.image_config = self.set_config(self.image_config, "floor", 2)
+
         # Send the image configuration message
         self.publish_image_message(self.image_config)
+
+        # Prompt the user to send the image configuration as chamber, surface, image index
+        # rospy.loginfo("[ProjectionOperation:__init__] Please send the image configuration as chamber, surface, image index.")
+        # rospy.loginfo("[ProjectionOperation:__init__] Example: 0, 1, 2 for chamber 0, surface 1, image index 2.")
+        # rospy.loginfo("[ProjectionOperation:__init__] Press Ctrl+C to exit.")
+        # rospy.loginfo("[ProjectionOperation:__init__] Waiting for user input...")
+        # # Wait for user input to send the image configuration
+        # while not rospy.is_shutdown():
+        #     user_input = input("Enter chamber, surface, image index (or 'exit' to quit): ")
+        #     if user_input.lower() == 'exit':
+        #         break
+        #     try:
+        #         chamber, surface, image_index = map(int, user_input.split(","))
+        #         self.image_config = self.set_config(self.image_config, "walls", image_index, chamber, surface)
+        #         self.publish_image_message(self.image_config)
+        #     except ValueError:
+        #         rospy.logwarn("[ProjectionOperation:__init__] Invalid input format. Please enter three integers separated by commas.")
 
         # Rate to publish at 10 Hz
         r = rospy.Rate(10)
@@ -191,10 +179,12 @@ class ProjectionOperation:
         projection_data = Int32MultiArray()
 
         # Set up the layout using the helper function (10x8 array)
-        projection_data.layout.dim = self.setup_layout(10, 8)
+        # projection_data.layout.dim = self.setup_layout(10, 8)
+        projection_data.layout.dim = self.setup_layout(9, 9)  # Adjusted for 9x9 array
 
         # Flatten the 10x8 array into a single list
-        flat_data = [image_config[i][j] for i in range(10) for j in range(8)]
+        # flat_data = [image_config[i][j] for i in range(10) for j in range(8)]
+        flat_data = [image_config[i][j] for i in range(9) for j in range(9)]
         projection_data.data = flat_data
 
         # Publish the CSV data message
@@ -202,7 +192,9 @@ class ProjectionOperation:
 
         # Log the sent message data
         rospy.loginfo("[ProjectionOperation:publish_image_message] Sent the following CSV-based data:")
-        for i in range(10):
+        # for i in range(10):
+        #     rospy.loginfo("Data[%d] = %s", i, str(image_config[i]))
+        for i in range(9):
             rospy.loginfo("Data[%d] = %s", i, str(image_config[i]))
 
 

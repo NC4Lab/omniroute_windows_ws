@@ -129,51 +129,102 @@ void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg) {
 }
 
 void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
-    // Check that the received data has the correct size for a 10x8 array (80 elements)
-    if (msg->data.size() != 80) {
-        ROS_ERROR("[callbackProjImgROS] Received incorrect array size. Expected 80 elements, but got %zu", msg->data.size());
+    // Expects a N_CHAMBERS x N_SURF array of integers
+    // where N_CHAMBERS = 9 and N_SURF = 9 (8 walls + 1 floor)
+
+    // Check that the received data has the correct size for a 9x9 array (81 elements)
+    if (msg->data.size() != N_CHAMBERS * N_SURF) {
+        ROS_ERROR("[callbackProjImgROS] Received incorrect array size. Expected %d elements, but got %zu", 
+            N_CHAMBERS * N_SURF, msg->data.size());
         return;
     }
 
-    // Store the 10x8 data in proj_img_data
-    for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
-        for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
-            RC.proj_img_data[cham_ind][wall_ind] = msg->data[cham_ind * 8 + wall_ind];
+    // Store the maze image data in the global maze image map
+    for (auto &cham : CHAMBERS)
+        for (auto &surf : SURFACES)
+            MAZE_IMAGE_MAP[cham][surf] = msg->data[cham * N_SURF + surf];
+    
+    // Convert the received data to a projection map
+    mazeToProjectionMap(MAZE_IMAGE_MAP, PROJECTION_IMAGE_MAP);
 
-    // Log the entire 2D array
-    if (GLB_DO_VERBOSE_DEBUG) {
-        ROS_INFO("[callbackProjImgROS] Stored ROS projection image data:");
-        for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
+    // if (GLB_DO_VERBOSE_DEBUG) {
+        // Log the entire maze image map
+        ROS_INFO("[callbackProjImgROS] Maze image map:");
+        for (auto &cham : CHAMBERS) {
             std::stringstream row_stream;
-            row_stream << "Walls[" << cham_ind << "] = [";
-            for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
-                row_stream << RC.proj_img_data[cham_ind][wall_ind];
-                if (wall_ind < 7) // Add a comma between elements, but not after the last one
+            row_stream << "Chamber[" << cham << "] = [";
+            for (auto &surf : SURFACES) {
+                row_stream << MAZE_IMAGE_MAP[cham][surf];
+                if (surf != SURFACES.back()) // Add a comma between elements, but not after the last one
                     row_stream << ", ";
             }
             row_stream << "]";
             ROS_INFO("%s", row_stream.str().c_str());
         }
-    }
 
-    // ---------- Update image index data ----------
-    for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
-        for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
-            // Store image index
-            int img_ind = RC.proj_img_data[cham_ind][wall_ind];
-
-            // Update the wall index array
-            if (cham_ind < 9)
-                configWallImageIndex(img_ind, cham_ind, wall_ind);
-            // Update the floor image index
-            else if (cham_ind == 9 && wall_ind == 0) // Only store the first entry
-                projFloorConfigIndex = img_ind;
-        }
-    }
+        // Log the entire projection image map
+        // ROS_INFO("[callbackProjImgROS] Projection image map:");
+        // for (auto &proj : PROJECTORS) {
+        //     for (auto &row : ROWS) {
+        //         for (auto &col : COLS) {
+        //             for (auto &mode : CAL_MODES) {
+        //                 ROS_INFO("Projection[%d][%d][%d][%d] = %d", proj, row, col, mode, PROJECTION_IMAGE_MAP[proj][row][col][mode]);
+        //             }
+        //         }
+        //     }
+        // }
+    // }
 
     // Set the flag to update the textures
     FLAG_UPDATE_TEXTURES = true;
 }
+
+// void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
+//     // Check that the received data has the correct size for a 10x8 array (80 elements)
+//     if (msg->data.size() != 80) {
+//         ROS_ERROR("[callbackProjImgROS] Received incorrect array size. Expected 80 elements, but got %zu", msg->data.size());
+//         return;
+//     }
+
+//     // Store the 10x8 data in proj_img_data
+//     for (int cham_ind = 0; cham_ind < 10; ++cham_ind)
+//         for (int wall_ind = 0; wall_ind < 8; ++wall_ind)
+//             RC.proj_img_data[cham_ind][wall_ind] = msg->data[cham_ind * 8 + wall_ind];
+
+//     // Log the entire 2D array
+//     if (GLB_DO_VERBOSE_DEBUG) {
+//         ROS_INFO("[callbackProjImgROS] Stored ROS projection image data:");
+//         for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
+//             std::stringstream row_stream;
+//             row_stream << "Walls[" << cham_ind << "] = [";
+//             for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
+//                 row_stream << RC.proj_img_data[cham_ind][wall_ind];
+//                 if (wall_ind < 7) // Add a comma between elements, but not after the last one
+//                     row_stream << ", ";
+//             }
+//             row_stream << "]";
+//             ROS_INFO("%s", row_stream.str().c_str());
+//         }
+//     }
+
+//     // ---------- Update image index data ----------
+//     for (int cham_ind = 0; cham_ind < 10; ++cham_ind) {
+//         for (int wall_ind = 0; wall_ind < 8; ++wall_ind) {
+//             // Store image index
+//             int img_ind = RC.proj_img_data[cham_ind][wall_ind];
+
+//             // Update the wall index array
+//             if (cham_ind < 9)
+//                 configWallImageIndex(img_ind, cham_ind, wall_ind);
+//             // Update the floor image index
+//             else if (cham_ind == 9 && wall_ind == 0) // Only store the first entry
+//                 projFloorConfigIndex = img_ind;
+//         }
+//     }
+
+//     // Set the flag to update the textures
+//     FLAG_UPDATE_TEXTURES = true;
+// }
 
 void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg) {
     // Update the last received command
@@ -220,7 +271,7 @@ void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg) {
     RT.marker_position.x = position_cm.x + offset_x;
     RT.marker_position.y = position_cm.y + offset_y;
 }
-
+//TODO: Integrate into others
 int initSubscriberROS() {
     // Check if node handle is initialized
     if (!RC.node_handle) {
@@ -412,7 +463,8 @@ int updateWallTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_m
         for (auto row : ROWS) {
             for (auto col : COLS) {
                 //TODO: Update only new indices
-                int img_ind = PROJ_WALL_CONFIG_INDICES_4D[proj_ind][row][col][cal_mode];
+                // int img_ind = PROJ_WALL_CONFIG_INDICES_4D[proj_ind][row][col][cal_mode];
+                int img_ind = PROJECTION_IMAGE_MAP[proj_ind][row][col][cal_mode];
 
                 // Skip empty images
                 if (img_ind == 0 && do_ignore_blank_img) continue;
@@ -470,6 +522,10 @@ void appInitROS(int argc, char **argv) {
 
 void appLoadAssets()
 {
+    // Make wall and floor images available to the ROS parameter server
+    ros::param::set("runtime_wall_images", RUNTIME_WALL_IMAGES);
+    ros::param::set("runtime_floor_images", RUNTIME_FLOOR_IMAGES);
+
     // ---------- Load Images with OpenCV ----------
     // Get the configured image paths
     std::vector<std::string> runtimeWallImages, runtimeFloorImages; // declare the vector to store the paths
@@ -613,22 +669,23 @@ void projectorLoop(MazeRenderContext &projCtx) {
     if (FLAG_UPDATE_TEXTURES) {
         cv::Mat img_mat = WALL_BLANK_IMG_MAT.clone(); // Initialize the image matrix to blank
 
-        displayTimer[1].start();
+        // displayTimer[1].start();
         // Update floor image texture
-        if (updateFloorTexture(projCtx.windowInd, floorRotatedImgMatVecArr[projCtx.windowInd][projFloorConfigIndex], img_mat))
+        // if (updateFloorTexture(projCtx.windowInd, floorRotatedImgMatVecArr[projCtx.windowInd][projFloorConfigIndex], img_mat))
+        if (updateFloorTexture(projCtx.windowInd, floorRotatedImgMatVecArr[projCtx.windowInd][PROJECTION_IMAGE_MAP[projCtx.windowInd][0][0][MODE_FLOOR]], img_mat))
             throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
-        displayTimer[1].update(true);
+        // displayTimer[1].update(true);
 
-        displayTimer[2].start();
+        // displayTimer[2].start();
         // Update wall image texture
         if (updateWallTexture(projCtx.windowInd, true, img_mat))
             throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
-        displayTimer[2].update(true);
+        // displayTimer[2].update(true);
 
-        displayTimer[3].start();
+        // displayTimer[3].start();
         // Load the new texture
         projCtx.loadMatTexture(img_mat);
-        displayTimer[3].update(true);
+        // displayTimer[3].update(true);
     }
     // --------------- Handle Image Processing for Next Frame ---------------
     // Prepare the frame for rendering (clear the back buffer)

@@ -147,7 +147,7 @@
  *                 3-----2        3-----2        3-----2
  *
  *  - Calibration Procedure:
- *      - For the calibration opperatin, only one GLFWwindow window is used, but it can be moved between monitors.
+ *      - For the calibration operation, only one GLFWwindow window is used, but it can be moved between monitors.
  *      - A test pattern image with the same aspect ration as the walls is read in (currently using DevIL).
  *      - This image is tesselated  uniformly over a 3x3 grid in the in the graphics window
  *      - The window is moved to the desired projector and set to fullscreen.
@@ -189,6 +189,51 @@
 #include <tuple>
 #include <memory>
 #include <unordered_map>
+
+// Check if APIENTRY is already defined and undefine it
+#ifdef APIENTRY
+#undef APIENTRY
+#endif
+
+// OpenGL (GLAD and GLFW) for graphics and windowing
+#include "glad/glad.h"
+#define GLFW_INCLUDE_NONE
+#include <GLFW/glfw3.h>
+
+// Undefine APIENTRY after GLFW and GLAD headers
+#ifdef APIENTRY
+#undef APIENTRY
+#endif
+
+// DevIL for image loading and manipulation
+#include <IL/il.h>
+#include <IL/ilu.h>
+#include <IL/ilut.h>
+#include <IL/devil_cpp_wrapper.hpp>
+
+// Define BOOST_BIND_GLOBAL_PLACEHOLDERS to suppress deprecation warnings related to Boost's bind placeholders
+#define BOOST_BIND_GLOBAL_PLACEHOLDERS
+
+// ROS for robot operating system functionalities
+#include <ros/ros.h>
+#include <ros/console.h>
+#include <ros/package.h>
+#include <std_msgs/Int32.h>
+#include <std_msgs/Int32MultiArray.h> 
+#include <geometry_msgs/PoseStamped.h>
+#include <XmlRpcValue.h>
+#include <tf/tf.h>
+
+// PugiXML for XML parsing
+#include "pugixml.hpp"
+
+// OpenCV for computer vision tasks
+#include <opencv2/calib3d.hpp>
+#include <opencv2/core/types.hpp>
+#include <opencv2/core/hal/interface.h>
+#include "opencv2/imgproc.hpp"
+#include "opencv2/imgcodecs.hpp"
+#include "opencv2/highgui.hpp"
 
 // ================================================== ENUMERATIONS ==================================================
 enum ChamberEnum {
@@ -279,72 +324,125 @@ const int GLB_DEBUG_LEVEL_GL = 2;
  */
 static constexpr float GLOB_PI = 3.14159265358979323846f;
 
+// Get top-level package path
+extern const std::string PACKAGE_PATH = ros::package::getPath("projection_operation");
+extern const std::string WORKSPACE_PATH = PACKAGE_PATH.substr(0, PACKAGE_PATH.rfind("/src"));
+
+// Directory paths for calibration image files
+extern const std::string CONFIG_DIR_PATH = WORKSPACE_PATH + "/data/projection/params";
+
+// Directory paths for runtime image files
+extern const std::string IMAGE_DIR_PATH = WORKSPACE_PATH + "/data/projection/images";
+
 /**
- * @brief 4D array of hardcoded image indices to display.
- *
- * @details
- * This array is used to map specific wall image indices to a combination of
- * projector, chamber row, chamber column, calibration mode, and wall position.
- *
- * [4][3][3][3] = [number of projectors][grid rows][grid columns][calibration modes]
- *
- * - Dimension 1: Projectors [0, 1, 2, 3]
- *
- * - Dimension 2: Calibration Mode [0: left walls, 1: middle walls, 2: right walls]
- *
- * - Dimension 3: Grid Rows [0, 1, 2]
- *   - Index with respect to the grid rows in the chamber.
- *
- * - Dimension 4: Grid Columns [0, 1, 2]
- *   - Index with respect to the grid columns in the chamber.
- *
- * Image file mapping for shapes:
- * [0] Black
- * [1] Square
- * [2] Circle
- * [3] Triangle
- * [4] Star
- * [5] Pentagon
- *
- * Element mapping:
- *
- *    {{// Projector 0: East
- *      {{
- *          // Chamber Row: Top, Column: Left, Center, Right
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Middle
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Bottom
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *      }},
- *      // Projector 1: North
- *      {{
- *          // Chamber Row: Top, Column: Left, Center, Right
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Middle
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Bottom
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *      }},
- *      // Projector 2: West
- *      {{
- *          // Chamber Row: Top, Column: Left, Center, Right
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Middle
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Bottom
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *      }},
- *      // Projector 3: South
- *      {{
- *          // Chamber Row: Top, Column: Left, Center, Right
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Middle
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Bottom
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *      }}}};
+ * @brief Image file sub-directory path
  */
-using ProjWallConfigIndices4D = std::array<std::array<std::array<std::array<int, 3>, 3>, 3>, 4>;
+const std::string RUNTIME_IMAGE_PATH = IMAGE_DIR_PATH + "/runtime";
+const std::string CALIB_IMAGE_PATH = IMAGE_DIR_PATH + "/calibration";
+
+//TODO: All of these paths should be moved to a config file.
+/**
+ * @brief File names for available calibration test wall images
+ * 
+ */
+std::vector<std::string> CALIB_TEST_WALL_IMAGES = {
+    "0_test_wall.png",
+    "1_test_wall.png",
+    "2_test_wall.png",
+    "3_test_wall.png",
+};
+size_t N_CALIB_TEST_WALL_IMAGES = CALIB_TEST_WALL_IMAGES.size(); // Number of available calibration test wall images
+
+/**
+ * @brief File names for available calibration floor images
+ * 
+ */
+std::vector<std::string> CALIB_TEST_FLOOR_IMAGES = {
+    "0_test_floor.png",
+    "1_test_floor.png"
+};
+size_t N_CALIB_TEST_FLOOR_IMAGES = CALIB_TEST_FLOOR_IMAGES.size(); // Number of available calibration test floor images
+
+/**
+ * @brief File names for available calibration monitor wall images
+ * 
+ */
+std::vector<std::string> CALIB_MON_WALL_IMAGES = {
+    "w_m0.png",
+    "w_m1.png",
+    "w_m2.png",
+    "w_m3.png",
+    "w_m4.png",
+    "w_m5.png"
+};
+size_t N_CALIB_MON_WALL_IMAGES = CALIB_MON_WALL_IMAGES.size(); // Number of available calibration monitor wall images
+
+/**
+ * @brief File names for available calibration monitor floor images 
+ * 
+ */
+std::vector<std::string> CALIB_MON_FLOOR_IMAGES = {
+    "f_m0.png",
+    "f_m1.png",
+    "f_m2.png",
+    "f_m3.png",
+    "f_m4.png",
+    "f_m5.png"
+};
+size_t N_CALIB_MON_FLOOR_IMAGES = CALIB_MON_FLOOR_IMAGES.size(); // Number of available calibration monitor floor images
+
+/**
+ * @brief List of available calibration mode images
+ *
+ */
+std::vector<std::string> CALIB_MODE_IMAGES = {
+    "w_c0.png", // left walls
+    "w_c1.png", // middle walls
+    "w_c2.png", // right walls
+    "f_c0.png", // maze floor
+};
+size_t N_CALIB_MODE_IMAGES = CALIB_MODE_IMAGES.size(); // Number of available calibration mode images
+
+/**
+ * @brief File names for available runtime wall images
+ * 
+ * @note This list needs to match that used in:
+ * omniroute_ubuntu_ws\src\omniroute_operation\src\shared_utils\projection_operation.py
+ */
+std::vector<std::string> RUNTIME_WALL_IMAGES = {
+    "w_black.png",
+    "w_square.png",
+    "w_square.png",
+    "w_triangle.png",
+    "w_star.png",
+    "w_pentagon.png",
+    "w_rm_blue_left.png",
+    "w_rm_blue_middle.png",
+    "w_rm_blue_right.png",
+    "w_rm_green_left.png",
+    "w_rm_green_middle.png",
+    "w_rm_green_right.png",
+    "w_rm_teal_left.png",
+    "w_rm_teal_middle.png",
+    "w_rm_teal_right.png"
+};
+size_t N_RUNTIME_WALL_IMAGES = RUNTIME_WALL_IMAGES.size(); // Number of available runtime wall images
+
+/**
+ * @brief File names for available runtime floor images
+ * 
+ * @note This list needs to match that used in:
+ * omniroute_ubuntu_ws\src\omniroute_operation\src\shared_utils\projection_operation.py
+ */
+std::vector<std::string> RUNTIME_FLOOR_IMAGES = {
+    "f_black.png",
+    "f_green.png",
+    "f_pattern_0.png",
+    "f_pattern_1.png",
+    "f_pattern_2.png",
+    "f_white.png"
+};
+size_t N_RUNTIME_FLOOR_IMAGES = RUNTIME_FLOOR_IMAGES.size(); // Number of available runtime floor images
+
 
 #endif
