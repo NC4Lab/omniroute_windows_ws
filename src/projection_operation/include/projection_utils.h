@@ -280,6 +280,7 @@ public:
     int monitorInd;                     // Index for the monitor associated with this context
     bool isContextInitialized;          // Flag indicating whether there context has been initialized
     bool isFullScreen;                  // Flag indicating whether the window is in full screen mode
+    bool textureExists;               // Flag indicating whether the texture exists
     static int WindowWidthWindowedPxl;  // Width of the window in windowed mode
     static int WindowHeightWindowedPxl; // Height of the window in windowed mode
 

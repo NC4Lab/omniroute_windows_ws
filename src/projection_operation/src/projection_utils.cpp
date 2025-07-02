@@ -127,6 +127,7 @@ MazeRenderContext::MazeRenderContext()
       _windowWidthPxl(1024), _windowHeightPxl(576),
       windowInd(-1), monitorInd(-1)
 {// Members are initialized to default values, setup is deferred
+    textureExists = false;
 }
 
 MazeRenderContext::~MazeRenderContext() {
@@ -142,6 +143,7 @@ MazeRenderContext::MazeRenderContext(MazeRenderContext &&other) noexcept
       monitorInd(other.monitorInd),
       isContextInitialized(other.isContextInitialized),
       isFullScreen(other.isFullScreen),
+      textureExists(other.textureExists),
       _windowWidthPxl(other._windowWidthPxl),
       _windowHeightPxl(other._windowHeightPxl),
       _shaderProgram(other._shaderProgram),
@@ -165,6 +167,7 @@ MazeRenderContext &MazeRenderContext::operator=(MazeRenderContext &&other) noexc
         monitorInd = other.monitorInd;
         isContextInitialized = other.isContextInitialized;
         isFullScreen = other.isFullScreen;
+        textureExists = other.textureExists;
         _windowHeightPxl = other._windowHeightPxl;
         _windowWidthPxl = other._windowWidthPxl;
         _shaderProgram = other._shaderProgram;
@@ -386,11 +389,6 @@ int MazeRenderContext::initRenderObjects(float *vertices, size_t vertices_size,
     glBindVertexArray(0);
     status = CheckErrorOpenGL(__LINE__, __FILE__);
 
-    // Set the texture parameters for minification and magnification filters to GL_LINEAR.
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    // glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // status = CheckErrorOpenGL(__LINE__, __FILE__);
-
     // Return GL status
     return status;
 }
@@ -401,24 +399,29 @@ void MazeRenderContext::initWindowForDrawing() {
 }
 
 void MazeRenderContext::loadMatTexture(cv::Mat img_mat) {
-    // Generate and bind the texture
-    glGenTextures(1, &textureID);
-    glBindTexture(GL_TEXTURE_2D, textureID);
-
     // Convert image from BGR to RGB
     cv::cvtColor(img_mat, img_mat, cv::COLOR_BGR2RGB);
-
     // Handle alignment
     glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 
-    // Create texture
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img_mat.cols,
-                 img_mat.rows, 0, GL_RGB, GL_UNSIGNED_BYTE,
-                 img_mat.data);
+    if (!textureExists) { // The first time this runs, we need to generate the texture
+        glGenTextures(1, &textureID);
+        glBindTexture(GL_TEXTURE_2D, textureID);
 
-    // Set the texture parameters for minification and magnification filters to GL_LINEAR.
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, img_mat.cols,
+                     img_mat.rows, 0, GL_RGB, GL_UNSIGNED_BYTE,
+                     img_mat.data);
+
+        // Set the texture parameters for minification and magnification filters to GL_LINEAR.
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+        textureExists = true;
+    } else { // If the texture already exists, we just update it
+        glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, img_mat.cols,
+                    img_mat.rows, GL_RGB, GL_UNSIGNED_BYTE,
+                    img_mat.data);
+    }
 }
 
 void MazeRenderContext::drawTexture() {
@@ -625,6 +628,7 @@ void MazeRenderContext::_resetMembers() {
     _windowHeightPxl = 600;
     isContextInitialized = false;
     isFullScreen = false;
+    textureExists = false;
 }
 
 int MazeRenderContext::_checkShaderCompilation(GLuint __shaderProgram, const std::string &shader_type) {

@@ -7,7 +7,6 @@
 // ================================================== INCLUDE ==================================================
 
 #include "projection_display.h"
-#include<thread>
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -33,9 +32,8 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
         }
 
         // ---------- Force Window to Top of UI Stack [T] ----------
-        if (key == GLFW_KEY_T) {
+        if (key == GLFW_KEY_T)
             FLAG_FORCE_WINDOW_FOCUS = true;
-        }
     }
 
     // _______________ ANY KEY PRESS OR REPEAT ACTION _______________
@@ -182,6 +180,7 @@ void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg) {
     RT.marker_position.x = position_cm.x + offset_x;
     RT.marker_position.y = position_cm.y + offset_y;
 }
+
 //TODO: Integrate into others
 int initSubscriberROS() {
     // Check if node handle is initialized
@@ -369,7 +368,7 @@ void appInitROS(int argc, char **argv) {
     // Initialize the ros::Rate object with a specific rate
     RC.loop_rate = std::make_unique<ros::Rate>(GLB_ROS_LOOP_RATE);
 
-    // Initialize the subscriber
+    // Initialize the subscribers
     if (initSubscriberROS() < 0)
         throw std::runtime_error("[appInitROS] Failed to initialize ROS subscriber");
 
@@ -440,9 +439,7 @@ void appLoadAssets()
         rotation_mat.at<double>(2, 2) = 1.0; // Set the last element to 1 to make it a valid homography matrix
         // Apply the rotation to the floor homography matrix
         HMAT_MAP[proj][0][0][MODE_FLOOR] = HMAT_MAP[proj][0][0][MODE_FLOOR] * rotation_mat;
-
     }
-
     // Prewarp the images 
     prewarpWallImages();
 
@@ -579,20 +576,9 @@ int appMainLoop() {
         // TEMP Simulate rat movement for testing
         // simulateRatMovement(0.5f, 45.0f);
 
-        // Single-threaded projector loop
-        for (auto proj : PROJECTORS) {
+        // Run projector loop
+        for (auto proj : PROJECTORS)
             projectorLoop(PROJ_CTX_VEC[proj]); // Call the projector loop for each context
-        }
-
-        // Multi-threaded projector loop (commented out for now, causes shader issues)
-        // for (auto proj : PROJECTORS) {
-        //     // projectorLoop(projCtx); // Call the projector loop for each context
-        //     std::thread pt(projectorLoop, std::ref(PROJ_CTX_VEC[proj])); // Create a thread for each projector loop
-        //     projThreads[proj] = std::move(pt); // Store the thread in the array
-        // }
-        // // Wait for all projector threads to finish
-        // for (auto &pt : projThreads) 
-        //     if (pt.joinable()) pt.join();
 
         // Reset keybinding flags
         FLAG_CHANGE_WINDOW_MODE = false;
@@ -600,7 +586,6 @@ int appMainLoop() {
         FLAG_FORCE_WINDOW_FOCUS = false;
 
         // --------------- Handle ROS Messages and Operations ---------------
-
         // Process a single round of callbacks for ROS messages
         ros::spinOnce();
 
