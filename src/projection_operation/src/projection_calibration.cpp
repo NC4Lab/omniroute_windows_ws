@@ -388,10 +388,10 @@ int updateModeImage(cv::Mat img_main_mat, cv::Mat img_mon_mat, cv::Mat img_cal_m
     img_main_mat.copyTo(out_img_mode_mat);
 
     // Merge test pattern and active monitor image
-    if (mergeImgMat(img_mon_mat, out_img_mode_mat) < 0) return -1;
+    mergeImgMat(img_mon_mat, out_img_mode_mat);
 
     // Merge previous image and active calibration image
-    if (mergeImgMat(img_cal_mat, out_img_mode_mat) < 0) return -1;
+    mergeImgMat(img_cal_mat, out_img_mode_mat);
 
     return 0;
 }
@@ -432,7 +432,7 @@ int updateTexture(
             cv::warpPerspective(img_copy, img_warp, H, cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
 
             // Merge the warped image with the final image
-            if (mergeImgMat(img_warp, img_merge) < 0) return -1;
+            mergeImgMat(img_warp, img_merge);
         }
     }
 

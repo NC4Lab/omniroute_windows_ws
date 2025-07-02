@@ -35,7 +35,7 @@ class ProjectionOperation:
 
         # # self.image_config[chamber][surface] = image_index  # Set the image index for the specified chamber and surface
         self.set_floor_image(2) 
-        [self.set_wall_image(0, i, 1) for i in range(1, 8)]  # Set all walls of chamber 0 to image index 1
+        self.set_all_walls_image(1)
 
         # Send the image configuration message
         self.publish_image_message(self.image_config)
@@ -44,6 +44,17 @@ class ProjectionOperation:
         r = rospy.Rate(10)
         while not rospy.is_shutdown():
             r.sleep()
+    
+    def set_all_walls_image(self, image_index):
+        """
+        Set all walls in all chambers to the specified image index.
+        
+        Args:
+            image_index (int): The index of the image to set for all walls.
+        """
+        for chamber in range(self.num_chambers):
+            for wall in range(8):
+                self.image_config[chamber][wall] = image_index
     
     def set_wall_image(self, chamber, wall, image_index):
         if (wall < 0 or wall > 7) or (chamber < 0 or chamber > 8):

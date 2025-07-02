@@ -78,18 +78,20 @@ ProjectionMap<int> PROJECTION_BLANK_MAP; // Map to hold a blank projection map
 ProjectionMap<cv::Mat> HMAT_MAP; // Map to hold homography matrices for each projector, row, column, and calibration mode
 
 /**
- * @brief Blank out the maze map by setting all indices to 0.
+ * @brief Set all indices in the maze map to a constant value.
  *
  * @param maze_map The maze map to blank out.
+ * @param val The value to set for all indices in the maze map (default is 0).
  */
-void blankMazeMap(MazeMap<int> &maze_map);
+void constMazeMap(MazeMap<int> &maze_map, int val = 0);
 
 /**
- * @brief Blank out the projection map by setting all indices to 0.
+ * @brief Set all indices in the projection map to a constant value.
  *
  * @param projection_map The projection map to blank out.
+ * @param val The value to set for all indices in the projection map (default is 0).
  */
-void blankProjectionMap(ProjectionMap<int> &projection_map);
+void constProjectionMap(ProjectionMap<int> &projection_map, int val = 0);
 
 /**
  * @brief Convert a maze map to a projection map.
@@ -1302,6 +1304,6 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
  * of the mask image. Pixels from the mask image are copied over to the base image based on
  * the alpha value - if the alpha value is not fully transparent (0), the pixel is copied.
  */
-int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img);
+void mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img);
 
 #endif

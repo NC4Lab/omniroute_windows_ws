@@ -307,7 +307,7 @@ int updateFloorTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_
         cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
 
     // Merge the warped image with the final image
-    if (mergeImgMat(img_warp, out_img_mat) < 0) return -1;
+    mergeImgMat(img_warp, out_img_mat);
     return 0;
 }
 
@@ -330,7 +330,7 @@ int updateWallTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_m
                         cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
 
                 // Merge the warped image with the final image
-                if (mergeImgMat(img_warp, out_img_mat) < 0) return -1;
+                mergeImgMat(img_warp, out_img_mat);
             }
         }
     }

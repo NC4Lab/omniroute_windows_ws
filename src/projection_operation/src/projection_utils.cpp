@@ -1827,11 +1827,14 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
     return 0;
 }
 
-int mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img) {
-    cv::Mat mask_img_4ch;
-    cv::extractChannel(mask_img, mask_img_4ch, 3); // Extract the alpha channel from the mask image
-    cv::add(out_base_img, mask_img, out_base_img, mask_img_4ch); // Add the mask image to the base image using the alpha channel as a mask
-    return 0;
+void mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img) {
+    // Extract alpha channel as a mask (nonzero alpha means copy)
+    std::vector<cv::Mat> channels;
+    cv::split(mask_img, channels);
+    cv::Mat alphaMask = channels[3] != 0; // binary mask, uchar
+
+    // Use the mask to copy pixels from mask_img to out_base_img
+    mask_img.copyTo(out_base_img, alphaMask);
 }
 
 bool fileExists(const std::string &_file_path) {
@@ -1840,24 +1843,18 @@ bool fileExists(const std::string &_file_path) {
     return file.good();
 }
 
-void blankMazeMap(MazeMap<int> &maze_map) {
-    // Initialize the maze map with -1 for all chambers and surfaces
-    for (auto &cham: CHAMBERS) {
-        for (auto &surf: SURFACES) {
-            maze_map[cham][surf] = 0; // 0 indicates blank image assigned
-        }
-    }
+void constMazeMap(MazeMap<int> &maze_map, int val = 0) {
+    // Set value for all chambers and surfaces
+    for (auto &cham: CHAMBERS)
+        for (auto &surf: SURFACES)
+            maze_map[cham][surf] = val;
 }
 
-void blankProjectionMap(ProjectionMap<int> &projection_map) {
-    // Initialize the projection map with -1 for all projectors, rows, columns, and calibration modes
-    for (auto &proj: PROJECTORS) {
-        for (auto &row: ROWS) {
-            for (auto &col: COLS) {
-                for (auto &mode: CAL_MODES) {
-                    projection_map[proj][row][col][mode] = 0; // 0 indicates blank image assigned
-                }
-            }
-        }
-    }
+void constProjectionMap(ProjectionMap<int> &projection_map, int val = 0) {
+    // Set value for all projectors, rows, columns, and calibration modes
+    for (auto &proj: PROJECTORS)
+        for (auto &row: ROWS)
+            for (auto &col: COLS)
+                for (auto &mode: CAL_MODES)
+                    projection_map[proj][row][col][mode] = val;
 }
