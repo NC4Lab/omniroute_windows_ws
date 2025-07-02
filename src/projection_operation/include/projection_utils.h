@@ -21,6 +21,22 @@ using ProjectionMap = std::array<std::array<std::array<std::array<T, N_CAL_MODES
 template <typename T>
 using MazeMap = std::array<std::array<T, N_SURF>, N_CHAMBERS>;
 
+/**
+ * @brief Set all indices in the maze map to a constant value.
+ *
+ * @param maze_map The maze map to blank out.
+ * @param val The value to set for all indices in the maze map (default is 0).
+ */
+void constMazeMap(MazeMap<int> &maze_map, int val);
+
+/**
+ * @brief Set all indices in the projection map to a constant value.
+ *
+ * @param projection_map The projection map to blank out.
+ * @param val The value to set for all indices in the projection map (default is 0).
+ */
+void constProjectionMap(ProjectionMap<int> &projection_map, int val);
+
  /* 
  *                                          ______
  *                                         |  p1  |
@@ -60,14 +76,14 @@ using MazeMap = std::array<std::array<T, N_SURF>, N_CHAMBERS>;
 // Decide which walls are displayed on which projector
 // For each wall, we need to know which projector to use and which calibration mode to use
 const std::map<SurfaceEnum, std::pair<ProjectorEnum, CalibrationMode>> wall_projector_map = {
-    {WALL_0, {PROJ_2, MODE_WALLS_MIDDLE}}, // West wall on Projector 2
-    {WALL_1, {PROJ_2, MODE_WALLS_RIGHT}},  // Northwest wall on Projector 2
-    {WALL_2, {PROJ_3, MODE_WALLS_MIDDLE}}, // North wall on Projector 3
-    {WALL_3, {PROJ_3, MODE_WALLS_RIGHT}},  // Northeast wall on Projector 1
-    {WALL_4, {PROJ_0, MODE_WALLS_MIDDLE}}, // East wall on Projector 0
-    {WALL_5, {PROJ_0, MODE_WALLS_RIGHT}},  // Southeast wall on Projector 0
-    {WALL_6, {PROJ_1, MODE_WALLS_MIDDLE}}, // South wall on Projector 1
-    {WALL_7, {PROJ_1, MODE_WALLS_RIGHT}},  // Southwest wall on Projector 1
+    {WALL_0, {PROJ_2, MODE_WALLS_MIDDLE}}, // Wall 0 is Middle wall on Projector 2
+    {WALL_1, {PROJ_2, MODE_WALLS_RIGHT}},  // Wall 1 is Right wall on Projector 2
+    {WALL_2, {PROJ_3, MODE_WALLS_MIDDLE}}, // Wall 2 is Middle wall on Projector 3
+    {WALL_3, {PROJ_3, MODE_WALLS_RIGHT}},  // Wall 3 is Right wall on Projector 3
+    {WALL_4, {PROJ_0, MODE_WALLS_MIDDLE}}, // Wall 4 is Middle wall on Projector 0
+    {WALL_5, {PROJ_0, MODE_WALLS_RIGHT}},  // Wall 5 is Right wall on Projector 0
+    {WALL_6, {PROJ_1, MODE_WALLS_MIDDLE}}, // Wall 6 is Middle wall on Projector 1
+    {WALL_7, {PROJ_1, MODE_WALLS_RIGHT}},  // Wall 7 is Right wall on Projector 1
 };
 
 MazeMap<int> MAZE_IMAGE_MAP; // Map to hold image indices for each chamber and surface
@@ -75,22 +91,6 @@ ProjectionMap<int> PROJECTION_IMAGE_MAP; // Map to hold image indices for each p
 MazeMap<int> MAZE_BLANK_MAP; // Map to hold a blank maze map
 ProjectionMap<int> PROJECTION_BLANK_MAP; // Map to hold a blank projection map
 ProjectionMap<cv::Mat> HMAT_MAP; // Map to hold homography matrices for each projector, row, column, and calibration mode
-
-/**
- * @brief Set all indices in the maze map to a constant value.
- *
- * @param maze_map The maze map to blank out.
- * @param val The value to set for all indices in the maze map (default is 0).
- */
-void constMazeMap(MazeMap<int> &maze_map, int val);
-
-/**
- * @brief Set all indices in the projection map to a constant value.
- *
- * @param projection_map The projection map to blank out.
- * @param val The value to set for all indices in the projection map (default is 0).
- */
-void constProjectionMap(ProjectionMap<int> &projection_map, int val);
 
 /**
  * @brief Convert a maze map to a projection map.
@@ -127,12 +127,12 @@ void mazeToProjectionMap(const MazeMap<T> &maze_map, ProjectionMap<T> &projectio
 
                 // The chamber determines the row and column indices
                 row = static_cast<int>(cham) / N_ROWS; // Integer division to get the row index
-                col = static_cast<int>(cham) % N_COLS; // Modulus to get the column index
+                col = static_cast<int>(cham) % N_ROWS; // Modulus to get the column index
                 // Example 1: cham = CHAM_7 ==> row = 2, col = 1
                 // Example 2: cham = CHAM_5 ==> row = 1, col = 2
+
                 // But this is only correct for Projector 3
                 // Need to correct the row and column indices based on the projector orientation
-
                 if (proj == PROJ_0) {
                     row = N_COLS-1 - col;
                     col = row; 
@@ -165,7 +165,6 @@ bool FLAG_UPDATE_TEXTURES = true;     // Flag to indicate if textures need to be
 bool FLAG_UPDATE_HOMOGRAPHYS = true;  // Flag to indicate if homography matrices need to be updated
 
 const int STARTING_MONITOR = 0; // Default starting monitor index for the windows (hardcoded)
-
 GLFWmonitor **MONITORS = nullptr; // Pointer to the pointer to the GLFW monitors
 GLFWmonitor *PRIMARY_MONITOR = nullptr; // Pointer to the primary monitor (usually the first one detected)
 int N_MONITORS;   // Number of monitors detected by GLFW

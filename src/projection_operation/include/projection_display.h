@@ -19,8 +19,7 @@ const cv::Mat WALL_BLANK_IMG_MAT = cv::Mat::zeros(GLB_MONITOR_HEIGHT_PXL, GLB_MO
 /**
  * @brief  Struct for rat mask tracking and graphics.
  */
-static struct RatTracker
-{
+static struct RatTracker {
     cv::Point2f marker_position = cv::Point2f(0.0f, 0.0f); // Marker center (cm)
     const GLfloat marker_radius = 7.5f;                    // Marker default circle radius (cm)
     cv::Scalar marker_rgb = cv::Scalar(0.0f, 0.0f, 0.0f);  // Marker color (black)
@@ -32,8 +31,7 @@ static struct RatTracker
 /**
  * @brief Struct for ROS communication.
  */
-static struct ROSComm
-{
+static struct ROSComm {
     std::unique_ptr<ros::NodeHandle> node_handle; // Smart pointer to ROS node handler
     std::unique_ptr<ros::Rate> loop_rate;         // Smart pointer to ros::Rate
     ros::Subscriber proj_cmd_sub;                 // ROS subscriber for projection commands
@@ -66,7 +64,6 @@ const int N_WARPED_WALL_IMAGES = 3;
 std::array<ProjectionMap<cv::Mat>, N_WARPED_WALL_IMAGES> WARPED_RUNTIME_WALL_MATS;  // Vector of warped wall image texture matrices
 
 // ================================================== FUNCTIONS ==================================================
-
 /**
  * @brief GLFW key callback function to handle key events and execute corresponding actions.
  *
@@ -83,12 +80,8 @@ std::array<ProjectionMap<cv::Mat>, N_WARPED_WALL_IMAGES> WARPED_RUNTIME_WALL_MAT
  * @param action GLFW_PRESS, GLFW_RELEASE or GLFW_REPEAT.
  * @param mods Bit field describing which modifier keys were held down.
  */
-void callbackKeyBinding(
-    GLFWwindow *window,
-    int key,
-    int scancode,
-    int action,
-    int mods);
+void callbackKeyBinding(GLFWwindow *window, int key,
+    int scancode, int action, int mods);
 
 /**
  * @brief Callback function for the "projection_cmd" topic subscription.
