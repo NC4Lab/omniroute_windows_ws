@@ -88,7 +88,6 @@ using MazeMap = std::array<std::array<T, N_SURF>, N_CHAMBERS>;
  *      }}}};
  */
 using ProjWallConfigIndices4D = std::array<std::array<std::array<std::array<int, 3>, 3>, 3>, 4>;
-ProjWallConfigIndices4D PROJ_WALL_CONFIG_INDICES_4D;
 
 
  /*                                         ______
@@ -764,9 +763,8 @@ public:
      * It sets the current shader program and updates the uniform
      * variables such as aspect ratio.
      *
-     * @return Integer status code [-1:error, 0:successful].
      */
-    static int SetupShader();
+    static void SetupShader();
 
     /**
      * @brief Unsets the shader after drawing.
@@ -774,9 +772,8 @@ public:
      * @details
      * This method should be called after drawing each frame.
      *
-     * @return Integer status code [-1:error, 0:successful].
      */
-    static int UnsetShader();
+    static void UnsetShader();
 
     /**
      * @brief Sets the position of the circle.
@@ -804,16 +801,14 @@ public:
      *
      * @param do_coord_warp Option to convert circle coordinates based on circHomMatNDC.
      *
-     * @return Integer status code [-1:error, 0:successful].
      */
-    int updateCircleObject(bool do_coord_warp = false);
+    void updateCircleObject(bool do_coord_warp = false);
 
     /**
      * @brief Draws the circle using the stored shader program and uniforms.
      *
-     * @return Integer status code [-1:error, 0:successful].
      */
-    int draw();
+    void draw();
 
     /**
      * @brief Cleans up shader objects and other shared resources.

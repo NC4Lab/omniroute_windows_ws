@@ -37,9 +37,7 @@ static struct ROSComm
     std::unique_ptr<ros::NodeHandle> node_handle; // Smart pointer to ROS node handler
     std::unique_ptr<ros::Rate> loop_rate;         // Smart pointer to ros::Rate
     ros::Subscriber proj_cmd_sub;                 // ROS subscriber for projection commands
-    int proj_cmd_data = -1;                       // Variable to store the last command received, initialized with an invalid value
     ros::Subscriber proj_img_sub;                 // ROS subscriber for projection image data
-    int proj_img_data[10][8];                     // Variable to store the last image configuration received (10x8)
     ros::Subscriber track_pos_sub;                // ROS subscriber for tracking rat position
     geometry_msgs::PoseStamped track_pos_data;    // Variable to store the last tracking rat pose received
 } RC;
@@ -47,12 +45,12 @@ static struct ROSComm
 /**
  * @brief Array of homography matrices for warping the rat mask marker from maze cm to ndc space for each projector.
  */
-std::array<cv::Mat, 4> HMAT_CM_TO_NDC_ARR;
+std::array<cv::Mat, N_PROJ> HMAT_CM_TO_NDC_ARR;
 
 /**
  * @brief  Array of marker for masking rat for each projector.
  */
-std::array<CircleRenderer, 4> RM_CIRCREND_ARR;
+std::array<CircleRenderer, N_PROJ> RM_CIRCREND_ARR;
 
 /**
  * @brief  Array of OpenGL context objects.
@@ -67,6 +65,10 @@ std::vector<cv::Point> winOffsetVec;
 // Vectors to store the raw loaded images in cv::Mat format
 std::vector<cv::Mat> runtimeWallMats;  // Vector of individual wall image texture matrices
 std::vector<cv::Mat> runtimeFloorMats; // Vector of individual floor image texture matrices
+
+// Vectors to store precomputed warped images
+const int N_WARPED_WALL_IMAGES = 3;
+std::array<ProjectionMap<cv::Mat>, N_WARPED_WALL_IMAGES> WARPED_RUNTIME_WALL_MATS;  // Vector of warped wall image texture matrices
 
 // ================================================== FUNCTIONS ==================================================
 
@@ -145,24 +147,6 @@ int initSubscriberROS();
  * @param max_turn_angle Maximum angle to turn in degrees.
  */
 void simulateRatMovement(float move_step, float max_turn_angle);
-
-/**
- * @brief Sets the wall image configuration for a projector array.
- *
- * This function updates the PROJ_WALL_CONFIG_INDICES_4D array to set images on specified walls
- * in a chamber, considering each projector's orientation. It supports setting images for multiple walls.
- *
- * @param image_ind Index of the image to be projected.
- * @param chamber_ind Index of the target chamber.
- * @param wall_ind Index of the wall for single-wall overload.
- * @param walls_ind Vector of wall indices for multiple-wall overload.
- */
-
-// Overload for setting an image on a single wall
-void configWallImageIndex(int image_ind, int chamber_ind, int wall_ind);
-
-// Overload for setting images on multiple walls
-void configWallImageIndex(int image_ind, int chamber_ind, const std::vector<int> &walls_ind);
 
 /**
  * @brief Get the vertices cooresponding to the maze boundaries in centimeters.

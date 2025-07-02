@@ -836,24 +836,16 @@ int CircleRenderer::CompileAndLinkCircleShaders(float __AspectRatioUniform) {
     return status;
 }
 
-int CircleRenderer::SetupShader() {
-    int status = 0;
-
+void CircleRenderer::SetupShader() {
     // Use the shader program
     glUseProgram(_ShaderProgram);
-    // status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-
     // Set the aspect ratio uniform
     glUniform1f(_AspectRatioLocation, _AspectRatioUniform);
-    // status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    return status;
 }
 
-int CircleRenderer::UnsetShader() {
+void CircleRenderer::UnsetShader() {
     // Unset the shader program
     glUseProgram(0);
-    return CheckErrorOpenGL(__LINE__, __FILE__);
 }
 
 void CircleRenderer::setPosition(cv::Point2f _circPosition) {
@@ -870,54 +862,39 @@ void CircleRenderer::setColor(cv::Scalar col) {
     circColor = col;
 }
 
-int CircleRenderer::updateCircleObject(bool do_coord_warp) {
-    int status = 0;
+void CircleRenderer::updateCircleObject(bool do_coord_warp) {
 
     // Generate the new vertices based on the current position, radius, and circSegments
     _computeVertices(circVertices);
 
     // Convert the circle vertices to NDC space
-    if (do_coord_warp)
-        _convertToNDC(circVertices);
+    if (do_coord_warp) _convertToNDC(circVertices);
 
     // Bind the VBO to the GL_ARRAY_BUFFER target
     glBindBuffer(GL_ARRAY_BUFFER, _vbo);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Update the VBO's data with the new vertices. This call will reallocate the buffer if necessary
     // or simply update the data store's contents if the buffer is large enough.
     glBufferData(GL_ARRAY_BUFFER, circVertices.size() * sizeof(float), circVertices.data(), GL_DYNAMIC_DRAW);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Unbind the buffer
     glBindBuffer(GL_ARRAY_BUFFER, 0);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    return status;
 }
 
-int CircleRenderer::draw() {
-    int status = 0;
-
+void CircleRenderer::draw() {
     // Set color
     glUniform4f(_ColorLocation, circColor[0], circColor[1], circColor[2], 1.0f);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Use the updated transformation matrix instead of an identity matrix
     auto transformArray = _cvMatToGlArray(_transformationMatrix);
     glUniformMatrix4fv(_TransformLocation, 1, GL_FALSE, transformArray.data());
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Bind the VAO and draw the circle using GL_TRIANGLE_FAN
     glBindVertexArray(_vao);
     glDrawArrays(GL_TRIANGLE_FAN, 0, static_cast<GLsizei>(circVertices.size() / 2));
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Unbind the VAO to leave a clean state
     glBindVertexArray(0);
-    status = CheckErrorOpenGL(__LINE__, __FILE__) < 0 ? -1 : status;
-
-    return status;
 }
 
 int CircleRenderer::CleanupClassResources() {
@@ -1313,11 +1290,11 @@ void xmlFrmtFileStringsVertices(std::string &out_path) {
     out_path = CONFIG_DIR_PATH + "/maze_vertices.xml"; // Format the output tag
 }
 
-int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind, CalibrationMode _CAL_MODE, int cp_ind) {
+int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind, CalibrationMode cal_mode, int cp_ind) {
     // Define file path and calibration mode string
     std::string file_path;
     xmlFrmtFileStringsControlPoints(proj_ind, file_path); // Assume you have a similar function to set file path
-    std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
+    std::string cal_mode_str = CAL_MODE_STR_VEC[cal_mode];
 
     // Attempt to load the XML file
     pugi::xml_document doc;
@@ -1380,11 +1357,11 @@ int xmlSaveControlPoints(const std::array<cv::Point2f, 4> &CP_ARR, int proj_ind,
     return 0;
 }
 
-int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, std::array<cv::Point2f, 4> &out_CP_ARR) {
+int xmlLoadControlPoints(int proj_ind, CalibrationMode cal_mode, int cp_ind, std::array<cv::Point2f, 4> &out_CP_ARR) {
     // Define file path and calibration mode string
     std::string file_path;
     xmlFrmtFileStringsControlPoints(proj_ind, file_path); // Assume you have a similar function to set file path
-    std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
+    std::string cal_mode_str = CAL_MODE_STR_VEC[cal_mode];
 
     // Attempt to load the XML file
     pugi::xml_document doc;
@@ -1441,11 +1418,11 @@ int xmlLoadControlPoints(int proj_ind, CalibrationMode _CAL_MODE, int cp_ind, st
     return 0;
 }
 
-int xmlSaveHMAT(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col) {
+int xmlSaveHMAT(const cv::Mat &_H, int proj_ind, CalibrationMode cal_mode, int grid_row, int grid_col) {
     // Get the full file path and attribute string for the given calibration mode
     std::string file_path;
     xmlFrmtFileStringsHmat(proj_ind, file_path);
-    std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
+    std::string cal_mode_str = CAL_MODE_STR_VEC[cal_mode];
 
     // Attempt to load the XML file
     pugi::xml_document doc;
@@ -1507,11 +1484,11 @@ int xmlSaveHMAT(const cv::Mat &_H, int proj_ind, CalibrationMode _CAL_MODE, int 
     return 0;
 }
 
-int xmlLoadHMAT(int proj_ind, CalibrationMode _CAL_MODE, int grid_row, int grid_col, cv::Mat &out_H) {
+int xmlLoadHMAT(int proj_ind, CalibrationMode cal_mode, int grid_row, int grid_col, cv::Mat &out_H) {
     // Get the full file path and attribute string for the given calibration mode
     std::string file_path;
     xmlFrmtFileStringsHmat(proj_ind, file_path);
-    std::string cal_mode_str = CAL_MODE_STR_VEC[_CAL_MODE];
+    std::string cal_mode_str = CAL_MODE_STR_VEC[cal_mode];
 
     // Attempt to load the XML file
     pugi::xml_document doc;

@@ -351,7 +351,7 @@ std::vector<std::string> CALIB_TEST_WALL_IMAGES = {
     "2_test_wall.png",
     "3_test_wall.png",
 };
-size_t N_CALIB_TEST_WALL_IMAGES = CALIB_TEST_WALL_IMAGES.size(); // Number of available calibration test wall images
+const int N_CALIB_TEST_WALL_IMAGES = 4; // Number of available calibration test wall images
 
 /**
  * @brief File names for available calibration floor images
@@ -361,7 +361,7 @@ std::vector<std::string> CALIB_TEST_FLOOR_IMAGES = {
     "0_test_floor.png",
     "1_test_floor.png"
 };
-size_t N_CALIB_TEST_FLOOR_IMAGES = CALIB_TEST_FLOOR_IMAGES.size(); // Number of available calibration test floor images
+const int N_CALIB_TEST_FLOOR_IMAGES = 2; // Number of available calibration test floor images
 
 /**
  * @brief File names for available calibration monitor wall images
@@ -375,7 +375,7 @@ std::vector<std::string> CALIB_MON_WALL_IMAGES = {
     "w_m4.png",
     "w_m5.png"
 };
-size_t N_CALIB_MON_WALL_IMAGES = CALIB_MON_WALL_IMAGES.size(); // Number of available calibration monitor wall images
+const int N_CALIB_MON_WALL_IMAGES = 6; // Number of available calibration monitor wall images
 
 /**
  * @brief File names for available calibration monitor floor images 
@@ -389,7 +389,7 @@ std::vector<std::string> CALIB_MON_FLOOR_IMAGES = {
     "f_m4.png",
     "f_m5.png"
 };
-size_t N_CALIB_MON_FLOOR_IMAGES = CALIB_MON_FLOOR_IMAGES.size(); // Number of available calibration monitor floor images
+const int N_CALIB_MON_FLOOR_IMAGES = 6; // Number of available calibration monitor floor images
 
 /**
  * @brief List of available calibration mode images
@@ -401,7 +401,7 @@ std::vector<std::string> CALIB_MODE_IMAGES = {
     "w_c2.png", // right walls
     "f_c0.png", // maze floor
 };
-size_t N_CALIB_MODE_IMAGES = CALIB_MODE_IMAGES.size(); // Number of available calibration mode images
+const int N_CALIB_MODE_IMAGES = 4; // Number of available calibration mode images
 
 /**
  * @brief File names for available runtime wall images
@@ -426,7 +426,7 @@ std::vector<std::string> RUNTIME_WALL_IMAGES = {
     "w_rm_teal_middle.png",
     "w_rm_teal_right.png"
 };
-size_t N_RUNTIME_WALL_IMAGES = RUNTIME_WALL_IMAGES.size(); // Number of available runtime wall images
+const int N_RUNTIME_WALL_IMAGES = 15; // Number of available runtime wall images
 
 /**
  * @brief File names for available runtime floor images
@@ -442,7 +442,7 @@ std::vector<std::string> RUNTIME_FLOOR_IMAGES = {
     "f_pattern_2.png",
     "f_white.png"
 };
-size_t N_RUNTIME_FLOOR_IMAGES = RUNTIME_FLOOR_IMAGES.size(); // Number of available runtime floor images
+const int N_RUNTIME_FLOOR_IMAGES = 6; // Number of available runtime floor images
 
 
 #endif
