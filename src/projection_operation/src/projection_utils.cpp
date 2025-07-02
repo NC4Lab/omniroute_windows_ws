@@ -1206,7 +1206,7 @@ void dbLogHomMat(const cv::Mat &r_HMAT) {
     ROS_INFO("==================================");
 }
 
-void dbLogProjWallImageCfg4D(const ProjWallConfigIndices4D &wallImageConfig) {
+void dbLogProjectionMap(const ProjectionMap<int> &projectionMap) {
     if (!GLB_DO_VERBOSE_DEBUG) return;
 
     ROS_INFO("                                Projector Wall Image Configuration                                       ");
@@ -1225,7 +1225,7 @@ void dbLogProjWallImageCfg4D(const ProjWallConfigIndices4D &wallImageConfig) {
             snprintf(buffer, sizeof(buffer), "(%d) Row ||", row);
 
             for (int col = 0; col < 3; ++col) {
-                auto &cell = wallImageConfig[proj][row][col];
+                auto &cell = projectionMap[proj][row][col];
                 snprintf(buffer + strlen(buffer), sizeof(buffer) - strlen(buffer), " %3d,%3d,%3d |",
                          cell[0], cell[1], cell[2]);
             }

@@ -169,7 +169,7 @@ void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg) {
     m.getRPY(roll, pitch, yaw);
 
     // Convert offset angle from degrees to radians
-    double offset_angle_rad = RT.offset_angle * GLOB_PI / 180.0f;
+    double offset_angle_rad = RT.offset_angle * M_PI / 180.0f;
 
     // Adjust the yaw by the offset angle
     double adjusted_yaw = yaw + offset_angle_rad;
@@ -263,7 +263,7 @@ void simulateRatMovement(float move_step, float max_turn_angle) {
     }
 
     // Calculate new position
-    float radian_angle = marker_angle * GLOB_PI / 180.0f;
+    float radian_angle = marker_angle * M_PI / 180.0f;
     RT.marker_position.x += move_step * cos(radian_angle);
     RT.marker_position.y += move_step * sin(radian_angle);
 

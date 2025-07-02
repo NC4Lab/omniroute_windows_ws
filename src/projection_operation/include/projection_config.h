@@ -305,7 +305,7 @@ const std::array<CalibrationMode, N_CAL_MODES-1> WALL_CAL_MODES = {MODE_WALLS_LE
 /**
  * @brief ROS loop rate in Hertz.
  */
-const int GLB_ROS_LOOP_RATE = 100;
+const int GLB_ROS_LOOP_RATE = 60;
 
 /**
  * @brief Global variable for verbose logging.
@@ -318,11 +318,6 @@ const bool GLB_DO_VERBOSE_DEBUG = false;
  * @details  [0: None, 1: >=Default 2: >=Low, 3: >=Medium, 4: High]
  */
 const int GLB_DEBUG_LEVEL_GL = 2;
-
-/**
- * @brief Pi
- */
-static constexpr float GLOB_PI = 3.14159265358979323846f;
 
 // Get top-level package path
 extern const std::string PACKAGE_PATH = ros::package::getPath("projection_operation");

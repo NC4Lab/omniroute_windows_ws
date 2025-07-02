@@ -12,7 +12,7 @@
 
 // Reference frame with respect to the projetors
 // Data structure to hold stuff for each projector, row, column, and calibration mode
-// T[Projectors][Rows][Columns][CAL_MODES]
+// T[Projector][Row][Column][CalibrationMode]
 template <typename T>
 using ProjectionMap = std::array<std::array<std::array<std::array<T, N_CAL_MODES>, N_COLS>, N_ROWS>, N_PROJ>;
 
@@ -21,76 +21,8 @@ using ProjectionMap = std::array<std::array<std::array<std::array<T, N_CAL_MODES
 template <typename T>
 using MazeMap = std::array<std::array<T, N_SURF>, N_CHAMBERS>;
 
-/**
- * @brief 4D array of hardcoded image indices to display.
- *
- * @details
- * This array is used to map specific wall image indices to a combination of
- * projector, chamber row, chamber column, calibration mode, and wall position.
- *
- * [4][3][3][3] = [number of projectors][grid rows][grid columns][calibration modes]
- *
- * - Dimension 1: Projectors [0, 1, 2, 3]
- *
- * - Dimension 2: Calibration Mode [0: left walls, 1: middle walls, 2: right walls]
- *
- * - Dimension 3: Grid Rows [0, 1, 2]
- *   - Index with respect to the grid rows in the chamber.
- *
- * - Dimension 4: Grid Columns [0, 1, 2]
- *   - Index with respect to the grid columns in the chamber.
- *
- * Image file mapping for shapes:
- * [0] Black
- * [1] Square
- * [2] Circle
- * [3] Triangle
- * [4] Star
- * [5] Pentagon
- *
- * Element mapping:
- *
- *    {{// Projector 0: East
- *      {{
- *          // Chamber Row: Top, Column: Left, Center, Right
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Middle
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Bottom
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *      }},
- *      // Projector 1: North
- *      {{
- *          // Chamber Row: Top, Column: Left, Center, Right
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Middle
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Bottom
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *      }},
- *      // Projector 2: West
- *      {{
- *          // Chamber Row: Top, Column: Left, Center, Right
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Middle
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Bottom
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *      }},
- *      // Projector 3: South
- *      {{
- *          // Chamber Row: Top, Column: Left, Center, Right
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Middle
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}, // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *                                               // Chamber Row: Bottom
- *          {{{0, 0, 0}, {0, 0, 0}, {0, 0, 0}}}  // {Calibration Mode: Left, Center, Right}, {...}, {...}
- *      }}}};
- */
-using ProjWallConfigIndices4D = std::array<std::array<std::array<std::array<int, 3>, 3>, 3>, 4>;
-
-
- /*                                         ______
+ /* 
+ *                                          ______
  *                                         |  p1  |
  *                                         |______|
  *                                           /__\
@@ -1086,9 +1018,9 @@ void dbLogHomMat(const cv::Mat &_HMAT);
 /**
  * @brief Prints the wall image indecies of all entries in the wall image configuration array.
  *
- * @param _HMAT ProjWallConfigIndices4D array to print.
+ * @param projectionMap ProjectionMap<int> array to print.
  */
-void dbLogProjWallImageCfg4D(const ProjWallConfigIndices4D &wallImageConfig);
+void dbLogProjectionMap(const ProjectionMap<int> &projectionMap);
 
 /**
  * @brief Displays a warped image in a window.
