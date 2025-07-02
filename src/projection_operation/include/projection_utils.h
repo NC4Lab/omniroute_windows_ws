@@ -74,7 +74,6 @@ MazeMap<int> MAZE_IMAGE_MAP; // Map to hold image indices for each chamber and s
 ProjectionMap<int> PROJECTION_IMAGE_MAP; // Map to hold image indices for each projector, row, column, and calibration mode
 MazeMap<int> MAZE_BLANK_MAP; // Map to hold a blank maze map
 ProjectionMap<int> PROJECTION_BLANK_MAP; // Map to hold a blank projection map
-
 ProjectionMap<cv::Mat> HMAT_MAP; // Map to hold homography matrices for each projector, row, column, and calibration mode
 
 /**
@@ -83,7 +82,7 @@ ProjectionMap<cv::Mat> HMAT_MAP; // Map to hold homography matrices for each pro
  * @param maze_map The maze map to blank out.
  * @param val The value to set for all indices in the maze map (default is 0).
  */
-void constMazeMap(MazeMap<int> &maze_map, int val = 0);
+void constMazeMap(MazeMap<int> &maze_map, int val);
 
 /**
  * @brief Set all indices in the projection map to a constant value.
@@ -91,7 +90,7 @@ void constMazeMap(MazeMap<int> &maze_map, int val = 0);
  * @param projection_map The projection map to blank out.
  * @param val The value to set for all indices in the projection map (default is 0).
  */
-void constProjectionMap(ProjectionMap<int> &projection_map, int val = 0);
+void constProjectionMap(ProjectionMap<int> &projection_map, int val);
 
 /**
  * @brief Convert a maze map to a projection map.
