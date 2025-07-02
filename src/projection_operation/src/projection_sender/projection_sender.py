@@ -26,10 +26,6 @@ class ProjectionOperation:
         self.image_pub = rospy.Publisher('projection_image', Int32MultiArray, queue_size=10)
         rospy.sleep(1)  # Allow some time for the publisher to be set up
 
-        # Initialize the node (if not already initialized)
-        if not rospy.core.is_initialized():
-            rospy.init_node('projection_operation_node', anonymous=True)
-
         # Initialize image_config with default values (0)
         self.image_config = self.blank_image_config
 
