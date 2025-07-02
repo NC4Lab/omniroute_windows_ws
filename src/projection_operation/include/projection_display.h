@@ -48,14 +48,9 @@ static struct ROSComm
 std::array<cv::Mat, N_PROJ> HMAT_CM_TO_NDC_ARR;
 
 /**
- * @brief  Array of marker for masking rat for each projector.
- */
-std::array<CircleRenderer, N_PROJ> RM_CIRCREND_ARR;
-
-/**
  * @brief  Array of OpenGL context objects.
  */
-std::vector<MazeRenderContext> PROJ_CTX_VEC(N_PROJ);
+std::array<MazeRenderContext, N_PROJ> PROJ_CTX_VEC;
 
 /**
  * @brief Offset for the window position
@@ -168,12 +163,8 @@ void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec)
  * @param do_ignore_blank_img Bool to handle blank/black imgages [true: skip; false: include]
  * @param[out] out_img_mat Reference to store the new cv::Mat image.
  *
- * @return Integer status code [-1:error, 0:successful].
  */
-int updateFloorTexture(
-    int proj_ind,
-    bool do_ignore_blank_img,
-    cv::Mat &out_img_mat);
+void updateFloorTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_mat);
 
 /**
  * @brief Applies the homography matrices to warp wall image textures and combine them into a new image.
@@ -182,20 +173,16 @@ int updateFloorTexture(
  * @param do_ignore_blank_img Bool to handle blank/black imgages [true: skip; false: include]
  * @param[out] out_img_mat Reference to store the new cv::Mat image.
  *
- * @return Integer status code [-1:error, 0:successful].
  */
-int updateWallTexture(
-    int proj_ind,
-    bool do_ignore_blank_img,
-    cv::Mat &out_img_mat);
+void updateWallTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_mat);
 
 /**
  * @brief Draws control points associated with each corner wall.
  *
- * @param[out] out_rmCircRend CircleRenderer objects used to draw the control points.
+ * @param[out] out_rmCircRend Pointer to CircleRenderer object
  *
  */
-void drawRatMask(CircleRenderer &out_rmCircRend);
+void drawRatMask(CircleRenderer *out_rmCircRend);
 
 bool TIMING_ENABLED = true;
 class TimingData {

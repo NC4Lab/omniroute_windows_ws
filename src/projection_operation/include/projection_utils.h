@@ -172,392 +172,6 @@ int N_MONITORS;   // Number of monitors detected by GLFW
 // Vector of indices of the monitor associated with each projector. This will be updated by SetupGraphicsLibraries().
 std::vector<int> PROJ_MON_VEC = {1, 2, 3, 4}; // Vector of indeces of the monitor associated with each projector
 
-/**
- * @brief Callback function for handling framebuffer size changes.
- *
- * This function is called whenever the framebuffer size changes,
- * and it updates the OpenGL viewport to match the new dimensions.
- *
- * @param window Pointer to the GLFW window.
- * @param width The new width of the framebuffer.
- * @param height The new height of the framebuffer.
- */
-void CallbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height);
-
-/**
- * @brief Callback function for handling OpenGL errors.
- *
- * This function is called whenever an error occurs in the OpenGL context.
- * It logs the error message using ROS_ERROR.
- *
- * @param source The source of the error.
- * @param type The type of the error.
- * @param id The error ID.
- * @param severity The severity of the error.
- * @param length The length of the error message.
- * @param message The error message.
- * @param userParam User-defined parameter.
- */
-void CallbackDebugOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, 
-    GLsizei length, const GLchar *message, const void *userParam);
-
-/**
- * @brief Callback function for handling errors.
- *
- * This function is called whenever an error occurs in the GLFW context.
- * It logs the error message using ROS_ERROR.
- *
- * @param error The error code.
- * @param description The error description.
- */
-void CallbackErrorGLFW(int error, const char *description);
-
-/**
- * @brief Checks for OpenGL errors and logs them.
- * Should be called after OpenGL API calls.
- *
- * @param line Line number where the function is called.
- * @param file_str File name where the function is called.
- * @param msg_str Optional message to provide additional context (default to nullptr).
- * @return Integer status code [-1:error, 0:successful].
- *
- * @example CheckErrorOpenGL(__LINE__, __FILE__);
- */
-int CheckErrorOpenGL(int line, const char *file_str, const char *msg_str = nullptr);
-
-/**
- * @brief Checks for GLFW errors and logs them.
- * Should be called after GLFW API calls.
- *
- * @param line Line number where the function is called.
- * @param file_str File name where the function is called.
- * @param msg_str Optional message to provide additional context (default to nullptr).
- * @return Integer status code [-1:error, 0:successful].
- *
- * @example CheckErrorGLFW(__LINE__, __FILE__);
- */
-int CheckErrorGLFW(int line, const char *file_str, const char *msg_str = nullptr);
-
-/**
- * @brief Initializes GLFW and discovers monitors.
- *
- * Sets up GLFW, including setting an error callback and initializing the library.
- * It discovers and stores the available monitors, updating the total count.
- * It also populates the vector of monitor indices for projection.
- *
- */
-int SetupGraphicsLibraries();
-
-/**
- * @brief Cleans up GLFW and resets monitor info.
- *
- * Terminates GLFW to clean up all resources and resets monitor pointers and count.
- * Logs the result of the cleanup process.
- *
- * @return int Status of cleanup (0 for success, -1 for failure indicated by GLFW errors).
- */
-int CleanupGraphicsLibraries();
-
-// ================================================== CLASS: MazeRenderContext ==================================================
-
-#ifndef MAZE_RENDER_CONTEXT_CALLBACKS_H
-#define MAZE_RENDER_CONTEXT_CALLBACKS_H
-
-// Callback function type for key events
-using KeyCallbackFunc = void (*)(GLFWwindow *, int, int, int, int);
-
-#endif // MAZE_RENDER_CONTEXT_CALLBACKS_H
-
-#ifndef MAZE_RENDER_CONTEXT_H
-#define MAZE_RENDER_CONTEXT_H
-
-class MazeRenderContext
-{
-public:
-    GLuint textureID;                   // Texture for the wall
-    GLFWwindow *window;               // The window associated with this context
-    GLFWmonitor *monitor;             // The monitor associated with this context
-    int windowInd;                      // Index for the window associated with this context
-    int monitorInd;                     // Index for the monitor associated with this context
-    bool isContextInitialized;          // Flag indicating whether there context has been initialized
-    bool isFullScreen;                  // Flag indicating whether the window is in full screen mode
-    bool textureExists;               // Flag indicating whether the texture exists
-    static int WindowWidthWindowedPxl;  // Width of the window in windowed mode
-    static int WindowHeightWindowedPxl; // Height of the window in windowed mode
-
-private:
-    int _windowWidthPxl;              // Width of the window
-    int _windowHeightPxl;             // Height of the window
-    GLuint _shaderProgram;            // Shader program for wall rendering
-    GLuint _vao;                      // Vertex Array Object
-    GLuint _vbo;                      // Vertex Buffer Object
-    GLuint _ebo;                      // Element Buffer Object
-
-public:
-    /**
-     * @brief Constructor to initialize context members.
-     *
-     * Initializes all member variables to default states,
-     * deferring the setup until resources are available.
-     */
-    MazeRenderContext();
-
-    /**
-     * @brief Destructor to clean up resources.
-     *
-     * Cleans up OpenGL and GLFW resources if the context
-     * has been initialized to ensure proper resource management.
-     */
-    ~MazeRenderContext();
-
-    /**
-     * @brief Deleted copy constructor.
-     *
-     * Copy constructor is deleted to avoid unintentional copying,
-     * ensuring unique ownership of context resources.
-     */
-    MazeRenderContext(const MazeRenderContext &) = delete;
-
-    /**
-     * @brief Deleted copy assignment operator.
-     *
-     * Copy assignment is deleted to avoid unintentional copying,
-     * ensuring unique ownership of context resources.
-     */
-    MazeRenderContext &operator=(const MazeRenderContext &) = delete;
-
-    /**
-     * @brief Move constructor for resource transfer.
-     *
-     * Transfers ownership of context resources from another instance
-     * and resets that instance to prevent double deletion.
-     */
-    MazeRenderContext(MazeRenderContext &&other) noexcept;
-
-    /**
-     * @brief Move assignment operator for resource transfer.
-     *
-     * Cleans up the current resources and transfers ownership
-     * of context resources from another instance.
-     */
-    MazeRenderContext &operator=(MazeRenderContext &&other) noexcept;
-
-    /**
-     * @brief Makes the OpenGL context current for this thread.
-     * 
-     */
-    void makeContextCurrent();
-
-    /**
-     * @brief Compiles and links shaders for a given class instance.
-     *
-     * @param vertex_source Source code for the vertex shader stored as a C++ raw string literal.
-     * @param fragment_source Source code for the fragment shader stored as a C++ raw string literal.
-     * @return Integer status code [-1:error, 0:successful].
-     *
-     * @details
-     * This function encapsulates the process of creating, compiling, and linking an OpenGL shader program.
-     * The OpenGL shader program is part of the OpenGL graphics pipeline and is essential for rendering graphics.
-     *
-     * The function compiles the vertex and fragment shaders from their source code.
-     * It then links them into a shader program, which can be activated with glUseProgram().
-     *
-     * - Vertex Shader: Takes attributes like position, color, texture coordinates, normals, etc.,
-     *   and computes processed values to be used in later pipeline stages.
-     *
-     * - Fragment Shader: Takes interpolated attributes from the rasterization stage and computes
-     *   the final color of a pixel. This is the stage where things like texture mapping,
-     *   lighting calculations, etc., would typically be performed.
-     *
-     * Once the shader program is created and linked successfully, it returns the GLuint ID of the shader program.
-     * This ID is used to activate the shader program for rendering.
-     */
-    int compileAndLinkShaders(
-        const GLchar *vertex_source,
-        const GLchar *fragment_source);
-
-    /**
-     * @brief This method checks the validation status of the shader program
-     * and logs any errors if the validation fails.
-     *
-     * Make sure to call this method after your shader program has been linked.
-     *
-     * @return Integer status code [-1:error, 0:successful].
-     */
-    int checkShaderProgram();
-
-    /**
-     * @brief Initializes a new rendering context.
-     *
-     * Checks and sets a new monitor based on the monitor index, creates a new GLFW window,
-     * and sets up the OpenGL context with necessary callbacks and extensions.
-     *
-     * @param win_ind Index for the window to initialize.
-     * @param mon_ind Index for the monitor to use for the window.
-     * @param win_width Width of the window to create.
-     * @param win_height Height of the window to create.
-     * @param key_callback Optional key callback function to set for the window (default to nullptr).
-     * @return int Status of context initialization (0 for success, -1 for failure).
-     */
-    int initWindowContext(
-        int win_ind,
-        int mon_ind,
-        int win_width,
-        int win_height,
-        KeyCallbackFunc key_callback = nullptr);
-
-    /**
-     * @brief Initialize OpenGL resources for wall image render objects.
-     *
-     * @param vertices Pointer to the vertex data array for rendering.
-     * @param vertices_size Size of the vertex data array.
-     * @param indices Pointer to the index data array for rendering.
-     * @param indices_size Size of the index data array.
-     *
-     * @return Integer status code [-1:error, 0:successful].
-     *
-     * @details
-     * Initializes the Vertex Array Object (VAO), Vertex Buffer Object (VBO) and Element Buffer Object (EBO).
-     */
-    int initRenderObjects(
-        float *vertices,
-        size_t vertices_size,
-        unsigned int *indices,
-        size_t indices_size);
-
-    /**
-     * @brief Sets up the system for a new rendering.
-     *
-     * Makes this the current GL context and clears the color
-     * buffers of the back buffer for a new frame.
-     *
-     */
-    void initWindowForDrawing();
-
-    /**
-     * @brief Converts an OpenCV Mat image into an OpenGL texture for this context.
-     *
-     * @param img_mat The cv::Mat image that needs to be converted.
-     *
-     * @details
-     * This function takes an OpenCV Mat image as input and converts it into an OpenGL texture.
-     * The OpenCV image is first converted from BGR to RGB format. Then, a new OpenGL texture is
-     * generated and the converted image data is stored in this texture.
-     *
-     * @note This function assumes that the input image is of type CV_8UC3 and has no alpha channel.
-     */
-    void loadMatTexture(cv::Mat img_mat);
-
-    /**
-     * @brief Renders the current texture stored in a given class instance.
-     *
-     */
-    void drawTexture();
-
-    /**
-     * @brief Swap and poll the buffer.
-     *
-     * Basically a wrapper for glfwSwapBuffers() and glfwPollEvents() which
-     * swaps the front and back buffers of the window and processes events.
-     *
-     */
-    void bufferSwapPoll();
-
-    /**
-     * @brief Changes the display mode and monitor of the application window.
-     *
-     * This function switches the application window between full-screen and windowed modes
-     * and moves it to the monitor specified by the global variable imgMonNumInd.
-     *
-     * @param mon_ind Index for the monitor to move the window to.
-     * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
-     * @param offset_xy Optional offset to apply to window position (default to (0, 0)).
-     *
-     */
-    void changeWindowDisplayMode(int mon_ind, bool is_fullscreen, cv::Point offset_xy = cv::Point(0.0f, 0.0f));
-
-    /**
-     * @brief Sets the GLFW window to take focus.
-     *
-     * @note  This is not ideal as it steals focus from other windows.
-     *
-     */
-    void forceWindowFocus();
-
-    /**
-     * @brief Function to set the background color and redraw the window
-     *
-     * @param color The color to set the background to.
-     * @param duration The duration to flash the background for (ms).
-     *
-     * @return Integer status code [-1:error, 0:successful].
-     *
-     * @example flashBackgroundColor(window, cv::Scalar(0.1f, 0.0f, 0.0f), 0.5f);
-     */
-    int flashBackgroundColor(
-        const cv::Scalar &color,
-        int duration);
-
-    /**
-     * @brief Cleans up all OpenGL resources.
-     *
-     * This method deletes the shader program, textures, VAO, VBO, EBO, and destroys
-     * the GLFW window if they have been created. It also logs the cleanup process if
-     * logging is enabled.
-     *
-     * @param log_errors If set to true, the method logs the status of each resource
-     *                   cleanup operation.
-     * @return An integer status code. If all resources are cleaned up without any
-     *         OpenGL errors, it returns 0. If there are any OpenGL errors during
-     *         cleanup, it returns -1.
-     */
-    int cleanupContext(bool log_errors);
-
-private:
-    /**
-     * @brief Helper function for resetting members.
-     *
-     * This is useful for both the move constructor and the move assignment operator.
-     */
-    void _resetMembers();
-
-    /**
-     * @brief Private helper methods to check shader compilation.
-     *
-     * @param __shaderProgram The shader to check.
-     * @param shader_type The type of shader to check.
-     *
-     * @return Integer status code [-1:error, 0:successful].
-     */
-    int _checkShaderCompilation(
-        GLuint __shaderProgram,
-        const std::string &shader_type);
-
-    /**
-     * @brief Private helper methods to check shader linking.
-     * @param __shaderProgram The shader program to check.
-     *
-     * @return Integer status code [-1:error, 0:successful].
-     */
-    int _checkProgramLinking(GLuint __shaderProgram);
-
-    /**
-     * @brief  Private method to check monitor index and id is valid.
-     *
-     * @param mon_ind Index of monitor ID to check.
-     *
-     */
-    void _setMonitor(int mon_ind);
-
-    /**
-     * @brief  Simple test of OpenGL and GLFW callbacks.
-     *
-     * @return Integer status code [-1:error, 0:successful].
-     */
-    int _testCallbacks();
-};
-
-#endif // MAZE_RENDER_CONTEXT_H
 
 // ================================================== CLASS: CircleRenderer ==================================================
 
@@ -572,9 +186,7 @@ private:
  * position, color, and scale. It also provides functionality to compute vertex
  * data for rendering the circle in OpenGL and update its transformation matrix.
  */
-class CircleRenderer
-{
-
+class CircleRenderer {
 public:
     int circID;                      // Index for the circle, used for identification.
     std::vector<float> circVertices; // Vertex data for the circle's geometry.
@@ -626,6 +238,7 @@ private:
         gl_Position = transform * vec4(correctedPos, 0.0, 1.0);
     }
     )glsl";
+
     /**
      * @brief Fragment shader source code for circle coloring.
      *
@@ -669,10 +282,8 @@ public:
      * @param _circHomMatNDC Optional homography matrix to convert position from cm to NDC space (default to identity).
      */
     int initializeCircleObject(
-        cv::Point2f _circPosition,
-        float _cirRadius,
-        cv::Scalar _circColor,
-        unsigned int _circSegments,
+        cv::Point2f _circPosition, float _cirRadius,
+        cv::Scalar _circColor, unsigned int _circSegments,
         cv::Mat _circHomMatNDC = cv::Mat::eye(3, 3, CV_64F));
 
     /**
@@ -1305,4 +916,382 @@ int loadImgMat(const std::vector<std::string> &img_paths_vec, std::vector<cv::Ma
  */
 void mergeImgMat(const cv::Mat &mask_img, cv::Mat &out_base_img);
 
+/**
+ * @brief Callback function for handling framebuffer size changes.
+ *
+ * This function is called whenever the framebuffer size changes,
+ * and it updates the OpenGL viewport to match the new dimensions.
+ *
+ * @param window Pointer to the GLFW window.
+ * @param width The new width of the framebuffer.
+ * @param height The new height of the framebuffer.
+ */
+void CallbackFrameBufferSizeGLFW(GLFWwindow *window, int width, int height);
+
+/**
+ * @brief Callback function for handling OpenGL errors.
+ *
+ * This function is called whenever an error occurs in the OpenGL context.
+ * It logs the error message using ROS_ERROR.
+ *
+ * @param source The source of the error.
+ * @param type The type of the error.
+ * @param id The error ID.
+ * @param severity The severity of the error.
+ * @param length The length of the error message.
+ * @param message The error message.
+ * @param userParam User-defined parameter.
+ */
+void CallbackDebugOpenGL(GLenum source, GLenum type, GLuint id, GLenum severity, 
+    GLsizei length, const GLchar *message, const void *userParam);
+
+/**
+ * @brief Callback function for handling errors.
+ *
+ * This function is called whenever an error occurs in the GLFW context.
+ * It logs the error message using ROS_ERROR.
+ *
+ * @param error The error code.
+ * @param description The error description.
+ */
+void CallbackErrorGLFW(int error, const char *description);
+
+/**
+ * @brief Checks for OpenGL errors and logs them.
+ * Should be called after OpenGL API calls.
+ *
+ * @param line Line number where the function is called.
+ * @param file_str File name where the function is called.
+ * @param msg_str Optional message to provide additional context (default to nullptr).
+ * @return Integer status code [-1:error, 0:successful].
+ *
+ * @example CheckErrorOpenGL(__LINE__, __FILE__);
+ */
+int CheckErrorOpenGL(int line, const char *file_str, const char *msg_str = nullptr);
+
+/**
+ * @brief Checks for GLFW errors and logs them.
+ * Should be called after GLFW API calls.
+ *
+ * @param line Line number where the function is called.
+ * @param file_str File name where the function is called.
+ * @param msg_str Optional message to provide additional context (default to nullptr).
+ * @return Integer status code [-1:error, 0:successful].
+ *
+ * @example CheckErrorGLFW(__LINE__, __FILE__);
+ */
+int CheckErrorGLFW(int line, const char *file_str, const char *msg_str = nullptr);
+
+/**
+ * @brief Initializes GLFW and discovers monitors.
+ *
+ * Sets up GLFW, including setting an error callback and initializing the library.
+ * It discovers and stores the available monitors, updating the total count.
+ * It also populates the vector of monitor indices for projection.
+ *
+ */
+int SetupGraphicsLibraries();
+
+/**
+ * @brief Cleans up GLFW and resets monitor info.
+ *
+ * Terminates GLFW to clean up all resources and resets monitor pointers and count.
+ * Logs the result of the cleanup process.
+ *
+ * @return int Status of cleanup (0 for success, -1 for failure indicated by GLFW errors).
+ */
+int CleanupGraphicsLibraries();
+
+// ================================================== CLASS: MazeRenderContext ==================================================
+
+#ifndef MAZE_RENDER_CONTEXT_CALLBACKS_H
+#define MAZE_RENDER_CONTEXT_CALLBACKS_H
+
+// Callback function type for key events
+using KeyCallbackFunc = void (*)(GLFWwindow *, int, int, int, int);
+
+#endif // MAZE_RENDER_CONTEXT_CALLBACKS_H
+
+#ifndef MAZE_RENDER_CONTEXT_H
+#define MAZE_RENDER_CONTEXT_H
+
+class MazeRenderContext {
+public:
+    GLuint textureID;                   // Texture for the wall
+    GLFWwindow *window;               // The window associated with this context
+    GLFWmonitor *monitor;             // The monitor associated with this context
+    int windowInd;                      // Index for the window associated with this context
+    int monitorInd;                     // Index for the monitor associated with this context
+    bool isContextInitialized;          // Flag indicating whether there context has been initialized
+    bool isFullScreen;                  // Flag indicating whether the window is in full screen mode
+    bool textureExists;               // Flag indicating whether the texture exists
+    static int WindowWidthWindowedPxl;  // Width of the window in windowed mode
+    static int WindowHeightWindowedPxl; // Height of the window in windowed mode
+    CircleRenderer *ratMask;             // Circle renderer for the rat mask
+
+private:
+    int _windowWidthPxl;              // Width of the window
+    int _windowHeightPxl;             // Height of the window
+    GLuint _shaderProgram;            // Shader program for wall rendering
+    GLuint _vao;                      // Vertex Array Object
+    GLuint _vbo;                      // Vertex Buffer Object
+    GLuint _ebo;                      // Element Buffer Object
+
+public:
+    /**
+     * @brief Constructor to initialize context members.
+     *
+     * Initializes all member variables to default states,
+     * deferring the setup until resources are available.
+     */
+    MazeRenderContext();
+
+    /**
+     * @brief Destructor to clean up resources.
+     *
+     * Cleans up OpenGL and GLFW resources if the context
+     * has been initialized to ensure proper resource management.
+     */
+    ~MazeRenderContext();
+
+    /**
+     * @brief Deleted copy constructor.
+     *
+     * Copy constructor is deleted to avoid unintentional copying,
+     * ensuring unique ownership of context resources.
+     */
+    MazeRenderContext(const MazeRenderContext &) = delete;
+
+    /**
+     * @brief Deleted copy assignment operator.
+     *
+     * Copy assignment is deleted to avoid unintentional copying,
+     * ensuring unique ownership of context resources.
+     */
+    MazeRenderContext &operator=(const MazeRenderContext &) = delete;
+
+    /**
+     * @brief Move constructor for resource transfer.
+     *
+     * Transfers ownership of context resources from another instance
+     * and resets that instance to prevent double deletion.
+     */
+    MazeRenderContext(MazeRenderContext &&other) noexcept;
+
+    /**
+     * @brief Move assignment operator for resource transfer.
+     *
+     * Cleans up the current resources and transfers ownership
+     * of context resources from another instance.
+     */
+    MazeRenderContext &operator=(MazeRenderContext &&other) noexcept;
+
+    /**
+     * @brief Makes the OpenGL context current for this thread.
+     * 
+     */
+    void makeContextCurrent();
+
+    /**
+     * @brief Compiles and links shaders for a given class instance.
+     *
+     * @param vertex_source Source code for the vertex shader stored as a C++ raw string literal.
+     * @param fragment_source Source code for the fragment shader stored as a C++ raw string literal.
+     * @return Integer status code [-1:error, 0:successful].
+     *
+     * @details
+     * This function encapsulates the process of creating, compiling, and linking an OpenGL shader program.
+     * The OpenGL shader program is part of the OpenGL graphics pipeline and is essential for rendering graphics.
+     *
+     * The function compiles the vertex and fragment shaders from their source code.
+     * It then links them into a shader program, which can be activated with glUseProgram().
+     *
+     * - Vertex Shader: Takes attributes like position, color, texture coordinates, normals, etc.,
+     *   and computes processed values to be used in later pipeline stages.
+     *
+     * - Fragment Shader: Takes interpolated attributes from the rasterization stage and computes
+     *   the final color of a pixel. This is the stage where things like texture mapping,
+     *   lighting calculations, etc., would typically be performed.
+     *
+     * Once the shader program is created and linked successfully, it returns the GLuint ID of the shader program.
+     * This ID is used to activate the shader program for rendering.
+     */
+    int compileAndLinkShaders(
+        const GLchar *vertex_source,
+        const GLchar *fragment_source);
+
+    /**
+     * @brief This method checks the validation status of the shader program
+     * and logs any errors if the validation fails.
+     *
+     * Make sure to call this method after your shader program has been linked.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int checkShaderProgram();
+
+    /**
+     * @brief Initializes a new rendering context.
+     *
+     * Checks and sets a new monitor based on the monitor index, creates a new GLFW window,
+     * and sets up the OpenGL context with necessary callbacks and extensions.
+     *
+     * @param win_ind Index for the window to initialize.
+     * @param mon_ind Index for the monitor to use for the window.
+     * @param win_width Width of the window to create.
+     * @param win_height Height of the window to create.
+     * @param key_callback Optional key callback function to set for the window (default to nullptr).
+     * @return int Status of context initialization (0 for success, -1 for failure).
+     */
+    int initWindowContext(
+        int win_ind, int mon_ind,
+        int win_width, int win_height,
+        KeyCallbackFunc key_callback = nullptr);
+
+    /**
+     * @brief Initialize OpenGL resources for wall image render objects.
+     *
+     * @param vertices Pointer to the vertex data array for rendering.
+     * @param vertices_size Size of the vertex data array.
+     * @param indices Pointer to the index data array for rendering.
+     * @param indices_size Size of the index data array.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     *
+     * @details
+     * Initializes the Vertex Array Object (VAO), Vertex Buffer Object (VBO) and Element Buffer Object (EBO).
+     */
+    int initRenderObjects(
+        float *vertices, size_t vertices_size,
+        unsigned int *indices, size_t indices_size);
+
+    /**
+     * @brief Sets up the system for a new rendering.
+     *
+     * Makes this the current GL context and clears the color
+     * buffers of the back buffer for a new frame.
+     *
+     */
+    void initWindowForDrawing();
+
+    /**
+     * @brief Converts an OpenCV Mat image into an OpenGL texture for this context.
+     *
+     * @param img_mat The cv::Mat image that needs to be converted.
+     *
+     * @details
+     * This function takes an OpenCV Mat image as input and converts it into an OpenGL texture.
+     * The OpenCV image is first converted from BGR to RGB format. Then, a new OpenGL texture is
+     * generated and the converted image data is stored in this texture.
+     *
+     * @note This function assumes that the input image is of type CV_8UC3 and has no alpha channel.
+     */
+    void loadMatTexture(cv::Mat img_mat);
+
+    /**
+     * @brief Renders the current texture stored in a given class instance.
+     *
+     */
+    void drawTexture();
+
+    /**
+     * @brief Swap and poll the buffer.
+     *
+     * Basically a wrapper for glfwSwapBuffers() and glfwPollEvents() which
+     * swaps the front and back buffers of the window and processes events.
+     *
+     */
+    void bufferSwapPoll();
+
+    /**
+     * @brief Changes the display mode and monitor of the application window.
+     *
+     * This function switches the application window between full-screen and windowed modes
+     * and moves it to the monitor specified by the global variable imgMonNumInd.
+     *
+     * @param mon_ind Index for the monitor to move the window to.
+     * @param is_fullscreen Boolean flag indicating whether the window should be set to full-screen mode.
+     * @param offset_xy Optional offset to apply to window position (default to (0, 0)).
+     *
+     */
+    void changeWindowDisplayMode(int mon_ind, bool is_fullscreen, cv::Point offset_xy = cv::Point(0.0f, 0.0f));
+
+    /**
+     * @brief Sets the GLFW window to take focus.
+     *
+     * @note  This is not ideal as it steals focus from other windows.
+     *
+     */
+    void forceWindowFocus();
+
+    /**
+     * @brief Function to set the background color and redraw the window
+     *
+     * @param color The color to set the background to.
+     * @param duration The duration to flash the background for (ms).
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     *
+     * @example flashBackgroundColor(window, cv::Scalar(0.1f, 0.0f, 0.0f), 0.5f);
+     */
+    int flashBackgroundColor(const cv::Scalar &color, int duration);
+
+    /**
+     * @brief Cleans up all OpenGL resources.
+     *
+     * This method deletes the shader program, textures, VAO, VBO, EBO, and destroys
+     * the GLFW window if they have been created. It also logs the cleanup process if
+     * logging is enabled.
+     *
+     * @param log_errors If set to true, the method logs the status of each resource
+     *                   cleanup operation.
+     * @return An integer status code. If all resources are cleaned up without any
+     *         OpenGL errors, it returns 0. If there are any OpenGL errors during
+     *         cleanup, it returns -1.
+     */
+    int cleanupContext(bool log_errors);
+
+private:
+    /**
+     * @brief Helper function for resetting members.
+     *
+     * This is useful for both the move constructor and the move assignment operator.
+     */
+    void _resetMembers();
+
+    /**
+     * @brief Private helper methods to check shader compilation.
+     *
+     * @param __shaderProgram The shader to check.
+     * @param shader_type The type of shader to check.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int _checkShaderCompilation(GLuint __shaderProgram, const std::string &shader_type);
+
+    /**
+     * @brief Private helper methods to check shader linking.
+     * @param __shaderProgram The shader program to check.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int _checkProgramLinking(GLuint __shaderProgram);
+
+    /**
+     * @brief  Private method to check monitor index and id is valid.
+     *
+     * @param mon_ind Index of monitor ID to check.
+     *
+     */
+    void _setMonitor(int mon_ind);
+
+    /**
+     * @brief  Simple test of OpenGL and GLFW callbacks.
+     *
+     * @return Integer status code [-1:error, 0:successful].
+     */
+    int _testCallbacks();
+};
+
+#endif // MAZE_RENDER_CONTEXT_H
 #endif

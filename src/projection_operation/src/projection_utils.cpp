@@ -125,14 +125,17 @@ MazeRenderContext::MazeRenderContext()
     : _shaderProgram(0), _vao(0), _vbo(0), _ebo(0), textureID(0),
       window(nullptr), monitor(nullptr),
       _windowWidthPxl(1024), _windowHeightPxl(576),
-      windowInd(-1), monitorInd(-1)
-{// Members are initialized to default values, setup is deferred
-    textureExists = false;
+      windowInd(-1), monitorInd(-1), textureExists(false),
+      isContextInitialized(false), isFullScreen(false)
+{
+    // Initialize the CircleRenderer for rat masking
+    ratMask = new CircleRenderer(); // Allocate a new CircleRenderer instance
 }
 
 MazeRenderContext::~MazeRenderContext() {
     // Clean up resources without logging
     if (isContextInitialized) cleanupContext(false);
+    delete ratMask; // Clean up the CircleRenderer instance
 }
 
 MazeRenderContext::MazeRenderContext(MazeRenderContext &&other) noexcept
@@ -146,6 +149,7 @@ MazeRenderContext::MazeRenderContext(MazeRenderContext &&other) noexcept
       textureExists(other.textureExists),
       _windowWidthPxl(other._windowWidthPxl),
       _windowHeightPxl(other._windowHeightPxl),
+      ratMask(other.ratMask),
       _shaderProgram(other._shaderProgram),
       _vao(other._vao),
       _vbo(other._vbo),
@@ -170,6 +174,7 @@ MazeRenderContext &MazeRenderContext::operator=(MazeRenderContext &&other) noexc
         textureExists = other.textureExists;
         _windowHeightPxl = other._windowHeightPxl;
         _windowWidthPxl = other._windowWidthPxl;
+        ratMask = other.ratMask;
         _shaderProgram = other._shaderProgram;
         _vao = other._vao;
         _vbo = other._vbo;
@@ -629,6 +634,7 @@ void MazeRenderContext::_resetMembers() {
     isContextInitialized = false;
     isFullScreen = false;
     textureExists = false;
+    ratMask = new CircleRenderer(); // Initialize ratMask with a new CircleRenderer instance
 }
 
 int MazeRenderContext::_checkShaderCompilation(GLuint __shaderProgram, const std::string &shader_type) {

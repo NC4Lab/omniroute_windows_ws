@@ -295,11 +295,11 @@ void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec)
     else if (proj_ind == 3) maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 0);
 }
 
-int updateFloorTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_mat) {
+void updateFloorTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_mat) {
     int img_ind = PROJECTION_IMAGE_MAP[proj_ind][0][0][MODE_FLOOR];
 
     // Skip empty images
-    if (img_ind == 0 && do_ignore_blank_img) return 0;
+    if (img_ind == 0 && do_ignore_blank_img) return;
 
     // Warp Perspective
     cv::Mat img_warp;
@@ -308,10 +308,9 @@ int updateFloorTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_
 
     // Merge the warped image with the final image
     mergeImgMat(img_warp, out_img_mat);
-    return 0;
 }
 
-int updateWallTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_mat) {
+void updateWallTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_mat) {
     // Iterate through through calibration modes (left walls, middle walls, right walls)
     cv::Mat img_warp;
     for (auto cal_mode : WALL_CAL_MODES) {
@@ -334,21 +333,20 @@ int updateWallTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_m
             }
         }
     }
-    return 0;
 }
 
-void drawRatMask(CircleRenderer &out_rmCircRend) {
+void drawRatMask(CircleRenderer *out_rmCircRend) {
     // Setup the CircleRenderer class shaders
     CircleRenderer::SetupShader();
 
     // Set the marker position
-    out_rmCircRend.setPosition(RT.marker_position);
+    out_rmCircRend->setPosition(RT.marker_position);
 
     // Recompute the marker parameters
-    out_rmCircRend.updateCircleObject(true);
+    out_rmCircRend->updateCircleObject(true);
 
     // Draw the marker
-    out_rmCircRend.draw();
+    out_rmCircRend->draw();
 
     // Unset the shader program
     CircleRenderer::UnsetShader();
@@ -513,7 +511,7 @@ void appInitOpenGL() {
         PROJ_CTX_VEC[proj].changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, winOffsetVec[PROJ_CTX_VEC[proj].windowInd]);
 
         // Initialize the CircleRenderer class object for rat masking
-        if (RM_CIRCREND_ARR[proj].initializeCircleObject(
+        if (PROJ_CTX_VEC[proj].ratMask->initializeCircleObject(
                 RT.marker_position,          // position
                 RT.marker_radius,            // radius
                 RT.marker_rgb,               // color
@@ -545,12 +543,10 @@ void projectorLoop(MazeRenderContext &projCtx) {
         cv::Mat img_mat = WALL_BLANK_IMG_MAT.clone(); // Initialize the image matrix to blank
 
         //TODO: Only update if different
-        if (updateFloorTexture(projCtx.windowInd, false, img_mat))
-            throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update floor texture");
+        updateFloorTexture(projCtx.windowInd, false, img_mat);
 
         // Update wall image texture
-        if (updateWallTexture(projCtx.windowInd, false, img_mat))
-            throw std::runtime_error("[appMainLoop] Window[" + std::to_string(projCtx.windowInd) + "]: Failed to update wall texture");
+        updateWallTexture(projCtx.windowInd, false, img_mat);
 
         // Load the new texture
         projCtx.loadMatTexture(img_mat);
@@ -562,7 +558,8 @@ void projectorLoop(MazeRenderContext &projCtx) {
     projCtx.drawTexture();
     // Draw/update rat mask marker
     //TODO: This should be in the MazeRenderContext class
-    drawRatMask(RM_CIRCREND_ARR[projCtx.windowInd]);
+    drawRatMask(projCtx.ratMask);
+
     // Swap buffers and poll events
     projCtx.bufferSwapPoll();
 }
@@ -574,7 +571,7 @@ int appMainLoop() {
         displayTimer[0].start(); // Start the timer for the loop
 
         // TEMP Simulate rat movement for testing
-        // simulateRatMovement(0.5f, 45.0f);
+        simulateRatMovement(0.5f, 45.0f);
 
         // Run projector loop
         for (auto proj : PROJECTORS)
