@@ -50,11 +50,6 @@ std::array<cv::Mat, N_PROJ> HMAT_CM_TO_NDC_ARR;
  */
 std::array<MazeRenderContext, N_PROJ> PROJ_CTX_VEC;
 
-/**
- * @brief Offset for the window position
- */
-std::vector<cv::Point> winOffsetVec;
-
 // Vectors to store the raw loaded images in cv::Mat format
 std::vector<cv::Mat> runtimeWallMats;  // Vector of individual wall image texture matrices
 std::vector<cv::Mat> runtimeFloorMats; // Vector of individual floor image texture matrices
@@ -246,17 +241,6 @@ void appInitROS(int argc, char **argv);
  * @throws std::runtime_error if image loading fails.
  */
 void appLoadAssets();
-
-/**
- * @brief Initializes the variables for the application.
- *
- * @details
- * This function initializes several veriables including wall configuration
- * arrays.
- *
- * @throws std::runtime_error.
- */
-void appInitVariables();
 
 /**
  * @brief Initializes OpenGL settings and creates shader programs.

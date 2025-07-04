@@ -126,9 +126,8 @@ MazeRenderContext::MazeRenderContext()
       window(nullptr), monitor(nullptr),
       _windowWidthPxl(1024), _windowHeightPxl(576),
       windowInd(-1), monitorInd(-1), textureExists(false),
-      isContextInitialized(false), isFullScreen(false)
-{
-    // Initialize the CircleRenderer for rat masking
+      isContextInitialized(false), isFullScreen(false), winOffset(cv::Point(0, 0)),
+      ratMask(nullptr) {
     ratMask = new CircleRenderer(); // Allocate a new CircleRenderer instance
 }
 
@@ -153,7 +152,8 @@ MazeRenderContext::MazeRenderContext(MazeRenderContext &&other) noexcept
       _shaderProgram(other._shaderProgram),
       _vao(other._vao),
       _vbo(other._vbo),
-      _ebo(other._ebo)
+      _ebo(other._ebo),
+      winOffset(other.winOffset)
 {   // Reset the other's members to prevent double deletion
     other._resetMembers(); // Use a member function for resetting
 }
@@ -179,6 +179,7 @@ MazeRenderContext &MazeRenderContext::operator=(MazeRenderContext &&other) noexc
         _vao = other._vao;
         _vbo = other._vbo;
         _ebo = other._ebo;
+        winOffset = other.winOffset;
 
         // Reset the other's members to default values
         other._resetMembers();
@@ -193,6 +194,14 @@ void MazeRenderContext::makeContextCurrent() {
         return;
     }
     glfwMakeContextCurrent(window);
+}
+
+void MazeRenderContext::setAutoWindowedOffset() {
+    // Calculate x and y offsets based on the monitor resolution
+    int x_offset = windowInd * (GLB_MONITOR_WIDTH_PXL / N_PROJ) * 0.9f;
+    int y_offset = windowInd * (GLB_MONITOR_HEIGHT_PXL / N_PROJ) * 0.9f;
+    // Set the window offset for windowed mode
+    winOffset = cv::Point(x_offset, y_offset);
 }
 
 int MazeRenderContext::compileAndLinkShaders(const GLchar *vertex_source, const GLchar *fragment_source) {
@@ -309,6 +318,8 @@ int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width
     // Set the GLFW window as the current OpenGL context
     glfwMakeContextCurrent(window);
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
+
+    setAutoWindowedOffset(); // Set the window offset for windowed mode
 
     // Very imporant flag!
     isContextInitialized = true;
@@ -635,6 +646,7 @@ void MazeRenderContext::_resetMembers() {
     isFullScreen = false;
     textureExists = false;
     ratMask = new CircleRenderer(); // Initialize ratMask with a new CircleRenderer instance
+    winOffset = cv::Point(0, 0);
 }
 
 int MazeRenderContext::_checkShaderCompilation(GLuint __shaderProgram, const std::string &shader_type) {

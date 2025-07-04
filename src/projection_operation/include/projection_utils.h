@@ -1034,6 +1034,8 @@ public:
     static int WindowWidthWindowedPxl;  // Width of the window in windowed mode
     static int WindowHeightWindowedPxl; // Height of the window in windowed mode
     CircleRenderer *ratMask;             // Circle renderer for the rat mask
+    cv::Point winOffset;                // Offset of the window in pixels (in windowed mode)
+
 
 private:
     int _windowWidthPxl;              // Width of the window
@@ -1094,9 +1096,13 @@ public:
 
     /**
      * @brief Makes the OpenGL context current for this thread.
-     * 
      */
     void makeContextCurrent();
+
+    /**
+     * @brief Sets automatic offset for windowed mode based on the monitor's position.
+     */
+    void setAutoWindowedOffset();
 
     /**
      * @brief Compiles and links shaders for a given class instance.

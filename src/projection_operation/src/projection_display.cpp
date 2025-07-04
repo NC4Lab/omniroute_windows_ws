@@ -294,7 +294,7 @@ void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec)
     else if (proj_ind == 3) maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 0);
 }
 
-void updateFloorTexture(int proj_ind, bool do_ignore_blank_img, bool update_all, cv::Mat &out_img_mat) {
+void updateFloorTexture(int proj_ind, bool ignore_blank_images, bool update_all, cv::Mat &out_img_mat) {
     int img_ind = NEXT_PROJECTION_MAP[proj_ind][0][0][MODE_FLOOR];
 
     // Skip if image is not updated
@@ -302,7 +302,7 @@ void updateFloorTexture(int proj_ind, bool do_ignore_blank_img, bool update_all,
         return; // Skip if the image is not updated
 
     // Skip empty images
-    if (img_ind == 0 && do_ignore_blank_img) return;
+    if (img_ind == 0 && ignore_blank_images) return;
 
     // Warp Perspective
     cv::Mat img_warp;
@@ -316,7 +316,7 @@ void updateFloorTexture(int proj_ind, bool do_ignore_blank_img, bool update_all,
     CURRENT_PROJECTION_MAP[proj_ind][0][0][MODE_FLOOR] = img_ind; // Update the next projection map
 }
 
-void updateWallTexture(int proj_ind, bool do_ignore_blank_img, bool update_all, cv::Mat &out_img_mat) {
+void updateWallTexture(int proj_ind, bool ignore_blank_images, bool update_all, cv::Mat &out_img_mat) {
     // Iterate through through calibration modes (left walls, middle walls, right walls)
     cv::Mat img_warp;
     for (auto cal_mode : WALL_CAL_MODES) {
@@ -324,12 +324,11 @@ void updateWallTexture(int proj_ind, bool do_ignore_blank_img, bool update_all, 
             for (auto col : COLS) {
                 int img_ind = NEXT_PROJECTION_MAP[proj_ind][row][col][cal_mode];
 
-                // Skip if image is not updated
-                if (!update_all && img_ind == CURRENT_PROJECTION_MAP[proj_ind][row][col][cal_mode])
-                    continue; // Skip if the image is not updated
+                // Skip if image does not need to be updated
+                if (!update_all && img_ind == CURRENT_PROJECTION_MAP[proj_ind][row][col][cal_mode]) continue;
 
-                // Skip empty images
-                if (img_ind == 0 && do_ignore_blank_img) continue;
+                // Skip blank images
+                if (img_ind == 0 && ignore_blank_images) continue;
 
                 if (img_ind < N_WARPED_WALL_IMAGES)
                     img_warp = WARPED_RUNTIME_WALL_MATS[img_ind][proj_ind][row][col][cal_mode]; // Use precomputed warped image
@@ -475,19 +474,6 @@ void appLoadAssets()
     ROS_INFO("[projection_display:appLoadAssets] Finished loading variables successfully");
 }
 
-void appInitVariables() {
-    // ---------- Intialize the Window Offset Vector ---------
-    winOffsetVec.clear();              // Clear any existing elements
-    winOffsetVec.reserve(N_PROJ); // Reserve memory for efficiency
-    for (auto proj : PROJECTORS) {
-        // Calculate x and y offsets based on the monitor resolution
-        int x_offset = proj * (GLB_MONITOR_WIDTH_PXL / N_PROJ) * 0.9f;
-        int y_offset = proj * (GLB_MONITOR_HEIGHT_PXL / N_PROJ) * 0.9f;
-        winOffsetVec.emplace_back(x_offset, y_offset);
-    }
-    ROS_INFO("[projection_display:appInitVariables] Finished initializing variables successfully");
-}
-
 void appInitOpenGL() {
     // Initialize GLFW and OpenGL settings and get number of monitors on the system
     if (SetupGraphicsLibraries() < 0)
@@ -495,8 +481,7 @@ void appInitOpenGL() {
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector monitor indices: %d, %d, %d, %d", PROJ_MON_VEC[0], PROJ_MON_VEC[1], PROJ_MON_VEC[2], PROJ_MON_VEC[3]);
 
     // Initialize OpenGL for each projector
-    for (auto proj : PROJECTORS)
-    {
+    for (auto proj : PROJECTORS) {
         // Start on the default screen
         int mon_ind = STARTING_MONITOR;
 
@@ -517,7 +502,7 @@ void appInitOpenGL() {
             throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
 
         // Set all projectors to the starting monitor and include xy offset
-        PROJ_CTX_VEC[proj].changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, winOffsetVec[PROJ_CTX_VEC[proj].windowInd]);
+        PROJ_CTX_VEC[proj].changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, PROJ_CTX_VEC[proj].winOffset);
 
         // Initialize the CircleRenderer class object for rat masking
         if (PROJ_CTX_VEC[proj].ratMask->initializeCircleObject(
@@ -544,7 +529,7 @@ void projectorLoop(MazeRenderContext &projCtx) {
     // --------------- Check State Flags ---------------
     if (FLAG_CHANGE_WINDOW_MODE) {
         int mon_ind = FLAG_WINDOWS_SET_TO_PROJ ? PROJ_MON_VEC[projCtx.windowInd] : STARTING_MONITOR;
-        projCtx.changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, winOffsetVec[projCtx.windowInd]);
+        projCtx.changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, projCtx.winOffset);
     }
 
     if (FLAG_FORCE_WINDOW_FOCUS) projCtx.forceWindowFocus();
@@ -627,7 +612,6 @@ int main(int argc, char **argv) {
     try {
         appInitROS(argc, argv);
         appLoadAssets();
-        appInitVariables();
         appInitOpenGL();
 
         // Setup timers
