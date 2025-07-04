@@ -461,7 +461,6 @@ void appLoadAssets()
         // Store the homography matrix
         HMAT_CM_TO_NDC_ARR[proj] = H;
     }
-
     ROS_INFO("[projection_display:appLoadAssets] Finished loading variables successfully");
 }
 
@@ -475,7 +474,6 @@ void appInitVariables() {
         int y_offset = proj * (GLB_MONITOR_HEIGHT_PXL / N_PROJ) * 0.9f;
         winOffsetVec.emplace_back(x_offset, y_offset);
     }
-
     ROS_INFO("[projection_display:appInitVariables] Finished initializing variables successfully");
 }
 
@@ -519,10 +517,8 @@ void appInitOpenGL() {
                 HMAT_CM_TO_NDC_ARR[proj] // homography matrix
                 ) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
-
         ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj, PROJ_CTX_VEC[proj].windowInd, PROJ_CTX_VEC[proj].monitorInd);
     }
-
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
 }
 
@@ -571,7 +567,7 @@ int appMainLoop() {
         displayTimer[0].start(); // Start the timer for the loop
 
         // TEMP Simulate rat movement for testing
-        simulateRatMovement(0.5f, 45.0f);
+        // simulateRatMovement(0.5f, 45.0f);
 
         // Run projector loop
         for (auto proj : PROJECTORS)

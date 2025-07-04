@@ -1619,7 +1619,7 @@ int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_nd
     pugi::xml_parse_result result = doc.load_file(file_path.c_str());
 
     if (!result) {
-        ROS_ERROR("[xmlLoadHMAT] Failed to load vertices from XML File[%s]", file_path.c_str());
+        ROS_ERROR("[xmlLoadVertices] Failed to load vertices from XML File[%s]", file_path.c_str());
         return -1;
     }
 
@@ -1633,7 +1633,7 @@ int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_nd
     }
 
     if (!monitor_node) {
-        ROS_ERROR("[xmlLoadHMAT] No monitor node[%d] found in XML File[%s]", proj_ind, file_path.c_str());
+        ROS_ERROR("[xmlLoadVertices] No monitor node[%d] found in XML File[%s]", proj_ind, file_path.c_str());
         return -1;
     }
 
@@ -1652,7 +1652,7 @@ int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_nd
         if (coord_node)
             vertex.y = coord_node.text().as_float();
         else {
-            ROS_ERROR("[xmlLoadHMAT] Incomplete vertex data in XML File[%s]", file_path.c_str());
+            ROS_ERROR("[xmlLoadVertices] Incomplete vertex data in XML File[%s]", file_path.c_str());
             return -1; // Handle error: incomplete vertex data
         }
         out_quad_vertices_ndc.push_back(vertex);
@@ -1660,7 +1660,7 @@ int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_nd
 
     // Check if the vector has exactly four vertices
     if (out_quad_vertices_ndc.size() != 4) {
-        ROS_ERROR("[xmlLoadHMAT] Loaded vector is wrong size for XML: Expected[4] Actual[%d] Projector[%d] File[%s]",
+        ROS_ERROR("[xmlLoadVertices] Loaded vector is wrong size for XML: Expected[4] Actual[%d] Projector[%d] File[%s]",
                   out_quad_vertices_ndc.size(), proj_ind, file_path.c_str());
         return -1;
     }
@@ -1670,14 +1670,14 @@ int xmlLoadVertices(int proj_ind, std::vector<cv::Point2f> &out_quad_vertices_nd
 int checkHMAT(const cv::Mat &_H) {
     // Check if the input matrix is 3x3
     if (_H.empty() || _H.rows != 3 || _H.cols != 3) {
-        ROS_ERROR("[updateTexture] Homography matrix size error: Size[%d][%d]", _H.rows, _H.cols);
+        ROS_ERROR("[checkHMAT] Homography matrix size error: Size[%d][%d]", _H.rows, _H.cols);
         return -1;
     }
 
     // Check for a non-singular matrix
     double det = cv::determinant(_H);
     if (fabs(det) < std::numeric_limits<double>::epsilon()) {
-        ROS_ERROR("Homography matrix is singular or near-singular with determinant %.6f", det);
+        ROS_ERROR("[checkHMAT] Homography matrix is singular or near-singular with determinant %.6f", det);
         return -1;
     }
     return 0;

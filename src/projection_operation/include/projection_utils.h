@@ -109,7 +109,7 @@ void mazeToProjectionMap(const MazeMap<T> &maze_map, ProjectionMap<T> &projectio
     // These are shown using ## in the diagram above
     // Example 1: cham = CHAM_7, surf = WALL_5
     // Example 2: cham = CHAM_5, surf = WALL_6
-    int row, col;
+    int row, col, new_row, new_col;
     ProjectorEnum proj;
     CalibrationMode mode;
     for (auto &cham: CHAMBERS) {
@@ -133,20 +133,26 @@ void mazeToProjectionMap(const MazeMap<T> &maze_map, ProjectionMap<T> &projectio
 
                 // But this is only correct for Projector 3
                 // Need to correct the row and column indices based on the projector orientation
-                if (proj == PROJ_0) {
-                    row = N_COLS-1 - col;
-                    col = row; 
+                if (proj == 0) {
+                    new_row = N_COLS-1 - col;
+                    new_col = row; 
                     // Example 1: row = 1, col = 2
-                } else if (proj == PROJ_1) {
-                    row = N_COLS-1 - row;
-                    col = N_ROWS-1 - col;
+                } else if (proj == 1) {
+                    new_row = N_COLS-1 - row;
+                    new_col = N_ROWS-1 - col;
                     // Example 2: row = 1, col = 0
-                } else if (proj == PROJ_2) {
-                    row = col;
-                    col = N_ROWS-1 - row;
+                } else if (proj == 2) {
+                    new_row = col;
+                    new_col = N_ROWS-1 - row;
+                }
+                else { // proj == 3
+                    new_row = row;
+                    new_col = col;
                 }
 
-                projection_map[proj][row][col][mode] = maze_map[cham][surf];
+                projection_map[proj][new_row][new_col][mode] = maze_map[cham][surf];
+                ROS_INFO("[mazeToProjectionMap] Mapping chamber %d, surface %d to projector %d, row %d, col %d, mode %d with image index %d",
+                         static_cast<int>(cham), static_cast<int>(surf), static_cast<int>(proj), new_row, new_col, static_cast<int>(mode), maze_map[cham][surf]);
             }
         }
     }
