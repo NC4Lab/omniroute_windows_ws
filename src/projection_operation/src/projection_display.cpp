@@ -109,9 +109,13 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
     }
 
     // Store the maze image data in the global maze image map
-    for (auto &cham : CHAMBERS)
-        for (auto &surf : SURFACES)
-            NEXT_MAZE_MAP[cham][surf] = msg->data[cham * N_SURF + surf];
+    for (auto &cham : CHAMBERS) {
+        for (auto &surf : SURFACES) {
+            int img_ind = msg->data[cham * N_SURF + surf];
+            if (img_ind >= 0) NEXT_MAZE_MAP[cham][surf] = msg->data[cham * N_SURF + surf];
+            else NEXT_MAZE_MAP[cham][surf] = CURRENT_MAZE_MAP[cham][surf]; // Keep the current image if negative index
+        }
+    }
     
     // Convert the received data to a projection map
     mazeToProjectionMap(NEXT_MAZE_MAP, NEXT_PROJECTION_MAP);
