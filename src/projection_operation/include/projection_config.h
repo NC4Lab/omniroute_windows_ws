@@ -335,7 +335,6 @@ extern const std::string IMAGE_DIR_PATH = WORKSPACE_PATH + "/data/projection/ima
 const std::string RUNTIME_IMAGE_PATH = IMAGE_DIR_PATH + "/runtime";
 const std::string CALIB_IMAGE_PATH = IMAGE_DIR_PATH + "/calibration";
 
-//TODO: All of these paths should be moved to a config file.
 /**
  * @brief File names for available calibration test wall images
  * 

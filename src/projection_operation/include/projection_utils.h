@@ -25,7 +25,7 @@ using MazeMap = std::array<std::array<T, N_SURF>, N_CHAMBERS>;
  * @brief Set all indices in the maze map to a constant value.
  *
  * @param maze_map The maze map to blank out.
- * @param val The value to set for all indices in the maze map (default is 0).
+ * @param val The value to set for all indices in the maze map.
  */
 void constMazeMap(MazeMap<int> &maze_map, int val);
 
@@ -33,7 +33,7 @@ void constMazeMap(MazeMap<int> &maze_map, int val);
  * @brief Set all indices in the projection map to a constant value.
  *
  * @param projection_map The projection map to blank out.
- * @param val The value to set for all indices in the projection map (default is 0).
+ * @param val The value to set for all indices in the projection map.
  */
 void constProjectionMap(ProjectionMap<int> &projection_map, int val);
 
@@ -86,10 +86,11 @@ const std::map<SurfaceEnum, std::pair<ProjectorEnum, CalibrationMode>> wall_proj
     {WALL_7, {PROJ_1, MODE_WALLS_RIGHT}},  // Wall 7 is Right wall on Projector 1
 };
 
-MazeMap<int> MAZE_IMAGE_MAP; // Map to hold image indices for each chamber and surface
-ProjectionMap<int> PROJECTION_IMAGE_MAP; // Map to hold image indices for each projector, row, column, and calibration mode
-MazeMap<int> MAZE_BLANK_MAP; // Map to hold a blank maze map
-ProjectionMap<int> PROJECTION_BLANK_MAP; // Map to hold a blank projection map
+MazeMap<int> NEXT_MAZE_MAP; // Map to hold image indices for each chamber and surface
+ProjectionMap<int> NEXT_PROJECTION_MAP; // Map to hold image indices for each projector, row, column, and calibration mode
+MazeMap<int> CURRENT_MAZE_MAP; // Map to hold the current maze map
+ProjectionMap<int> CURRENT_PROJECTION_MAP; // Map to hold the current projection map
+
 ProjectionMap<cv::Mat> HMAT_MAP; // Map to hold homography matrices for each projector, row, column, and calibration mode
 
 /**

@@ -54,7 +54,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 for (auto &row : ROWS)
                     for (auto &col : COLS)
                         for (auto &mode : WALL_CAL_MODES)
-                            PROJECTION_IMAGE_MAP[proj][row][col][mode] = KEY_WALL_IMG_IND; // Set each element to the new wall image index
+                            NEXT_PROJECTION_MAP[proj][row][col][mode] = KEY_WALL_IMG_IND; // Set each element to the new wall image index
 
             // Set the flag to update the textures
             FLAG_UPDATE_TEXTURES = true;
@@ -72,7 +72,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             ROS_INFO("[callbackKeyBinding] Initiated change floor image configuration to %d", KEY_FLOOR_IMG_IND);
 
             for (auto &proj : PROJECTORS)
-                PROJECTION_IMAGE_MAP[proj][0][0][MODE_FLOOR] = KEY_FLOOR_IMG_IND; // Set element to the new floor image index
+                NEXT_PROJECTION_MAP[proj][0][0][MODE_FLOOR] = KEY_FLOOR_IMG_IND; // Set element to the new floor image index
 
             // Set the flag to update the textures
             FLAG_UPDATE_TEXTURES = true;
@@ -111,10 +111,10 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
     // Store the maze image data in the global maze image map
     for (auto &cham : CHAMBERS)
         for (auto &surf : SURFACES)
-            MAZE_IMAGE_MAP[cham][surf] = msg->data[cham * N_SURF + surf];
+            NEXT_MAZE_MAP[cham][surf] = msg->data[cham * N_SURF + surf];
     
     // Convert the received data to a projection map
-    mazeToProjectionMap(MAZE_IMAGE_MAP, PROJECTION_IMAGE_MAP);
+    mazeToProjectionMap(NEXT_MAZE_MAP, NEXT_PROJECTION_MAP);
 
     if (GLB_DO_VERBOSE_DEBUG) {
         // Log the entire maze image map
@@ -123,7 +123,7 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
             std::stringstream row_stream;
             row_stream << "Chamber[" << cham << "] = [";
             for (auto &surf : SURFACES) {
-                row_stream << MAZE_IMAGE_MAP[cham][surf];
+                row_stream << NEXT_MAZE_MAP[cham][surf];
                 if (surf != SURFACES.back()) // Add a comma between elements, but not after the last one
                     row_stream << ", ";
             }
@@ -181,7 +181,6 @@ void callbackTrackPosROS(const geometry_msgs::PoseStamped::ConstPtr &msg) {
     RT.marker_position.y = position_cm.y + offset_y;
 }
 
-//TODO: Integrate into others
 int initSubscriberROS() {
     // Check if node handle is initialized
     if (!RC.node_handle) {
@@ -295,8 +294,12 @@ void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec)
     else if (proj_ind == 3) maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 0);
 }
 
-void updateFloorTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_mat) {
-    int img_ind = PROJECTION_IMAGE_MAP[proj_ind][0][0][MODE_FLOOR];
+void updateFloorTexture(int proj_ind, bool do_ignore_blank_img, bool update_all, cv::Mat &out_img_mat) {
+    int img_ind = NEXT_PROJECTION_MAP[proj_ind][0][0][MODE_FLOOR];
+
+    // Skip if image is not updated
+    if (!update_all && img_ind == CURRENT_PROJECTION_MAP[proj_ind][0][0][MODE_FLOOR])
+        return; // Skip if the image is not updated
 
     // Skip empty images
     if (img_ind == 0 && do_ignore_blank_img) return;
@@ -308,16 +311,22 @@ void updateFloorTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img
 
     // Merge the warped image with the final image
     mergeImgMat(img_warp, out_img_mat);
+
+    // Update the current projection map
+    CURRENT_PROJECTION_MAP[proj_ind][0][0][MODE_FLOOR] = img_ind; // Update the next projection map
 }
 
-void updateWallTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_mat) {
+void updateWallTexture(int proj_ind, bool do_ignore_blank_img, bool update_all, cv::Mat &out_img_mat) {
     // Iterate through through calibration modes (left walls, middle walls, right walls)
     cv::Mat img_warp;
     for (auto cal_mode : WALL_CAL_MODES) {
         for (auto row : ROWS) {
             for (auto col : COLS) {
-                //TODO: Update only new indices
-                int img_ind = PROJECTION_IMAGE_MAP[proj_ind][row][col][cal_mode];
+                int img_ind = NEXT_PROJECTION_MAP[proj_ind][row][col][cal_mode];
+
+                // Skip if image is not updated
+                if (!update_all && img_ind == CURRENT_PROJECTION_MAP[proj_ind][row][col][cal_mode])
+                    continue; // Skip if the image is not updated
 
                 // Skip empty images
                 if (img_ind == 0 && do_ignore_blank_img) continue;
@@ -330,6 +339,9 @@ void updateWallTexture(int proj_ind, bool do_ignore_blank_img, cv::Mat &out_img_
 
                 // Merge the warped image with the final image
                 mergeImgMat(img_warp, out_img_mat);
+
+                // Update the current projection map
+                CURRENT_PROJECTION_MAP[proj_ind][row][col][cal_mode] = img_ind;
             }
         }
     }
@@ -409,7 +421,6 @@ void appLoadAssets()
     for (auto &filename : RUNTIME_FLOOR_IMAGES) // iterate through the file names
         runtimeFloorImages.push_back(RUNTIME_IMAGE_PATH + "/" + filename);
 
-    //TODO: Move to dynamic loading - this is a static list that is memory inefficient
     if (loadImgMat(runtimeWallImages, runtimeWallMats) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpenCV wall images");
 
@@ -520,8 +531,12 @@ void appInitOpenGL() {
         ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj, PROJ_CTX_VEC[proj].windowInd, PROJ_CTX_VEC[proj].monitorInd);
     }
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
-}
 
+    constMazeMap(CURRENT_MAZE_MAP, 0); // Initialize the current maze image map to blank
+    constMazeMap(NEXT_MAZE_MAP, 0); // Initialize the maze image map to blank
+    constProjectionMap(CURRENT_PROJECTION_MAP, 0); // Initialize the current projection image map to blank
+    constProjectionMap(NEXT_PROJECTION_MAP, 0); // Initialize the projection image map to blank
+}
 
 void projectorLoop(MazeRenderContext &projCtx) {
     projCtx.makeContextCurrent(); // Make the OpenGL context current for this thread
@@ -538,11 +553,10 @@ void projectorLoop(MazeRenderContext &projCtx) {
     if (FLAG_UPDATE_TEXTURES) {
         cv::Mat img_mat = WALL_BLANK_IMG_MAT.clone(); // Initialize the image matrix to blank
 
-        //TODO: Only update if different
-        updateFloorTexture(projCtx.windowInd, false, img_mat);
-
+        // Update floor image texture
+        updateFloorTexture(projCtx.windowInd, false, false, img_mat);
         // Update wall image texture
-        updateWallTexture(projCtx.windowInd, false, img_mat);
+        updateWallTexture(projCtx.windowInd, false, false, img_mat);
 
         // Load the new texture
         projCtx.loadMatTexture(img_mat);
@@ -625,6 +639,7 @@ int main(int argc, char **argv) {
         displayTimer[3].name = "Load Texture";
     
         int mainLoopStatus = 0;
+        FLAG_UPDATE_TEXTURES = true; // Set the flag to update textures initially
         while (ros::ok() && !mainLoopStatus) mainLoopStatus = appMainLoop();
     }
     catch (const std::exception &e) {
