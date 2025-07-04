@@ -89,6 +89,13 @@ int SetupGraphicsLibraries() {
     }
     std::sort(monitor_x_ind.begin(), monitor_x_ind.end());
 
+    //Print
+    for (const auto &pair : monitor_x_ind) {
+        glfwGetMonitorWorkarea(MONITORS[pair.second], &monitor_x, &monitor_y, &monitor_width, &monitor_height);
+        ROS_INFO("[SetupGraphicsLibraries] Monitor[%d] Position: (%d, %d), Size: (%d x %d)", pair.second, monitor_x, monitor_y, monitor_width, monitor_height);
+    }
+
+    //TODO: Monitors should be part of the MazeRenderContext class
     // Store the monitor indices for projection
     PROJ_MON_VEC.clear();
     for (auto &pair : monitor_x_ind) PROJ_MON_VEC.push_back(pair.second);
@@ -479,7 +486,7 @@ void MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscr
     int win_x, win_y;
     int win_width, win_height;
 
-    // Update global
+    // Update class variable
     isFullScreen = do_fullscreen;
 
     // Check/set the new monitor id

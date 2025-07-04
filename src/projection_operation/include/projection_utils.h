@@ -176,8 +176,7 @@ GLFWmonitor **MONITORS = nullptr; // Pointer to the pointer to the GLFW monitors
 GLFWmonitor *PRIMARY_MONITOR = nullptr; // Pointer to the primary monitor (usually the first one detected)
 int N_MONITORS;   // Number of monitors detected by GLFW
 // Vector of indices of the monitor associated with each projector. This will be updated by SetupGraphicsLibraries().
-std::vector<int> PROJ_MON_VEC = {1, 2, 3, 4}; // Vector of indeces of the monitor associated with each projector
-
+std::vector<int> PROJ_MON_VEC = {2, 1, 4, 3}; // Vector of indices of the monitor associated with each projector
 
 // ================================================== CLASS: CircleRenderer ==================================================
 
@@ -635,7 +634,7 @@ void dbLogWallVerticesCoordinates(const std::array<std::array<std::array<cv::Poi
 void dbLogHomMat(const cv::Mat &_HMAT);
 
 /**
- * @brief Prints the wall image indecies of all entries in the wall image configuration array.
+ * @brief Prints the wall image indices of all entries in the wall image configuration array.
  *
  * @param projectionMap ProjectionMap<int> array to print.
  */
