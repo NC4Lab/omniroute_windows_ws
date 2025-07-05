@@ -86,11 +86,8 @@ const std::map<SurfaceEnum, std::pair<ProjectorEnum, CalibrationMode>> wall_proj
     {WALL_7, {PROJ_1, MODE_WALLS_RIGHT}},  // Wall 7 is Right wall on Projector 1
 };
 
-MazeMap<int> NEXT_MAZE_MAP; // Map to hold image indices for each chamber and surface
-ProjectionMap<int> NEXT_PROJECTION_MAP; // Map to hold image indices for each projector, row, column, and calibration mode
-MazeMap<int> CURRENT_MAZE_MAP; // Map to hold the current maze map
-ProjectionMap<int> CURRENT_PROJECTION_MAP; // Map to hold the current projection map
-
+MazeMap<int> MAZE_MAP; // Map for the maze configuration
+ProjectionMap<int> PROJECTION_MAP; // Map to hold the projection configuration
 ProjectionMap<cv::Mat> HMAT_MAP; // Map to hold homography matrices for each projector, row, column, and calibration mode
 
 /**
@@ -113,6 +110,7 @@ void mazeToProjectionMap(const MazeMap<T> &maze_map, ProjectionMap<T> &projectio
     int row, col, new_row, new_col;
     ProjectorEnum proj;
     CalibrationMode mode;
+    constProjectionMap(projection_map, -1); // Initialize the projection map to default values (-1)
     for (auto &cham: CHAMBERS) {
         for (auto &surf: SURFACES) {
             if (surf == FLOOR) {
@@ -152,7 +150,8 @@ void mazeToProjectionMap(const MazeMap<T> &maze_map, ProjectionMap<T> &projectio
                 }
 
                 projection_map[proj][new_row][new_col][mode] = maze_map[cham][surf];
-                ROS_INFO("[mazeToProjectionMap] Mapping chamber %d, surface %d to projector %d, row %d, col %d, mode %d with image index %d",
+                if (GLB_DO_VERBOSE_DEBUG)
+                    ROS_INFO("[mazeToProjectionMap] Mapping chamber %d, surface %d to projector %d, row %d, col %d, mode %d with image index %d",
                          static_cast<int>(cham), static_cast<int>(surf), static_cast<int>(proj), new_row, new_col, static_cast<int>(mode), maze_map[cham][surf]);
             }
         }

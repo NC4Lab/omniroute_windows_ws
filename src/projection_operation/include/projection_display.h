@@ -148,21 +148,21 @@ void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec)
  * @brief Applies the homography matrices to warp floor image textures.
  *
  * @param proj_ind Index of the projector associated with the given image.
- * @param do_ignore_blank_img Bool to handle blank/black imgages [true: skip; false: include]
+ * @param ignore_blank_images Bool to handle blank/black imgages [true: skip; false: include]
  * @param[out] out_img_mat Reference to store the new cv::Mat image.
  *
  */
-void updateFloorTexture(int proj_ind, bool do_ignore_blank_img, bool update_all, cv::Mat &out_img_mat);
+void updateFloorTexture(int proj_ind, bool ignore_blank_images, cv::Mat &out_img_mat);
 
 /**
  * @brief Applies the homography matrices to warp wall image textures and combine them into a new image.
  *
  * @param proj_ind Index of the projector associated with the given image.
- * @param do_ignore_blank_img Bool to handle blank/black imgages [true: skip; false: include]
+ * @param ignore_blank_images Bool to handle blank/black imgages [true: skip; false: include]
  * @param[out] out_img_mat Reference to store the new cv::Mat image.
  *
  */
-void updateWallTexture(int proj_ind, bool do_ignore_blank_img, bool udpate_all, cv::Mat &out_img_mat);
+void updateWallTexture(int proj_ind, bool ignore_blank_images, cv::Mat &out_img_mat);
 
 /**
  * @brief Draws control points associated with each corner wall.

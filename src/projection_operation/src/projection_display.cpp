@@ -54,7 +54,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 for (auto &row : ROWS)
                     for (auto &col : COLS)
                         for (auto &mode : WALL_CAL_MODES)
-                            NEXT_PROJECTION_MAP[proj][row][col][mode] = KEY_WALL_IMG_IND; // Set each element to the new wall image index
+                            PROJECTION_MAP[proj][row][col][mode] = KEY_WALL_IMG_IND; // Set each element to the new wall image index
 
             // Set the flag to update the textures
             FLAG_UPDATE_TEXTURES = true;
@@ -72,7 +72,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             ROS_INFO("[callbackKeyBinding] Initiated change floor image configuration to %d", KEY_FLOOR_IMG_IND);
 
             for (auto &proj : PROJECTORS)
-                NEXT_PROJECTION_MAP[proj][0][0][MODE_FLOOR] = KEY_FLOOR_IMG_IND; // Set element to the new floor image index
+                PROJECTION_MAP[proj][0][0][MODE_FLOOR] = KEY_FLOOR_IMG_IND; // Set element to the new floor image index
 
             // Set the flag to update the textures
             FLAG_UPDATE_TEXTURES = true;
@@ -109,16 +109,16 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
     }
 
     // Store the maze image data in the global maze image map
+    int img_ind = -1;
     for (auto &cham : CHAMBERS) {
         for (auto &surf : SURFACES) {
-            int img_ind = msg->data[cham * N_SURF + surf];
-            if (img_ind >= 0) NEXT_MAZE_MAP[cham][surf] = msg->data[cham * N_SURF + surf];
-            else NEXT_MAZE_MAP[cham][surf] = CURRENT_MAZE_MAP[cham][surf]; // Keep the current image if negative index
+            img_ind = msg->data[cham * N_SURF + surf];
+            if (img_ind >= 0) MAZE_MAP[cham][surf] = img_ind;  // Only update if the index is valid
         }
     }
     
     // Convert the received data to a projection map
-    mazeToProjectionMap(NEXT_MAZE_MAP, NEXT_PROJECTION_MAP);
+    mazeToProjectionMap(MAZE_MAP, PROJECTION_MAP);
 
     if (GLB_DO_VERBOSE_DEBUG) {
         // Log the entire maze image map
@@ -127,7 +127,7 @@ void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
             std::stringstream row_stream;
             row_stream << "Chamber[" << cham << "] = [";
             for (auto &surf : SURFACES) {
-                row_stream << NEXT_MAZE_MAP[cham][surf];
+                row_stream << MAZE_MAP[cham][surf];
                 if (surf != SURFACES.back()) // Add a comma between elements, but not after the last one
                     row_stream << ", ";
             }
@@ -298,13 +298,11 @@ void computeMazeVertCm(int proj_ind, std::vector<cv::Point2f> &maze_vert_cm_vec)
     else if (proj_ind == 3) maze_vert_cm_vec = circShift(template_maze_vert_cm_vec, 0);
 }
 
-void updateFloorTexture(int proj_ind, bool ignore_blank_images, bool update_all, cv::Mat &out_img_mat) {
-    int img_ind = NEXT_PROJECTION_MAP[proj_ind][0][0][MODE_FLOOR];
+void updateFloorTexture(int proj_ind, bool ignore_blank_images, cv::Mat &out_img_mat) {
+    int img_ind = PROJECTION_MAP[proj_ind][0][0][MODE_FLOOR];
 
-    // Skip if image is not updated
-    if (!update_all && img_ind == CURRENT_PROJECTION_MAP[proj_ind][0][0][MODE_FLOOR])
-        return; // Skip if the image is not updated
-
+    // Skip if image index is negative (there is no projection for this calibration mode and chamber)
+    if (img_ind < 0) return;
     // Skip empty images
     if (img_ind == 0 && ignore_blank_images) return;
 
@@ -315,23 +313,20 @@ void updateFloorTexture(int proj_ind, bool ignore_blank_images, bool update_all,
 
     // Merge the warped image with the final image
     mergeImgMat(img_warp, out_img_mat);
-
-    // Update the current projection map
-    CURRENT_PROJECTION_MAP[proj_ind][0][0][MODE_FLOOR] = img_ind; // Update the next projection map
 }
 
-void updateWallTexture(int proj_ind, bool ignore_blank_images, bool update_all, cv::Mat &out_img_mat) {
+void updateWallTexture(int proj_ind, bool ignore_blank_images, cv::Mat &out_img_mat) {
     // Iterate through through calibration modes (left walls, middle walls, right walls)
     cv::Mat img_warp;
-    for (auto cal_mode : WALL_CAL_MODES) {
-        for (auto row : ROWS) {
-            for (auto col : COLS) {
-                int img_ind = NEXT_PROJECTION_MAP[proj_ind][row][col][cal_mode];
+    int img_ind = 0;
+    for (auto cal_mode: WALL_CAL_MODES) {
+        for (auto row: ROWS) {
+            for (auto col: COLS) {
+                img_ind = PROJECTION_MAP[proj_ind][row][col][cal_mode];
 
-                // Skip if image does not need to be updated
-                if (!update_all && img_ind == CURRENT_PROJECTION_MAP[proj_ind][row][col][cal_mode]) continue;
-
-                // Skip blank images
+                // Skip if image index is negative (there is no projection for this calibration mode and chamber)
+                if (img_ind < 0) continue;
+                // Skip blank images if specified
                 if (img_ind == 0 && ignore_blank_images) continue;
 
                 if (img_ind < N_WARPED_WALL_IMAGES)
@@ -342,9 +337,6 @@ void updateWallTexture(int proj_ind, bool ignore_blank_images, bool update_all, 
 
                 // Merge the warped image with the final image
                 mergeImgMat(img_warp, out_img_mat);
-
-                // Update the current projection map
-                CURRENT_PROJECTION_MAP[proj_ind][row][col][cal_mode] = img_ind;
             }
         }
     }
@@ -521,10 +513,9 @@ void appInitOpenGL() {
     }
     ROS_INFO("[projection_display:appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
 
-    constMazeMap(CURRENT_MAZE_MAP, 0); // Initialize the current maze image map to blank
-    constMazeMap(NEXT_MAZE_MAP, 0); // Initialize the maze image map to blank
-    constProjectionMap(CURRENT_PROJECTION_MAP, 0); // Initialize the current projection image map to blank
-    constProjectionMap(NEXT_PROJECTION_MAP, 0); // Initialize the projection image map to blank
+    // Initialize the maze map and projection maps to blank
+    constMazeMap(MAZE_MAP, 0);
+    constProjectionMap(PROJECTION_MAP, 0);
 }
 
 void projectorLoop(MazeRenderContext &projCtx) {
@@ -543,12 +534,18 @@ void projectorLoop(MazeRenderContext &projCtx) {
         cv::Mat img_mat = WALL_BLANK_IMG_MAT.clone(); // Initialize the image matrix to blank
 
         // Update floor image texture
-        updateFloorTexture(projCtx.windowInd, false, false, img_mat);
+        // displayTimer[1].start(); // Start the timer for updating floor texture
+        updateFloorTexture(projCtx.windowInd, false, img_mat);
+        // displayTimer[1].update(true); // Update the timer
         // Update wall image texture
-        updateWallTexture(projCtx.windowInd, false, false, img_mat);
+        displayTimer[2].start(); // Start the timer for updating wall texture
+        updateWallTexture(projCtx.windowInd, false, img_mat);
+        displayTimer[2].update(true); // Update the timer
 
         // Load the new texture
+        // displayTimer[3].start(); // Start the timer for loading texture
         projCtx.loadMatTexture(img_mat);
+        // displayTimer[3].update(true); // Update the timer
     }
     // --------------- Handle Image Processing for Next Frame ---------------
     // Prepare the frame for rendering (clear the back buffer)
@@ -567,7 +564,7 @@ void projectorLoop(MazeRenderContext &projCtx) {
 
 int appMainLoop() {
         int status = 0; // Initialize status to 0 (no error)
-        displayTimer[0].start(); // Start the timer for the loop
+        // displayTimer[0].start(); // Start the timer for the loop
 
         // TEMP Simulate rat movement for testing
         // simulateRatMovement(0.5f, 45.0f);
@@ -585,7 +582,7 @@ int appMainLoop() {
         // Process a single round of callbacks for ROS messages
         ros::spinOnce();
 
-        displayTimer[0].update(true);
+        // displayTimer[0].update(true);
         // Sleep to maintain the loop rate
         RC.loop_rate->sleep();
 
