@@ -336,7 +336,9 @@ void updateWallTexture(int proj_ind, bool ignore_blank_images, cv::Mat &out_img_
                         cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
 
                 // Merge the warped image with the final image
+                // displayTimer[4].start(); // Start the timer for merging
                 mergeImgMat(img_warp, out_img_mat);
+                // displayTimer[4].update(true); // Update the timer
             }
         }
     }
@@ -538,9 +540,9 @@ void projectorLoop(MazeRenderContext &projCtx) {
         updateFloorTexture(projCtx.windowInd, false, img_mat);
         // displayTimer[1].update(true); // Update the timer
         // Update wall image texture
-        displayTimer[2].start(); // Start the timer for updating wall texture
+        // displayTimer[2].start(); // Start the timer for updating wall texture
         updateWallTexture(projCtx.windowInd, false, img_mat);
-        displayTimer[2].update(true); // Update the timer
+        // displayTimer[2].update(true); // Update the timer
 
         // Load the new texture
         // displayTimer[3].start(); // Start the timer for loading texture
@@ -566,6 +568,9 @@ int appMainLoop() {
         int status = 0; // Initialize status to 0 (no error)
         // displayTimer[0].start(); // Start the timer for the loop
 
+        // Process a single round of callbacks for ROS messages
+        ros::spinOnce();
+
         // TEMP Simulate rat movement for testing
         // simulateRatMovement(0.5f, 45.0f);
 
@@ -577,10 +582,6 @@ int appMainLoop() {
         FLAG_CHANGE_WINDOW_MODE = false;
         FLAG_UPDATE_TEXTURES = false;
         FLAG_FORCE_WINDOW_FOCUS = false;
-
-        // --------------- Handle ROS Messages and Operations ---------------
-        // Process a single round of callbacks for ROS messages
-        ros::spinOnce();
 
         // displayTimer[0].update(true);
         // Sleep to maintain the loop rate
@@ -622,6 +623,7 @@ int main(int argc, char **argv) {
         displayTimer[1].name = "Update Floor Texture";
         displayTimer[2].name = "Update Wall Texture";
         displayTimer[3].name = "Load Texture";
+        displayTimer[4].name = "Merging";
     
         int mainLoopStatus = 0;
         FLAG_UPDATE_TEXTURES = true; // Set the flag to update textures initially
