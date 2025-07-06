@@ -331,10 +331,11 @@ void updateWallTexture(int proj_ind, bool ignore_blank_images, cv::Mat &out_img_
 
                 if (img_ind < N_WARPED_WALL_IMAGES)
                     img_warp = WARPED_RUNTIME_WALL_MATS[img_ind][proj_ind][row][col][cal_mode]; // Use precomputed warped image
-                else
+                else {
+                    img_warp.release(); // Release the image if it is not in the precomputed list
                     cv::warpPerspective(runtimeWallMats[img_ind], img_warp, HMAT_MAP[proj_ind][row][col][cal_mode],
                         cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
-
+                }
                 // Merge the warped image with the final image
                 // displayTimer[4].start(); // Start the timer for merging
                 mergeImgMat(img_warp, out_img_mat);

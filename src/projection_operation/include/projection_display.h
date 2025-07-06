@@ -55,7 +55,7 @@ std::vector<cv::Mat> runtimeWallMats;  // Vector of individual wall image textur
 std::vector<cv::Mat> runtimeFloorMats; // Vector of individual floor image texture matrices
 
 // Vectors to store precomputed warped images
-const int N_WARPED_WALL_IMAGES = 3;
+const int N_WARPED_WALL_IMAGES = 4;
 std::array<ProjectionMap<cv::Mat>, N_WARPED_WALL_IMAGES> WARPED_RUNTIME_WALL_MATS;  // Vector of warped wall image texture matrices
 
 // ================================================== FUNCTIONS ==================================================
