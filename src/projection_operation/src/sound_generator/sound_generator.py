@@ -83,15 +83,16 @@ class SoundGenerator:
         rospy.loginfo('SoundGenerator initialized successfully.')
 
     def sound_callback(self, msg):
-        rospy.loginfo('Sound received: ' + msg.data)
+        rospy.loginfo('[sound_generator] Sound received: ' + msg.data)
 
         clip = self.clips.get(msg.data)
         if clip:
             [clip.play(device['name']) for device in self.sound_devices]
+            rospy.loginfo('[sound_generator] Played sound: ' + msg.data)
         elif msg.data == 'Stop':
             sd.stop()
         else:
-            rospy.logwarn('Sound command not recognized: ' + msg.data)
+            rospy.logwarn('[sound_generator] Sound command not recognized: ' + msg.data)
 
 # @brief Main code
 if __name__ == '__main__':
