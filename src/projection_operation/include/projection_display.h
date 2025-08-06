@@ -178,6 +178,7 @@ class TimingData {
         ros::Time currentTime, lastTime;
         ros::Duration deltaTime, minDeltaTime, maxDeltaTime;
         std::string name;
+        bool isRunning = false;
 
         void reset() {
             if (!TIMING_ENABLED) return;
@@ -189,8 +190,13 @@ class TimingData {
         }
 
         void start() {
+            if (!TIMING_ENABLED) return;
+            if (isRunning) {
+                ROS_WARN("[%s] timer is already running. Resetting the timer.", name.c_str());
+            }
             currentTime = ros::Time::now();
             lastTime = currentTime;
+            isRunning = true;
         }
         
         void update(bool print = false) {
@@ -209,14 +215,21 @@ class TimingData {
             if (print) printTimingData();
         }
 
+        void stop() {
+            if (!TIMING_ENABLED) return;
+            isRunning = false;
+            currentTime = ros::Time::now();
+            deltaTime = currentTime - lastTime;
+            ROS_INFO("[%s] Timer stopped, Delta: %f", name.c_str(), deltaTime.toSec());
+        }
+
         void printTimingData() {
             if (!TIMING_ENABLED) return;
-            ROS_INFO("[%s] Delta: %f, Min Delta: %f, Max Delta: %f",
+            ROS_INFO("[%s], Delta: %f, Min Delta: %f, Max Delta: %f",
                      name.c_str(), deltaTime.toSec(), minDeltaTime.toSec(), maxDeltaTime.toSec());
         }
 
 };
-TimingData displayTimer[10]; // Array of TimingData objects for different parts of the application
 
 /**
  * @brief Initializes the ROS node and sets up the subscriber for the "projection_cmd" topic.

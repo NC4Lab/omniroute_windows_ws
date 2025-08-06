@@ -8,6 +8,9 @@
 
 #include "projection_display.h"
 
+// Timers
+TimingData projectionTimer;
+
 // ================================================== FUNCTIONS ==================================================
 
 int KEY_WALL_IMG_IND = 0; // Global variable to track the wall image index for key binding
@@ -100,6 +103,8 @@ void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg) {
 }
 
 void callbackProjImgROS(const std_msgs::Int32MultiArray::ConstPtr &msg) {
+    projectionTimer.start();
+
     // Expects a N_CHAMBERS x N_SURF array of integers
     // where N_CHAMBERS = 9 and N_SURF = 9 (8 walls + 1 floor)
     if (msg->data.size() != N_CHAMBERS * N_SURF) {
@@ -337,9 +342,7 @@ void updateWallTexture(int proj_ind, bool ignore_blank_images, cv::Mat &out_img_
                         cv::Size(GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL));
                 }
                 // Merge the warped image with the final image
-                // displayTimer[4].start(); // Start the timer for merging
                 mergeImgMat(img_warp, out_img_mat);
-                // displayTimer[4].update(true); // Update the timer
             }
         }
     }
@@ -357,6 +360,8 @@ void drawRatMask(CircleRenderer *out_rmCircRend) {
 
     // Draw the marker
     out_rmCircRend->draw();
+
+    ROS_INFO("[drawRatMask] Drawing rat mask at position x[%f] y[%f]", RT.marker_position.x, RT.marker_position.y);
 
     // Unset the shader program
     CircleRenderer::UnsetShader();
@@ -537,18 +542,12 @@ void projectorLoop(MazeRenderContext &projCtx) {
         cv::Mat img_mat = WALL_BLANK_IMG_MAT.clone(); // Initialize the image matrix to blank
 
         // Update floor image texture
-        // displayTimer[1].start(); // Start the timer for updating floor texture
         updateFloorTexture(projCtx.windowInd, false, img_mat);
-        // displayTimer[1].update(true); // Update the timer
         // Update wall image texture
-        // displayTimer[2].start(); // Start the timer for updating wall texture
         updateWallTexture(projCtx.windowInd, false, img_mat);
-        // displayTimer[2].update(true); // Update the timer
 
         // Load the new texture
-        // displayTimer[3].start(); // Start the timer for loading texture
         projCtx.loadMatTexture(img_mat);
-        // displayTimer[3].update(true); // Update the timer
     }
     // --------------- Handle Image Processing for Next Frame ---------------
     // Prepare the frame for rendering (clear the back buffer)
@@ -561,13 +560,13 @@ void projectorLoop(MazeRenderContext &projCtx) {
 
     // Swap buffers and poll events
     projCtx.bufferSwapPoll();
-}
 
-// std::array<std::thread, N_PROJ> projThreads; // Array to hold projector threads
+    if (projectionTimer.isRunning)
+        projectionTimer.stop();
+}
 
 int appMainLoop() {
         int status = 0; // Initialize status to 0 (no error)
-        // displayTimer[0].start(); // Start the timer for the loop
 
         // Process a single round of callbacks for ROS messages
         ros::spinOnce();
@@ -584,7 +583,6 @@ int appMainLoop() {
         FLAG_UPDATE_TEXTURES = false;
         FLAG_FORCE_WINDOW_FOCUS = false;
 
-        // displayTimer[0].update(true);
         // Sleep to maintain the loop rate
         RC.loop_rate->sleep();
 
@@ -618,14 +616,9 @@ int main(int argc, char **argv) {
         appInitOpenGL();
 
         // Setup timers
-        for (auto &t: displayTimer) t.reset();
+        projectionTimer.reset();
+        projectionTimer.name = "projector_image";
 
-        displayTimer[0].name = "Main Loop";
-        displayTimer[1].name = "Update Floor Texture";
-        displayTimer[2].name = "Update Wall Texture";
-        displayTimer[3].name = "Load Texture";
-        displayTimer[4].name = "Merging";
-    
         int mainLoopStatus = 0;
         FLAG_UPDATE_TEXTURES = true; // Set the flag to update textures initially
         while (ros::ok() && !mainLoopStatus) mainLoopStatus = appMainLoop();
