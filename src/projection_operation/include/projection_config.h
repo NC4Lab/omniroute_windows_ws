@@ -406,7 +406,7 @@ const int N_CALIB_MODE_IMAGES = 4; // Number of available calibration mode image
 std::vector<std::string> RUNTIME_WALL_IMAGES = {
     "w_black.png",
     "w_square.png",
-    "w_square.png",
+    "w_circle.png",
     "w_triangle.png",
     "w_star.png",
     "w_pentagon.png",
