@@ -1,11 +1,11 @@
-# (Windows) Omniroute ROS Host Workspace Setup and Usage
+# Omniroute ROS Host Workspace Setup and Usage (Windows)
 
 ## Overview
 
 This repository contains the Windows-side control workspace for the Omniroute maze. It provides the projection and tracking components and connects to the Ubuntu ROS Noetic system to deliver visual stimuli and exchange experiment-state messages during behavioral sessions.
 
 <p align="center">
-  <img src="data/assets/hero_image/system_diagram.svg" alt="System Diagram" width="700">
+  <img src="data/assets/hero_image/sys_diagram.svg" alt="System Diagram" width="700">
 </p>
 
 ## Changing ROS environment settings in Windows
@@ -86,4 +86,4 @@ To export your design as a PNG with a transparent background:
 
 * **Hardware design files** (for the Omniroute apparatus) are released under the **CERN-OHL-W** license.
     
-* **Analysis code in this repository** is released under the Apache-2.0 license (see `LICENSE`).
+* **Code in this repository** is released under the MIT License (MIT) (see LICENSE).
