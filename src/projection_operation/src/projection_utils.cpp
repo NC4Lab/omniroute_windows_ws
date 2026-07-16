@@ -68,6 +68,11 @@ int SetupGraphicsLibraries() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 5);                 // Specify OpenGL version if needed
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // Request core profile
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);            // Request debug context
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_FOCUSED, GLFW_FALSE);
+    glfwWindowHint(GLFW_FOCUS_ON_SHOW, GLFW_FALSE);
+    glfwWindowHint(GLFW_AUTO_ICONIFY, GLFW_FALSE);
+
     status = CheckErrorGLFW(__LINE__, __FILE__) < 0 ? -1 : status;
 
     // Discover available monitors
@@ -531,6 +536,8 @@ void MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscr
     // Update window title with window and monitor indices
     std::string new_title = "Window[" + std::to_string(windowInd) + "] Monitor[" + std::to_string(mon_ind_new) + "]";
     glfwSetWindowTitle(window, new_title.c_str());
+
+    _setMonitor(STARTING_MONITOR);
 
     // Log the new window display mode if verbose logging is enabled
     if (GLB_DO_VERBOSE_DEBUG)
