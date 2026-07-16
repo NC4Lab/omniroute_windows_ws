@@ -88,7 +88,7 @@ void callbackProjCmdROS(const std_msgs::Int32::ConstPtr &msg) {
     if (GLB_DO_VERBOSE_DEBUG)
         ROS_INFO("[callbackProjCmdROS] Received projection command: %d", msg->data);
 
-    // ------- Monitor Mode Change Commmands ----------
+    // ------- Monitor Mode Change Commands ----------
     if (msg->data == -1) {  // Move monitor command [-1]
         FLAG_WINDOWS_SET_TO_PROJ = !FLAG_WINDOWS_SET_TO_PROJ;
         FLAG_CHANGE_WINDOW_MODE = true;
@@ -489,7 +489,7 @@ void appInitOpenGL() {
         // Start on the default screen
         int mon_ind = STARTING_MONITOR;
 
-        // Initialze render context for each projector
+        // Initialize render context for each projector
         if (PROJ_CTX_VEC[proj].initWindowContext(proj, mon_ind, GLB_MONITOR_WIDTH_PXL, GLB_MONITOR_HEIGHT_PXL, callbackKeyBinding) < 0)
             throw std::runtime_error("[appInitOpenGL] Failed to initialize render context");
 
@@ -503,7 +503,7 @@ void appInitOpenGL() {
 
         // Create the shader program for CircleRenderer class rat mask rendering
         if (CircleRenderer::CompileAndLinkCircleShaders(1.0) < 0)
-            throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
+            throw std::runtime_error("[appInitOpenGL] Failed to compile and link circleRenderer class shader");
 
         // Set all projectors to the starting monitor and include xy offset
         PROJ_CTX_VEC[proj].changeWindowDisplayMode(mon_ind, FLAG_FULLSCREEN_MODE, PROJ_CTX_VEC[proj].winOffset);
@@ -519,7 +519,7 @@ void appInitOpenGL() {
             throw std::runtime_error("[appInitOpenGL] Failed to initialize CircleRenderer class object");
         ROS_INFO("[projection_display:appInitOpenGL] OpenGL initialized: Projector[%d] Window[%d] Monitor[%d]", proj, PROJ_CTX_VEC[proj].windowInd, PROJ_CTX_VEC[proj].monitorInd);
     }
-    ROS_INFO("[projection_display:appInitOpenGL] OpenGL contexts and objects Initialized succesfully");
+    ROS_INFO("[projection_display:appInitOpenGL] OpenGL contexts and objects Initialized successfully");
 
     // Initialize the maze map and projection maps to blank
     constMazeMap(MAZE_MAP, 0);

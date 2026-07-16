@@ -333,7 +333,7 @@ int MazeRenderContext::initWindowContext(int win_ind, int mon_ind, int win_width
 
     setAutoWindowedOffset(); // Set the window offset for windowed mode
 
-    // Very imporant flag!
+    // Very important flag!
     isContextInitialized = true;
 
     // Load OpenGL extensions using GLAD
@@ -504,7 +504,7 @@ void MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscr
         return;
     }
 
-    // Set position to match fullscreeen
+    // Set position to match fullscreen
     win_width = mode->width;
     win_height = mode->height;
     win_x = 0;
@@ -521,7 +521,7 @@ void MazeRenderContext::changeWindowDisplayMode(int mon_ind_new, bool do_fullscr
         if (monitor_x < 0 || monitor_y < 0) // Validate monitor position
             ROS_WARN("[MazeRenderContext::changeWindowDisplayMode] Invalid Monitor Position: Monitor[%d] X[%d] Y[%d]", mon_ind_new, monitor_x, monitor_y);
 
-        // Calculate window size based on aspect ratio of the inialized window dimensions
+        // Calculate window size based on aspect ratio of the initialized window dimensions
         win_width = static_cast<int>(576.0f * (_windowWidthPxl / static_cast<float>(_windowHeightPxl)));
         win_height = 576.0f;
 
@@ -697,7 +697,7 @@ void MazeRenderContext::_setMonitor(int mon_ind) {
     // Check that the monitor pointer is valid
     monitor = MONITORS[mon_ind];
 
-    // Set the references to the class intance monitor id and index
+    // Set the references to the class instance monitor id and index
     monitorInd = mon_ind;
 }
 
@@ -705,7 +705,7 @@ int MazeRenderContext::_testCallbacks() {
     // Check that the window pointer is valid
     if (window == nullptr) return -1;
 
-    ROS_INFO("============== START: CALLBACK DEBUGGIN ==============");
+    ROS_INFO("============== START: CALLBACK DEBUGGING ==============");
     // Trigger buffer
     glfwSetWindowSize(window, 800, 600); // Change the size to something different
 
@@ -716,7 +716,7 @@ int MazeRenderContext::_testCallbacks() {
     // Try to create a window with invalid arguments
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 99); // Set an invalid version to trigger an error
     GLFWwindow *new_win = glfwCreateWindow(640, 480, "Bad Window!", nullptr, nullptr);
-    ROS_INFO("============== END: CALLBACK DEBUGGIN ==============");
+    ROS_INFO("============== END: CALLBACK DEBUGGING ==============");
 
     return 0;
 }
@@ -737,7 +737,7 @@ CircleRenderer::CircleRenderer()
       circColor(cv::Scalar(1.0, 1.0, 1.0)),
       circSegments(32),
       circHomMatNDC(cv::Mat::eye(3, 3, CV_64F)) {
-    // Define instance count and itterate static _CircCnt
+    // Define instance count and iterate static _CircCnt
     circID = _CircCnt++;
 
     // Initialize the transformation matrix as an identity matrix

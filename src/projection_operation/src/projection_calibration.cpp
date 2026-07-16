@@ -40,7 +40,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
 
             I.monitor = mon_ind;            // Update the monitor index
             FLAG_CHANGE_WINDOW_MODE = true;    // Set the window update flag
-            FLAG_INIT_CONTROL_POINTS = true;   // Set the reinstalize control points flag
+            FLAG_INIT_CONTROL_POINTS = true;   // Set the reinitialize control points flag
             FLAG_UPDATE_MODE_IMG = true;       // Set flag to update mode image
         }
 
@@ -111,7 +111,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             }
         }
 
-        // ---------- Contol point maze vertex selector keys [CTRL [LEFT, RIGHT, UP, DOWN]] ----------
+        // ---------- Control point maze vertex selector keys [CTRL [LEFT, RIGHT, UP, DOWN]] ----------
 
         else if (mods & GLFW_MOD_CONTROL && CAL_MODE < 3) {
             bool is_vert_changed = true;
@@ -125,7 +125,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
                 // Set flag to update the wall homography matrix when the vertex is changed
                 FLAG_UPDATE_HOMOGRAPHYS = true;
 
-                // Set the wall vertex to the ortin if the maze vertex is changed
+                // Set the wall vertex to the origin if the maze vertex is changed
                 for (int i = 0; i < 2; ++i) {
                     for (int j = 0; j < 2; ++j) {
                         if (I.CP_MAP[i][j] == I.cp_wall_origin_vertex) {
@@ -151,7 +151,7 @@ void callbackKeyBinding(GLFWwindow *window, int key, int scancode, int action, i
             // Set the position increment based on whether the shift key is pressed
             float pos_inc = (mods & GLFW_MOD_SHIFT) ? 0.01f : 0.0005f;
 
-            // Get the maze and wall vertex indices cooresponding to the row and column of the selected control point
+            // Get the maze and wall vertex indices corresponding to the row and column of the selected control point
             int mv_ind = I.CP_MAP[I.cp_maze_vert_selected[0]][I.cp_maze_vert_selected[1]];
             int wv_ind = I.CP_MAP[I.cp_wall_vert_selected[0]][I.cp_wall_vert_selected[1]];
 
@@ -268,7 +268,7 @@ int drawControlPoints(CalibrationMode _CAL_MODE,
     // Loop through the control points and draw them
     for (int cp_i = 0; cp_i < n_cp_groups; ++cp_i) {
         for (int cp_j = 0; cp_j < 4; ++cp_j) {
-            // Get the maze and wall vertex indices cooresponding to the selected control point
+            // Get the maze and wall vertex indices corresponding to the selected control point
             int mv_ind = I.CP_MAP[I.cp_maze_vert_selected[0]][I.cp_maze_vert_selected[1]];
             int wv_ind = I.CP_MAP[I.cp_wall_vert_selected[0]][I.cp_wall_vert_selected[1]];
 
@@ -471,7 +471,7 @@ void appLoadAssets() {
     if (loadImgMat(calibModeImages, calibModeMats) < 0)
         throw std::runtime_error("[appLoadAssets] Failed to load OpenCV calibration mode images");
 
-    ROS_INFO("[appLoadAssets] OpentCV mat images loaded succesfully");
+    ROS_INFO("[appLoadAssets] OpentCV mat images loaded successfully");
 }
 
 void appInitOpenGL() {
@@ -496,13 +496,13 @@ void appInitOpenGL() {
 
     // Create the shader program for CircleRenderer class control point rendering
     if (CircleRenderer::CompileAndLinkCircleShaders(GLB_MONITOR_AR) < 0)
-        throw std::runtime_error("[appInitOpenGL] Failed to compile and link circlerenderer class shader");
+        throw std::runtime_error("[appInitOpenGL] Failed to compile and link CircleRenderer class shader");
 
     // Initialize the CircleRenderer class objects array
     if (initCircleRendererObjects(CP_GRID_ARR, CP_CIRCREND_ARR) < 0)
         throw std::runtime_error("[appInitOpenGL] Failed to initialize control point variables");
 
-    ROS_INFO("[appInitOpenGL] OpenGL context and objects initialized succesfully");
+    ROS_INFO("[appInitOpenGL] OpenGL context and objects initialized successfully");
 }
 
 void appInitFileXML() {
@@ -529,7 +529,7 @@ void appInitFileXML() {
                         if (std::find(mon_missing_vec.begin(), mon_missing_vec.end(), proj_i) == mon_missing_vec.end()) {
                             mon_missing_vec.push_back(proj_i);
                             isMonMissing = true; // Break out of the nested loops
-                            ROS_WARN("[appInitFileXML] Initilizing XML file for Projector[%d]: %s", proj_i, file_path.c_str());
+                            ROS_WARN("[appInitFileXML] Initializing XML file for Projector[%d]: %s", proj_i, file_path.c_str());
                         }
                     }
                 }
@@ -586,7 +586,7 @@ void appInitFileXML() {
 void appMainLoop() {
     int status = 0;
     while (status == 0) {
-        // --------------- Check Kayboard Callback Flags ---------------
+        // --------------- Check Keyboard Callback Flags ---------------
 
         // Load/save XML file
         if (FLAG_XML_LOAD_HMAT || FLAG_XML_SAVE_HMAT) {
